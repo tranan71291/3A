@@ -1,14 +1,15 @@
 'use client';
 
 import { AlertTriangle, ArrowLeftRight, AtSign, Banknote, Bell, BookUser, Boxes, Briefcase, Building2, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Coins, Columns3, Database, Factory, FileCheck2, FileText, FolderOpen, HardHat, House, Inbox, LayoutDashboard, Lightbulb, Megaphone, MessageCircle, MessagesSquare, Newspaper, Package, PackageMinus, PackagePlus, Plane, Receipt as ReceiptIcon, RefreshCw, Rows3, Ruler, Settings, ShieldCheck, Ship, SlidersHorizontal, SquarePlay, Target, ThumbsUp, Truck, Users, Vote, Wallet, Warehouse, XCircle, Zap } from 'lucide-react';
-import { Component, createContext, type ReactNode, useContext } from 'react';
+import { Component, Fragment, createContext, memo, type ReactNode, useContext, useDeferredValue, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
-import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, Customer, CustomerForm, CustomerSource, CustomerStatus, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, Lead, LeadStatus, LeaveKind, LostReason, MfgConfig, MktChannel, MktItem, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StStepId, StudioApi, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
+import { applyWatermark, CounterInput, getPlatform, scoreArticle, socialStrategy, stClip, stCreate, strengthLabel, stShrinkImage, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
 
 // =====================================================================
 //  DESIGN TOKENS & HELPERS
@@ -1258,6 +1259,620 @@ export const TASK_STATUS: Record<TaskStatus, { label: string; color: string; bg:
   PUBLISHED: { label: 'Đã đăng', color: '#16A34A', bg: '#DCFCE7', fg: '#14532D' },
 };
 
+/** Danh sách kênh, khởi tạo khi dùng lần đầu */
+export const ST_PLATFORM_CACHE: { list: PlatformStrategy[] | null } = { list: null };
+
+// ---- studio/lib/text.ts ----
+
+export const stFold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+
+export const stripMd = (s: string) => s.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^[-*]\s+/gm, '').replace(/[#>`_]/g, '');
+
+export const wordCount = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
+
+export const countOf = (hay: string, needle: string) => { const h = stFold(hay), n = stFold(needle).trim(); if (!n) return 0; let c = 0, i = h.indexOf(n); while (i >= 0) { c++; i = h.indexOf(n, i + n.length); } return c; };
+
+export const stHas = (hay: string, needle: string) => countOf(hay, needle) > 0;
+
+export const slugify = (s: string) => stFold(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+
+/** Văn bản thuần của cả bài (để đếm từ, kiểm từ khóa) */
+export const plainOf = (a: StArticle) => [a.title, a.sapo, ...a.sections.flatMap((s) => [s.title, stripMd(s.body)])].join('\n');
+
+export const stStr = (v: unknown) => (typeof v === 'string' ? v : '');
+
+export const stArr = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
+
+/** Hashtag không dấu, viết liền, chữ cái đầu mỗi từ viết hoa: "Băng keo 3M" -> #BangKeo3M */
+export const toHashtag = (s: string) => `#${stFold(s).replace(/[^a-z0-9 ]/g, '').split(' ').filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join('')}`;
+
+// ---- studio/seo/rules.ts ----
+
+/** Bộ luật dựng sẵn để các kênh ghép lại; kênh mới có thể tự viết luật riêng */
+export const stRules = {
+  keywordIn(where: 'title' | 'sapo' | 'heading' | 'body', settingKey = 'focusKeyword', weight = 10): SeoRule {
+    const label = { title: 'tiêu đề', sapo: 'đoạn mở đầu', heading: 'ít nhất 1 tiêu đề H2/H3', body: 'nội dung' }[where];
+    return {
+      id: `kw-${where}`, label: `Từ khóa chính có trong ${label}`, weight,
+      check: ({ article, headings, plain }) => {
+        const kw = stStr(article.settings[settingKey]).trim();
+        if (!kw) return { status: 'fail', detail: 'Chưa nhập từ khóa chính' };
+        const target = where === 'title' ? article.title : where === 'sapo' ? article.sapo.slice(0, 160) : where === 'heading' ? headings.join('\n') : plain;
+        return stHas(target, kw) ? { status: 'pass', detail: `Có "${kw}"` } : { status: 'fail', detail: `Chưa có "${kw}"` };
+      },
+    };
+  },
+  wordsBetween(min: number, max: number, weight = 8): SeoRule {
+    return { id: 'words', label: `Độ dài ${min}–${max} từ`, weight, check: ({ words }) => (words >= min && words <= max ? { status: 'pass', detail: `${words} từ` } : words >= min * 0.7 && words <= max * 1.2 ? { status: 'warn', detail: `${words} từ` } : { status: 'fail', detail: `${words} từ` }) };
+  },
+  charLimit(key: string, label: string, min: number, max: number, weight = 6): SeoRule {
+    return { id: `len-${key}`, label: `${label} ${min}–${max} ký tự`, weight, check: ({ article }) => { const n = stStr(article.settings[key]).length; return n === 0 ? { status: 'fail', detail: 'Chưa có' } : n > max ? { status: 'fail', detail: `${n} ký tự, quá ${n - max}` } : n < min ? { status: 'warn', detail: `${n} ký tự, hơi ngắn` } : { status: 'pass', detail: `${n} ký tự` }; } };
+  },
+  textImageRatio(wordsPerImage: number, weight = 6): SeoRule {
+    return { id: 'img-ratio', label: `Tỷ lệ chữ / ảnh (1 ảnh mỗi ${wordsPerImage} từ)`, weight, check: ({ words, images }) => { const need = Math.max(1, Math.floor(words / wordsPerImage)); return images >= need ? { status: 'pass', detail: `${images} ảnh / ${words} từ` } : images > 0 ? { status: 'warn', detail: `${images}/${need} ảnh` } : { status: 'fail', detail: 'Chưa có ảnh' }; } };
+  },
+  lsiCoverage(weight = 6): SeoRule {
+    return { id: 'lsi', label: 'Phủ từ khóa LSI ≥ 50%', weight, check: ({ article, plain }) => { const l = (article.settings.lsiKeywords as string[] | undefined) ?? []; if (!l.length) return { status: 'warn', detail: 'Chưa nhập LSI' }; const hit = l.filter((k) => stHas(plain, k)).length; const p = hit / l.length; return { status: p >= 0.5 ? 'pass' : p > 0 ? 'warn' : 'fail', detail: `${hit}/${l.length} từ` }; } };
+  },
+  totalChars(max: number, weight = 8): SeoRule {
+    return { id: 'total', label: `Toàn bài ≤ ${max} ký tự`, weight, check: ({ plain }) => (plain.length <= max ? { status: 'pass', detail: `${plain.length} ký tự` } : { status: 'fail', detail: `${plain.length} ký tự, quá ${plain.length - max}` }) };
+  },
+  filled(key: string, label: string, weight = 5): SeoRule {
+    return { id: `stHas-${key}`, label, weight, check: ({ article }) => { const v = article.settings[key]; const ok = Array.isArray(v) ? v.length > 0 : !!v && String(v).trim() !== ''; return ok ? { status: 'pass', detail: 'Đã có' } : { status: 'fail', detail: 'Chưa có' }; } };
+  },
+};
+
+// ---- studio/platforms/social-base.ts ----
+
+/** Khung dùng chung cho kênh mạng xã hội (Facebook, Zalo…): không H2/H3, có hook, CTA, hashtag */
+export const ST_HOOKS = [
+  { value: 'AIDA', label: 'AIDA', hint: 'Chú ý → Quan tâm → Mong muốn → Hành động' },
+  { value: 'PAS', label: 'PAS', hint: 'Vấn đề → Khuấy động → Giải pháp' },
+] as const;
+
+export const socialFields = (extra: readonly FieldDef[] = []): FieldDef[] => [
+  { key: 'hook', label: 'Cấu trúc Hook', kind: 'select', required: true, options: ST_HOOKS },
+  { key: 'tone', label: 'Giọng điệu', kind: 'select', options: [{ value: 'friendly', label: 'Thân thiện' }, { value: 'expert', label: 'Chuyên gia' }, { value: 'urgent', label: 'Khẩn trương (ưu đãi)' }] },
+  { key: 'ctaText', label: 'Lời kêu gọi (CTA)', kind: 'text', required: true, placeholder: 'VD: Nhắn ngay để nhận báo giá trong 2 giờ', wide: true },
+  { key: 'ctaPhone', label: 'Số điện thoại', kind: 'text', placeholder: '0909 xxx xxx' },
+  { key: 'ctaLink', label: 'Liên kết', kind: 'text', placeholder: 'https://' },
+  { key: 'hashtagRule', label: 'Quy tắc hashtag', kind: 'select', options: [{ value: 'brand_topic', label: 'Thương hiệu + chủ đề' }, { value: 'topic', label: 'Chỉ chủ đề' }, { value: 'none', label: 'Không dùng' }] },
+  { key: 'hashtags', label: 'Hashtag cố định', kind: 'tags', placeholder: '#VASSH', showIf: (s) => s.hashtagRule !== 'none' },
+  ...extra,
+];
+
+/** Tiêu đề mục -> dòng nổi bật trong chữ thuần (mạng xã hội không có H2/H3, không có markdown) */
+export const titleLine = (t: string) => `▸ ${t.toLocaleUpperCase('vi')}`;
+
+// ---- studio/platforms/website.ts ----
+
+export const stEsc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+export const stMdToHtml = (md: string) => md.split(/\n{2,}/).map((p) => (/^[-*]\s/m.test(p) ? `<ul>${p.split('\n').map((l) => `<li>${stInline(l.replace(/^[-*]\s+/, ''))}</li>`).join('')}</ul>` : `<p>${stInline(p)}</p>`)).join('\n');
+
+export const stInline = (s: string) => stEsc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+/** Website / Blog chuẩn SEO */
+export const ST_P_WEBSITE: PlatformStrategy = {
+  id: 'website',
+  label: 'Website / Blog',
+  description: 'Bài chuẩn SEO: H2/H3, meta title, meta description, từ khóa chính và LSI',
+  order: 1,
+  structure: { headings: true, maxSections: 12, sapoLabel: 'Sapo (đoạn mở đầu)', sapoMax: 300 },
+  fields: [
+    { key: 'focusKeyword', label: 'Focus Keyword', kind: 'text', required: true, placeholder: 'VD: băng keo VHB mặt dựng kính', help: 'AI đưa từ khóa vào tiêu đề, sapo và ít nhất 1 tiêu đề H2' },
+    { key: 'lsiKeywords', label: 'LSI Keywords', kind: 'tags', placeholder: 'Enter để thêm', help: 'Từ khóa liên quan, AI rải vào các H2/H3 phù hợp' },
+    { key: 'metaTitle', label: 'Meta Title', kind: 'counter', maxLength: 60, wide: true, suggest: (a, s) => stClip(a.title.toLowerCase().includes(stStr(s.focusKeyword).toLowerCase()) ? a.title : `${stStr(s.focusKeyword)}: ${a.title}`, 60) },
+    { key: 'metaDescription', label: 'Meta Description', kind: 'counter', maxLength: 155, wide: true, suggest: (a) => stClip(a.sapo || a.sections.map((x) => x.body).join(' '), 155) },
+    { key: 'slug', label: 'Đường dẫn (slug)', kind: 'text', suggest: (a) => slugify(a.title) },
+    { key: 'audience', label: 'Đối tượng đọc', kind: 'select', options: [{ value: 'b2b', label: 'Nhà thầu, kỹ sư M&E' }, { value: 'dealer', label: 'Đại lý, nhà phân phối' }, { value: 'owner', label: 'Chủ đầu tư' }] },
+  ],
+  defaults: () => ({ focusKeyword: '', lsiKeywords: [], metaTitle: '', metaDescription: '', slug: '', audience: 'b2b' }),
+  validate: (s) => (stStr(s.focusKeyword).trim() ? [] : ['Nhập Focus Keyword']),
+  outlinePrompt: (a) => [
+    `Lập dàn ý bài blog chuẩn SEO tiếng Việt cho tiêu đề: "${a.title}".`,
+    `Từ khóa chính: "${stStr(a.settings.focusKeyword)}" — bắt buộc xuất hiện trong ít nhất 1 tiêu đề H2.`,
+    `Từ khóa LSI (rải vào các H2/H3 phù hợp, tự nhiên): ${stArr(a.settings.lsiKeywords).join(', ') || 'không có'}.`,
+    'Trả JSON: {"sapo":"...","sections":[{"level":2,"title":"..."},{"level":3,"title":"..."}]}. 5–8 mục H2, mỗi H2 tối đa 3 H3.',
+  ].join('\n'),
+  sectionPrompt: (a, id) => { const s = a.sections.find((x) => x.id === id); return `Viết nội dung cho mục ${s?.level === 3 ? 'H3' : 'H2'} "${s?.title}" của bài "${a.title}". 120–220 từ, đoạn ngắn, có số liệu nếu được cung cấp, tự nhiên chứa từ khóa "${stStr(a.settings.focusKeyword)}" hoặc 1 từ LSI. Không lặp tiêu đề.`; },
+  render: (a) => ({
+    format: 'html',
+    meta: { title: stStr(a.settings.metaTitle), description: stStr(a.settings.metaDescription) },
+    body: [`<h1>${stEsc(a.title)}</h1>`, `<p class="sapo"><strong>${stEsc(a.sapo)}</strong></p>`, ...a.sections.flatMap((s) => [`<h${s.level}>${stEsc(s.title)}</h${s.level}>`, ...(s.image ? [`<figure><img src="${stEsc(s.image.url)}" alt="${stEsc(s.image.alt)}"/></figure>`] : []), stMdToHtml(s.body)])].join('\n'),
+  }),
+  seoRules: [
+    stRules.keywordIn('title', 'focusKeyword', 12), stRules.keywordIn('sapo', 'focusKeyword', 10), stRules.keywordIn('heading', 'focusKeyword', 10),
+    stRules.wordsBetween(800, 2000, 10), stRules.charLimit('metaTitle', 'Meta Title', 30, 60, 8), stRules.charLimit('metaDescription', 'Meta Description', 120, 155, 8),
+    stRules.lsiCoverage(6), stRules.textImageRatio(350, 6),
+  ],
+  image: { aspect: 'landscape', hint: 'Ảnh ngang 3:2 cho bài blog, có thể chèn chữ ngắn' },
+};
+
+// ---- studio/platforms/facebook.ts ----
+
+/** Facebook Fanpage */
+export const ST_P_FACEBOOK = socialStrategy({ id: 'facebook', label: 'Facebook', description: 'Bài Fanpage: hook AIDA / PAS, CTA, hashtag, không H2/H3', order: 2, maxChars: 2000 });
+
+// ---- studio/platforms/zalo.ts ----
+
+/** Zalo OA: ngắn hơn Facebook, thêm nhãn nút bấm */
+export const ST_P_ZALO = socialStrategy({
+  id: 'zalo', label: 'Zalo OA', description: 'Tin bài Zalo OA: ngắn, CTA kèm nút bấm', order: 3, maxChars: 1000,
+  extraFields: [{ key: 'buttonLabel', label: 'Nhãn nút', kind: 'text', maxLength: 30, placeholder: 'VD: Nhận báo giá' }],
+});
+
+// ---- studio/platforms/google-maps.ts ----
+
+export const POST_TYPES = [{ value: 'update', label: 'Cập nhật' }, { value: 'event', label: 'Sự kiện' }, { value: 'offer', label: 'Ưu đãi' }] as const;
+
+/** Bài đăng hồ sơ doanh nghiệp trên Google Maps: tối ưu 100 ký tự đầu + khối NAP */
+export const ST_P_GMAPS: PlatformStrategy = {
+  id: 'google_maps',
+  label: 'Google Maps',
+  description: 'Bài đăng Google Business Profile: loại bài, 100 ký tự đầu, NAP',
+  order: 4,
+  structure: { headings: false, maxSections: 3, sapoLabel: '100 ký tự đầu (hiện trên bản đồ)', sapoMax: 100, totalMax: 1500 },
+  fields: [
+    { key: 'postType', label: 'Loại bài đăng Maps', kind: 'select', required: true, options: POST_TYPES },
+    { key: 'localKeyword', label: 'Từ khóa địa phương', kind: 'text', placeholder: 'VD: vật tư điện Tân Bình', help: 'Đưa vào 100 ký tự đầu' },
+    { key: 'eventStart', label: 'Bắt đầu', kind: 'date', showIf: (s) => s.postType === 'event' || s.postType === 'offer' },
+    { key: 'eventEnd', label: 'Kết thúc', kind: 'date', showIf: (s) => s.postType === 'event' || s.postType === 'offer' },
+    { key: 'offerCode', label: 'Mã ưu đãi', kind: 'text', showIf: (s) => s.postType === 'offer' },
+    { key: 'button', label: 'Nút hành động', kind: 'select', options: [{ value: 'CALL', label: 'Gọi ngay' }, { value: 'LEARN_MORE', label: 'Tìm hiểu thêm' }, { value: 'BOOK', label: 'Đặt lịch' }, { value: 'ORDER', label: 'Đặt hàng' }] },
+    { key: 'nap', label: 'Khối NAP (tên, địa chỉ, điện thoại)', kind: 'nap', wide: true, help: 'Lấy từ Cài đặt › Thông tin doanh nghiệp, giữ thống nhất mọi nơi' },
+  ],
+  defaults: () => ({ postType: 'update', localKeyword: '', eventStart: '', eventEnd: '', offerCode: '', button: 'CALL', nap: true }),
+  validate: (s) => [
+    ...(s.postType === 'event' && (!stStr(s.eventStart) || !stStr(s.eventEnd)) ? ['Nhập ngày bắt đầu / kết thúc sự kiện'] : []),
+    ...(s.postType === 'offer' && !stStr(s.eventEnd) ? ['Nhập ngày kết thúc ưu đãi'] : []),
+  ],
+  outlinePrompt: (a) => `Viết dàn ý bài đăng Google Maps loại "${POST_TYPES.find((p) => p.value === a.settings.postType)?.label}" cho "${a.title}". 100 ký tự đầu phải chứa "${stStr(a.settings.localKeyword)}" và lợi ích chính. Trả JSON {"sapo":"≤100 ký tự","sections":[{"level":2,"title":"..."}]} tối đa 3 ý.`,
+  sectionPrompt: (a, id) => `Viết 1–2 câu cho ý "${a.sections.find((x) => x.id === id)?.title}", chữ thuần, không hashtag, không emoji (bài "${a.title}").`,
+  render: (a, c) => ({
+    format: 'text',
+    body: [a.sapo, ...a.sections.map((s) => stripMd(s.body)),
+      a.settings.postType !== 'update' && stStr(a.settings.eventStart) ? `Thời gian: ${stStr(a.settings.eventStart)} – ${stStr(a.settings.eventEnd)}` : '',
+      stStr(a.settings.offerCode) ? `Mã ưu đãi: ${stStr(a.settings.offerCode)}` : '',
+      a.settings.nap ? `${c.name}\n${c.address}\n${c.phone}` : ''].filter(Boolean).join('\n\n'),
+  }),
+  seoRules: [
+    { id: 'first100', label: 'Từ khóa địa phương trong 100 ký tự đầu', weight: 14, check: ({ article }) => { const k = stStr(article.settings.localKeyword); if (!k) return { status: 'warn', detail: 'Chưa nhập từ khóa' }; return stHas(article.sapo.slice(0, 100), k) ? { status: 'pass', detail: 'Có' } : { status: 'fail', detail: 'Chưa có' }; } },
+    { id: 'nap', label: 'Có khối NAP đầy đủ', weight: 10, check: ({ article, company }) => (article.settings.nap && company.address && company.phone ? { status: 'pass', detail: company.name } : { status: 'fail', detail: 'Thiếu địa chỉ / điện thoại công ty' }) },
+    stRules.totalChars(1500, 10),
+    stRules.filled('button', 'Có nút hành động', 6),
+    stRules.textImageRatio(10_000, 6),
+  ],
+  image: { aspect: 'landscape', hint: 'Ảnh ngang 4:3, thật, không chèn chữ lớn' },
+};
+
+// ---- studio/image/brand.ts ----
+/** Bộ nhận diện dùng cho ảnh AI. Đổi màu / logo ở đây, không sửa component. */
+export const ST_BRAND = {
+  navy: '#001d74',
+  orange: '#ff8c00',
+  name: 'VASSH',
+  /** Câu bổ sung vào prompt khi bật "Ưu tiên màu thương hiệu" */
+  palettePrompt: 'Bảng màu chủ đạo: xanh navy đậm #001d74 và cam #ff8c00, nền sáng sạch, phong cách ảnh thương mại B2B công nghiệp. Không chèn logo hay chữ thương hiệu.',
+} as const;
+
+export const load = (src: string) => new Promise<HTMLImageElement>((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = no; i.src = src; });
+
+export const stUid = () => Math.random().toString(36).slice(2, 10);
+
+export const stTouch = (a: StArticle): StArticle => ({ ...a, updatedAt: Date.now() });
+
+export const stNewArticle = (platform = 'website', company: StCompany): StArticle => ({
+  id: stUid(), platform, title: '', sapo: '', sections: [], settings: getPlatform(platform).defaults(company), updatedAt: Date.now(),
+});
+
+export const createStudioStore = (company: StCompany, initial?: StArticle) => stCreate<StudioState>()((set, get) => {
+  /** Ghi lịch sử cho các thao tác cấu trúc (không ghi từng phím gõ) */
+  const snap = () => ({ history: [...get().history.slice(-29), get().article] });
+  const mapSection = (id: string, f: (s: StSection) => StSection) => set((st) => ({ article: stTouch({ ...st.article, sections: st.article.sections.map((s) => (s.id === id ? f(s) : s)) }) }));
+  return {
+    step: 1,
+    article: initial ?? stNewArticle('website', company),
+    company,
+    activeSectionId: null,
+    navAt: 0,
+    busy: {},
+    stash: {},
+    history: [],
+
+    setStep: (step) => set({ step }),
+    setPlatform: (id) => set((st) => {
+      if (id === st.article.platform) return {};
+      const p = getPlatform(id);
+      const stash = { ...st.stash, [st.article.platform]: st.article.settings };
+      // Ưu tiên: cài đặt cũ của chính kênh đó > giá trị trùng khóa vừa nhập (VD ctaPhone Facebook -> Zalo) > mặc định
+      const shared = Object.fromEntries(Object.entries(st.article.settings).filter(([k]) => p.fields.some((f) => f.key === k)));
+      return { ...snap(), stash, article: stTouch({ ...st.article, platform: id, settings: { ...p.defaults(st.company), ...shared, ...(stash[id] ?? {}) } }) };
+    }),
+    setSetting: (key, v) => set((st) => ({ article: stTouch({ ...st.article, settings: { ...st.article.settings, [key]: v } }) })),
+    setTitle: (title) => set((st) => ({ article: stTouch({ ...st.article, title }) })),
+    setSapo: (sapo) => set((st) => ({ article: stTouch({ ...st.article, sapo }) })),
+    setOutline: (rows) => set((st) => {
+      const max = getPlatform(st.article.platform).structure.maxSections;
+      return { ...snap(), article: stTouch({ ...st.article, sections: rows.slice(0, max).map((r) => ({ id: stUid(), level: r.level, title: r.title, body: '' })) }) };
+    }),
+    addSection: (after, level = 2) => set((st) => {
+      const s: StSection = { id: stUid(), level, title: 'Mục mới', body: '' };
+      const list = [...st.article.sections];
+      const i = after ? list.findIndex((x) => x.id === after) + 1 : list.length;
+      list.splice(i, 0, s);
+      return { ...snap(), article: stTouch({ ...st.article, sections: list }), activeSectionId: s.id };
+    }),
+    removeSection: (id) => set((st) => ({ ...snap(), article: stTouch({ ...st.article, sections: st.article.sections.filter((s) => s.id !== id) }) })),
+    moveSection: (id, to) => set((st) => {
+      const list = [...st.article.sections];
+      const from = list.findIndex((s) => s.id === id);
+      if (from < 0) return {};
+      const [s] = list.splice(from, 1);
+      list.splice(Math.max(0, Math.min(to, list.length)), 0, s);
+      return { ...snap(), article: stTouch({ ...st.article, sections: list }) };
+    }),
+    patchSection: (id, p) => mapSection(id, (s) => ({ ...s, ...p })),
+    setImage: (id, image) => { set(snap()); mapSection(id, (s) => ({ ...s, image })); },
+    setActive: (activeSectionId) => set({ activeSectionId }),
+    focusSection: (id) => set({ activeSectionId: id, navAt: Date.now() }),
+    setBusy: (id, kind) => set((st) => ({ busy: { ...st.busy, [id]: kind } })),
+    undo: () => set((st) => (st.history.length ? { article: st.history[st.history.length - 1], history: st.history.slice(0, -1) } : {})),
+  };
+});
+
+// ---- studio/store/context.tsx ----
+
+/**
+ * Mỗi Studio đang mở có store riêng (mở 2 bài song song không lẫn dữ liệu), cấp qua Context.
+ * Component đọc bằng useStudio(selector): chỉ render lại khi lát cắt chọn thay đổi.
+ */
+export const StCtx = createContext<StudioStore | null>(null);
+
+// ---- studio/image/ImageGenerator.tsx ----
+
+/**
+ * Trình tạo ảnh cho một mục (Bước 3).
+ *  - Prompt gợi ý sẵn từ tiêu đề mục + gợi ý khung hình của kênh.
+ *  - Ảnh tham chiếu (img2img) + thanh "Image Strength" 0 → 1.
+ *  - Ưu tiên màu thương hiệu (đưa vào prompt) và đóng dấu watermark (vẽ bằng canvas sau khi tạo).
+ * memo theo sectionId: gõ ở mục khác không render lại khối này.
+ */
+export const ImageGenerator = memo(function ImageGenerator({ sectionId, api }: { sectionId: string; api: StudioApi }) {
+  const title = useStudio((s) => s.article.sections.find((x) => x.id === sectionId)?.title ?? '');
+  const image = useStudio((s) => s.article.sections.find((x) => x.id === sectionId)?.image);
+  const platformId = useStudio((s) => s.article.platform);
+  const busy = useStudio((s) => s.busy[sectionId] === 'image');
+  const brandName = useStudio((s) => s.company.name);
+  const { setImage, setBusy } = useStudioActions();
+  const p = getPlatform(platformId);
+  const uidp = useId();
+
+  const [prompt, setPrompt] = useState(() => `Ảnh minh họa cho "${title}". ${p.image.hint}.`);
+  const [reference, setReference] = useState<string | undefined>(image?.referenceUrl);
+  const [strength, setStrength] = useState(image?.strength ?? 0.35);
+  const [brandPalette, setBrandPalette] = useState(true);
+  const [watermark, setWatermark] = useState(true);
+  const [error, setError] = useState('');
+
+  const pick = async (f?: File) => {
+    if (!f) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(f.type)) return setError('Chọn ảnh JPG, PNG hoặc WebP');
+    if (f.size > 15 * 1024 * 1024) return setError('Ảnh tối đa 15 MB');
+    setError('');
+    setReference(await stShrinkImage(f, 1024));
+  };
+  const generate = async () => {
+    if (prompt.trim().length < 8) return setError('Mô tả ảnh cần rõ hơn');
+    setError(''); setBusy(sectionId, 'image');
+    try {
+      const r = await api.image({ prompt: [prompt.trim(), brandPalette ? ST_BRAND.palettePrompt : ''].filter(Boolean).join('\n'), aspect: p.image.aspect, reference, strength, brandPalette });
+      const url = watermark ? await applyWatermark(r.dataUrl, brandName) : r.dataUrl;
+      setImage(sectionId, { url, prompt, alt: title, referenceUrl: reference, strength: reference ? strength : undefined, brandPalette, watermarked: watermark, model: r.model, createdAt: Date.now() });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Không tạo được ảnh');
+    } finally { setBusy(sectionId, undefined); }
+  };
+
+  const pct = Math.round(strength * 100);
+  return (
+    <div className="rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--sunken))] p-3">
+      <div className="grid gap-3 md:grid-cols-[1fr_168px]">
+        <div className="space-y-3">
+          <label className="block text-xs font-medium text-[rgb(var(--muted))]" htmlFor={`${uidp}-p`}>Mô tả ảnh</label>
+          <textarea id={`${uidp}-p`} rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} className="w-full resize-y rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-3 py-2 text-sm focus:border-[rgb(var(--accent))] focus:outline-none" />
+
+          <div className={reference ? '' : 'pointer-events-none opacity-50'} aria-disabled={!reference}>
+            <div className="flex items-baseline justify-between text-xs">
+              <label htmlFor={`${uidp}-s`} className="font-medium text-[rgb(var(--muted))]">Image Strength</label>
+              <span className="font-semibold tabular-nums">{strength.toFixed(2)}</span>
+            </div>
+            <input id={`${uidp}-s`} type="range" min={0} max={1} step={0.05} value={strength} onChange={(e) => setStrength(Number(e.target.value))}
+              className="mt-1 w-full accent-[rgb(var(--accent))]" style={{ background: `linear-gradient(90deg, ${ST_BRAND.navy} ${pct}%, transparent ${pct}%)` }} aria-valuetext={strengthLabel(strength)} />
+            <div className="flex justify-between text-[11px] text-[rgb(var(--faint))]"><span>Bám ảnh gốc</span><span>Sáng tạo tự do</span></div>
+            <p className="mt-1 text-xs text-[rgb(var(--fg2))]">{reference ? strengthLabel(strength) : 'Tải ảnh tham chiếu để dùng thanh này'}</p>
+          </div>
+
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={brandPalette} onChange={(e) => setBrandPalette(e.target.checked)} />
+              Màu thương hiệu <span className="inline-flex gap-0.5" aria-hidden><i className="h-3 w-3 rounded-sm" style={{ background: ST_BRAND.navy }} /><i className="h-3 w-3 rounded-sm" style={{ background: ST_BRAND.orange }} /></span></label>
+            <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={watermark} onChange={(e) => setWatermark(e.target.checked)} />Đóng dấu {brandName}</label>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-[rgb(var(--muted))]">Ảnh tham chiếu</p>
+          <label onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void pick(e.dataTransfer.files?.[0]); }} className="flex aspect-square cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-dashed border-[rgb(var(--line))] bg-[rgb(var(--surface))] text-center text-xs text-[rgb(var(--muted))] hover:border-[rgb(var(--accent))]">
+            {reference ? <img src={reference} alt="Ảnh tham chiếu" className="h-full w-full object-cover" /> : <span className="px-3">Kéo thả hoặc bấm để tải ảnh sản phẩm</span>}
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => void pick(e.target.files?.[0])} />
+          </label>
+          {reference && <button type="button" className="w-full text-xs text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => setReference(undefined)}>Bỏ ảnh tham chiếu</button>}
+        </div>
+      </div>
+
+      {error && <p className="mt-2 text-xs text-[rgb(var(--danger-fg))]" role="alert">{error}</p>}
+      <div className="mt-3 flex items-center gap-3">
+        <button type="button" onClick={() => void generate()} disabled={busy} className="rounded-md bg-[rgb(var(--accent))] px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-60">
+          {busy ? 'Đang tạo ảnh…' : image ? 'Tạo lại ảnh' : reference ? 'Tạo ảnh từ ảnh tham chiếu' : 'Tạo ảnh'}
+        </button>
+        {image && <span className="text-xs text-[rgb(var(--muted))]">{image.model} · {image.referenceUrl ? `img2img ${image.strength?.toFixed(2)}` : 'text2img'}{image.watermarked ? ' · có watermark' : ''}</span>}
+      </div>
+      {image && <img src={image.url} alt={image.alt} className="mt-3 w-full rounded-md border border-[rgb(var(--line))]" />}
+    </div>
+  );
+});
+
+// ---- studio/steps/DynamicSettingsForm.tsx ----
+
+export const input = 'w-full rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-3 py-2 text-sm focus:border-[rgb(var(--accent))] focus:outline-none';
+
+/** Một trường: chỉ đăng ký đúng giá trị của nó => gõ trường này không render lại trường khác */
+export const FieldRow = memo(function FieldRow({ field: f }: { field: FieldDef }) {
+  const value = useStudio((s) => s.article.settings[f.key]);
+  const company = useStudio((s) => s.company);
+  const { setSetting } = useStudioActions();
+  const api = useStudioApi();
+  const set = (v: string | number | boolean | string[]) => setSetting(f.key, v);
+  const suggest = f.suggest ? () => { const st = api.getState(); set(f.suggest!(st.article, st.article.settings)); } : undefined;
+  const id = `fld-${f.key}`;
+
+  return (
+    <div className={f.wide || f.kind === 'textarea' || f.kind === 'tags' || f.kind === 'nap' ? 'md:col-span-2' : ''}>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <label htmlFor={id} className="text-sm font-medium">{f.label}{f.required && <span className="text-[rgb(var(--danger-fg))]"> *</span>}</label>
+        {suggest && <button type="button" onClick={suggest} className="text-xs font-medium text-[rgb(var(--secondary-fg))] hover:underline">Gợi ý tự động</button>}
+      </div>
+      {f.kind === 'select' ? (
+        <select id={id} className={input} value={stStr(value)} onChange={(e) => set(e.target.value)}>
+          {f.options?.map((o) => <option key={o.value} value={o.value}>{o.label}{o.hint ? ` — ${o.hint}` : ''}</option>)}
+        </select>
+      ) : f.kind === 'tags' ? (
+        <TagInput id={id} value={stArr(value)} onChange={set} placeholder={f.placeholder} />
+      ) : f.kind === 'counter' ? (
+        <CounterInput id={id} value={stStr(value)} max={f.maxLength ?? 60} onChange={set} />
+      ) : f.kind === 'textarea' ? (
+        <textarea id={id} rows={3} className={input} value={stStr(value)} maxLength={f.maxLength} placeholder={f.placeholder} onChange={(e) => set(e.target.value)} />
+      ) : f.kind === 'toggle' ? (
+        <input id={id} type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={!!value} onChange={(e) => set(e.target.checked)} />
+      ) : f.kind === 'nap' ? (
+        <label className="flex items-start gap-3 rounded-md border border-[rgb(var(--line))] p-3 text-sm">
+          <input id={id} type="checkbox" className="mt-0.5 h-4 w-4 accent-[rgb(var(--accent))]" checked={!!value} onChange={(e) => set(e.target.checked)} />
+          <span><b>{company.name}</b><br />{company.address || <i className="text-[rgb(var(--danger-fg))]">Chưa có địa chỉ</i>}<br />{company.phone || <i className="text-[rgb(var(--danger-fg))]">Chưa có điện thoại</i>}</span>
+        </label>
+      ) : (
+        <input id={id} type={f.kind === 'date' ? 'date' : 'text'} className={input} value={stStr(value)} maxLength={f.maxLength} placeholder={f.placeholder} onChange={(e) => set(e.target.value)} />
+      )}
+      {f.help && <p className="mt-1 text-xs text-[rgb(var(--muted))]">{f.help}</p>}
+    </div>
+  );
+});
+
+// ---- studio/steps/OutlinePanel.tsx ----
+
+/** Chuỗi khóa ổn định của dàn ý: chỉ đổi khi thêm / bớt / đổi tiêu đề / đổi cấp, KHÔNG đổi khi gõ nội dung */
+export const outlineKey = (s: { article: { sections: { id: string; level: number; title: string; image?: unknown }[] } }) =>
+  s.article.sections.map((x) => `${x.id}\u0001${x.level}\u0001${x.title}\u0001${x.image ? 1 : 0}`).join('\u0002');
+
+/**
+ * Cột trái của Bước 2 và Bước 3: danh sách H2 / H3 kéo thả để sắp xếp.
+ * Bấm một mục => đánh dấu đang chọn + cuộn cột phải tới đúng mục đó.
+ */
+export const OutlinePanel = memo(function OutlinePanel({ headings = true }: { headings?: boolean }) {
+  const key = useStudio(outlineKey);
+  const active = useStudio((s) => s.activeSectionId);
+  const { moveSection, focusSection, addSection, patchSection } = useStudioActions();
+  const [drag, setDrag] = useState<{ id: string; over: number } | null>(null);
+  const rows = key ? key.split('\u0002').map((r) => { const [id, level, title, img] = r.split('\u0001'); return { id, level: Number(level) as 2 | 3, title, img: img === '1' }; }) : [];
+
+  const jump = (id: string) => {
+    focusSection(id);
+    document.getElementById(`sec-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  return (
+    <nav aria-label="Dàn ý" className="flex h-full flex-col">
+      <p className="px-3 pb-2 pt-3 text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">Dàn ý · {rows.length} mục</p>
+      <ol className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2" onDragOver={(e) => e.preventDefault()}>
+        {rows.map((r, i) => (
+          <li key={r.id} draggable
+            onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; setDrag({ id: r.id, over: i }); }}
+            onDragEnter={() => drag && setDrag({ ...drag, over: i })}
+            onDragEnd={() => { if (drag) moveSection(drag.id, drag.over); setDrag(null); }}
+            className={`group flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-sm ${r.level === 3 ? 'ml-4' : ''} ${active === r.id ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.08)]' : 'border-transparent hover:bg-[rgb(var(--ink)/0.04)]'} ${drag?.over === i && drag.id !== r.id ? 'border-t-2 border-t-[rgb(var(--accent))]' : ''}`}>
+            <span className="cursor-grab select-none text-[rgb(var(--faint))]" aria-hidden>⋮⋮</span>
+            {headings && (
+              <button type="button" title="Đổi cấp H2 / H3" onClick={() => patchSection(r.id, { level: r.level === 2 ? 3 : 2 })}
+                className="w-7 shrink-0 rounded bg-[rgb(var(--sunken))] text-[10px] font-bold text-[rgb(var(--muted))]">H{r.level}</button>
+            )}
+            <button type="button" onClick={() => jump(r.id)} className="min-w-0 flex-1 truncate text-left" aria-current={active === r.id}>{r.title || 'Chưa đặt tiêu đề'}</button>
+            {r.img && <span className="text-[10px] text-[rgb(var(--success-fg))]" title="Đã có ảnh">●</span>}
+            <span className="sr-only">Kéo để đổi vị trí; hoặc dùng nút lên xuống</span>
+            <button type="button" aria-label={`Đưa "${r.title}" lên`} disabled={i === 0} onClick={() => moveSection(r.id, i - 1)} className="hidden text-xs text-[rgb(var(--muted))] disabled:opacity-30 group-hover:block group-focus-within:block">↑</button>
+            <button type="button" aria-label={`Đưa "${r.title}" xuống`} disabled={i === rows.length - 1} onClick={() => moveSection(r.id, i + 1)} className="hidden text-xs text-[rgb(var(--muted))] disabled:opacity-30 group-hover:block group-focus-within:block">↓</button>
+          </li>
+        ))}
+      </ol>
+      <button type="button" onClick={() => addSection(rows.at(-1)?.id ?? null)} className="m-2 rounded-md border border-dashed border-[rgb(var(--line))] py-1.5 text-sm text-[rgb(var(--muted))] hover:border-[rgb(var(--accent))]">+ Thêm mục</button>
+    </nav>
+  );
+});
+
+// ---- studio/steps/SectionPane.tsx ----
+
+/**
+ * Một mục ở cột phải Bước 3: tiêu đề, nội dung, nút AI viết, khối tạo ảnh.
+ * Chỉ đăng ký đúng mục của mình (selector theo id) và memo theo props => gõ mục này không render lại mục khác.
+ */
+export const SectionPane = memo(function SectionPane({ id, index, api }: { id: string; index: number; api: StudioApi }) {
+  const section = useStudio((s) => s.article.sections.find((x) => x.id === id));
+  const active = useStudio((s) => s.activeSectionId === id);
+  const busy = useStudio((s) => s.busy[id] === 'text');
+  const headings = useStudio((s) => getPlatform(s.article.platform).structure.headings);
+  const { patchSection, setActive, setBusy, removeSection } = useStudioActions();
+  const store = useStudioApi();
+  const [showImg, setShowImg] = useState(!!section?.image);
+  const [err, setErr] = useState('');
+  const ta = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => { const el = ta.current; if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; } }, [section?.body]);
+  if (!section) return null;
+
+  const write = async () => {
+    const st = store.getState();
+    const p = getPlatform(st.article.platform);
+    setBusy(id, 'text');
+    try {
+      const text = await api.text({ system: `Bạn là biên tập viên nội dung B2B của ${st.company.name}${st.company.sector ? `, lĩnh vực ${st.company.sector}` : ''}. Chỉ trả nội dung mục, không lặp tiêu đề.`, prompt: p.sectionPrompt(st.article, id, st.company), kind: 'section', article: st.article, sectionId: id });
+      patchSection(id, { body: text.trim() });
+      setErr('');
+    } catch (e) { setErr(e instanceof Error ? e.message : 'AI chưa viết được mục này'); } finally { setBusy(id, undefined); }
+  };
+
+  return (
+    <section id={`sec-${id}`} data-section-id={id} onFocusCapture={() => !active && setActive(id)}
+      className={`scroll-mt-4 rounded-xl border bg-[rgb(var(--surface))] p-4 transition-colors ${active ? 'border-[rgb(var(--accent)/0.6)] shadow-sm' : 'border-[rgb(var(--line))]'}`}>
+      <header className="mb-2 flex items-center gap-2">
+        <span className="rounded bg-[rgb(var(--sunken))] px-1.5 py-0.5 text-[10px] font-bold text-[rgb(var(--muted))]">{headings ? `H${section.level}` : `Ý ${index + 1}`}</span>
+        <input value={section.title} onChange={(e) => patchSection(id, { title: e.target.value })} aria-label="Tiêu đề mục"
+          className={`min-w-0 flex-1 bg-transparent font-semibold outline-none ${section.level === 2 ? 'text-lg' : 'text-base'}`} />
+        <button type="button" onClick={() => removeSection(id)} aria-label="Xóa mục" className="text-[rgb(var(--faint))] hover:text-[rgb(var(--danger-fg))]">✕</button>
+      </header>
+      <textarea ref={ta} value={section.body} onChange={(e) => patchSection(id, { body: e.target.value })} placeholder="Nội dung mục… (hoặc bấm AI viết)" aria-label={`Nội dung ${section.title}`}
+        className="min-h-24 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent p-2 text-[15px] leading-relaxed focus:border-[rgb(var(--line))] focus:outline-none" />
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+        <button type="button" onClick={() => void write()} disabled={busy} className="rounded-md border border-[rgb(var(--line))] px-3 py-1.5 font-medium hover:border-[rgb(var(--accent))] disabled:opacity-60">{busy ? 'AI đang viết…' : section.body ? 'AI viết lại' : 'AI viết mục này'}</button>
+        <button type="button" onClick={() => setShowImg((v) => !v)} aria-expanded={showImg} className="rounded-md border border-[rgb(var(--line))] px-3 py-1.5 font-medium hover:border-[rgb(var(--accent))]">{section.image ? 'Ảnh của mục' : 'Thêm ảnh AI'}</button>
+        <span className="ml-auto text-xs tabular-nums text-[rgb(var(--muted))]">{section.body.trim() ? section.body.trim().split(/\s+/).length : 0} từ</span>
+      </div>
+      {err && <p className="mt-2 text-xs text-[rgb(var(--danger-fg))]" role="alert">{err}</p>}
+      {showImg && <div className="mt-3"><ImageGenerator sectionId={id} api={api} /></div>}
+    </section>
+  );
+});
+
+// ---- studio/steps/ComposeSplitView.tsx ----
+
+/** Danh sách id mục dạng chuỗi => chỉ render lại khung khi thêm / bớt / đổi thứ tự mục, không khi gõ */
+export const idsKey = (s: { article: { sections: { id: string }[] } }) => s.article.sections.map((x) => x.id).join(',');
+
+// ---- studio/sidebar/SeoSidebar.tsx ----
+
+export const TONE = { pass: 'text-[rgb(var(--success-fg))]', warn: 'text-[rgb(var(--accent-fg))]', fail: 'text-[rgb(var(--danger-fg))]' } as const;
+
+export const ICON = { pass: '✓', warn: '!', fail: '✕' } as const;
+
+/**
+ * Thanh điểm SEO ghim bên phải (Bước 3, 4). Lắng nghe bài viết nhưng chấm điểm trên bản "trì hoãn"
+ * (useDeferredValue): khi người dùng gõ nhanh, React ưu tiên ô nhập, điểm SEO cập nhật ngay sau đó, không giật.
+ * Luật chấm lấy từ strategy của kênh => Website chấm từ khóa / meta; Facebook chấm hook / CTA; Maps chấm 100 ký tự đầu / NAP.
+ */
+export const SeoSidebar = memo(function SeoSidebar() {
+  const article = useStudio((s) => s.article);
+  const company = useStudio((s) => s.company);
+  const deferred = useDeferredValue(article);
+  const p = getPlatform(deferred.platform);
+  const report = useMemo(() => scoreArticle(deferred, p, company), [deferred, p, company]);
+  const stale = deferred !== article;
+  const color = report.score >= 80 ? 'rgb(var(--success))' : report.score >= 50 ? 'rgb(var(--accent))' : 'rgb(var(--danger))';
+  const C = 2 * Math.PI * 34;
+
+  return (
+    <aside aria-label="Điểm SEO" className="sticky top-4 space-y-4 rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4" aria-busy={stale}>
+      <div className="flex items-center gap-4">
+        <svg viewBox="0 0 80 80" className="h-20 w-20 shrink-0" role="img" aria-label={`Điểm ${report.score}/100`}>
+          <circle cx="40" cy="40" r="34" fill="none" stroke="rgb(var(--sunken))" strokeWidth="8" />
+          <circle cx="40" cy="40" r="34" fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(report.score / 100) * C} ${C}`} transform="rotate(-90 40 40)" />
+          <text x="40" y="46" textAnchor="middle" fontSize="20" fontWeight="700" fill="rgb(var(--fg))">{report.score}</text>
+        </svg>
+        <div>
+          <p className="text-sm font-semibold">Điểm {p.label}</p>
+          <p className="text-xs text-[rgb(var(--muted))]">{report.score >= 80 ? 'Sẵn sàng xuất bản' : report.score >= 50 ? 'Cần chỉnh thêm' : 'Chưa đạt'}</p>
+        </div>
+      </div>
+      <dl className="grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-md bg-[rgb(var(--sunken))] p-2"><dt className="text-[11px] text-[rgb(var(--muted))]">Số từ</dt><dd className="font-semibold tabular-nums">{report.words}</dd></div>
+        <div className="rounded-md bg-[rgb(var(--sunken))] p-2"><dt className="text-[11px] text-[rgb(var(--muted))]">Ảnh</dt><dd className="font-semibold tabular-nums">{report.images}</dd></div>
+        <div className="rounded-md bg-[rgb(var(--sunken))] p-2"><dt className="text-[11px] text-[rgb(var(--muted))]">Ký tự</dt><dd className="font-semibold tabular-nums">{report.chars}</dd></div>
+      </dl>
+      <ul className="space-y-2">
+        {report.items.map((i) => (
+          <li key={i.id} className="flex gap-2 text-sm">
+            <span className={`w-4 shrink-0 text-center font-bold ${TONE[i.status]}`} aria-hidden>{ICON[i.status]}</span>
+            <span className="min-w-0"><span className="block leading-snug">{i.label}</span><span className={`block text-xs ${TONE[i.status]}`}>{i.detail}</span></span>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+});
+
+// ---- studio/host: ghép Studio vào Marketing Hub › Content Studio ----
+
+/** Kênh Studio ↔ loại nội dung + kênh Marketing của app */
+export const ST_TO_MKT: Record<string, { type: MktContentType; channel: MktChannel }> = {
+  website: { type: 'AD_POST', channel: 'WEBSITE' },
+  facebook: { type: 'AD_POST', channel: 'FACEBOOK' },
+  zalo: { type: 'ZALO_OA', channel: 'ZALO_OA' },
+  'google-maps': { type: 'AD_POST', channel: 'GOOGLE' },
+};
+
+/** Loại nội dung soạn bằng Studio mới; ZNS, email báo giá, tin chăm sóc vẫn dùng trình soạn cũ */
+export const studioSupports = (c: MktContent) => c.type === 'AD_POST' || c.type === 'PRESS' || c.type === 'ZALO_OA';
+
+export const platformOfContent = (c: MktContent) => c.platform ?? (c.channel === 'FACEBOOK' ? 'facebook' : c.channel === 'ZALO_OA' || c.type === 'ZALO_OA' ? 'zalo' : c.channel === 'GOOGLE' ? 'google-maps' : 'website');
+
+export const ST_STEPS: { id: StStepId; label: string }[] = [{ id: 1, label: 'Cài đặt' }, { id: 2, label: 'Dàn ý' }, { id: 3, label: 'Viết & ảnh' }, { id: 4, label: 'Hoàn thiện' }];
+
+/**
+ * v36 — Copilot giao tiếp tự nhiên.
+ * Lượt xã giao (chào, cảm ơn, hỏi "bạn là ai"…) không chạy bộ phân tích, không gửi số liệu, trả lời 1–2 câu.
+ */
+/** v37: nhớ trong phiên khi máy chủ chưa có route /api/chat để không gọi lại */
+export const COPILOT_ROUTE = { missing: false };
+
+export const SMALLTALK_RE = /^(xin chao|chao|hi|hello|hey|alo|cam on|thank|ok|oke|okay|vang|da|u|uh|tot|hay|tuyet|bye|tam biet|hen gap lai|chuc|ban oi|em oi|copilot oi|ban (la ai|ten gi|lam duoc gi|giup duoc gi|co the lam gi|co khoe khong))\b/;
+
+export const BUSINESS_RE = /(sla|mdf|quy|doanh|cong no|du an|lead|claim|bao gia|khach|don hang|dong tien|ngan sach|tom tat|bao cao|thuong|dai ly|ton kho|kpi|chi phi|loi nhuan)/;
+
+/** Phong cách trả lời gửi kèm system prompt (useAi đã thêm: tiếng Việt, không bịa số liệu) */
+export const copilotStyle = (who: string) => `Bạn đang trò chuyện trong khung AI Copilot với ${who}.
+Cách giao tiếp:
+- Tự nhiên như một đồng nghiệp nắm số liệu: xưng "mình", gọi người dùng là "anh/chị". Không tự giới thiệu lại ở mỗi lượt.
+- Độ dài tương xứng câu hỏi. Lời chào, cảm ơn, xã giao: 1–2 câu, không đưa số liệu, không liệt kê tính năng.
+- Câu hỏi về số liệu: câu đầu trả lời thẳng (con số, kết luận); sau đó tối đa 4 gạch đầu dòng nếu thật cần. Không nhắc lại toàn bộ tổng quan.
+- Câu hỏi mơ hồ: hỏi lại một câu ngắn thay vì đoán.
+- Chỉ dùng số liệu trong "Dữ liệu CRM" và "Kết quả tính sẵn"; thiếu thì nói chưa có dữ liệu.
+- Không kết thúc mọi câu trả lời bằng lời mời "Anh/chị muốn bắt đầu với việc gì?"; chỉ gợi ý bước tiếp khi thật hữu ích.
+- Định dạng: Markdown nhẹ (**đậm**, gạch đầu dòng "- " mỗi ý một dòng). Không dùng bảng, tiêu đề, emoji.`;
+
+/** Hiển thị Markdown nhẹ từ AI (đậm, gạch đầu dòng, danh sách số, xuống dòng) — không dùng HTML thô */
+export const mdInline = (s: string): ReactNode[] => s.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((x, i) =>
+  x.length > 4 && x.startsWith('**') && x.endsWith('**') ? <b key={i} className="font-semibold text-[rgb(var(--fg))]">{x.slice(2, -2)}</b>
+    : x.length > 2 && x.startsWith('`') && x.endsWith('`') ? <code key={i} className="rounded bg-[rgb(var(--ink)/0.06)] px-1 text-[0.92em]">{x.slice(1, -1)}</code>
+      : <Fragment key={i}>{x}</Fragment>);
+
+/** Bỏ Markdown khi đăng vào kênh chat (khung chat hiển thị chữ thường) */
+export const plainMd = (s: string) => s.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, '').replace(/^\s*\*\s+/gm, '- ');
+
 export const AI_STARTERS = ['Bản tin điều hành hôm nay', 'Dự báo dòng tiền quỹ MDF', 'Thưởng tăng trưởng đại lý năm nay', 'Tóm tắt việc cần làm hôm nay', 'Dự án nào có rủi ro trễ SLA?', 'Dự báo dòng tiền 3 tháng tới', 'Gợi ý chương trình kích cầu quỹ MDF', 'Khách nào sắp vượt hạn mức công nợ?'];
 
 export const threadKey = (t: { entity: string; entityId: string }) => `${t.entity}:${t.entityId}`;
@@ -1321,6 +1936,42 @@ export const contactKey = (org: string, user: string) => `3a:contacts:${org}:${u
 export const downloadText = (name: string, text: string, type = 'text/plain') => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
 
 export const vcard = (c: ContactItem) => ['BEGIN:VCARD', 'VERSION:3.0', `FN:${c.name}`, `ORG:${c.org}`, c.title && `TITLE:${c.title}`, c.phone && `TEL;TYPE=CELL:${c.phone.replace(/\s/g, '')}`, c.email && `EMAIL:${c.email}`, 'END:VCARD'].filter(Boolean).join('\r\n');
+
+export const KPI_CFG_DEFAULT: KpiCfg = { winRatePct: 30, cycleDays: 30, coverage: 3, cplMax: 500_000 };
+
+export const kpiId = (scope: KpiTarget['scope'], refId: string, month: string) => `${scope}:${refId}:${month}`;
+
+export const kpiMonthKey = (t: number) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
+
+export const daysInMonth = (key: string) => { const [y, m] = key.split('-').map(Number); return new Date(y, m, 0).getDate(); };
+
+export const inScope = (s: DashScope, dept?: DeptCode, owner?: string) => (s.userId ? owner === s.userId : s.dept === 'ALL' || dept === s.dept);
+
+/** Tách "4,82 tỷ" thành số + đơn vị để hiển thị số lớn, đơn vị nhỏ */
+export const splitUnit = (s: string) => { const i = s.lastIndexOf(' '); return i > 0 ? [s.slice(0, i), s.slice(i + 1)] as const : [s, ''] as const; };
+
+export const deltaPct = (a: number, b: number) => (b ? ((a - b) / Math.abs(b)) * 100 : null);
+
+export const ST_OK: KpiStatus = { label: 'Đạt', tone: 'teal' }, ST_WATCH: KpiStatus = { label: 'Theo dõi', tone: 'orange' }, ST_SLOW: KpiStatus = { label: 'Chậm', tone: 'red' }, ST_NONE: KpiStatus = { label: 'Chưa có chỉ tiêu', tone: 'muted' };
+
+/** Đánh giá theo tiến độ kỳ: đạt nếu đi kịp % thời gian đã qua */
+export const paceStatus = (actual: number, target: number, elapsed: number): KpiStatus => (!target ? ST_NONE : actual / target >= elapsed * 0.98 ? ST_OK : actual / target >= elapsed * 0.85 ? ST_WATCH : ST_SLOW);
+
+export const TONE_RGB: Record<KpiStatus['tone'], string> = { teal: 'var(--success)', orange: 'var(--accent)', red: 'var(--danger)', muted: 'var(--line)' };
+
+export const salesFunnel = (ls: Lead[]) => {
+  const st = (xs: LeadStatus[]) => ls.filter((l) => xs.includes(l.status)).length;
+  return [
+    { label: 'Tiếp nhận', n: ls.length },
+    { label: 'Phân bổ', n: st(['ROUTED', 'ASSIGNED', 'ACCEPTED', 'QUOTED', 'WON']) + ls.filter((l) => l.status === 'LOST' && (l.dept || l.assignee)).length },
+    { label: 'Nhận việc', n: st(['ACCEPTED', 'QUOTED', 'WON']) },
+    { label: 'Báo giá', n: st(['QUOTED', 'WON']) },
+    { label: 'Chốt', n: st(['WON']) },
+  ];
+};
+
+/** Kênh marketing của một lead (theo nguồn) */
+export const channelOfSource = (src: Source): MktChannel | 'OTHER' => (Object.keys(MKT_CH) as MktChannel[]).find((ch) => MKT_CH[ch].sources.includes(src)) ?? 'OTHER';
 
 export const overdueCls = 'border-[rgb(var(--danger))] motion-safe:animate-[blinkBorder_1.2s_ease-in-out_infinite]';
 
@@ -2022,7 +2673,7 @@ export const ORG_DEFAULTS: Record<string, Record<string, unknown>> = {
 // =====================================================================
 
 /** Tăng số này mỗi khi cấu trúc dữ liệu đổi, và thêm một bước vào MIGRATIONS */
-export const DATA_VERSION = 27;
+export const DATA_VERSION = 28;
 
 /** Dữ liệu bản trước khi tách doanh nghiệp (chuyển sang VASSH ở lần mở đầu) */
 export const LEGACY_STORE_KEY = 'vassh-crm:data';
@@ -2133,6 +2784,8 @@ export const MIGRATIONS: Record<number, (d: AnyRec) => AnyRec> = {
   26: (d) => ({ ...d, mktTasks: d.mktTasks ?? [], hubCfg: d.hubCfg ? { ...(d.hubCfg as AnyRec), ai: { ...((d.hubCfg as AnyRec).ai as AnyRec), features: { image: true, ...(((d.hubCfg as AnyRec).ai as AnyRec)?.features as AnyRec ?? {}) } } } : d.hubCfg }),
   // v35: danh mục nháp (báo giá thông minh), bài truyền thông ghim trên Bàn làm việc, cấu hình kênh, bật bóc tách ảnh / PDF
   27: (d) => ({ ...d, draftProducts: d.draftProducts ?? [], socialPosts: d.socialPosts ?? [], hubCfg: d.hubCfg ? { ...(d.hubCfg as AnyRec), social: (d.hubCfg as AnyRec).social ?? { title: '', facebookUrl: '', facebookPageId: '', zaloOaUrl: '', youtubeUrl: '', youtubeChannelId: '' }, ai: { ...((d.hubCfg as AnyRec).ai as AnyRec), features: { extract: true, ...(((d.hubCfg as AnyRec).ai as AnyRec)?.features as AnyRec ?? {}) } } } : d.hubCfg }),
+  // v37: chỉ tiêu KPI tháng (chỉ thêm nhóm dữ liệu mới)
+  28: (d) => ({ ...d, kpiTargets: Array.isArray(d.kpiTargets) ? d.kpiTargets : [] }),
   23: (d) => ({ ...d, warehouses: Array.isArray(d.warehouses) && d.warehouses.length ? d.warehouses : INITIAL_WAREHOUSES }),
 };
 
@@ -2397,7 +3050,7 @@ export const canonCache = new WeakMap<object, { json: string; files: string[] }>
 /** Nhóm dữ liệu lưu theo từng bản ghi (khóa = trường định danh); nhóm khác lưu nguyên khối */
 export const KEYED_COLLS: Record<string, string> = {
   leads: 'id', customers: 'id', users: 'id', activities: 'id', programs: 'id', claims: 'id', quotes: 'id', pos: 'id', reservations: 'id', moves: 'id',
-  genDocs: 'id', comments: 'id', channels: 'id', posts: 'id', warehouses: 'id', stockVouchers: 'id', zaloConvs: 'id', zaloMsgs: 'id', campaigns: 'id', contents: 'id', banners: 'id', audiences: 'id', automations: 'id', autoRuns: 'id', kb: 'id', mktTasks: 'id', briefs: 'id', draftProducts: 'id', socialPosts: 'id', getflyOrders: 'orderCode', notices: 'id', docs: 'id', approvalLogs: 'id', auditLogs: 'id', workOrders: 'id', installJobs: 'id', jobs: 'id',
+  genDocs: 'id', comments: 'id', channels: 'id', posts: 'id', warehouses: 'id', stockVouchers: 'id', zaloConvs: 'id', zaloMsgs: 'id', campaigns: 'id', contents: 'id', banners: 'id', audiences: 'id', automations: 'id', autoRuns: 'id', kb: 'id', mktTasks: 'id', briefs: 'id', draftProducts: 'id', socialPosts: 'id', kpiTargets: 'id', getflyOrders: 'orderCode', notices: 'id', docs: 'id', approvalLogs: 'id', auditLogs: 'id', workOrders: 'id', installJobs: 'id', jobs: 'id',
   receipts: 'id', stockItems: 'id', stockMoves: 'id', cashEntries: 'id', priceItems: 'id', docTemplates: 'id', skus: 'sku', mktItems: 'id',
   // nền tảng 3A
   tenants: 'id', logs: 'id',

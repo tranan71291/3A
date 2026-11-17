@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Columns3, Copy, Download, ExternalLink, Gauge, GripVertical, History, ImagePlus, Inbox, List, Lock, Package, Plus, RefreshCw, Sparkles, Trash2, TrendingUp, Upload, Wallet, X } from 'lucide-react';
 import { Chip, EmptyState, Field, MoneyInput, Panel, SideSheet, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { AI_NAME, aiErrText, AUD_FIELDS, AUD_OPS, AUTO_CH, AUTO_TRIGGER, BANNER_PRESETS, BANNER_SIZE, bizMode, blocksToHtml, blocksToMarkdown, boqTotal, btnAccent, btnGhost, btnPrimary, btnSm, C, CAMP_STATUS, compact, CONTENT_STATUS, dayMs, downloadBlob, fillVars, fmtDate, fold, inputBase, inputCls, isoDay, JOB_LABEL, kpiGrid, LEAD_STATUS, leadAt, MKT_CH, rowCls, shrinkImage, SOURCE_LABEL, stickyStore, STUDIO_STEPS, subjectOf, TASK_STATUS, tdCls, tdFirst, tdLast, todayISO, uid, useApp, WRITER, WRITER_TONES } from '../../lib/core';
+import { AI_NAME, aiErrText, AUD_FIELDS, AUD_OPS, AUTO_CH, AUTO_TRIGGER, BANNER_PRESETS, BANNER_SIZE, bizMode, blocksToHtml, blocksToMarkdown, boqTotal, btnAccent, btnGhost, btnPrimary, btnSm, C, CAMP_STATUS, compact, CONTENT_STATUS, dayMs, downloadBlob, fillVars, fmtDate, fold, inputBase, inputCls, isoDay, JOB_LABEL, kpiGrid, LEAD_STATUS, leadAt, MKT_CH, rowCls, shrinkImage, SOURCE_LABEL, stickyStore, STUDIO_STEPS, studioSupports, subjectOf, TASK_STATUS, tdCls, tdFirst, tdLast, todayISO, uid, useApp, WRITER, WRITER_TONES } from '../../lib/core';
 import { downloadCsv, xlsxBlob } from '../../lib/csv';
 import type { AiJob, AppCtx, AudBase, Audience, AudOp, AudRule, AutoChannel, Automation, AutoRun, AutoStep, AutoSubject, AutoTrigger, BannerSize, BannerSpec, CalView, Campaign, CampaignStatus, CompanyInfo, ContentBlock, ContentStatus, Customer, ImgAspect, Job, Lead, MktChannel, MktContent, MktContentType, MktTab, MktTask, TaskStatus, TitleReport, WriterPreset } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { apiPost, parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
 import { useWriter } from '../ai/copilot-plus';
 import { loadImg } from '../ai/visual-search';
+import { StudioWorkspace } from './content-studio';
 import { Switch } from '../platform/console';
 
 /** Kết quả chiến dịch: lead theo kênh nguồn trong thời gian chạy (+30 ngày), doanh thu từ lead đã chốt / đơn đã ký */
@@ -440,6 +441,8 @@ export function ContentStudio() {
   useEffect(() => { if (openId) { const c = contents.find((x) => x.id === openId); if (c) setEdit(c); setOpenId(null); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [openId]);
   const list = contents.filter((c) => st === 'ALL' || c.status === st).sort((a, b) => b.updatedAt - a.updatedAt);
   const live = edit && edit !== 'new' ? contents.find((x) => x.id === edit.id) ?? edit : edit;
+  // v37: soạn mới và bài quảng cáo / PR / Zalo OA mở Studio đa kênh toàn khung; ZNS, email, tin chăm sóc giữ trình soạn cũ
+  if (live && (live === 'new' || studioSupports(live))) return <section className="glass-card rounded-md p-5"><StudioWorkspace c={live === 'new' ? null : live} onClose={() => setEdit(null)} /></section>;
   return (
     <section className="glass-card rounded-md p-5">
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -460,7 +463,7 @@ export function ContentStudio() {
         ))}
         {!list.length && <tr><td colSpan={7} className="py-8 text-center text-sm text-[rgb(var(--muted))]">Chưa có nội dung. Bấm “Nội dung mới” hoặc giao việc cho AI từ Lịch chiến dịch.</td></tr>}
       </Table>
-      {live && <ContentStudioSheet c={live === 'new' ? null : live} onClose={() => setEdit(null)} />}
+      {live && <ContentStudioSheet c={live as MktContent} onClose={() => setEdit(null)} />}
     </section>
   );
 }

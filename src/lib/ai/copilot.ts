@@ -12,11 +12,11 @@ export const registry = new SkillRegistry(SKILLS);
 const audit = async (db: UserDb, row: AuditRow) => { await db.from('ai_tool_audit').insert(row); };
 
 /** Điểm vào duy nhất cho route: ghép các phụ thuộc thật vào engine */
-export async function askCopilot(ctx: AiContext, history: ChatTurn[], opts: { company: string; confirmed?: string[]; signal?: AbortSignal }) {
+export async function askCopilot(ctx: AiContext, history: ChatTurn[], opts: { company: string; confirmed?: string[]; signal?: AbortSignal; appContext?: string }) {
   const provider = providerFor(ctx.tenant);
   if (!provider) return null;
   const deps: EngineDeps = {
-    registry, provider, company: opts.company, confirmed: opts.confirmed, audit,
+    registry, provider, company: opts.company, confirmed: opts.confirmed, appContext: opts.appContext, audit,
     db: createUserClient,
     kb: (c, db, ns) => createKnowledgeSearch(c, db, ns),
   };

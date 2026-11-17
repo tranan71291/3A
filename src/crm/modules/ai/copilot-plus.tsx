@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Copy, RefreshCw, Send, Sparkles } from 'lucide-react';
 import { Field, SideSheet, useSticky } from '../../components/ui';
-import { AI_NAME, aiMsgText, bizMode, boqTotal, btnAccent, btnGhost, btnPrimary, compact, fmtN, fold, givenName, inputCls, MDF_REIMBURSE_LAG_DAYS, uid, useApp, WRITER, WRITER_TONES } from '../../lib/core';
+import { AI_NAME, aiMsgText, bizMode, boqTotal, btnAccent, btnGhost, btnPrimary, compact, fmtN, fold, givenName, inputCls, MDF_REIMBURSE_LAG_DAYS, plainMd, uid, useApp, WRITER, WRITER_TONES } from '../../lib/core';
 import type { AiMsg, Brief, CompanyInfo, JobStage, WriterPreset } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { jobStageOf } from '../../lib/workshop';
 import { buildAiContext, dealerBonus, kbFor, mdfForecast, parseMoneyVi, slaRisks, useAi } from './ai-core';
-import { useCopilot } from '../messages/comm-hub';
+import { isSmallTalk, useCopilot } from '../messages/comm-hub';
 import { useApprovalQueue } from '../tasks/tasks';
 
 /** Bổ sung cho Copilot cục bộ: dự báo quỹ MDF, thưởng đại lý, bản tin điều hành, tra cứu chính sách */
@@ -240,12 +240,17 @@ export function AiChatBot() {
       const q = c.text.replace(/(^|\s)@ai\b/gi, ' ').trim();
       if (!q) return;
       void (async () => {
-        const m = extra(q) ?? local(q);
-        let text = aiMsgText(m);
+        const small = isSmallTalk(q);
+        const m = small ? null : extra(q) ?? local(q);
+        let text = m ? aiMsgText({ ...m, note: undefined }) : 'Chào anh/chị! Cần mình xem số liệu gì cứ gõ @AI kèm câu hỏi nhé.';
         if (ai.available) {
-          const facts = kbFor(kb, q).map((k) => `Chính sách "${k.title}": ${k.body}`).join('\n');
-          const r = await ai.ask({ system: 'Bạn là trợ lý @AI trong nhóm chat nội bộ: trả lời trực tiếp, tối đa 8 dòng, dựa trên chính sách và số liệu được cung cấp.', prompt: `Câu hỏi: ${q}\n\nKiến thức nội bộ:\n${facts || '(không có mục phù hợp)'}\n\nKết quả tính sẵn:\n${text}\n\nTổng quan dữ liệu:\n${buildAiContext(app, now ?? Date.now())}`, maxTokens: 700 });
-          if (r.ok) text = r.text;
+          const facts = small ? '' : kbFor(kb, q).map((k) => `Chính sách "${k.title}": ${k.body}`).join('\n');
+          const ctx = small ? '' : `\n\nKiến thức nội bộ:\n${facts || '(không có mục phù hợp)'}\n\nDữ liệu CRM:\n${buildAiContext(app, now ?? Date.now())}`;
+          const r = await ai.ask({
+            system: 'Bạn là trợ lý @AI trong nhóm chat nội bộ. Trả lời tự nhiên, thẳng vào câu hỏi, độ dài tương xứng (xã giao 1 câu, số liệu tối đa 6 dòng). Viết chữ thường, không dùng Markdown, không tự giới thiệu.' + ctx,
+            prompt: m && !m.fallback ? `${q}\n\n[Kết quả tính sẵn]\n${text}` : q, maxTokens: small ? 200 : 600,
+          });
+          if (r.ok) text = plainMd(r.text.trim());
         }
         addBotComment({ entity: c.entity, entityId: c.entityId, text, mentions: [c.authorId], module: c.module, parentId: c.parentId });
       })();

@@ -18,6 +18,8 @@ export interface EngineDeps {
   maxTokens?: number;
   /** Tool ghi dữ liệu mà người dùng đã bấm xác nhận trong lượt này */
   confirmed?: readonly string[];
+  /** Số liệu tóm tắt app gửi kèm (đã trong phạm vi quyền người dùng) — cho câu hỏi chưa có Skill riêng (SLA, dòng tiền…) */
+  appContext?: string;
 }
 export interface AuditRow { request_id: string; tenant_id: string; user_id: string; role: string; skill: string; skill_version: string; tool: string; ok: boolean; ms: number; error?: string; args_digest: string }
 
@@ -38,7 +40,7 @@ export async function runCopilot(deps: EngineDeps, ctx: AiContext, history: read
   const tools = registry.toolsFor(active, ctx.role);
 
   // 3) System prompt: nền + prompt đầy đủ của Skill được chọn (hoặc mô tả ngắn khi chưa chắc ý định)
-  const system = buildSystemPrompt(buildBasePrompt(ctx, deps.company), active, confident ? 'full' : 'brief');
+  const system = buildSystemPrompt(buildBasePrompt(ctx, deps.company), active, confident ? 'full' : 'brief', deps.appContext);
   const toolDefs: LlmToolDef[] = tools.map((t) => ({ name: t.fullName, description: `[${t.skill.name}] ${t.tool.description}`, input: t.tool.input }));
 
   const messages: LlmMessage[] = history.slice(-20).map((t) => ({ role: t.role, content: t.content.slice(0, 8000) }));

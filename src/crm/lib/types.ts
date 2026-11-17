@@ -2,6 +2,8 @@
 
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Wallet } from 'lucide-react';
+import { createStudioStore } from './core';
+import { useDashData } from '../modules/dashboard/exec-dashboard';
 
 // =====================================================================
 //  TYPES
@@ -816,6 +818,9 @@ export type AppCtx = {
   draftProducts: DraftProduct[];
   setDraftProducts: Dispatch<SetStateAction<DraftProduct[]>>;
   socialPosts: SocialPost[];
+  /** v37: chỉ tiêu KPI tháng (phòng ban, nhân viên) và ngưỡng đánh giá */
+  kpiTargets: KpiTarget[];
+  setKpiTargets: Dispatch<SetStateAction<KpiTarget[]>>;
   setSocialPosts: Dispatch<SetStateAction<SocialPost[]>>;
   hubCfg: HubCfg;
   setHubCfg: Dispatch<SetStateAction<HubCfg>>;
@@ -1233,6 +1238,8 @@ export type MktContent = {
   id: string; title: string; type: MktContentType; campaignId?: string; body: string; status: ContentStatus; ownerId?: string; updatedAt: number; by?: string; approvedBy?: string;
   /** v33: Studio — kênh, prompt, dàn ý dạng khối kèm ảnh theo tiểu mục, kết quả phân tích tiêu đề, việc AI chạy nền, nhiệm vụ trên lịch */
   channel?: MktChannel; textPrompt?: string; imagePrompt?: string; tone?: string; blocks?: ContentBlock[]; titleReport?: TitleReport; aiJob?: AiJob; step?: number; taskId?: string;
+  /** v37: Studio đa kênh — kênh xuất bản (website | facebook | zalo | google-maps), đoạn mở đầu, cài đặt riêng của kênh */
+  platform?: string; sapo?: string; settings?: Record<string, StSettingValue>;
 };
 
 export type BannerSize = 'FB' | 'SQUARE' | 'STORY' | 'ZALO' | 'WEB';
@@ -1271,7 +1278,9 @@ export type MktTab = 'calendar' | 'roi' | 'content' | 'banner' | 'audience' | 'a
 // ---------------------------------------------------------------------
 //  v33: AI CONTENT & VISUAL STUDIO — phân tích tiêu đề, dàn ý dạng khối kéo thả, viết từng phần, ảnh minh họa theo tiểu mục
 // ---------------------------------------------------------------------
-export type ContentBlock = { id: string; level: 2 | 3; heading: string; points: string; body: string; imagePrompt?: string; image?: { url: string; prompt: string; by: string; at: number }; imageHistory?: { url: string; prompt: string; by: string; at: number }[] };
+export type ContentImage = { url: string; prompt: string; by: string; at: number; alt?: string; referenceUrl?: string; strength?: number; brandPalette?: boolean; watermarked?: boolean; model?: string };
+
+export type ContentBlock = { id: string; level: 2 | 3; heading: string; points: string; body: string; imagePrompt?: string; image?: ContentImage; imageHistory?: ContentImage[] };
 
 export type TitleReport = { score: number; seo: { score: number; notes: string[] }; social: { score: number; notes: string[] }; tips: string[]; suggestions: string[]; by: string; at: number };
 
@@ -1289,13 +1298,195 @@ export type MktTask = { id: string; date: string; title: string; campaignId?: st
 export type CalView = 'calendar' | 'list' | 'board';
 
 // =====================================================================
+//  AI CONTENT STUDIO v37 — soạn bài đa kênh 4 bước (Strategy theo kênh), split-view, img2img, chấm SEO
+//  Thêm kênh mới = thêm 1 hằng PlatformStrategy và đưa vào stPlatforms(); lõi Studio không đổi.
+// =====================================================================
+
+/** Store nhỏ thay Zustand (không thêm thư viện): component đăng ký đúng lát state qua selector */
+export type StStore<T> = { getState: () => T; setState: (p: Partial<T> | ((s: T) => Partial<T>)) => void; subscribe: (l: () => void) => () => void };
+
+// ---- studio/types.ts ----
+/** Dữ liệu bài viết: trung lập với kênh. Kênh chỉ quyết định CÁCH dựng prompt, kiểm SEO và xuất bản. */
+export type StSettingValue = string | number | boolean | string[] | null;
+
+export type StSettings = Record<string, StSettingValue>;
+
+export interface StImageAsset {
+  url: string;               // data URL (đã thu nhỏ) hoặc URL Storage sau khi lưu
+  prompt: string;
+  alt: string;
+  referenceUrl?: string;     // ảnh tham chiếu đã dùng (img2img)
+  strength?: number;         // 0 = bám sát ảnh gốc, 1 = sáng tạo tự do
+  brandPalette: boolean;
+  watermarked: boolean;
+  model?: string;
+  createdAt: number;
+}
+
+export interface StSection {
+  id: string;
+  level: 2 | 3;
+  title: string;
+  body: string;              // Markdown nhẹ (đoạn, **đậm**, gạch đầu dòng) — Step 4 chuyển thành block editor
+  image?: StImageAsset;
+}
+
+export interface StArticle {
+  id: string;
+  platform: string;          // id của PlatformStrategy
+  title: string;
+  sapo: string;              // đoạn mở đầu (Website: sapo; Facebook/Zalo: hook; Maps: 100 ký tự đầu)
+  sections: StSection[];
+  settings: StSettings;        // giá trị form động của kênh đang chọn
+  updatedAt: number;
+}
+
+export interface StCompany { name: string; address: string; phone: string; website?: string; hotline?: string; /** Lĩnh vực kinh doanh (đưa vào prompt), lấy từ cấu hình doanh nghiệp */ sector?: string }
+
+export type StStepId = 1 | 2 | 3 | 4;
+
+// ---- studio/platforms/types.ts ----
+
+/**
+ * Strategy cho một kênh phân phối. Lõi Studio (4 bước, store, editor, sidebar) chỉ gọi qua interface này.
+ * Thêm kênh mới (LinkedIn, kịch bản TikTok…) = thêm 1 file trong platforms/ export default một PlatformStrategy.
+ */
+export interface PlatformStrategy {
+  readonly id: string;
+  readonly label: string;
+  readonly description: string;
+  readonly order: number;
+  readonly structure: {
+    /** false = không có H2/H3 khi xuất bản (Facebook, Zalo): tiêu đề mục thành dòng in đậm / IN HOA */
+    headings: boolean;
+    maxSections: number;
+    sapoLabel: string;
+    sapoMax?: number;
+    /** Giới hạn độ dài toàn bài khi xuất bản (VD Google Maps) */
+    totalMax?: number;
+  };
+  /** Schema form động ở Bước 1 */
+  readonly fields: readonly FieldDef[];
+  defaults(company: StCompany): StSettings;
+  /** Lỗi chặn chuyển bước (trường bắt buộc…) */
+  validate(s: StSettings): string[];
+  /** Prompt sinh dàn ý (Bước 2) và nội dung từng mục (Bước 3) */
+  outlinePrompt(a: StArticle, company: StCompany): string;
+  sectionPrompt(a: StArticle, sectionId: string, company: StCompany): string;
+  /** Xuất bản: HTML cho Website, chữ thuần cho mạng xã hội / Maps */
+  render(a: StArticle, company: StCompany): RenderedPost;
+  readonly seoRules: readonly SeoRule[];
+  readonly image: { aspect: 'landscape' | 'square' | 'portrait'; hint: string };
+}
+
+export interface RenderedPost { format: 'html' | 'text'; body: string; meta?: { title?: string; description?: string } }
+
+export type FieldKind = 'text' | 'textarea' | 'select' | 'tags' | 'counter' | 'toggle' | 'date' | 'nap';
+
+export interface FieldDef {
+  readonly key: string;
+  readonly label: string;
+  readonly kind: FieldKind;
+  readonly required?: boolean;
+  readonly placeholder?: string;
+  readonly help?: string;
+  readonly maxLength?: number;
+  readonly options?: readonly { value: string; label: string; hint?: string }[];
+  /** Sinh gợi ý tự động (meta title, meta description…) từ bài viết + cài đặt hiện tại */
+  readonly suggest?: (a: StArticle, s: StSettings) => string;
+  /** Hiện trường khi điều kiện đúng (VD ngày sự kiện chỉ khi loại bài Maps = Sự kiện) */
+  readonly showIf?: (s: StSettings) => boolean;
+  /** Chiếm cả hàng trong lưới 2 cột */
+  readonly wide?: boolean;
+}
+
+export interface SeoInput { article: StArticle; plain: string; words: number; headings: string[]; images: number; company: StCompany }
+
+export interface SeoRule {
+  readonly id: string;
+  readonly label: string;
+  readonly weight: number;
+  check(x: SeoInput): { status: 'pass' | 'warn' | 'fail'; detail: string };
+}
+
+// ---- studio/seo/score.ts ----
+
+export interface SeoItem { id: string; label: string; status: 'pass' | 'warn' | 'fail'; detail: string; weight: number }
+
+export interface SeoReport { score: number; words: number; images: number; chars: number; items: SeoItem[] }
+
+// ---- studio/lib/api.ts ----
+/**
+ * Cổng gọi AI của Studio. Studio không biết xác thực, tenant hay nhà cung cấp:
+ * app truyền vào một StudioApi (dùng apiPost hiện có kèm JWT Supabase). Test thì truyền bản giả.
+ */
+export interface ImageRequest {
+  prompt: string;
+  aspect: 'landscape' | 'square' | 'portrait';
+  /** Ảnh tham chiếu dạng data URL (JPEG đã thu nhỏ) */
+  reference?: string;
+  /** 0 = bám sát ảnh gốc (giữ bố cục, sản phẩm) … 1 = chỉ lấy cảm hứng */
+  strength: number;
+  brandPalette: boolean;
+}
+
+export interface StudioApi {
+  text(req: { system: string; prompt: string; maxTokens?: number; kind?: 'outline' | 'section'; article?: StArticle; sectionId?: string }): Promise<string>;
+  image(req: ImageRequest): Promise<{ dataUrl: string; model: string }>;
+}
+
+// ---- studio/store/studio-store.ts ----
+
+/**
+ * Store duy nhất của Studio (Zustand).
+ *  - Trạng thái chia nhỏ theo id mục: component chỉ đăng ký đúng lát cắt nó cần (selector) => gõ ở mục 3 không render lại mục 1.
+ *  - Mọi thay đổi đi qua action, không sửa trực tiếp => dễ undo / autosave / đồng bộ Supabase.
+ *  - Không biết kênh nào cụ thể: đổi kênh = lấy defaults() của Strategy, giữ nguyên nội dung đã viết.
+ */
+export interface StudioState {
+  step: StStepId;
+  article: StArticle;
+  company: StCompany;
+  activeSectionId: string | null;
+  /** Thời điểm người dùng bấm mục ở cột dàn ý: scroll-spy tạm ngừng để không ghi đè lựa chọn trong lúc cuộn mượt */
+  navAt: number;
+  /** Mục đang chờ AI viết / tạo ảnh (hiện trạng thái trên từng thẻ) */
+  busy: Record<string, 'text' | 'image' | undefined>;
+  /** Cài đặt đã nhập của từng kênh: đổi qua kênh khác rồi quay lại không mất dữ liệu */
+  stash: Record<string, StSettings>;
+  history: StArticle[];
+
+  setStep(s: StStepId): void;
+  setPlatform(id: string): void;
+  setSetting(key: string, v: StSettingValue): void;
+  setTitle(t: string): void;
+  setSapo(t: string): void;
+  setOutline(sections: Pick<StSection, 'level' | 'title'>[]): void;
+  addSection(after: string | null, level?: 2 | 3): void;
+  removeSection(id: string): void;
+  moveSection(id: string, toIndex: number): void;
+  patchSection(id: string, p: Partial<Omit<StSection, 'id'>>): void;
+  setImage(id: string, img: StImageAsset | undefined): void;
+  setActive(id: string | null): void;
+  focusSection(id: string): void;
+  setBusy(id: string, kind: 'text' | 'image' | undefined): void;
+  undo(): void;
+}
+
+export type StudioStore = ReturnType<typeof createStudioStore>;
+
+export type StudioActions = Pick<StudioState, 'setStep' | 'setPlatform' | 'setSetting' | 'setTitle' | 'setSapo' | 'setOutline' | 'addSection' | 'removeSection' | 'moveSection' | 'patchSection' | 'setImage' | 'setActive' | 'focusSection' | 'setBusy' | 'undo'>;
+
+// =====================================================================
 //  COMMUNICATION & AI HUB (cột phải): Chat nội bộ theo ngữ cảnh + AI Copilot
 //  AI Copilot = bộ phân tích thống kê chạy ngay trong app; v32: khi bật AI (Claude / OpenAI qua /api/ai) thì AI diễn giải trên số liệu đã tính.
 // =====================================================================
 
 export type AiItem = { title: string; detail?: string; tone?: 'red' | 'orange' | 'blue' | 'teal'; action?: { label: string; run: () => void } };
 
-export type AiMsg = { id: string; role: 'user' | 'ai'; text: string; kpis?: { label: string; value: string; tone?: 'red' | 'teal' }[]; items?: AiItem[]; chips?: string[]; note?: string };
+export type AiMsg = { id: string; role: 'user' | 'ai'; text: string; kpis?: { label: string; value: string; tone?: 'red' | 'teal' }[]; items?: AiItem[]; chips?: string[]; note?: string;
+  /** v36: đang chờ AI (hiện dấu đang gõ) · câu trả lời "chưa hiểu" của bộ phân tích cục bộ · chữ do AI viết */
+  pending?: boolean; fallback?: boolean; ai?: boolean };
 
 /** Khóa luồng chat: kênh chung hoặc theo bản ghi */
 export type Thread = { entity: CommentEntity; entityId: string; title: string; sub?: string; module: Module; token?: string };
@@ -1321,6 +1512,33 @@ export type SocialCfg = { title: string; facebookUrl: string; facebookPageId: st
 export type ContactPrefs = { fav: string[]; recent: string[]; labels: { id: string; name: string; ids: string[] }[] };
 
 export type ContactItem = { key: string; kind: 'staff' | 'customer'; name: string; title: string; org: string; phone?: string; email?: string; extra?: string; user?: User; customer?: Customer; group: string };
+
+// =====================================================================
+//  TỔNG QUAN ĐIỀU HÀNH v37 — 4 tab Tổng Quan · Kinh doanh · Marketing · Tài chính, KPI so chỉ tiêu
+//  Chỉ tiêu tháng: Giám đốc nhập cho phòng ban, Trưởng phòng nhập cho nhân viên phòng mình (kiểm cả RLS máy chủ).
+// =====================================================================
+
+/** Chỉ tiêu tháng. id = `DEPT:<mã phòng>:<YYYY-MM>` | `USER:<id nhân viên>:<YYYY-MM>` | `CFG:company:*` (máy chủ kiểm quyền theo id) */
+export type KpiTarget = { id: string; scope: 'DEPT' | 'USER' | 'CFG'; refId: string; month: string; revenue: number; leads?: number; deals?: number; by?: string; at?: number;
+  /** Chỉ bản CFG: ngưỡng đánh giá */
+  cfg?: KpiCfg };
+
+export type KpiCfg = { winRatePct: number; cycleDays: number; coverage: number; cplMax: number };
+
+export type DashPeriod = 'WEEK' | 'MONTH' | 'QUARTER' | 'YEAR';
+
+export type DashRange = { from: number; to: number; prevFrom: number; prevTo: number; label: string; tag: string; prevTag: string; elapsed: number; daysLeft: number;
+  /** Phần của từng tháng nằm trong kỳ (tuần cắt ngang tháng thì chia theo ngày) */
+  months: { key: string; share: number }[] };
+
+/** Phạm vi số liệu: cả công ty, một phòng, hoặc một nhân viên (Sales xem của mình) */
+export type DashScope = { dept: DeptCode | 'ALL'; userId?: string };
+
+export type DashData = ReturnType<typeof useDashData>;
+
+export type KpiStatus = { label: string; tone: 'teal' | 'orange' | 'red' | 'muted' };
+
+export type DashTab = 'all' | 'sales' | 'mkt' | 'fin' | 'mfg';
 
 // =====================================================================
 //  PHÂN HỆ 4: KHÁCH HÀNG 360 & LIÊN KẾT MDF
