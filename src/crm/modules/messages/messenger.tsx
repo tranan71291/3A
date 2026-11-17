@@ -12,7 +12,7 @@ import { auditClaim, claimState, scoreLead } from '../../lib/business';
 import { bizMode, blockersOf, boqTotal, btnGhost, btnPrimary, btnSm, C, chatFileMax, claimYear, CLOUD_ON, compact, deptIcon, dmId, fmtSize, fold, GRAD, inputBase, inputCls, isAcceptLate, isMktCustomer, isQuoteOverdue, isTextFile, jobCustName, kpiGrid, LEAD_STATUS, leadAt, MQL_THRESHOLD, OPEN_STATUSES, pct, PRESENCE_META, presenceOf, progName, PROGRAM_COLOR, PROGRAM_LABEL, PROGRAM_STATUS, QUICK_REACTIONS, REGION_LABEL, ROLE_LABEL, rowCls, SOURCE_LABEL, tdCls, tdFirst, tdLast, threadKey, tierInfo, uid, useApp, vnd } from '../../lib/core';
 import type { ChatChannel, ChatFile, Claim, CommentEntity, LeadStatus, ProgramType, RowComment, Thread, User } from '../../lib/types';
 import { cn } from '../../lib/utils';
-import { MfgOverview } from '../alux/overview';
+import { ExecDashboard } from '../dashboard/exec-dashboard';
 import { CommandCenter } from '../dashboard/widget-board';
 import { MarginBadge, MdfMarginPanel } from '../mdf/surplus';
 import { TradingReports } from '../reports/reports';
@@ -491,20 +491,9 @@ export function MessengerInner({ me }: { me: User }) {
   );
 }
 
+/** v37: Tổng quan điều hành 4 tab (Tổng Quan · Kinh doanh · Marketing · Tài chính), thêm tab Xưởng khi có mô hình xưởng */
 export function OverviewPage() {
-  const { company } = useApp();
-  const mode = bizMode(company);
-  const [view, setView] = useSticky<'board' | 'trade' | 'mfg'>('OverviewPage.view', 'board');
-  if (mode === 'TRADING') return <TradingOverview />;
-  const tabs = mode === 'MFG'
-    ? [{ id: 'board' as const, label: 'Bảng điều khiển' }, { id: 'mfg' as const, label: 'Xưởng & công trình' }]
-    : [{ id: 'board' as const, label: 'Bảng điều khiển' }, { id: 'mfg' as const, label: 'Xưởng & công trình' }, { id: 'trade' as const, label: 'Thương mại & MDF' }];
-  return (
-    <div className="space-y-5">
-      <Tabs tabs={tabs} value={view} onChange={setView} />
-      {view === 'board' ? <CommandCenter /> : view === 'mfg' ? <MfgOverview /> : <TradingOverview />}
-    </div>
-  );
+  return <ExecDashboard />;
 }
 
 export function TradingOverview() {

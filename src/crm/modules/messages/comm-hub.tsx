@@ -1,20 +1,52 @@
 'use client';
 
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ExternalLink, Hash, Maximize2, MessageSquare, Search, Send, Sparkles, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { nlScore, useCommandItems } from '../../components/command-palette';
 import { MentionComposer, MentionText, useDeepLinks } from '../../components/comments';
 import { Avatar } from '../../components/controls';
 import { EmptyState, monthly, useSticky } from '../../components/ui';
-import { AI_NAME, AI_STARTERS, aiMsgText, bizMode, boqTotal, btnGhost, compact, fold, inputCls, jobCustName, LEAD_STATUS, threadKey, uid, useApp } from '../../lib/core';
+import { AI_NAME, AI_STARTERS, aiErrText, aiMsgText, bizMode, boqTotal, btnGhost, BUSINESS_RE, CLOUD_ON, compact, COPILOT_ROUTE, copilotStyle, fold, inputCls, jobCustName, LEAD_STATUS, maskPii, mdInline, ROLE_LABEL, SMALLTALK_RE, threadKey, uid, useApp } from '../../lib/core';
 import type { AiItem, AiMsg, CommentEntity, Insight, Lead, RowComment, Thread } from '../../lib/types';
 import { cn } from '../../lib/utils';
-import { buildAiContext, useAi } from '../ai/ai-core';
+import { apiPost, buildAiContext, useAi } from '../ai/ai-core';
 import { useCopilotExtra } from '../ai/copilot-plus';
 import { useMfgData } from '../alux/overview';
 import { useInsights } from '../dashboard/overview';
 import { ChatFiles } from './messenger';
 import { useApprovalQueue } from '../tasks/tasks';
+
+export function isSmallTalk(raw: string) {
+  const q = fold(raw).replace(/[!?.,~:;)(]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!q) return true;
+  return q.split(' ').length <= 8 && SMALLTALK_RE.test(q) && !BUSINESS_RE.test(q);
+}
+
+export function RichText({ text }: { text: string }) {
+  const out: ReactNode[] = [];
+  let list: { ordered: boolean; items: string[] } | null = null;
+  const flush = () => {
+    if (!list) return;
+    const L = list; list = null;
+    const items = L.items.map((t, i) => <li key={i}>{mdInline(t)}</li>);
+    out.push(L.ordered ? <ol key={out.length} className="list-decimal space-y-0.5 pl-5">{items}</ol> : <ul key={out.length} className="list-disc space-y-0.5 pl-5">{items}</ul>);
+  };
+  for (const raw of text.replace(/\r/g, '').split('\n')) {
+    const line = raw.trimEnd();
+    const b = line.match(/^\s*[-*•]\s+(.*)$/), o = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (b || o) {
+      if (!list || list.ordered !== !!o) { flush(); list = { ordered: !!o, items: [] }; }
+      list.items.push((b ?? o)![1]);
+      continue;
+    }
+    flush();
+    if (!line.trim()) continue;
+    const h = line.match(/^#{1,6}\s+(.*)$/);
+    out.push(<p key={out.length} className={h ? 'font-semibold text-[rgb(var(--fg))]' : undefined}>{mdInline(h ? h[1] : line)}</p>);
+  }
+  flush();
+  return <div className="space-y-1.5 break-words text-sm leading-relaxed text-[rgb(var(--fg2))]">{out}</div>;
+}
 
 export function useCopilot(): (q: string) => AiMsg {
   const app = useApp();
@@ -159,22 +191,27 @@ export function useCopilot(): (q: string) => AiMsg {
       return { id: id(), role: 'ai', text: `${c.name} (${c.code}): doanh số năm nay ${compact(c.ytdRevenue)}, công nợ ${compact(c.debt)} / ${compact(c.creditLimit)}.`, kpis: [{ label: 'Doanh số YTD', value: compact(c.ytdRevenue) }, { label: 'Công nợ', value: compact(c.debt), tone: c.creditLimit && c.debt > c.creditLimit * 0.9 ? 'red' : undefined }, { label: 'Dự án', value: String(ls.length) }], items: ls.slice(0, 4).map((l) => ({ title: `${l.code} · ${LEAD_STATUS[l.status].label}`, detail: `${l.boqNote || l.company} · ${compact(boqTotal(l))}`, tone: 'blue' as const, action: { label: 'Mở', run: openLead(l) } })), chips: ['Gợi ý chương trình kích cầu quỹ MDF'] };
     }
     if (cmd) { setTimeout(cmd.run, 0); return { id: id(), role: 'ai', text: `Đã thực hiện: ${cmd.label}.` }; }
-    return { id: id(), role: 'ai', text: 'Mình chưa hiểu câu hỏi. Mình có thể phân tích rủi ro trễ SLA, dự báo doanh thu và dòng tiền, gợi ý chương trình quỹ MDF, công nợ, tóm tắt việc hôm nay, tra cứu khách hàng hoặc thực hiện lệnh (vd. “tạo PO mới”).', chips: AI_STARTERS };
+    return { id: id(), role: 'ai', fallback: true, text: 'Mình chưa hiểu câu hỏi. Mình có thể phân tích rủi ro trễ SLA, dự báo doanh thu và dòng tiền, gợi ý chương trình quỹ MDF, công nợ, tóm tắt việc hôm nay, tra cứu khách hàng hoặc thực hiện lệnh (vd. “tạo PO mới”).', chips: AI_STARTERS.slice(0, 4) };
   };
 }
 
 export function AiBubble({ m, onChip }: { m: AiMsg; onChip: (q: string) => void }) {
+  /** v36: khi AI đã viết câu trả lời, thẻ chi tiết chỉ hiện 3 mục đầu, phần còn lại mở khi cần */
+  const [more, setMore] = useState(false);
+  const items = m.items && m.ai && !more ? m.items.slice(0, 3) : m.items;
   const tone = { red: 'border-[rgb(var(--danger))]', orange: 'border-[rgb(var(--accent))]', blue: 'border-[rgb(var(--secondary))]', teal: 'border-[rgb(var(--success))]' };
-  if (m.role === 'user') return <div className="flex justify-end"><p className="max-w-[85%] rounded-md rounded-tr-none bg-[rgb(var(--secondary))] px-3 py-2 text-sm text-white">{m.text}</p></div>;
+  if (m.role === 'user') return <div className="flex justify-end"><p className="max-w-[85%] whitespace-pre-wrap break-words rounded-md rounded-tr-none bg-[rgb(var(--secondary))] px-3 py-2 text-sm text-white">{m.text}</p></div>;
   return (
     <div className="flex gap-2.5">
       <span className="g-brand mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded text-[rgb(var(--on-accent))]"><Sparkles className="h-4 w-4" aria-hidden /></span>
       <div className="min-w-0 flex-1 space-y-2">
-        <p className="text-sm leading-relaxed text-[rgb(var(--fg2))]">{m.text}</p>
+        {m.pending
+          ? <p className="flex h-6 items-center gap-1" role="status" aria-label="AI đang trả lời">{[0, 1, 2].map((i) => <span key={i} className="h-1.5 w-1.5 animate-pulse rounded-full bg-[rgb(var(--faint))]" style={{ animationDelay: `${i * 160}ms` }} />)}</p>
+          : <RichText text={m.text} />}
         {m.kpis && <div className="grid grid-cols-3 gap-2">{m.kpis.map((k) => <div key={k.label} className="rounded border border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--ink)/0.03)] px-2 py-1.5"><p className="truncate text-[10px] uppercase tracking-wide text-[rgb(var(--muted))]">{k.label}</p><p className={cn('font-num truncate text-sm font-semibold', k.tone === 'red' ? 'text-[rgb(var(--danger-fg))]' : k.tone === 'teal' ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--fg))]')}>{k.value}</p></div>)}</div>}
-        {m.items && m.items.length > 0 && (
+        {items && items.length > 0 && (
           <ul className="space-y-1.5">
-            {m.items.map((it, i) => (
+            {items.map((it, i) => (
               <li key={i} className={cn('flex items-start gap-2 rounded border-l-2 bg-[rgb(var(--ink)/0.03)] px-2.5 py-2', tone[it.tone ?? 'blue'])}>
                 <div className="min-w-0 flex-1"><p className="text-[13px] font-semibold text-[rgb(var(--fg))]">{it.title}</p>{it.detail && <p className="mt-0.5 text-xs text-[rgb(var(--muted))]">{it.detail}</p>}</div>
                 {it.action && <button className={cn(btnGhost, 'shrink-0 px-2 py-1 text-xs')} onClick={it.action.run}>{it.action.label}</button>}
@@ -182,6 +219,7 @@ export function AiBubble({ m, onChip }: { m: AiMsg; onChip: (q: string) => void 
             ))}
           </ul>
         )}
+        {m.items && items && m.items.length > items.length && <button className="text-xs font-medium text-[rgb(var(--accent-fg))] hover:underline" onClick={() => setMore(true)}>Xem thêm {m.items.length - items.length} mục chi tiết</button>}
         {m.note && <p className="text-[11px] italic text-[rgb(var(--faint))]">{m.note}</p>}
         {m.chips && <div className="flex flex-wrap gap-1.5">{m.chips.map((c) => <button key={c} className="rounded-full border border-[rgb(var(--ink)/0.1)] px-2.5 py-1 text-[11px] text-[rgb(var(--muted))] hover:border-[rgb(var(--secondary))] hover:text-[rgb(var(--fg))]" onClick={() => onChip(c)}>{c}</button>)}</div>}
       </div>
@@ -197,19 +235,59 @@ export function AiCopilotTab({ ask, onAsked }: { ask: string | null; onAsked: ()
   const [msgs, setMsgs] = useState<AiMsg[]>([]);
   const [text, setText] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
-  /** Số liệu tính tất định trong app trước; có AI thì AI diễn giải và đề xuất trên chính số liệu đó */
+  /**
+   * v36: 3 loại lượt hỏi
+   *  - Xã giao (chào, cảm ơn…): không chạy bộ phân tích, không gửi số liệu; AI trả lời 1–2 câu (không có AI: câu chào cục bộ).
+   *  - Câu hỏi nghiệp vụ bộ phân tích hiểu: số liệu tính tất định trước, AI diễn giải ngắn trên chính số liệu đó.
+   *  - Câu hỏi khác: AI trả lời tự do trên "Dữ liệu CRM" (không ép khuôn bản tin); không có AI thì báo chưa hiểu.
+   * Số liệu tổng quan nằm ở system prompt của lượt hiện tại, không lặp lại trong lịch sử hội thoại.
+   */
   const send = (q: string) => {
     const v = q.trim();
     if (!v) return;
-    const local = extra(v) ?? answer(v);
-    const hist = msgs.slice(-6).map((m) => ({ role: m.role === 'user' ? 'user' as const : 'assistant' as const, content: m.role === 'user' ? m.text : aiMsgText(m) }));
+    const small = isSmallTalk(v);
+    const local: AiMsg = small ? smallTalk(v) : extra(v) ?? answer(v);
+    const free = small || !!local.fallback;
+    const hist = msgs.filter((m) => !m.pending).slice(-10).map((m) => ({ role: m.role === 'user' ? 'user' as const : 'assistant' as const, content: m.role === 'user' || m.ai ? m.text : aiMsgText({ ...m, note: undefined }) }));
     while (hist.length && hist[0].role !== 'user') hist.shift();
-    setMsgs((p) => [...p, { id: uid('u'), role: 'user', text: v }, ai.available ? { ...local, note: `${ai.label} đang phân tích…` } : local]);
+    const waiting: AiMsg = free ? { id: local.id, role: 'ai', text: '', pending: true } : { ...local, note: `${ai.label} đang phân tích…` };
+    setMsgs((p) => [...p, { id: uid('u'), role: 'user', text: v }, ai.available ? waiting : local]);
     setText('');
     if (!ai.available) return;
-    void ai.ask({ system: 'Bạn là AI Copilot điều hành: trả lời tối đa 10 dòng, dùng gạch đầu dòng, nêu rủi ro và đề xuất hành động cụ thể, chỉ dùng số liệu được cung cấp.', history: hist, maxTokens: 900,
-      prompt: `Câu hỏi: ${v}\n\nKết quả phân tích tính sẵn từ CRM:\n${aiMsgText(local)}\n\nTổng quan dữ liệu:\n${buildAiContext(app, app.now ?? Date.now())}` })
-      .then((r) => setMsgs((p) => p.map((m) => (m.id !== local.id ? m : r.ok ? { ...local, text: r.text, note: `${AI_NAME[r.provider]} · ${r.model} · trên số liệu CRM` } : { ...local, note: `AI chưa trả lời được (${r.error}), hiển thị phân tích cục bộ` }))));
+    const who = `${app.me?.name ?? 'người dùng'}${app.me ? ` (${ROLE_LABEL[app.me.role]})` : ''}`;
+    const data = small ? '' : `\n\nDữ liệu CRM hiện tại (chỉ dùng phần liên quan đến câu hỏi):\n${buildAiContext(app, app.now ?? Date.now())}`;
+    const prompt = free ? v : `${v}\n\n[Kết quả tính sẵn từ CRM cho câu hỏi này — giao diện đã hiện thẻ số liệu bên dưới câu trả lời, không cần chép lại toàn bộ]\n${aiMsgText({ ...local, note: undefined })}`;
+    const show = (text: string | null, note: string) => setMsgs((p) => p.map((m) => {
+      if (m.id !== local.id) return m;
+      if (text == null) return { ...local, note };
+      return free ? { id: local.id, role: 'ai', ai: true, text, note } : { ...local, ai: true, text, note };
+    }));
+    const viaAiRoute = () => void ai.ask({ system: copilotStyle(who) + data, history: hist, maxTokens: small ? 250 : 800, prompt })
+      .then((r) => (r.ok ? show(r.text.trim(), `${AI_NAME[r.provider]} · ${r.model}${small ? '' : ' · trên số liệu CRM'}`) : show(null, `AI chưa trả lời được (${r.error}), hiển thị phân tích cục bộ`)));
+    // v37: có máy chủ Supabase => Copilot dạng Skill (/api/chat): AI tự gọi công cụ đọc dữ liệu bằng phiên đăng nhập của chính người hỏi (RLS);
+    // app gửi kèm số liệu tóm tắt trong phạm vi quyền để trả lời các câu chưa có Skill. Route chưa cài => dùng /api/ai như v36.
+    if (!CLOUD_ON || COPILOT_ROUTE.missing) return viaAiRoute();
+    const mask = (x: string) => (app.hubCfg.ai.maskPii ? maskPii(x) : x);
+    const context = small ? '' : mask(`${buildAiContext(app, app.now ?? Date.now())}${free ? '' : `\n\n[Kết quả tính sẵn cho câu hỏi "${v}"]\n${aiMsgText({ ...local, note: undefined })}`}`);
+    void apiPost<{ text: string; skills: string[]; tools: { tool: string; ok: boolean }[]; provider: string; model: string }>('/api/chat', { tenant: app.org.id, context, messages: [...hist.map((h) => ({ ...h, content: mask(h.content) })), { role: 'user', content: mask(v) }] })
+      .then((r) => {
+        if (r.ok) {
+          const used = (r.tools ?? []).filter((x) => x.ok).length;
+          return show(r.text.trim(), `${r.provider === 'anthropic' ? 'Claude' : r.provider === 'gemini' ? 'Gemini' : r.provider} · ${r.model}${used ? ` · tra ${used} công cụ` : ''}${r.skills?.length ? ` · ${r.skills.join(', ')}` : ''}`);
+        }
+        // Chưa cài route / chưa cấu hình khóa trên máy chủ => quay về cách cũ
+        if (['not_found', 'http_404', 'not_configured', 'ai_not_configured', 'supabase_not_configured'].includes(String(r.error))) { if (r.error === 'not_found' || r.error === 'http_404') COPILOT_ROUTE.missing = true; return viaAiRoute(); }
+        show(null, `AI chưa trả lời được (${aiErrText(r.error)}), hiển thị phân tích cục bộ`);
+      });
+  };
+  /** Trả lời xã giao khi chưa kết nối AI (hoặc AI lỗi) */
+  const smallTalk = (raw: string): AiMsg => {
+    const q = fold(raw);
+    const id = uid('ai');
+    if (/cam on|thank/.test(q)) return { id, role: 'ai', text: 'Không có gì ạ. Cần gì anh/chị cứ hỏi nhé.' };
+    if (/bye|tam biet|hen gap/.test(q)) return { id, role: 'ai', text: 'Chào anh/chị, hẹn gặp lại.' };
+    if (/ban (la ai|ten gi|lam duoc|giup duoc|co the)/.test(q)) return { id, role: 'ai', text: 'Mình là trợ lý số liệu của CRM: xem nhanh rủi ro SLA, quỹ MDF, dòng tiền, công nợ, tóm tắt việc hôm nay và tra cứu khách hàng.', chips: AI_STARTERS.slice(0, 4) };
+    return { id, role: 'ai', text: `Chào ${app.me?.name ?? 'anh/chị'}! Mình có thể giúp gì?`, chips: AI_STARTERS.slice(0, 3) };
   };
   useEffect(() => { if (ask) { send(ask); onAsked(); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [ask]);
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }); }, [msgs.length]);
