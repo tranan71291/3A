@@ -310,9 +310,9 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
                       onChange={(e) => { upd(r, { name: e.target.value }); setAc({ r, i: -1 }); }} onFocus={() => setAc(null)} onBlur={() => setTimeout(() => setAc((a) => (a?.r === r ? null : a)), 150)}
                       onKeyDown={(e) => onKey(e, r, 0, sugg)} aria-label={`Tên hàng dòng ${r + 1}`} aria-autocomplete="list" aria-expanded={sugg.length > 0} />
                     {!ghost && (
-                      <p className="mt-0.5 flex items-center gap-1 truncate px-1.5 text-[10px] text-[rgb(var(--muted))]">
+                      <p className="mt-0.5 flex items-center gap-1 truncate px-1.5 text-[11px] text-[rgb(var(--muted))]">
                         {l.ai && <span className="rounded bg-[rgb(var(--secondary)/0.15)] px-1 font-semibold text-[rgb(var(--secondary-fg))]">AI</span>}
-                        {k ? <span className="truncate"><span className="font-mono text-[rgb(var(--accent-fg))]">{k.sku}</span> · Danh mục</span>
+                        {k ? <span className="truncate"><span className="code-chip">{k.sku}</span> · Danh mục</span>
                           : dr ? <span className="truncate">Nháp · bán gần nhất {dr.lastPrice.toLocaleString('vi-VN')}đ, {new Date(dr.lastAt).toLocaleDateString('vi-VN')}</span>
                           : l.name.trim() ? <span className="truncate text-[rgb(var(--accent-fg))]">Mới · tự lưu vào danh mục nháp khi tạo báo giá</span> : null}
                       </p>
@@ -322,13 +322,13 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
                         {sugg.map((s, i) => (
                           <li key={s.key} role="option" aria-selected={ac?.i === i}>
                             <button type="button" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); pick(r, s); }} className={cn('flex w-full items-start gap-2 rounded px-2 py-1.5 text-left', ac?.i === i ? 'bg-[rgb(var(--secondary)/0.12)]' : 'hover:bg-[rgb(var(--ink)/0.05)]')}>
-                              <span className={cn('mt-0.5 shrink-0 rounded px-1 text-[9px] font-semibold', s.kind === 'SKU' ? 'bg-[rgb(var(--success)/0.15)] text-[rgb(var(--success-fg))]' : 'bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent-fg))]')}>{s.kind === 'SKU' ? 'DM' : 'NHÁP'}</span>
-                              <span className="min-w-0 flex-1"><span className="block truncate text-xs text-[rgb(var(--fg))]">{s.name}</span><span className="block truncate text-[10px] text-[rgb(var(--muted))]">{s.sub}</span></span>
-                              <span className="shrink-0 text-right text-xs font-semibold tabular-nums">{s.price ? s.price.toLocaleString('vi-VN') : '—'}<span className="block text-[10px] font-normal text-[rgb(var(--muted))]">/{s.unit}</span></span>
+                              <span className={cn('mt-0.5 shrink-0 rounded px-1 text-[11px] font-semibold', s.kind === 'SKU' ? 'bg-[rgb(var(--success)/0.15)] text-[rgb(var(--success-fg))]' : 'bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent-fg))]')}>{s.kind === 'SKU' ? 'DM' : 'NHÁP'}</span>
+                              <span className="min-w-0 flex-1"><span className="block truncate text-xs text-[rgb(var(--fg))]">{s.name}</span><span className="block truncate text-[11px] text-[rgb(var(--muted))]">{s.sub}</span></span>
+                              <span className="shrink-0 text-right text-xs font-semibold tabular-nums">{s.price ? s.price.toLocaleString('vi-VN') : '—'}<span className="block text-[11px] font-normal text-[rgb(var(--muted))]">/{s.unit}</span></span>
                             </button>
                           </li>
                         ))}
-                        <li className="px-2 pb-1 pt-1.5 text-[10px] text-[rgb(var(--faint))]">↑ ↓ chọn · Enter điền giá · Esc giữ tên đang gõ</li>
+                        <li className="px-2 pb-1 pt-1.5 text-[11px] text-[rgb(var(--faint))]">↑ ↓ chọn · Enter điền giá · Esc giữ tên đang gõ</li>
                       </ul>
                     )}
                   </td>
@@ -336,7 +336,7 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
                   <td className="px-0.5 py-1"><input data-r={r} data-c={2} disabled={locked} className={num} inputMode="decimal" value={numText(r, 2, l.qty, ghost && !l.qty)} onChange={(e) => typeNum(r, 2, e.target.value, (n) => upd(r, { qty: n }))} onBlur={() => setEd(null)} onKeyDown={(e) => onKey(e, r, 2, [])} aria-label={`Số lượng dòng ${r + 1}`} /></td>
                   <td className="px-0.5 py-1"><input data-r={r} data-c={3} disabled={locked} className={cn(num, !ghost && !(l.listPrice ?? l.price) && 'border-[rgb(var(--accent)/0.6)] bg-[rgb(var(--accent)/0.06)]')} inputMode="numeric" placeholder={ghost ? '' : 'Nhập giá'} value={(l.listPrice ?? l.price) ? (l.listPrice ?? l.price).toLocaleString('vi-VN') : ''} onChange={(e) => upd(r, { listPrice: digits(e.target.value) })} onKeyDown={(e) => onKey(e, r, 3, [])} aria-label={`Đơn giá dòng ${r + 1}`} /></td>
                   <td className="px-0.5 py-1"><input data-r={r} data-c={4} disabled={locked} className={num} inputMode="decimal" value={numText(r, 4, l.discountPct ?? 0, ghost)} onChange={(e) => typeNum(r, 4, e.target.value, (n) => upd(r, { discountPct: Math.min(100, Math.max(0, n)) }))} onBlur={() => setEd(null)} onKeyDown={(e) => onKey(e, r, 4, [])} aria-label={`Chiết khấu dòng ${r + 1}`} /></td>
-                  <td className="px-2 py-2 text-right tabular-nums">{!ghost && <><p className="font-medium text-[rgb(var(--fg))]">{Math.round(l.qty * l.price).toLocaleString('vi-VN')}</p>{canSeeCost && lineGm !== null && <p className={cn('text-[10px]', lineGm < 10 ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')}>GM {lineGm.toFixed(1)}%</p>}</>}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{!ghost && <><p className="font-medium text-[rgb(var(--fg))]">{Math.round(l.qty * l.price).toLocaleString('vi-VN')}</p>{canSeeCost && lineGm !== null && <p className={cn('text-[11px]', lineGm < 10 ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')}>GM {lineGm.toFixed(1)}%</p>}</>}</td>
                   <td className="py-1.5 pr-1 text-center">{!ghost && !locked && <button tabIndex={-1} className="rounded p-1 text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => onChange(items.filter((_, j) => j !== r))} aria-label={`Xóa dòng ${r + 1}`}><Trash2 className="h-3.5 w-3.5" /></button>}</td>
                 </tr>
               );

@@ -7,7 +7,7 @@ import { removeWithUndo } from '../../app/context';
 import { useIntent } from '../../components/command-palette';
 import { Pagination, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { Chip, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSticky } from '../../components/ui';
 import { bizMode, btnBase, btnGhost, btnPrimary, btnSm, C, CASH_ACCOUNT, CASH_IN_CATS, CASH_OUT_CATS, compact, fmtDate, inputCls, iso, jobCustName, kpiGrid, nextCode, rangeBounds, rowCls, tdCls, tdFirst, tdLast, tipStyle, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import type { CashAccount, CashEntry, CashLine, ConfirmState } from '../../lib/types';
@@ -139,7 +139,7 @@ export function CashbookModule() {
       <div className="flex flex-wrap items-center gap-2">
         <Tabs variant="pill" tabs={[{ id: 'book', label: 'Sổ chi tiết' }, { id: 'summary', label: mode === 'TRADING' ? 'Tổng hợp' : 'Tổng hợp & theo đơn hàng' }]} value={tab} onChange={setTab} />
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')} disabled={!can} onClick={() => setModal({ kind: 'IN' })}><Plus className="h-3.5 w-3.5" aria-hidden />Phiếu thu</button>
+          <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]')} disabled={!can} onClick={() => setModal({ kind: 'IN' })}><Plus className="h-3.5 w-3.5" aria-hidden />Phiếu thu</button>
           <button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setModal({ kind: 'OUT' })}><Plus className="h-3.5 w-3.5" aria-hidden />Phiếu chi</button>
           <button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setModal({ kind: 'TRANSFER' })}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Chuyển quỹ</button>
           <button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setOpening({ cash: mfgConfig.openingCash, bank: mfgConfig.openingBank })}><Pencil className="h-3.5 w-3.5" aria-hidden />Số dư đầu</button>
@@ -154,13 +154,13 @@ export function CashbookModule() {
             <select className={inputCls} value={partner} onChange={(e) => { setPartner(e.target.value); paged.setPage(1); }} aria-label="Đối tượng"><option value="ALL">Mọi đối tượng nộp / nhận</option>{partners.map((c) => <option key={c} value={c}>{c}</option>)}</select>
             <button className={cn(btnGhost, 'justify-center')} onClick={() => downloadCsv(`so-quy-${acc}-${fromISO}-${toISO}.csv`, [['Ngày', 'Số phiếu', 'Sổ', 'Khoản mục', 'Đối tượng', 'Diễn giải', 'Chứng từ gốc', 'Thu', 'Chi', 'Tồn'], ...list.map((l) => [l.date, l.code, CASH_ACCOUNT[l.account], l.category, l.partner ?? '', l.note ?? '', l.ref ?? '', l.kind === 'IN' ? l.amount : '', l.kind === 'OUT' ? l.amount : '', acc === 'ALL' ? '' : running.get(l.id) ?? ''])])}><Download className="h-4 w-4" aria-hidden />CSV</button>
           </div>
-          <Table head={['STT', 'Ngày', 'Số phiếu', 'Diễn giải', 'Đối tượng', ...(acc === 'ALL' ? ['Sổ'] : []), <span key="t" className="block text-right">Thu</span>, <span key="c" className="block text-right">Chi</span>, ...(acc === 'ALL' ? [] : [<span key="b" className="block text-right">Tồn</span>])]} minW={1040}>
+          <Table head={['STT', 'Ngày', 'Số phiếu', 'Khoản mục', 'Diễn giải', 'Đối tượng', ...(acc === 'ALL' ? ['Sổ'] : []), <span key="t" className="block text-right">Thu</span>, <span key="c" className="block text-right">Chi</span>, ...(acc === 'ALL' ? [] : [<span key="b" className="block text-right">Tồn</span>])]} minW={1040}>
             {paged.page === 1 && !filtered && (
               <tr className="border-b border-[rgb(var(--line)/0.6)] bg-[rgb(var(--raised)/0.5)]">
-                <td className={tdFirst} /><td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{fmtDate(fromISO)}</td><td className={tdCls} />
+                <td className={tdFirst} /><td className={cn(tdCls, 'font-mono text-xs')}>{fmtDate(fromISO)}</td><td className={tdCls} />
                 {acc === 'ALL'
-                  ? <td className={cn(tdLast, 'font-medium')} colSpan={5}>Số dư đầu kỳ hai sổ: <span className="tabular-nums">{openBal.toLocaleString('vi-VN')}</span></td>
-                  : <><td className={cn(tdCls, 'font-medium')} colSpan={4}>Số dư đầu kỳ</td><td className={cn(tdLast, 'text-right font-semibold tabular-nums')}>{openBal.toLocaleString('vi-VN')}</td></>}
+                  ? <td className={cn(tdLast, 'font-medium')} colSpan={6}>Số dư đầu kỳ hai sổ: <span className="tabular-nums">{openBal.toLocaleString('vi-VN')}</span></td>
+                  : <><td className={cn(tdCls, 'font-medium')} colSpan={5}>Số dư đầu kỳ</td><td className={cn(tdLast, 'text-right font-semibold tabular-nums')}>{openBal.toLocaleString('vi-VN')}</td></>}
               </tr>
             )}
             {paged.slice.map((l, i) => {
@@ -169,11 +169,12 @@ export function CashbookModule() {
               return (
                 <tr key={l.id} className={cn(rowCls, (editable || l.jobId) && 'cursor-pointer')} onClick={() => (editable && e ? setModal({ kind: e.kind, entry: e }) : l.jobId && openJob(l.jobId))}>
                   <td className={cn(tdFirst, 'w-12 tabular-nums text-[rgb(var(--muted))]')}>{(paged.page - 1) * 25 + i + 1}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{fmtDate(l.date)}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap')}><span className="font-mono text-xs">{l.code}</span>{l.auto && <span className="mt-0.5 block text-[10px] text-[rgb(var(--success-fg))]">Tự sinh{l.ref && l.ref !== l.code ? ` từ ${l.ref}` : ''}</span>}</td>
-                  <td className={cn(tdCls, 'max-w-[300px]')}><p className="text-sm">{l.category}</p>{l.note && <p className="line-clamp-1 text-xs text-[rgb(var(--muted))]">{l.note}</p>}</td>
-                  <td className={cn(tdCls, 'max-w-[200px] text-xs')}><p className="line-clamp-2">{l.partner ?? '—'}</p></td>
-                  {acc === 'ALL' && <td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{l.account === 'CASH' ? 'Tiền mặt' : 'Ngân hàng'}</td>}
+                  <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(l.date)}</td>
+                  <td className={tdCls} title={l.auto ? `Phiếu tự sinh${l.ref && l.ref !== l.code ? ` từ ${l.ref}` : ''}` : undefined}><Code>{l.code}</Code>{l.auto && <span className="ml-1.5 text-[11px] text-[rgb(var(--muted))]">tự sinh</span>}</td>
+                  <td className={tdCls}><span className="font-medium">{l.category}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[260px] truncate" title={l.note}>{l.note || '—'}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[200px] truncate" title={l.partner}>{l.partner ?? '—'}</span></td>
+                  {acc === 'ALL' && <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{l.account === 'CASH' ? 'Tiền mặt' : 'Ngân hàng'}</td>}
                   <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums text-[rgb(var(--success-fg))]')}>{l.kind === 'IN' ? l.amount.toLocaleString('vi-VN') : ''}</td>
                   <td className={cn(acc === 'ALL' ? tdLast : tdCls, 'whitespace-nowrap text-right tabular-nums text-[rgb(var(--danger-fg))]')}>{l.kind === 'OUT' ? l.amount.toLocaleString('vi-VN') : ''}</td>
                   {acc !== 'ALL' && <td className={cn(tdLast, 'whitespace-nowrap text-right tabular-nums', (running.get(l.id) ?? 0) < 0 && 'text-[rgb(var(--danger-fg))]')}>{(running.get(l.id) ?? 0).toLocaleString('vi-VN')}</td>}
@@ -182,7 +183,7 @@ export function CashbookModule() {
             })}
             {list.length > 0 && (
               <tr className="border-t border-[rgb(var(--line))] font-semibold">
-                <td className={tdFirst} colSpan={acc === 'ALL' ? 6 : 5}>{filtered ? 'Cộng các dòng đang lọc' : 'Cộng phát sinh trong kỳ'}</td>
+                <td className={tdFirst} colSpan={acc === 'ALL' ? 7 : 6}>{filtered ? 'Cộng các dòng đang lọc' : 'Cộng phát sinh trong kỳ'}</td>
                 <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--success-fg))]')}>{list.filter((l) => l.kind === 'IN').reduce((s, l) => s + l.amount, 0).toLocaleString('vi-VN')}</td>
                 <td className={cn(acc === 'ALL' ? tdLast : tdCls, 'text-right tabular-nums text-[rgb(var(--danger-fg))]')}>{list.filter((l) => l.kind === 'OUT').reduce((s, l) => s + l.amount, 0).toLocaleString('vi-VN')}</td>
                 {acc !== 'ALL' && <td className={cn(tdLast, 'text-right tabular-nums')}>{filtered ? '' : (openBal + sumIn - sumOut).toLocaleString('vi-VN')}</td>}

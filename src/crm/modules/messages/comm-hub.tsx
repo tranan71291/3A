@@ -208,7 +208,7 @@ export function AiBubble({ m, onChip }: { m: AiMsg; onChip: (q: string) => void 
         {m.pending
           ? <p className="flex h-6 items-center gap-1" role="status" aria-label="AI đang trả lời">{[0, 1, 2].map((i) => <span key={i} className="h-1.5 w-1.5 animate-pulse rounded-full bg-[rgb(var(--faint))]" style={{ animationDelay: `${i * 160}ms` }} />)}</p>
           : <RichText text={m.text} />}
-        {m.kpis && <div className="grid grid-cols-3 gap-2">{m.kpis.map((k) => <div key={k.label} className="rounded border border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--ink)/0.03)] px-2 py-1.5"><p className="truncate text-[10px] uppercase tracking-wide text-[rgb(var(--muted))]">{k.label}</p><p className={cn('font-num truncate text-sm font-semibold', k.tone === 'red' ? 'text-[rgb(var(--danger-fg))]' : k.tone === 'teal' ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--fg))]')}>{k.value}</p></div>)}</div>}
+        {m.kpis && <div className="grid grid-cols-3 gap-2">{m.kpis.map((k) => <div key={k.label} className="rounded border border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--ink)/0.03)] px-2 py-1.5"><p className="truncate text-[11px] text-[rgb(var(--muted))]">{k.label}</p><p className={cn('font-num truncate text-sm font-semibold', k.tone === 'red' ? 'text-[rgb(var(--danger-fg))]' : k.tone === 'teal' ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--fg))]')}>{k.value}</p></div>)}</div>}
         {items && items.length > 0 && (
           <ul className="space-y-1.5">
             {items.map((it, i) => (
@@ -307,8 +307,8 @@ export function AiCopilotTab({ ask, onAsked }: { ask: string | null; onAsked: ()
       <form className="border-t border-[rgb(var(--ink)/0.06)] p-3" onSubmit={(e) => { e.preventDefault(); send(text); }}>
         <div className="flex items-center gap-2 rounded-md border border-[rgb(var(--ink)/0.1)] bg-[rgb(var(--sunken))] px-2 focus-within:border-[rgb(var(--secondary))]">
           <Sparkles className="h-4 w-4 shrink-0 text-[rgb(var(--faint))]" aria-hidden />
-          <input className="h-11 flex-1 bg-transparent text-sm text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted)/0.7)] focus:outline-none" value={text} onChange={(e) => setText(e.target.value)} placeholder="Hỏi về SLA, dòng tiền, quỹ MDF…" aria-label="Câu hỏi cho AI Copilot" />
-          <button className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all', text.trim() ? 'g-brand text-[rgb(var(--on-accent))]' : 'text-[rgb(var(--faint))]')} disabled={!text.trim()} aria-label="Gửi câu hỏi"><Send className="h-4 w-4" aria-hidden /></button>
+          <input className="h-11 flex-1 bg-transparent text-sm text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted)/0.7)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--fg)/0.4)]" value={text} onChange={(e) => setText(e.target.value)} placeholder="Hỏi về SLA, dòng tiền, quỹ MDF…" aria-label="Câu hỏi cho AI Copilot" />
+          <button className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors', text.trim() ? 'g-brand text-[rgb(var(--on-accent))]' : 'text-[rgb(var(--faint))]')} disabled={!text.trim()} aria-label="Gửi câu hỏi"><Send className="h-4 w-4" aria-hidden /></button>
         </div>
       </form>
     </div>
@@ -380,8 +380,8 @@ export function ChatTab({ seen, markSeen }: { seen: Record<string, number>; mark
   const row = (th: Thread, last?: RowComment, n = 0) => (
     <button key={threadKey(th)} className="flex w-full items-center gap-3 rounded px-2.5 py-2 text-left hover:bg-[rgb(var(--ink)/0.04)]" onClick={() => open(th)}>
       <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded', th.entity === 'channel' ? 'g-brand text-[rgb(var(--on-accent))]' : 'bg-[rgb(var(--ink)/0.06)] text-[rgb(var(--muted))]')}>{th.entity === 'channel' ? <Hash className="h-4 w-4" aria-hidden /> : <MessageSquare className="h-4 w-4" aria-hidden />}</span>
-      <span className="min-w-0 flex-1"><span className="flex items-center gap-2"><span className="truncate text-sm font-medium">{th.title}</span>{th.token && <span className="shrink-0 font-mono text-[10px] text-[rgb(var(--faint))]">{th.token}</span>}</span><span className="block truncate text-xs text-[rgb(var(--muted))]">{last ? `${last.authorId === me?.id ? 'Bạn' : userName(last.authorId)}: ${last.text || (last.files?.length ? `[${last.files.length} file]` : '')}` : th.sub}</span></span>
-      {n > 0 && <span className="g-brand flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-[rgb(var(--on-accent))]">{n}</span>}
+      <span className="min-w-0 flex-1"><span className="flex items-center gap-2"><span className="truncate text-sm font-medium">{th.title}</span>{th.token && <span className="shrink-0 font-mono text-[11px] text-[rgb(var(--faint))]">{th.token}</span>}</span><span className="block truncate text-xs text-[rgb(var(--muted))]">{last ? `${last.authorId === me?.id ? 'Bạn' : userName(last.authorId)}: ${last.text || (last.files?.length ? `[${last.files.length} file]` : '')}` : th.sub}</span></span>
+      {n > 0 && <span className="g-brand flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold text-[rgb(var(--on-accent))]">{n}</span>}
     </button>
   );
   return (
@@ -398,7 +398,7 @@ export function ChatTab({ seen, markSeen }: { seen: Record<string, number>; mark
         ) : (
           <>
             {row(general, gList.slice(-1)[0], unread('channel:general', gList))}
-            <p className="px-2.5 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">Nhóm, tin nhắn & dự án</p>
+            <p className="px-2.5 pb-1 pt-3 text-[11px] font-semibold text-[rgb(var(--faint))]">Nhóm, tin nhắn & dự án</p>
             {threads.map(({ k, last, list: l2 }) => { const cut = k.indexOf(':'); const th = resolve(k.slice(0, cut) as CommentEntity, k.slice(cut + 1)); return th ? row(th, last, unread(k, l2)) : null; })}
             {!threads.length && <p className="px-3 py-4 text-xs text-[rgb(var(--muted))]">Chưa có trao đổi theo dự án. Tìm mã dự án / đơn ở ô phía trên để mở kênh, hoặc bấm biểu tượng bình luận trên dòng bảng.</p>}
           </>

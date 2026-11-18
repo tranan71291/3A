@@ -57,7 +57,7 @@ export function ContactsPage() {
           ))}
         </nav>
         <div>
-          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">Nhãn</p>
+          <p className="mb-1.5 px-3 text-[11px] font-semibold text-[rgb(var(--faint))]">Nhãn</p>
           <div className="flex flex-wrap gap-1 lg:flex-col">
             {p.labels.map((l) => <button key={l.id} className={cn('flex items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-sm', view === l.id ? 'bg-[rgb(var(--secondary)/0.12)] font-semibold text-[rgb(var(--secondary-fg))]' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)]')} onClick={() => { setView(l.id); paged.setPage(1); }}><Tag className="h-3.5 w-3.5" aria-hidden /><span className="flex-1 truncate">{l.name}</span><span className="text-xs tabular-nums text-[rgb(var(--muted))]">{base.filter((c) => l.ids.includes(c.key)).length}</span></button>)}
           </div>
@@ -81,7 +81,7 @@ export function ContactsPage() {
               return (
                 <article key={c.key} className="rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4">
                   <div className="flex items-start gap-3">
-                    {c.user ? <PAvatar user={c.user} size={48} meId={me?.id} /> : <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--secondary)/0.15)] text-base font-bold text-[rgb(var(--secondary-fg))]">{initials(c.name)}</span>}
+                    {c.user ? <PAvatar user={c.user} size={48} meId={me?.id} /> : <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--secondary)/0.15)] text-base font-semibold text-[rgb(var(--secondary-fg))]">{initials(c.name)}</span>}
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{c.name}{self && <span className="ml-1.5 text-xs font-normal text-[rgb(var(--muted))]">(bạn)</span>}</p>
                       <p className="truncate text-sm text-[rgb(var(--fg2))]">{c.title}</p>

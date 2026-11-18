@@ -8,10 +8,10 @@ import { cn } from '../lib/utils';
 
 export function Panel({ title, action, children, className }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cn('glass-card rounded-md p-5', className)}>
+    <section className={cn('glass-card rounded-xl p-5', className)}>
       {(title || action) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          {title && <h2 className="font-display text-[15px] font-bold tracking-tight text-[rgb(var(--fg))]">{title}</h2>}
+          {title && <h2 className="text-[15px] font-medium text-[rgb(var(--fg))]">{title}</h2>}
           {action}
         </div>
       )}
@@ -21,16 +21,14 @@ export function Panel({ title, action, children, className }: { title?: ReactNod
 }
 
 export function Chip({ tone = 'muted', children }: { tone?: Tone; children: ReactNode }) {
-  const t: Record<Tone, string> = {
-    muted: 'bg-[rgb(var(--ink)/0.06)] text-[rgb(var(--muted))]',
-    orange: 'bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent-fg))]',
-    teal: 'bg-[rgb(var(--success)/0.15)] text-[rgb(var(--success-fg))]',
-    red: 'bg-[rgb(var(--danger)/0.15)] text-[rgb(var(--danger-fg))]',
-    // Chuẩn 3 màu trạng thái: Teal = chốt / đủ, Cam = chờ / đang tiến hành, Đỏ = trượt / quá hạn / nợ xấu.
-    // "blue" cũ (đã gửi, chờ xác nhận...) quy về họ Cam dạng viền để vẫn phân biệt với "đang làm"
-    blue: 'bg-[rgb(var(--secondary)/0.15)] text-[rgb(var(--secondary-fg))] ring-1 ring-inset ring-[rgb(var(--secondary)/0.45)]',
-  };
-  return <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-sm px-2 py-0.5 text-xs font-medium', t[tone])}>{children}</span>;
+  // v40: trạng thái = chấm màu + chữ (không ô nền màu). Teal = đạt / xong, Cam = chờ / đang làm, Đỏ = quá hạn / lỗi, Xanh = đã gửi
+  const dot: Record<Tone, string> = { muted: 'bg-[rgb(var(--faint))]', orange: 'bg-[rgb(var(--accent))]', teal: 'bg-[rgb(var(--success))]', red: 'bg-[rgb(var(--danger))]', blue: 'bg-[rgb(var(--secondary))]' };
+  return <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-[13px]', tone === 'red' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--fg2))]')}><span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dot[tone])} aria-hidden />{children}</span>;
+}
+
+/** v40: mã chứng từ (LD-0005, BG-0001…) dạng thẻ mono xám, dùng thống nhất mọi bảng */
+export function Code({ children, className }: { children: ReactNode; className?: string }) {
+  return <span className={cn('code-chip', className)}>{children}</span>;
 }
 
 /**
@@ -57,47 +55,21 @@ export function monthly<T>(items: T[], when: (x: T) => string | number | undefin
   return out.map((v) => (acc += v));
 }
 
-/** Biểu đồ mini (sparkline) SVG thuần, không phụ thuộc thư viện: thể hiện xu hướng dưới con số KPI */
-export function Sparkline({ data, color = BRAND.o2, height = 26, className }: { data: number[]; color?: string; height?: number; className?: string }) {
-  const pts = data.filter((x) => Number.isFinite(x));
-  if (pts.length < 2 || pts.every((v) => v === 0)) return null;
-  const w = 100;
-  const max = Math.max(...pts);
-  const min = Math.min(...pts);
-  const span = max - min || 1;
-  const xy = pts.map((v, i) => [(i / (pts.length - 1)) * w, height - 2 - ((v - min) / span) * (height - 4)] as const);
-  const line = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-  const id = `sp${color.replace('#', '')}${pts.length}`;
-  return (
-    <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className={cn('block w-full', className)} style={{ height }} aria-hidden>
-      <defs><linearGradient id={id} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity=".28" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
-      <polygon points={`0,${height} ${line} ${w},${height}`} fill={`url(#${id})`} />
-      <polyline points={line} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={xy[xy.length - 1][0]} cy={xy[xy.length - 1][1]} r="2" fill={color} vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
 /**
  * Thẻ KPI phong cách "Data-Driven Minimalism": không nền khối, không viền; icon + tên chỉ số + số lớn,
  * phân cách bằng vạch dọc siêu mờ, sparkline xu hướng (cam = chỉ số chính, xanh dương = đối chiếu).
  * `highlight` = KPI quan trọng: số hiển thị bằng gradient cam → vàng của logo.
  */
-export function StatCard({ label, value, sub, icon: Icon, color = C.orange, delta, deltaLabel = 'so với kỳ trước', spark, highlight }: { label: string; value: string; sub?: string; icon: typeof Wallet; color?: string; delta?: number | null; deltaLabel?: string; spark?: number[]; highlight?: boolean }) {
-  const tint = color === C.text || color === C.muted ? BRAND.blueHi : color;
-  const sparkColor = color === C.teal || color === C.red ? color : color === C.orange || color === BRAND.o2 ? BRAND.o2 : BRAND.blueHi;
+export function StatCard({ label, value, sub, color = C.orange, delta, deltaLabel = 'so với kỳ trước', highlight }: { label: string; value: string; sub?: string; icon?: typeof Wallet; color?: string; delta?: number | null; deltaLabel?: string; spark?: number[]; highlight?: boolean }) {
+  // v40: thẻ số gọn: nhãn viết thường, con số, một dòng phụ. Không icon, không sparkline; màu chỉ khi số mang nghĩa (đỏ / xanh)
+  const tone = color === C.red ? 'text-[rgb(var(--danger-fg))]' : highlight ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--fg))]';
   return (
-    <div className="kpi flex min-w-0 flex-col gap-2 border-l border-[rgb(var(--ink)/0.07)] py-1 pl-4 pr-2">
-      <div className="flex min-w-0 items-center gap-2">
-        <Icon className="h-4 w-4 shrink-0" style={{ color: tint }} aria-hidden />
-        <p className="min-w-0 truncate text-xs font-medium uppercase tracking-wide text-[rgb(var(--muted))]">{label}</p>
-      </div>
-      <p className={cn('font-display truncate text-2xl font-extrabold tracking-tight tabular-nums sm:text-[28px] sm:leading-8', highlight ? 'g-brand-text' : 'text-[rgb(var(--fg))]')}>{value}</p>
-      {spark && spark.length > 1 ? <Sparkline data={spark} color={sparkColor} /> : null}
+    <div className="kpi flex min-w-0 flex-col gap-0.5 border-l border-[rgb(var(--ink)/0.08)] py-0.5 pl-4 pr-2">
+      <p className="min-w-0 truncate text-[12.5px] text-[rgb(var(--muted))]">{label}</p>
+      <p className={cn('truncate text-[22px] font-medium leading-7 tabular-nums', tone)}>{value}</p>
       {delta !== undefined && delta !== null && Number.isFinite(delta) ? (
-        <p className={cn('flex items-center gap-1 text-xs tabular-nums', delta >= 0 ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')}>
-          {delta >= 0 ? <ArrowUp className="h-3 w-3" aria-hidden /> : <ArrowDown className="h-3 w-3" aria-hidden />}
-          {Math.abs(delta).toFixed(0)}% <span className="hidden truncate text-[rgb(var(--muted))] sm:inline">{deltaLabel}</span>
+        <p className={cn('truncate text-xs tabular-nums', delta >= 0 ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')}>
+          {delta >= 0 ? '+' : '−'}{Math.abs(delta).toFixed(0)}% <span className="text-[rgb(var(--muted))]">{deltaLabel}</span>
         </p>
       ) : sub ? <p className="truncate text-xs text-[rgb(var(--muted))]">{sub}</p> : null}
     </div>
@@ -114,7 +86,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, variant = 'line'
           {tabs.map((t) => (
             <button key={t.id} role="tab" aria-selected={value === t.id} onClick={() => onChange(t.id)}
               className={cn('whitespace-nowrap rounded px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent))]', value === t.id ? 'bg-[rgb(var(--surface))] font-semibold text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--line))]' : 'text-[rgb(var(--muted))] hover:bg-[rgb(var(--secondary)/0.15)] hover:text-[rgb(var(--fg))]')}>
-              {t.label}{t.count !== undefined && <span className="ml-1.5 tabular-nums opacity-80">{t.count}</span>}
+              {t.label}{t.count !== undefined && <span className="ml-1.5 font-mono text-[11.5px] font-normal text-[rgb(var(--muted))]">{t.count}</span>}
             </button>
           ))}
         </div>
@@ -124,7 +96,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, variant = 'line'
   }
   return (
     <div className="flex min-w-0 max-w-full items-center gap-3 border-b border-[rgb(var(--line))]">
-      <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
+      <div className="flex min-w-0 flex-1 gap-6 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -132,11 +104,11 @@ export function Tabs<T extends string>({ tabs, value, onChange, variant = 'line'
             aria-selected={value === t.id}
             onClick={() => onChange(t.id)}
             className={cn(
-              '-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent))]',
-              value === t.id ? 'border-[rgb(var(--accent))] text-[rgb(var(--accent-fg))]' : 'border-transparent text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]',
+              '-mb-px whitespace-nowrap border-b-2 px-1 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--fg)/0.5)]',
+              value === t.id ? 'border-[rgb(var(--fg))] text-[rgb(var(--fg))]' : 'border-transparent text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]',
             )}
           >
-            {t.label}{t.count !== undefined && <span className="ml-1.5 tabular-nums opacity-80">{t.count}</span>}
+            {t.label}{t.count !== undefined && <span className="ml-1.5 font-mono text-[11.5px] font-normal text-[rgb(var(--muted))]">{t.count}</span>}
           </button>
         ))}
       </div>
@@ -225,7 +197,7 @@ export function SideSheet({ title, sub, onClose, children, footer, width = 'sm:w
       <aside className={cn('absolute inset-x-0 bottom-0 flex max-h-[88vh] w-full flex-col rounded-t-xl border-t border-[rgb(var(--line))] bg-[rgb(var(--surface))] shadow-[var(--shadow-lg)] motion-safe:animate-[sheetUp_.22s_ease-out] sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:rounded-none sm:border-l sm:border-t-0 sm:motion-safe:animate-[slideIn_.2s_ease-out]', width)}>
         <span className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-[rgb(var(--ink)/0.2)] sm:hidden" aria-hidden />
         <header className="flex items-start justify-between gap-3 border-b border-[rgb(var(--ink)/0.06)] px-5 py-4">
-          <div className="min-w-0"><h2 className="font-display text-base font-bold">{title}</h2>{sub && <div className="mt-0.5 text-xs text-[rgb(var(--muted))]">{sub}</div>}</div>
+          <div className="min-w-0"><h2 className="font-display text-base font-semibold">{title}</h2>{sub && <div className="mt-0.5 text-xs text-[rgb(var(--muted))]">{sub}</div>}</div>
           <button className={cn(btnGhost, 'p-1.5')} onClick={onClose} aria-label="Đóng"><X className="h-4 w-4" /></button>
         </header>
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
@@ -375,18 +347,18 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
   const alignR = right ?? auto;
   return (
     <div className={cn('-mx-5 overflow-x-auto', stack && 'max-md:mx-0 max-md:overflow-visible')}>
-      <table ref={ref} className={cn('dt w-full text-left text-sm', stack && 'dt-cards', showStt && 'dt-stt', actCol && 'dt-act')} style={{ minWidth: minW + (showStt ? 56 : 0) }}>
-        <thead className="text-[11px] uppercase tracking-wider text-[rgb(var(--muted)/0.8)]">
+      <table ref={ref} className={cn('dt w-full text-left text-[13.5px]', stack && 'dt-cards', showStt && 'dt-stt', actCol && 'dt-act')} style={{ minWidth: minW + (showStt ? 56 : 0) }}>
+        <thead className="text-[12.5px] text-[rgb(var(--muted))]">
           <tr className="border-b border-[rgb(var(--ink)/0.1)]">
-            {showStt && <th className="w-14 whitespace-nowrap py-2.5 pl-5 pr-3 font-semibold">STT</th>}
+            {showStt && <th className="w-14 whitespace-nowrap py-2.5 pl-5 pr-3 font-normal">STT</th>}
             {head.map((h0, i) => {
               const h = actCol && i === head.length - 1 ? 'Thao tác' : h0;
               const can = sort?.sortable.includes(i);
               const on = can && sort?.sort?.col === i ? sort.sort.dir : 0;
               const Ico = on === 1 ? ArrowUp : on === -1 ? ArrowDown : ArrowUpDown;
               return (
-                <th key={i} aria-sort={on === 1 ? 'ascending' : on === -1 ? 'descending' : undefined} className={cn('whitespace-nowrap py-2.5 font-semibold', i === 0 && !showStt ? 'pl-5 pr-3' : i === head.length - 1 ? 'pl-3 pr-5' : 'px-3', (alignR.includes(i) || (actCol && i === head.length - 1)) && 'text-right')}>
-                  {can ? <button type="button" onClick={() => sort!.onSort(i)} className={cn('group inline-flex items-center gap-1 uppercase tracking-wider hover:text-[rgb(var(--fg))]', on !== 0 && 'text-[rgb(var(--fg))]', alignR.includes(i) && 'flex-row-reverse')}>{h}<Ico className={cn('h-3 w-3', on ? 'opacity-100' : 'opacity-40 group-hover:opacity-80')} aria-hidden /></button> : h}
+                <th key={i} aria-sort={on === 1 ? 'ascending' : on === -1 ? 'descending' : undefined} className={cn('whitespace-nowrap py-2.5 font-normal', i === 0 && !showStt ? 'pl-5 pr-3' : i === head.length - 1 ? 'pl-3 pr-5' : 'px-3', (alignR.includes(i) || (actCol && i === head.length - 1)) && 'text-right')}>
+                  {can ? <button type="button" onClick={() => sort!.onSort(i)} className={cn('group inline-flex items-center gap-1 hover:text-[rgb(var(--fg))]', on !== 0 && 'text-[rgb(var(--fg))]', alignR.includes(i) && 'flex-row-reverse')}>{h}<Ico className={cn('h-3 w-3', on ? 'opacity-100' : 'opacity-40 group-hover:opacity-80')} aria-hidden /></button> : h}
                 </th>
               );
             })}

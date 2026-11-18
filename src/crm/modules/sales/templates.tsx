@@ -347,7 +347,7 @@ export function DocActionBar({ status, extra, pdf, word, win, submit }: { status
       <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
         {b(pdf, btnGhost, Download, 'Xuất PDF')}
         {b(word, btnGhost, FileText, 'Tải Word')}
-        {b(win, cn(btnBase, 'bg-[rgb(var(--success))] px-3.5 py-2 font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))] disabled:bg-[rgb(var(--success)/0.3)]'), CheckCircle2, 'Chốt đơn')}
+        {b(win, cn(btnBase, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] px-3.5 py-2 font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)] '), CheckCircle2, 'Chốt đơn')}
         {b(submit, btnPrimary, Send, 'Gửi duyệt', true)}
       </div>
     </>
@@ -359,7 +359,7 @@ export function Fold({ n, title, summary, open, children }: { n?: number; title:
   return (
     <details open={open} className="group rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] [&_summary::-webkit-details-marker]:hidden">
       <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2.5 text-sm font-semibold">
-        {n !== undefined && <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--accent))] text-[11px] font-bold text-[rgb(var(--on-accent))]">{n}</span>}
+        {n !== undefined && <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--accent))] text-[11px] font-semibold text-[rgb(var(--on-accent))]">{n}</span>}
         <span className={cn('shrink-0', n === undefined && 'text-xs font-medium text-[rgb(var(--muted))]')}>{title}</span>
         {summary && <span className="min-w-0 flex-1 truncate text-right text-xs font-normal text-[rgb(var(--muted))]">{summary}</span>}
         <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-[rgb(var(--muted))] transition-transform group-open:rotate-180" aria-hidden />
@@ -417,7 +417,7 @@ export function PartyFields({ form, setParty }: { form: ComposerForm; setParty: 
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
       <Field label="Tên pháp nhân *" className="sm:col-span-2 lg:col-span-1 xl:col-span-2"><input className={inputCls} value={form.party.name} onChange={(e) => setParty('name', e.target.value)} /></Field>
       <Field label="Mã số thuế"><input className={inputCls} value={form.party.taxCode} onChange={(e) => setParty('taxCode', e.target.value)} /></Field>
-      <Field label="Điện thoại"><input className={inputCls} value={form.party.phone} onChange={(e) => setParty('phone', e.target.value)} /></Field>
+      <Field label="Điện thoại"><input type="tel" autoComplete="tel" className={inputCls} inputMode="tel" value={form.party.phone} onChange={(e) => setParty('phone', e.target.value)} /></Field>
       <Field label="Địa chỉ" className="sm:col-span-2 lg:col-span-1 xl:col-span-2"><input className={inputCls} value={form.party.address} onChange={(e) => setParty('address', e.target.value)} /></Field>
       <Field label="Người đại diện"><input className={inputCls} value={form.party.rep} onChange={(e) => setParty('rep', e.target.value)} /></Field>
       <Field label="Chức vụ"><input className={inputCls} value={form.party.repTitle} onChange={(e) => setParty('repTitle', e.target.value)} /></Field>

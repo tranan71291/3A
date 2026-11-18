@@ -159,7 +159,7 @@ export function ConsoleUsers() {
                 <div key={k} className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">{k}</dt><dd className="font-semibold tabular-nums">{v}</dd></div>
               ))}
             </dl>
-            <h4 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">Vai trò → số phân hệ được truy cập</h4>
+            <h4 className="mb-1.5 mt-4 text-xs font-semibold text-[rgb(var(--muted))]">Vai trò → số phân hệ được truy cập</h4>
             <ul className="space-y-1.5">
               {ROLES.map((r) => {
                 const n = MODULES.filter((m) => perms.modules?.[r]?.[m]).length;
@@ -249,7 +249,7 @@ export function ConsoleTenants() {
                 <button className={cn(btnPrimary, btnSm)} onClick={() => platform.switchTenant(o.id)}><LogIn className="h-3.5 w-3.5" aria-hidden />Truy cập hệ thống{org.id === o.id ? ' (đang mở)' : ''}</button>
                 <button className={cn(btnGhost, btnSm)} onClick={() => setEdit(r)}><Pencil className="h-3.5 w-3.5" aria-hidden />Hợp đồng & gói</button>
                 <button className={cn(btnGhost, btnSm)} onClick={() => { platform.setConsoleTab('modules'); }}><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />Cấp phép module</button>
-                <button className={cn(btnBase, btnSm, r.status === 'ACTIVE' ? 'border border-[rgb(var(--danger)/0.4)] text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--danger)/0.1)]' : 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')}
+                <button className={cn(btnBase, btnSm, r.status === 'ACTIVE' ? 'border border-[rgb(var(--danger)/0.4)] text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--danger)/0.1)]' : 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]')}
                   onClick={() => setConfirm({ title: r.status === 'ACTIVE' ? `Tạm dừng ${o.shortName}` : `Kích hoạt lại ${o.shortName}`, confirmLabel: r.status === 'ACTIVE' ? 'Tạm dừng' : 'Kích hoạt', message: r.status === 'ACTIVE' ? `Người dùng ${o.shortName} sẽ không đăng nhập được cho tới khi kích hoạt lại. Dữ liệu giữ nguyên; kỹ thuật 3A vẫn truy cập hỗ trợ được.` : `Cho phép người dùng ${o.shortName} đăng nhập lại.`, onConfirm: () => platform.setTenantReg(o.id, { status: r.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }, r.status === 'ACTIVE' ? 'Tạm dừng doanh nghiệp' : 'Kích hoạt lại doanh nghiệp') })}>
                   {r.status === 'ACTIVE' ? <><XCircle className="h-3.5 w-3.5" aria-hidden />Tạm dừng</> : <><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Kích hoạt</>}
                 </button>
@@ -309,7 +309,7 @@ export function ConsoleModules() {
             <tr className="border-b border-[rgb(var(--line)/0.6)] bg-[rgb(var(--raised)/0.4)]"><td className="py-2 pl-5 text-xs text-[rgb(var(--muted))]" colSpan={ORGS.length + 1}>Luôn bật: Tổng quan, Công việc, Cài đặt</td></tr>
             {MODULE_GROUP.map((g) => (
               <Fragment key={g.title}>
-                <tr><td className="pb-1 pl-5 pt-4 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--muted))]" colSpan={ORGS.length + 1}>{g.title}</td></tr>
+                <tr><td className="pb-1 pl-5 pt-4 text-[11px] font-semibold text-[rgb(var(--muted))]" colSpan={ORGS.length + 1}>{g.title}</td></tr>
                 {g.list.map((m) => {
                   const Icon = MODULE_ICON[m];
                   return (
@@ -321,7 +321,7 @@ export function ConsoleModules() {
                 })}
               </Fragment>
             ))}
-            <tr><td className="pb-1 pl-5 pt-4 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--muted))]" colSpan={ORGS.length + 1}>Tích hợp</td></tr>
+            <tr><td className="pb-1 pl-5 pt-4 text-[11px] font-semibold text-[rgb(var(--muted))]" colSpan={ORGS.length + 1}>Tích hợp</td></tr>
             {(Object.keys(FEATURE_LABEL) as (keyof TenantReg['features'])[]).map((k) => (
               <tr key={k} className="border-b border-[rgb(var(--line)/0.6)] hover:bg-[rgb(var(--raised)/0.5)]">
                 <td className="py-2.5 pl-5 pr-3"><span className="flex items-center gap-2"><Plug className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{FEATURE_LABEL[k]}</span></td>
@@ -403,7 +403,7 @@ export function ConsoleData() {
         </ul>
       </Panel>
       {backup && (
-        <Modal title={`Sao lưu mã hóa ${orgOf(backup).shortName}`} onClose={() => setBackup(null)} footer={<><button className={btnGhost} onClick={() => setBackup(null)}>Hủy</button><button className={btnPrimary} disabled={busy} onClick={() => void doBackup()}>{busy ? 'Đang mã hóa...' : 'Tải bản sao lưu'}</button></>}>
+        <Modal title={`Sao lưu mã hóa ${orgOf(backup).shortName}`} onClose={() => setBackup(null)} footer={<><button className={btnGhost} onClick={() => setBackup(null)}>Hủy</button><button className={btnPrimary} disabled={busy} onClick={() => void doBackup()}>{busy ? 'Đang mã hóa…' : 'Tải bản sao lưu'}</button></>}>
           <div className="space-y-3">
             <Field label="Mật khẩu bản sao lưu" hint="Tối thiểu 10 ký tự. Mất mật khẩu sẽ không mở được file."><input className={inputCls} type="password" value={pass} onChange={(e) => setPass(e.target.value)} /></Field>
             <Field label="Nhập lại mật khẩu"><input className={inputCls} type="password" value={pass2} onChange={(e) => setPass2(e.target.value)} /></Field>
@@ -583,13 +583,13 @@ export function PricingSettings() {
         <Modal title={priceItems.some((p) => p.id === edit.id) ? `Sửa ${edit.code}` : 'Thêm hạng mục đơn giá'} onClose={() => setEdit(null)} footer={<><button className={btnGhost} onClick={() => setEdit(null)}>Hủy</button><button className={btnPrimary} onClick={saveItem}>Lưu</button></>}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Mã *"><input className={inputCls} value={edit.code} onChange={(e) => setEdit({ ...edit, code: e.target.value })} placeholder="XF55-DI" /></Field>
-            <Field label="Nhóm"><input className={inputCls} list="pi-cats" value={edit.category} onChange={(e) => setEdit({ ...edit, category: e.target.value })} placeholder="Cửa nhôm, Kính, Nội thất..." /><datalist id="pi-cats">{cats.map((c) => <option key={c} value={c} />)}</datalist></Field>
+            <Field label="Nhóm"><input className={inputCls} list="pi-cats" value={edit.category} onChange={(e) => setEdit({ ...edit, category: e.target.value })} placeholder="Cửa nhôm, Kính, Nội thất…" /><datalist id="pi-cats">{cats.map((c) => <option key={c} value={c} />)}</datalist></Field>
             <Field label="Tên hạng mục *" className="sm:col-span-2"><input className={inputCls} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Cửa đi nhôm Xingfa hệ 55, kính hộp" /></Field>
             <Field label="Đơn vị tính"><select className={inputCls} value={edit.unit} onChange={(e) => setEdit({ ...edit, unit: e.target.value as PriceUnit })}>{(Object.keys(PRICE_UNIT) as PriceUnit[]).map((u) => <option key={u} value={u}>{PRICE_UNIT[u].label}</option>)}</select></Field>
             {(edit.unit === 'M2' || edit.unit === 'MD') && <Field label={`Tối thiểu mỗi tấm (${PRICE_UNIT[edit.unit].short})`}><input className={inputCls} type="number" min={0} step={0.1} value={edit.minMeasure ?? 0} onChange={(e) => setEdit({ ...edit, minMeasure: Math.max(0, Number(e.target.value) || 0) })} /></Field>}
             <Field label={`Đơn giá bán / ${PRICE_UNIT[edit.unit].short} *`}><MoneyInput value={edit.price} onChange={(n) => setEdit({ ...edit, price: n })} /></Field>
             <Field label={`Giá vốn / ${PRICE_UNIT[edit.unit].short}`} hint="Chỉ dùng tính lãi gộp, không in ra báo giá"><MoneyInput value={edit.cost} onChange={(n) => setEdit({ ...edit, cost: n })} /></Field>
-            <Field label="Ghi chú" className="sm:col-span-2"><input className={inputCls} value={edit.note ?? ''} onChange={(e) => setEdit({ ...edit, note: e.target.value || undefined })} placeholder="Màu, phụ kiện kèm theo..." /></Field>
+            <Field label="Ghi chú" className="sm:col-span-2"><input className={inputCls} value={edit.note ?? ''} onChange={(e) => setEdit({ ...edit, note: e.target.value || undefined })} placeholder="Màu, phụ kiện kèm theo…" /></Field>
           </div>
         </Modal>
       )}
@@ -761,7 +761,7 @@ export function UserModal({ id, onClose }: { id?: string; onClose: () => void })
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Họ tên *" error={err('name')} className="sm:col-span-2"><input className={inputCls} value={f.name} onChange={(ev) => set('name', ev.target.value)} /></Field>
         <Field label="Email đăng nhập *" error={err('email')}><input className={inputCls} type="email" value={f.email} onChange={(ev) => set('email', ev.target.value)} /></Field>
-        <Field label="Điện thoại (nhận Zalo ZNS)"><input className={inputCls} value={f.phone ?? ''} onChange={(ev) => set('phone', ev.target.value)} /></Field>
+        <Field label="Điện thoại (nhận Zalo ZNS)"><input type="tel" autoComplete="tel" className={inputCls} inputMode="tel" value={f.phone ?? ''} onChange={(ev) => set('phone', ev.target.value)} /></Field>
         <Field label="Chức danh"><input className={inputCls} placeholder="VD: Kế toán trưởng" value={f.title ?? ''} onChange={(ev) => set('title', ev.target.value || undefined)} /></Field>
         <Field label="Ngày sinh"><input className={inputCls} type="date" value={f.birthday ?? ''} onChange={(ev) => set('birthday', ev.target.value || undefined)} /></Field>
         <Field label="Vai trò">

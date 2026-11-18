@@ -24,7 +24,7 @@ export function TargetSelect({ kind, refId, onChange }: { kind: PoAllocation['ki
         <option value="CUSTOMER">Khách hàng / đại lý</option>
       </select>
       <select className={cn(inputCls, 'sm:col-span-2')} value={refId} onChange={(e) => onChange(kind, e.target.value)} aria-label="Đích giữ chỗ">
-        <option value="">Chọn...</option>
+        <option value="">Chọn…</option>
         {kind === 'LEAD' ? projects.map((l) => <option key={l.id} value={l.id}>{l.company}: {l.boqNote}</option>) : customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
     </div>
@@ -40,7 +40,7 @@ export function DeliverModal({ r, onClose }: { r: StockReservation; onClose: () 
     <Modal title="Xuất giao hàng giữ chỗ" onClose={onClose} footer={<><button className={btnGhost} onClick={onClose}>Hủy</button><button className={btnPrimary} disabled={qty <= 0 || qty > r.qty || !note.trim()} onClick={() => { deliverReservation(r.id, qty, note.trim()); onClose(); }}><Truck className="h-4 w-4" aria-hidden />Xác nhận xuất</button></>}>
       <div className="space-y-4">
         <div className="rounded bg-[rgb(var(--raised))] p-3 text-sm">
-          <p><span className="font-mono text-[rgb(var(--accent-fg))]">{r.sku}</span> {skus.find((s) => s.sku === r.sku)?.name}</p>
+          <p><span className="code-chip">{r.sku}</span> {skus.find((s) => s.sku === r.sku)?.name}</p>
           <p className="text-xs text-[rgb(var(--muted))]">Giữ cho {allocName(r)}, còn trong kho {r.qty.toLocaleString('vi-VN')}, đã giao {r.delivered.toLocaleString('vi-VN')}</p>
         </div>
         <Field label="Số lượng xuất"><input className={inputCls} type="number" min={1} max={r.qty} value={qty} onChange={(e) => setQty(Number(e.target.value))} /></Field>
@@ -57,7 +57,7 @@ export function RequestReleaseModal({ r, onClose }: { r: StockReservation; onClo
   return (
     <Modal title="Yêu cầu trả về tồn tự do" onClose={onClose} footer={<><button className={btnGhost} onClick={onClose}>Hủy</button><button className={btnPrimary} disabled={reason.trim().length < 5} onClick={() => { requestRelease(r.id, reason.trim()); onClose(); }}>Gửi yêu cầu</button></>}>
       <p className="mb-3 text-sm text-[rgb(var(--muted))]">{r.qty.toLocaleString('vi-VN')} {r.sku} đang giữ cho {allocName(r)}. Yêu cầu cần Trưởng phòng phụ trách hoặc Giám đốc xác nhận.</p>
-      <Field label="Lý do *"><textarea className={cn(inputCls, 'min-h-20')} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="VD: Khách đổi quy cách, hủy đơn..." /></Field>
+      <Field label="Lý do *"><textarea className={cn(inputCls, 'min-h-20')} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="VD: Khách đổi quy cách, hủy đơn…" /></Field>
     </Modal>
   );
 }
@@ -82,7 +82,7 @@ export function DecideReleaseModal({ r, onClose }: { r: StockReservation; onClos
     >
       <div className="space-y-4">
         <div className="rounded bg-[rgb(var(--raised))] p-3 text-sm">
-          <p><span className="font-mono text-[rgb(var(--accent-fg))]">{r.sku}</span> {skus.find((s) => s.sku === r.sku)?.name}</p>
+          <p><span className="code-chip">{r.sku}</span> {skus.find((s) => s.sku === r.sku)?.name}</p>
           <p className="text-xs text-[rgb(var(--muted))]">{r.qty.toLocaleString('vi-VN')} đang giữ cho {allocName(r)}</p>
           {r.releaseRequest && <p className="mt-1 text-xs text-[rgb(var(--accent-fg))]">{r.releaseRequest.reason}{r.releaseRequest.by ? `, đề nghị bởi ${userName(r.releaseRequest.by)}` : ''}, {fmtDate(r.releaseRequest.at)}</p>}
         </div>
@@ -162,7 +162,7 @@ export function ReservedGoodsPanel({ kind, refId }: { kind: PoAllocation['kind']
         {mine.map((r) => (
           <li key={r.id} className="rounded bg-[rgb(var(--raised))] px-3 py-2 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span><span className="font-mono text-xs text-[rgb(var(--accent-fg))]">{r.sku}</span> <span className="text-xs text-[rgb(var(--muted))]">trong kho</span> <b className="tabular-nums">{r.qty.toLocaleString('vi-VN')}</b> {unit(r.sku)}{r.delivered > 0 && <span className="text-xs text-[rgb(var(--success-fg))]">, đã giao {r.delivered.toLocaleString('vi-VN')}</span>}</span>
+              <span><span className="code-chip">{r.sku}</span> <span className="text-xs text-[rgb(var(--muted))]">trong kho</span> <b className="tabular-nums">{r.qty.toLocaleString('vi-VN')}</b> {unit(r.sku)}{r.delivered > 0 && <span className="text-xs text-[rgb(var(--success-fg))]">, đã giao {r.delivered.toLocaleString('vi-VN')}</span>}</span>
               <Chip tone={RESERVATION_STATUS[r.status].tone}>{RESERVATION_STATUS[r.status].label}</Chip>
             </div>
             <div className="mt-2"><ReservationActions r={r} onDeliver={() => setDeliver(r)} onRequest={() => setRequest(r)} onDecide={() => setDecide(r)} /></div>
@@ -170,7 +170,7 @@ export function ReservedGoodsPanel({ kind, refId }: { kind: PoAllocation['kind']
         ))}
         {incoming.map((x) => (
           <li key={x.po.id + x.sku} className="flex items-center justify-between gap-2 rounded border border-dashed border-[rgb(var(--line))] px-3 py-2 text-sm">
-            <span><span className="font-mono text-xs text-[rgb(var(--accent-fg))]">{x.sku}</span> <span className="text-xs text-[rgb(var(--muted))]">đang về theo {x.po.code}</span> <b className="tabular-nums">{x.qty.toLocaleString('vi-VN')}</b> {unit(x.sku)}</span>
+            <span><span className="code-chip">{x.sku}</span> <span className="text-xs text-[rgb(var(--muted))]">đang về theo {x.po.code}</span> <b className="tabular-nums">{x.qty.toLocaleString('vi-VN')}</b> {unit(x.sku)}</span>
             <Chip tone="blue">Chưa về kho</Chip>
           </li>
         ))}
@@ -220,7 +220,7 @@ export function InventoryPage() {
             {pending.map((r) => (
               <li key={r.id} className="flex flex-col gap-2 rounded border border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--accent)/0.05)] px-3 py-2.5 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1 text-sm">
-                  <p><span className="font-mono text-xs text-[rgb(var(--accent-fg))]">{r.sku}</span> <b className="tabular-nums">{r.qty.toLocaleString('vi-VN')}</b> đang giữ cho <b>{allocName(r)}</b></p>
+                  <p><span className="code-chip">{r.sku}</span> <b className="tabular-nums">{r.qty.toLocaleString('vi-VN')}</b> đang giữ cho <b>{allocName(r)}</b></p>
                   <p className="text-xs text-[rgb(var(--muted))]">{r.releaseRequest?.reason}{r.releaseRequest?.by ? `, đề nghị bởi ${userName(r.releaseRequest.by)}` : ''}{r.releaseRequest ? `, ${fmtDate(r.releaseRequest.at)}` : ''}</p>
                 </div>
                 <button className={cn(canRelease(r) ? btnPrimary : btnGhost, btnSm)} onClick={() => setDecide(r)}>{canRelease(r) ? 'Xác nhận' : 'Chờ TP / Giám đốc'}</button>
@@ -233,7 +233,7 @@ export function InventoryPage() {
       <div className="flex flex-col gap-2 rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden />
-          <input className={cn(inputCls, 'border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 pl-9')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm SKU, dự án, khách hàng..." aria-label="Tìm hàng giữ chỗ" />
+          <input className={cn(inputCls, 'border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 pl-9')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm SKU, dự án, khách hàng…" aria-label="Tìm hàng giữ chỗ" />
         </div>
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={st} onChange={(e) => setSt(e.target.value)} aria-label="Trạng thái">
           <option value="ACTIVE">Đang trong kho</option>
@@ -257,7 +257,7 @@ export function InventoryPage() {
           <Table stt={Math.max(0, paged.from - 1)} head={['SKU', 'Giữ cho', 'Nguồn', 'Ngày nhập', 'Còn trong kho', 'Đã giao', 'Trạng thái', 'Thao tác']} minW={1000}>
             {paged.slice.map((r) => (
               <tr key={r.id} className={rowCls}>
-                <td className={tdFirst}><p className="font-mono text-xs text-[rgb(var(--accent-fg))]">{r.sku}</p><p className="max-w-[220px] truncate text-xs text-[rgb(var(--muted))]">{skus.find((s) => s.sku === r.sku)?.name}</p></td>
+                <td className={tdFirst}><p className="code-chip">{r.sku}</p><p className="max-w-[220px] truncate text-xs text-[rgb(var(--muted))]">{skus.find((s) => s.sku === r.sku)?.name}</p></td>
                 <td className={tdCls}><p>{allocName(r)}</p><p className="text-xs text-[rgb(var(--muted))]">{r.kind === 'LEAD' ? 'Dự án' : 'Khách hàng'}</p></td>
                 <td className={cn(tdCls, 'text-xs')}>{source(r)}</td>
                 <td className={cn(tdCls, 'tabular-nums')}>{fmtDate(r.receivedAt)}</td>

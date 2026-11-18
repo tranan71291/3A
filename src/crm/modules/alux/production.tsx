@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { Pagination, usePaged } from '../../components/controls';
 import { Drawer } from '../../components/drawer';
 import { useInRange } from '../../components/filters';
-import { Chip, EmptyState, Field, Panel, StatCard, Table, useSticky } from '../../components/ui';
+import { Sla } from '../../components/sla';
+import { Chip, Code, EmptyState, Field, Panel, StatCard, Table, useSticky } from '../../components/ui';
 import { btnBase, btnGhost, btnPrimary, btnSm, C, DESIGN_STATUS, DESIGN_STEPS, fmtDate, fmtDT, inputCls, jobCustName, kpiGrid, rowCls, tdCls, tdFirst, tdLast, useApp, WO_STAGE, WO_STAGES, woLate } from '../../lib/core';
 import type { DesignStatus, WorkOrder, WoStage } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -34,7 +35,7 @@ export function WoActionButton({ w, onSchedule }: { w: WorkOrder; onSchedule: (w
   const move = useWoActions();
   const ins = installJobs.find((i) => i.workOrderId === w.id);
   if (w.stage === 'WAITING') return <button className={cn(btnGhost, btnSm, 'whitespace-nowrap')} disabled={!canDo('production.manage')} onClick={(e) => { e.stopPropagation(); move(w, 'IN_PROGRESS'); }}><Factory className="h-3.5 w-3.5" aria-hidden />Bắt đầu sản xuất</button>;
-  if (w.stage === 'IN_PROGRESS') return <button className={cn(btnBase, btnSm, 'whitespace-nowrap bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} disabled={!canDo('production.manage')} onClick={(e) => { e.stopPropagation(); move(w, 'DONE'); }}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Xác nhận hoàn thành</button>;
+  if (w.stage === 'IN_PROGRESS') return <button className={cn(btnBase, btnSm, 'whitespace-nowrap border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]')} disabled={!canDo('production.manage')} onClick={(e) => { e.stopPropagation(); move(w, 'DONE'); }}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Xác nhận hoàn thành</button>;
   if (ins) return <span className="whitespace-nowrap text-xs text-[rgb(var(--success-fg))]">{ins.status === 'ACCEPTED' ? 'Đã lắp đặt' : `Hẹn lắp ${ins.from ? fmtDT(ins.from) : ''}`}</span>;
   return <button className={cn(btnPrimary, btnSm, 'whitespace-nowrap')} disabled={!canDo('install.manage') && !canDo('production.manage')} onClick={(e) => { e.stopPropagation(); onSchedule(w); }}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Lên lịch lắp đặt</button>;
 }
@@ -174,18 +175,21 @@ export function ProductionModule() {
         <div className="mb-3 flex flex-wrap items-center gap-2"><SearchBox value={q} onChange={setQ} placeholder="Tìm mã lệnh, khách hàng, địa chỉ" /></div>
         <StagePills items={[...WO_STAGES.map((s) => ({ id: s as WoStage | 'ALL', label: WO_STAGE[s].label, count: count(s) })), { id: 'ALL', label: 'Tất cả', count: visible.length }]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} />
         <div className="mt-3">
-          <Table head={['STT', 'Lệnh SX', 'Khách hàng', 'Hạng mục', 'Ngày nhận', 'Hạn hoàn thành', 'Trạng thái', 'Thao tác']} minW={1080}>
+          <Table head={['STT', 'Lệnh SX', 'Khách hàng', 'Đội trưởng', 'Hạng mục', <span key="n" className="block text-right">Số mục</span>, 'Ngày nhận', 'Hạn xong', 'Trạng thái', 'Thiết kế', 'Thao tác']} minW={1320}>
             {paged.slice.map((w, i) => {
               const j = jobOf(w);
               return (
                 <tr key={w.id} className={cn(rowCls, 'cursor-pointer')} onClick={() => setOpen(w.id)}>
                   <td className={cn(tdFirst, 'w-12 tabular-nums text-[rgb(var(--muted))]')}>{(paged.page - 1) * 20 + i + 1}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap font-mono text-xs text-[rgb(var(--accent-fg))]')}>{w.code}</td>
-                  <td className={tdCls}><p className="font-medium">{j ? jobCustName(j, customers) : customers.find((c) => c.id === w.customerId)?.name ?? '—'}</p><p className="text-xs text-[rgb(var(--muted))]">{userName(w.leaderId)}</p></td>
-                  <td className={cn(tdCls, 'max-w-[240px]')}><p className="line-clamp-2 text-xs">{j?.title ?? w.title}</p><p className="text-[11px] text-[rgb(var(--muted))]">{w.items.length} hạng mục</p></td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-xs tabular-nums')}>{fmtDate(w.startDate)}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-xs tabular-nums', woLate(w) && 'text-[rgb(var(--danger-fg))]')}>{fmtDate(w.dueDate)}{woLate(w) && <p className="text-[11px]">Trễ hạn</p>}</td>
-                  <td className={tdCls}><Chip tone={WO_STAGE[w.stage].tone}>{WO_STAGE[w.stage].label}</Chip>{w.design && w.stage !== 'DONE' && <p className="mt-1 text-[11px] text-[rgb(var(--muted))]">{DESIGN_STATUS[w.design.status].label}</p>}</td>
+                  <td className={cn(tdCls, woLate(w) && 'shadow-[inset_3px_0_0_rgb(var(--danger))]')}><Code>{w.code}</Code></td>
+                  <td className={tdCls}><span className="block max-w-[220px] truncate font-medium">{j ? jobCustName(j, customers) : customers.find((c) => c.id === w.customerId)?.name ?? '—'}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{userName(w.leaderId)}</td>
+                  <td className={tdCls}><span className="block max-w-[240px] truncate" title={j?.title ?? w.title}>{j?.title ?? w.title}</span></td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{w.items.length}</td>
+                  <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(w.startDate)}</td>
+                  <td className={tdCls}>{woLate(w) ? <Sla tone="over">{fmtDate(w.dueDate)} · trễ</Sla> : <span className="font-mono text-xs text-[rgb(var(--fg2))]">{fmtDate(w.dueDate)}</span>}</td>
+                  <td className={tdCls}><Chip tone={WO_STAGE[w.stage].tone}>{WO_STAGE[w.stage].label}</Chip></td>
+                  <td className={cn(tdCls, 'text-[13px] text-[rgb(var(--muted))]')}>{w.design && w.stage !== 'DONE' ? DESIGN_STATUS[w.design.status].label : '—'}</td>
                   <td className={tdLast}><WoActionButton w={w} onSchedule={setSchedule} /></td>
                 </tr>
               );

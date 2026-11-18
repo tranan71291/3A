@@ -63,7 +63,7 @@ export function GetflyOrdersPanel({ customer: c }: { customer: Customer }) {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Field label="Từ ngày"><input className={cn(inputCls, 'py-1.5')} type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
         <Field label="Đến ngày"><input className={cn(inputCls, 'py-1.5')} type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
-        <Field label="Mã đơn"><input className={cn(inputCls, 'py-1.5')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="DH18..." /></Field>
+        <Field label="Mã đơn"><input className={cn(inputCls, 'py-1.5')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="DH18…" /></Field>
         <Field label="Giá trị đơn">
           <select className={cn(inputCls, 'py-1.5')} value={band} onChange={(e) => setBand(e.target.value as typeof band)}>
             <option value="ALL">Mọi giá trị</option>

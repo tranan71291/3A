@@ -4,7 +4,7 @@ import { Fragment, useState } from 'react';
 import { AlertTriangle, ArrowRight, Boxes, CheckCircle2, Download, PackageMinus, PackagePlus, Plus, Printer, RefreshCw, Search, Warehouse, X } from 'lucide-react';
 import { Pagination, usePaged } from '../../components/controls';
 import { useInRange } from '../../components/filters';
-import { Chip, EmptyState, Field, Modal, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, Modal, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { addWh, btnAccent, btnDanger, btnGhost, btnPrimary, btnSm, C, compact, downloadBlob, esc, fmtDate, fold, inputBase, inputCls, kpiGrid, MAIN_WH, MOVE_LABEL, moveEffect, nextVoucherCode, rangeText, reservedInStock, rowCls, tdCls, tdFirst, tdLast, todayISO, uid, useApp, V_STATUS, VOUCHER_META, vStatusLabel, whQty } from '../../lib/core';
 import { xlsxBlob } from '../../lib/csv';
 import type { SkuItem, StockMove, StockVoucher, SvLine, VoucherStatus, VoucherType, WarehouseInfo, WhTab } from '../../lib/types';
@@ -139,11 +139,11 @@ export function VoucherModal({ type, voucher, preset, onClose }: { type: Voucher
         )}
         <div className="overflow-x-auto rounded-md border border-[rgb(var(--line))]">
           <table className="dt w-full min-w-[640px] text-left text-sm">
-            <thead className="bg-[rgb(var(--raised))] text-[11px] uppercase tracking-wider text-[rgb(var(--muted))]"><tr><th className="px-3 py-2">Mã / tên hàng</th><th className="px-3 py-2 text-right">{type === 'COUNT' ? 'Sổ sách' : 'Tồn kho đi/nhận'}</th><th className="px-3 py-2 text-right">{type === 'COUNT' ? 'Thực tế đếm' : 'Số lượng'}</th>{type === 'COUNT' ? <th className="px-3 py-2 text-right">Chênh lệch</th> : <><th className="px-3 py-2 text-right">Đơn giá</th><th className="px-3 py-2 text-right">Thành tiền</th></>}<th /></tr></thead>
+            <thead className="bg-[rgb(var(--raised))] text-[11px] text-[rgb(var(--muted))]"><tr><th className="px-3 py-2">Mã / tên hàng</th><th className="px-3 py-2 text-right">{type === 'COUNT' ? 'Sổ sách' : 'Tồn kho đi/nhận'}</th><th className="px-3 py-2 text-right">{type === 'COUNT' ? 'Thực tế đếm' : 'Số lượng'}</th>{type === 'COUNT' ? <th className="px-3 py-2 text-right">Chênh lệch</th> : <><th className="px-3 py-2 text-right">Đơn giá</th><th className="px-3 py-2 text-right">Thành tiền</th></>}<th /></tr></thead>
             <tbody>
               {f.lines.map((l, i) => { const s = skuOf(l.sku); const sys = type === 'COUNT' ? (ro ? l.system ?? 0 : whQty(s ?? ({} as SkuItem), f.whId, warehouses)) : s ? whQty(s, f.whId, warehouses) : 0; const diff = ro && type === 'COUNT' ? l.diff ?? l.qty - sys : l.qty - sys; return (
                 <tr key={l.sku} className="border-t border-[rgb(var(--line))]">
-                  <td className="px-3 py-2"><p className="font-mono text-xs text-[rgb(var(--accent-fg))]">{l.sku}</p><p className="max-w-[260px] truncate text-xs text-[rgb(var(--muted))]">{s?.name} · {s?.unit}</p></td>
+                  <td className="px-3 py-2"><p className="code-chip">{l.sku}</p><p className="max-w-[260px] truncate text-xs text-[rgb(var(--muted))]">{s?.name} · {s?.unit}</p></td>
                   <td className="px-3 py-2 text-right tabular-nums text-[rgb(var(--muted))]">{s ? sys.toLocaleString('vi-VN') : '—'}</td>
                   <td className="px-3 py-2 text-right"><input type="number" min={0} disabled={ro} className={cn(inputBase, 'w-24 py-1 text-right')} value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} aria-label={`Số lượng ${l.sku}`} /></td>
                   {type === 'COUNT' ? <td className={cn('px-3 py-2 text-right font-semibold tabular-nums', diff > 0 ? 'text-[rgb(var(--success-fg))]' : diff < 0 ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')}>{diff > 0 ? '+' : ''}{diff.toLocaleString('vi-VN')}</td>
@@ -180,7 +180,7 @@ export function VoucherList({ type }: { type: VoucherType }) {
   const whName = (id?: string) => warehouses.find((w) => w.id === id)?.name ?? '—';
   const t = fold(q.trim());
   const list = stockVouchers.filter((v) => v.type === type && inR(v.date)).filter((v) => (st === 'ALL' || v.status === st) && (wh === 'ALL' || v.whId === wh || v.toWhId === wh) && (!t || fold(`${v.code} ${v.partner ?? ''} ${v.ref ?? ''} ${v.note ?? ''} ${v.lines.map((l) => l.sku).join(' ')}`).includes(t))).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
-  const srt = useSort(`Voucher.${type}`, list, { 0: (v) => v.code, 1: (v) => v.date });
+  const srt = useSort(`Voucher40.${type}`, list, { 0: (v) => v.code, 2: (v) => v.date });
   const paged = usePaged(srt.rows, 15);
   const pend = stockVouchers.filter((v) => v.type === type && v.status === 'PENDING' && canApprove(v)).length;
   return (
@@ -195,15 +195,18 @@ export function VoucherList({ type }: { type: VoucherType }) {
       <Panel title={`${list.length} ${meta.label.toLowerCase()}`}>
         {list.length ? (
           <>
-            <Table stt={Math.max(0, paged.from - 1)} head={['Mã phiếu', 'Ngày', type === 'TRANSFER' ? 'Kho đi → kho đến' : 'Kho', type === 'IN' ? 'Nhà cung cấp / loại' : type === 'OUT' ? 'Khách hàng / loại' : 'Diễn giải', 'Hàng hóa', 'Người lập', 'Trạng thái']} minW={980} sort={srt.th}>
+            <Table stt={Math.max(0, paged.from - 1)} head={['Mã phiếu', 'Chứng từ gốc', 'Ngày', type === 'TRANSFER' ? 'Kho đi → kho đến' : 'Kho', type === 'IN' ? 'Nhà cung cấp' : type === 'OUT' ? 'Khách hàng' : 'Diễn giải', 'Lý do', <span key="m" className="block text-right">Số mã</span>, <span key="q" className="block text-right">{type === 'COUNT' ? 'Lệch' : 'Số lượng'}</span>, 'Người lập', 'Trạng thái']} minW={1200} sort={srt.th}>
               {paged.slice.map((v) => (
                 <tr key={v.id} className={cn(rowCls, 'cursor-pointer')} onClick={() => setOpen(v)}>
-                  <td className={cn(tdFirst, 'whitespace-nowrap font-mono text-xs font-semibold text-[rgb(var(--secondary-fg))]')}>{v.code}{v.ref && <p className="font-sans font-normal text-[rgb(var(--muted))]">{v.ref}</p>}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap')}>{fmtDate(v.date)}</td>
+                  <td className={tdFirst}><Code>{v.code}</Code></td>
+                  <td className={tdCls}>{v.ref ? <Code>{v.ref}</Code> : <span className="text-[rgb(var(--faint))]">—</span>}</td>
+                  <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(v.date)}</td>
                   <td className={tdCls}>{type === 'TRANSFER' ? <>{whName(v.whId)} <ArrowRight className="inline h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden /> {whName(v.toWhId)}</> : whName(v.whId)}</td>
-                  <td className={tdCls}><p className="max-w-[260px] truncate">{v.partner ?? v.note ?? '—'}</p><p className="text-xs text-[rgb(var(--muted))]">{v.reason}</p></td>
-                  <td className={tdCls}><p>{v.lines.length} mã · {v.lines.reduce((a, l) => a + (type === 'COUNT' ? Math.abs(l.diff ?? 0) : l.qty), 0).toLocaleString('vi-VN')} {type === 'COUNT' ? 'lệch' : 'đơn vị'}</p><p className="max-w-[220px] truncate text-xs text-[rgb(var(--muted))]">{v.lines.map((l) => l.sku).join(', ')}</p></td>
-                  <td className={tdCls}>{userName(v.requestedBy)}</td>
+                  <td className={tdCls}><span className="block max-w-[240px] truncate font-medium" title={v.partner ?? v.note}>{v.partner ?? v.note ?? '—'}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[180px] truncate">{v.reason || '—'}</span></td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')} title={v.lines.map((l) => l.sku).join(', ')}>{v.lines.length}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{v.lines.reduce((a, l) => a + (type === 'COUNT' ? Math.abs(l.diff ?? 0) : l.qty), 0).toLocaleString('vi-VN')}</td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{userName(v.requestedBy)}</td>
                   <td className={tdLast}><Chip tone={V_STATUS[v.status].tone}>{vStatusLabel(v)}</Chip></td>
                 </tr>
               ))}
@@ -240,21 +243,22 @@ export function StockMatrix() {
         <Tabs variant="pill" tabs={[{ id: 'IN' as const, label: 'Còn hàng' }, { id: 'OUT' as const, label: 'Hết hàng' }, { id: 'ALL' as const, label: 'Tất cả' }]} value={only} onChange={(v) => { setOnly(v); paged.setPage(1); }} />
       </div>
       <div className="overflow-x-auto rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))]">
-        <table className="w-full min-w-[720px] text-sm">
-          <thead className="bg-[rgb(var(--raised))] text-[11px] uppercase tracking-wider text-[rgb(var(--muted))]">
-            <tr><th rowSpan={2} className="border-b border-[rgb(var(--line))] px-3 py-2 text-left font-semibold">Mã / tên hàng</th><th rowSpan={2} className="border-b border-[rgb(var(--line))] px-3 py-2 text-left font-semibold">ĐVT</th><th colSpan={2} className="border-b border-l border-[rgb(var(--line))] px-3 py-2 text-center font-semibold text-[rgb(var(--fg))]">Tổng</th>{whs.map((w) => <th key={w.id} colSpan={2} className="border-b border-l border-[rgb(var(--line))] px-3 py-2 text-center font-semibold">{w.name}</th>)}</tr>
+        <table className="w-full min-w-[820px] text-sm">
+          <thead className="text-[12.5px] text-[rgb(var(--muted))]">
+            <tr><th rowSpan={2} className="border-b border-[rgb(var(--line))] px-3 py-2 text-left font-normal">Mã hàng</th><th rowSpan={2} className="border-b border-[rgb(var(--line))] px-3 py-2 text-left font-normal">Tên hàng</th><th rowSpan={2} className="border-b border-[rgb(var(--line))] px-3 py-2 text-left font-normal">ĐVT</th><th colSpan={2} className="border-b border-l border-[rgb(var(--line))] px-3 py-2 text-center font-normal text-[rgb(var(--fg))]">Tổng</th>{whs.map((w) => <th key={w.id} colSpan={2} className="border-b border-l border-[rgb(var(--line))] px-3 py-2 text-center font-normal">{w.name}</th>)}</tr>
             <tr><th className={th}>Thực tế</th><th className={th}>Khả dụng</th>{whs.map((w) => <Fragment key={w.id}><th className={th}>Thực tế</th><th className={th}>Khả dụng</th></Fragment>)}</tr>
           </thead>
           <tbody>
             {paged.slice.map((s) => (
-              <tr key={s.sku} className="border-b border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--secondary)/0.06)]">
-                <td className="px-3 py-2"><p className="font-mono text-xs font-semibold text-[rgb(var(--accent-fg))]">{s.sku}</p><p className="max-w-[320px] truncate text-xs text-[rgb(var(--muted))]">{s.name}</p></td>
-                <td className="px-3 py-2 text-xs">{s.unit}</td>
-                <td className="border-l border-[rgb(var(--line))] px-3 py-2 text-right font-semibold">{n(actual(s, 'ALL'))}</td><td className="px-3 py-2 text-right">{n(available(s, 'ALL'))}</td>
+              <tr key={s.sku} className="h-11 whitespace-nowrap border-b border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--ink)/0.03)]">
+                <td className="px-3 py-2"><Code>{s.sku}</Code></td>
+                <td className="px-3 py-2"><span className="block max-w-[320px] truncate font-medium" title={s.name}>{s.name}</span></td>
+                <td className="px-3 py-2 text-[rgb(var(--fg2))]">{s.unit}</td>
+                <td className="border-l border-[rgb(var(--line))] px-3 py-2 text-right font-medium tabular-nums">{n(actual(s, 'ALL'))}</td><td className="px-3 py-2 text-right">{n(available(s, 'ALL'))}</td>
                 {whs.map((w) => <Fragment key={w.id}><td className="border-l border-[rgb(var(--line))] px-3 py-2 text-right">{n(actual(s, w.id))}</td><td className="px-3 py-2 text-right">{n(available(s, w.id))}</td></Fragment>)}
               </tr>
             ))}
-            {!list.length && <tr><td colSpan={4 + whs.length * 2} className="px-3 py-8 text-center text-sm text-[rgb(var(--muted))]">Không có mặt hàng phù hợp.</td></tr>}
+            {!list.length && <tr><td colSpan={5 + whs.length * 2} className="px-3 py-8 text-center text-sm text-[rgb(var(--muted))]">Không có mặt hàng phù hợp.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -338,10 +342,12 @@ export function StockXnt() {
         <StatCard label="Tồn cuối kỳ" value={compact(sum('close', true))} sub={`${cost ? 'Theo giá vốn' : 'Theo giá bán lẻ'} · ${rangeText(range)}`} icon={Warehouse} color={C.blue} />
       </div>
       <Panel title={`Xuất nhập tồn ${rangeText(range)}`}>
-        <Table stt={Math.max(0, paged.from - 1)} head={['Mã / tên hàng', 'Tồn đầu', 'Nhập', 'Xuất', 'Tồn cuối', 'Giá trị cuối kỳ']} minW={760}>
+        <Table stt={Math.max(0, paged.from - 1)} head={['Mã hàng', 'Tên hàng', 'ĐVT', 'Tồn đầu', 'Nhập', 'Xuất', 'Tồn cuối', 'Giá trị cuối kỳ']} minW={980}>
           {paged.slice.map((r) => (
             <tr key={r.s.sku} className={rowCls}>
-              <td className={tdFirst}><p className="font-mono text-xs font-semibold text-[rgb(var(--accent-fg))]">{r.s.sku}</p><p className="max-w-[320px] truncate text-xs text-[rgb(var(--muted))]">{r.s.name} · {r.s.unit}</p></td>
+              <td className={tdFirst}><Code>{r.s.sku}</Code></td>
+              <td className={tdCls}><span className="block max-w-[320px] truncate font-medium" title={r.s.name}>{r.s.name}</span></td>
+              <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{r.s.unit}</td>
               <td className={cn(tdCls, 'text-right tabular-nums')}>{r.open.toLocaleString('vi-VN')}</td>
               <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--success-fg))]')}>{r.nin ? r.nin.toLocaleString('vi-VN') : '—'}</td>
               <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--danger-fg))]')}>{r.nout ? r.nout.toLocaleString('vi-VN') : '—'}</td>
@@ -362,14 +368,21 @@ export function WarehouseModule() {
   const [tab, setTab] = useSticky<WhTab>('WarehouseModule.tab', 'stock');
   const c = (t: VoucherType) => stockVouchers.filter((v) => v.type === t).length;
   const p = stockVouchers.filter((v) => v.status === 'PENDING').length;
+  const vt = (['in', 'out', 'transfer', 'count'] as WhTab[]).includes(tab);
   return (
     <div className="space-y-4">
-      {p > 0 && tab === 'stock' && <p className="flex items-center gap-2 rounded-md border border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--accent)/0.08)] px-3 py-2 text-sm"><AlertTriangle className="h-4 w-4 text-[rgb(var(--accent))]" aria-hidden />{p} phiếu kho đang chờ duyệt.</p>}
+      {p > 0 && tab === 'stock' && <p className="flex items-center gap-2 text-sm text-[rgb(var(--fg2))]"><AlertTriangle className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{p} phiếu kho đang chờ duyệt<button className="font-medium text-[rgb(var(--accent-fg))] hover:underline" onClick={() => setTab('in')}>Xem phiếu</button></p>}
       <Tabs tabs={[
-        { id: 'stock' as WhTab, label: 'Tồn kho' }, { id: 'in' as WhTab, label: 'Nhập kho', count: c('IN') }, { id: 'out' as WhTab, label: 'Xuất kho', count: c('OUT') },
-        { id: 'transfer' as WhTab, label: 'Chuyển kho', count: c('TRANSFER') }, { id: 'count' as WhTab, label: 'Kiểm kho', count: c('COUNT') }, { id: 'card' as WhTab, label: 'Thẻ kho' },
+        { id: 'stock' as WhTab, label: 'Tồn kho' }, { id: 'in' as WhTab, label: 'Phiếu kho', count: stockVouchers.length }, { id: 'card' as WhTab, label: 'Thẻ kho' },
         { id: 'xnt' as WhTab, label: 'Xuất nhập tồn' }, { id: 'list' as WhTab, label: 'Danh mục kho', count: warehouses.length },
-      ]} value={tab} onChange={setTab} />
+      ]} value={vt ? 'in' : tab} onChange={setTab} />
+      {vt && (
+        <div className="flex rounded-lg bg-[rgb(var(--raised))] p-0.5 sm:w-fit" role="radiogroup" aria-label="Loại phiếu">
+          {([['in', 'Nhập', 'IN'], ['out', 'Xuất', 'OUT'], ['transfer', 'Chuyển', 'TRANSFER'], ['count', 'Kiểm', 'COUNT']] as const).map(([id, label, t]) => (
+            <button key={id} role="radio" aria-checked={tab === id} onClick={() => setTab(id)} className={cn('flex-1 rounded-md px-3.5 py-1.5 text-sm sm:flex-none', tab === id ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>{label}<span className="ml-1.5 font-mono text-[11.5px] text-[rgb(var(--muted))]">{c(t)}</span></button>
+          ))}
+        </div>
+      )}
       {tab === 'stock' && <StockMatrix />}
       {tab === 'in' && <VoucherList type="IN" />}
       {tab === 'out' && <VoucherList type="OUT" />}

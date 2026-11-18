@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { AlertTriangle, KeyRound, Pencil, Plus, Settings, Trash2, Upload, X, Zap } from 'lucide-react';
-import { Avatar } from '../../components/controls';
+import { Avatar, RowMenu } from '../../components/controls';
 import { CatalogTable, codeFrom, Collapse, ConfirmDialog } from '../../components/crud';
-import { Chip, Field, Modal, MoneyInput, Panel, ProgressBar, SideSheet, Table, useOverlay } from '../../components/ui';
+import { Chip, Code, Field, Modal, MoneyInput, Panel, ProgressBar, SideSheet, Table, useOverlay } from '../../components/ui';
 import { fundUsage } from '../../lib/business';
 import { cloudMessage } from '../../lib/cloud';
 import { btnGhost, btnPrimary, btnSm, C, cloud, CLOUD_ON, compact, deptIcon, digits, FUND_LABEL, inputBase, inputCls, OPEN_STATUSES, POP_LABEL, progYear, ROLE_LABEL, rowCls, SETTLEMENT_LABEL, shrinkImage, tdCls, tdFirst, tdLast, tierFor, TONES, useApp, usedByType, vnd } from '../../lib/core';
@@ -43,7 +43,7 @@ export function MyAccountSheet({ onClose, onPassword }: { onClose: () => void; o
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Họ tên"><input className={inputCls} value={f.name} onChange={(e) => set('name', e.target.value)} /></Field>
           <Field label="Chức danh"><input className={inputCls} value={f.title} onChange={(e) => set('title', e.target.value)} placeholder="VD: Trưởng phòng Kinh doanh" /></Field>
-          <Field label="Điện thoại"><input className={inputCls} value={f.phone} onChange={(e) => set('phone', e.target.value)} inputMode="tel" /></Field>
+          <Field label="Điện thoại"><input type="tel" autoComplete="tel" className={inputCls} inputMode="tel" value={f.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
           <Field label="Ngày sinh"><input type="date" className={inputCls} value={f.birthday} onChange={(e) => set('birthday', e.target.value)} /></Field>
           <Field label="Email đăng nhập" className="sm:col-span-2"><input className={cn(inputCls, 'opacity-70')} value={me.email} readOnly /></Field>
         </div>
@@ -103,20 +103,21 @@ export function OrgSettings() {
         summary={`${departments.length} phòng, ${departments.filter((d) => d.receivesLeads && d.active).length} phòng nhận lead`}
         action={<button className={cn(btnPrimary, btnSm)} disabled={!canEdit} onClick={() => setDeptModal({})}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm phòng ban</button>}
       >
-        <Table head={['Phòng ban', 'Trưởng phòng', 'Nhân sự', 'Nhận lead / SLA', 'Lead đang xử lý', 'Trạng thái', '']} minW={900}>
+        <Table head={['Mã', 'Phòng ban', 'Trưởng phòng', <span key="n" className="block text-right">Nhân sự</span>, 'Nhận lead', 'SLA', <span key="l" className="block text-right">Lead đang xử lý</span>, 'Trạng thái', '']} minW={1080}>
           {departments.map((d) => {
             const Icon = deptIcon(d.code);
             return (
               <tr key={d.code} className={rowCls}>
-                <td className={tdFirst}><p className="flex items-center gap-2 font-medium text-[rgb(var(--fg))]"><Icon className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{d.name}</p><p className="text-xs text-[rgb(var(--muted))]">{d.code}</p></td>
+                <td className={tdFirst}><Code>{d.code}</Code></td>
+                <td className={tdCls}><span className="flex items-center gap-2 font-medium"><Icon className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{d.name}</span></td>
                 <td className={tdCls}>{d.headId ? userName(d.headId) : <span className="text-[rgb(var(--muted))]">Chưa chỉ định</span>}</td>
-                <td className={cn(tdCls, 'tabular-nums')}>{users.filter((u) => u.dept === d.code && u.active).length}</td>
-                <td className={tdCls}>{d.receivesLeads ? <span>Có, {d.slaMinutes} phút</span> : <span className="text-[rgb(var(--muted))]">Không nhận lead</span>}</td>
-                <td className={cn(tdCls, 'tabular-nums')}>{leads.filter((l) => l.dept === d.code && OPEN_STATUSES.includes(l.status)).length}</td>
+                <td className={cn(tdCls, 'text-right tabular-nums')}>{users.filter((u) => u.dept === d.code && u.active).length}</td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{d.receivesLeads ? 'Có' : 'Không'}</td>
+                <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{d.receivesLeads ? `${d.slaMinutes} phút` : '—'}</td>
+                <td className={cn(tdCls, 'text-right tabular-nums')}>{leads.filter((l) => l.dept === d.code && OPEN_STATUSES.includes(l.status)).length}</td>
                 <td className={tdCls}><Chip tone={d.active ? 'teal' : 'muted'}>{d.active ? 'Hoạt động' : 'Ngừng'}</Chip></td>
                 <td className={cn(tdLast, 'whitespace-nowrap text-right')}>
-                  <button className={cn(btnGhost, 'mr-1 p-1.5')} disabled={!canEdit} onClick={() => setDeptModal({ code: d.code })} aria-label={`Sửa ${d.name}`}><Pencil className="h-3.5 w-3.5" /></button>
-                  <button className={cn(btnGhost, 'p-1.5 hover:text-[rgb(var(--danger-fg))]')} disabled={!canEdit} onClick={() => askDeleteDept(d)} aria-label={`Xóa ${d.name}`}><Trash2 className="h-3.5 w-3.5" /></button>
+                  <RowMenu label={`Thao tác ${d.name}`} items={[{ label: 'Sửa', icon: Pencil, disabled: !canEdit, onClick: () => setDeptModal({ code: d.code }) }, { label: 'Xóa', icon: Trash2, danger: true, disabled: !canEdit, onClick: () => askDeleteDept(d) }]} />
                 </td>
               </tr>
             );
@@ -137,18 +138,17 @@ export function OrgSettings() {
           </div>
         }
       >
-        <Table head={['Nhân sự', 'Vai trò', 'Phòng ban', 'Hạn mức duyệt', 'Trạng thái', '']} minW={880}>
+        <Table head={['Nhân sự', 'Email', 'Vai trò', 'Chức vụ', 'Phòng ban', <span key="h" className="block text-right">Hạn mức duyệt</span>, 'Trạng thái', '']} minW={1100}>
           {shownUsers.map((u) => {
             const headOf = departments.find((d) => d.headId === u.id);
             return (
               <tr key={u.id} className={rowCls}>
                 <td className={tdFirst}>
-                  <div className="flex items-center gap-3">
-                    <Avatar name={u.name} size={32} />
-                    <div><p className="text-[rgb(var(--fg))]">{u.name}{u.id === me.id && <span className="ml-2 text-xs text-[rgb(var(--muted))]">(bạn)</span>}</p><p className="text-xs text-[rgb(var(--muted))]">{u.email}</p></div>
-                  </div>
+                  <span className="flex items-center gap-2"><Avatar name={u.name} size={24} /><span className="font-medium">{u.name}</span>{u.id === me.id && <span className="text-xs text-[rgb(var(--muted))]">(bạn)</span>}</span>
                 </td>
-                <td className={tdCls}>{ROLE_LABEL[u.role]}{headOf && <p className="text-xs text-[rgb(var(--accent-fg))]">Trưởng {headOf.short}</p>}</td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{u.email}</td>
+                <td className={tdCls}>{ROLE_LABEL[u.role]}</td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{headOf ? `Trưởng ${headOf.short}` : '—'}</td>
                 <td className={tdCls}>{dept(u.dept)?.short ?? <span className="text-[rgb(var(--muted))]">Ban Giám đốc</span>}</td>
                 <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{u.approvalLimit ? compact(u.approvalLimit) : <span className="text-[rgb(var(--muted))]">—</span>}</td>
                 <td className={tdCls}>

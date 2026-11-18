@@ -110,7 +110,7 @@ export function BusinessModulesPanel() {
           { title: 'Kế toán', list: ['cashbook'] as Module[] },
         ].map((g) => (
           <div key={g.title} className="rounded-md border border-[rgb(var(--line))] p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[rgb(var(--muted))]">{g.title}</p>
+            <p className="mb-2 text-xs font-semibold text-[rgb(var(--muted))]">{g.title}</p>
             <ul className="space-y-1">
               {g.list.map((m) => {
                 const Icon = MODULE_ICON[m];
@@ -122,7 +122,7 @@ export function BusinessModulesPanel() {
                       <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={on} disabled={core || !canEdit} onChange={() => toggle(m)} />
                       <Icon className={cn('h-4 w-4', on ? 'text-[rgb(var(--accent))]' : 'text-[rgb(var(--muted))]')} aria-hidden />
                       <span className={on ? '' : 'text-[rgb(var(--muted))]'}>{MODULE_LABEL[m]}</span>
-                      {core && <span className="ml-auto text-[10px] text-[rgb(var(--muted))]">luôn bật</span>}
+                      {core && <span className="ml-auto text-[11px] text-[rgb(var(--muted))]">luôn bật</span>}
                     </label>
                   </li>
                 );

@@ -249,7 +249,7 @@ export function AssistantCommandBar({ onPost = (id) => window.dispatchEvent(new 
         <ul id="assist-results" role="listbox" className={cn('absolute z-50 max-h-96 overflow-y-auto rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-[var(--shadow-lg)]', variant === 'header' ? 'left-12 right-0 top-12' : 'left-3 right-3 top-[3.6rem]')}>
           {list.map((h, i) => (
             <li key={h.key} role="option" aria-selected={hi === i}>
-              {(i === 0 || list[i - 1].group !== h.group) && <p className="px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">{h.group}</p>}
+              {(i === 0 || list[i - 1].group !== h.group) && <p className="px-2.5 pb-1 pt-2 text-[11px] font-semibold text-[rgb(var(--faint))]">{h.group}</p>}
               <button className={cn('flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-left', hi === i ? 'bg-[rgb(var(--secondary)/0.12)]' : 'hover:bg-[rgb(var(--ink)/0.05)]')} onMouseEnter={() => setHi(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => run(h)}>
                 <h.icon className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />
                 <span className="min-w-0 flex-1"><span className="block truncate text-sm">{h.label}</span>{h.sub && <span className="block truncate text-xs text-[rgb(var(--muted))]">{h.sub}</span>}</span>

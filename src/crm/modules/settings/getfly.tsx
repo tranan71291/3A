@@ -183,10 +183,10 @@ export function GetflySettings() {
         <div className="mt-4 flex flex-wrap gap-2">
           <button className={btnPrimary} disabled={!canEdit || !dirty} onClick={save}>Lưu cấu hình</button>
           <button className={btnGhost} disabled={!canRun || busy !== null} onClick={test}>
-            <Plug className="h-4 w-4" aria-hidden />{busy === 'test' ? 'Đang kiểm tra...' : 'Kiểm tra kết nối'}
+            <Plug className="h-4 w-4" aria-hidden />{busy === 'test' ? 'Đang kiểm tra…' : 'Kiểm tra kết nối'}
           </button>
           <button className={btnGhost} disabled={!canRun || busy !== null || dirty} title={dirty ? 'Lưu cấu hình trước khi đồng bộ' : undefined} onClick={fullSync}>
-            <RefreshCw className={cn('h-4 w-4', busy === 'sync' && 'motion-safe:animate-spin')} aria-hidden />{busy === 'sync' ? 'Đang đồng bộ...' : 'Đồng bộ toàn bộ doanh số thủ công'}
+            <RefreshCw className={cn('h-4 w-4', busy === 'sync' && 'motion-safe:animate-spin')} aria-hidden />{busy === 'sync' ? 'Đang đồng bộ…' : 'Đồng bộ toàn bộ doanh số thủ công'}
           </button>
         </div>
         {getfly.lastFullSyncAt && <p className="mt-2 text-xs text-[rgb(var(--muted))]">Đồng bộ toàn bộ gần nhất: {new Date(getfly.lastFullSyncAt).toLocaleString('vi-VN')}</p>}
@@ -242,7 +242,7 @@ export function GetflySettings() {
                 <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={resend} disabled={!lastUid} onChange={(ev) => setResend(ev.target.checked)} />
                 Gửi lại uid của sự kiện trước (thử chống xử lý trùng)
               </label>
-              <button className={cn(btnPrimary, 'sm:col-span-2')} disabled={busy !== null} onClick={sendHook}>{busy === 'hook' ? 'Đang gửi...' : 'Gửi sự kiện tới /api/webhooks/getfly'}</button>
+              <button className={cn(btnPrimary, 'sm:col-span-2')} disabled={busy !== null} onClick={sendHook}>{busy === 'hook' ? 'Đang gửi…' : 'Gửi sự kiện tới /api/webhooks/getfly'}</button>
             </div>
           )}
         </Panel>

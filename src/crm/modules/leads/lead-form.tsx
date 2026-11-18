@@ -128,7 +128,7 @@ export function LeadFormModal({ id, asProject, onClose }: { id?: string; asProje
         )}
         <Field label="Tên công ty *" error={err('company')} className="sm:col-span-2"><input className={inputCls} value={f.company} onChange={(e) => set('company', e.target.value)} /></Field>
         <Field label="Người liên hệ *" error={err('contact')}><input className={inputCls} value={f.contact} onChange={(e) => set('contact', e.target.value)} /></Field>
-        <Field label="Số điện thoại *" error={err('phone')}><input className={inputCls} inputMode="tel" value={f.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
+        <Field label="Số điện thoại *" error={err('phone')}><input type="tel" autoComplete="tel" className={inputCls} inputMode="tel" value={f.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
         <Field label="Mã số thuế" error={err('taxCode')} hint="Dùng nhận diện khách hàng hiện hữu"><input className={inputCls} value={f.taxCode} onChange={(e) => set('taxCode', e.target.value)} /></Field>
         <Field label="Email" error={err('email')}><input className={inputCls} type="email" value={f.email} onChange={(e) => set('email', e.target.value)} /></Field>
         <Field label="Nhóm khách hàng" error={err('segment')}>
