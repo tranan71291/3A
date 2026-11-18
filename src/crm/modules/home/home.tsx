@@ -328,7 +328,7 @@ export function FeedPostCard({ p, hot, saved, onSave, onEdit, onShare, onConfirm
   const [sum, setSum] = useState(false);
   const [pick, setPick] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const pickT = useRef<ReturnType<typeof setTimeout>>();
+  const pickT = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const shareRef = useOutsideClose(shareOpen, () => setShareOpen(false));
   const patch = (fn: (x: Post) => Post) => setPosts((all) => all.map((x) => (x.id === p.id ? fn(x) : x)));
   usePostSeen(ref, p, me?.id, () => me && patch((x) => (x.views?.includes(me.id) ? x : { ...x, views: [...(x.views ?? []), me.id] })));
