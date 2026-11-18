@@ -65,7 +65,7 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
   const totals = docTotals(form);
   const special = specialTermsOf(form, cTpl, customer, skus);
   const seller = users.find((u) => u.id === baseLead?.assignee) ?? me;
-  const { vars, flags } = buildDocVars(form, { company, quoteCode: base?.code ?? '', contractCode: version > 1 ? `${code} (v${version})` : code, projectName: baseLead?.boqNote, projectCode: baseLead?.code, salesName: seller.name, salesPhone: seller.phone ?? company.phone });
+  const { vars, flags } = buildDocVars(form, { company, quoteCode: base?.code ?? '', contractCode: version > 1 ? `${code} (v${version})` : code, projectName: baseLead?.boqNote, projectCode: baseLead?.code, salesName: seller.name, salesPhone: seller.phone ?? company.phone, salesEmail: seller.email, skus });
   const html = cTpl ? renderTemplate(cTpl.body, vars, flags) : '<p>Chưa chọn mẫu hợp đồng</p>';
   const docDept = baseLead?.dept ?? customer?.dept;
   const canApprove = canDo('contract.approve') && (role === 'BOD' || (role === 'DEPT_HEAD' && docDept === me.dept));
@@ -300,7 +300,7 @@ export function TemplateEditorModal({ tpl, draft, onClose }: { tpl?: DocTemplate
     set('body', f.body.slice(0, s) + token + f.body.slice(e));
     requestAnimationFrame(() => { el.focus(); el.selectionStart = el.selectionEnd = s + token.length; });
   };
-  const sample = buildDocVars({ ...SAMPLE_FORM, txType: f.txType }, { company, quoteCode: 'BG-2026-0001', contractCode: '0001/2026/HĐ', projectName: 'Dự án mẫu', projectCode: 'LD-2026-0001', salesName: 'Nhân viên mẫu', salesPhone: '0900 000 000' });
+  const sample = buildDocVars({ ...SAMPLE_FORM, txType: f.txType }, { company, quoteCode: 'BG-2026-0001', contractCode: '0001/2026/HĐ', projectName: 'Dự án mẫu', projectCode: 'LD-2026-0001', salesName: 'Nhân viên mẫu', salesPhone: '0900 000 000', salesEmail: 'nhanvien@congty.vn' });
   const unknown = Array.from(new Set(Array.from(f.body.matchAll(/\{\{(\w+)\}\}/g)).map((m) => m[1]).filter((k) => !TEMPLATE_VARS.some(([v]) => v === k))));
   const err = f.name.trim().length < 3 ? 'Nhập tên mẫu' : !f.body.trim() ? 'Nội dung mẫu trống' : '';
   const save = () => {
@@ -386,7 +386,7 @@ export function TemplateManager() {
   const t = q.trim().toLowerCase();
   const list = (kind: DocTemplate['kind']) => docTemplates.filter((x) => x.kind === kind && (!t || x.name.toLowerCase().includes(t) || TX_TYPE[x.txType].label.toLowerCase().includes(t)));
   const nameOf = (id?: string) => docTemplates.find((x) => x.id === id)?.name ?? '—';
-  const sample = buildDocVars(SAMPLE_FORM, { company, quoteCode: 'BG-2026-0001', contractCode: '0001/2026/HĐ', projectName: 'Dự án mẫu', projectCode: 'LD-2026-0001', salesName: 'Nhân viên mẫu', salesPhone: '0900 000 000' });
+  const sample = buildDocVars(SAMPLE_FORM, { company, quoteCode: 'BG-2026-0001', contractCode: '0001/2026/HĐ', projectName: 'Dự án mẫu', projectCode: 'LD-2026-0001', salesName: 'Nhân viên mẫu', salesPhone: '0900 000 000', salesEmail: 'nhanvien@congty.vn' });
 
   const importWord = async (files: File[]) => {
     const file = files[0];

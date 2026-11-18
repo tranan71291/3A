@@ -57,7 +57,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
   const qTpl = docTemplates.find((t) => t.id === form.quoteTplId);
   const totals = docTotals(form);
   const seller = users.find((u) => u.id === lead?.assignee) ?? me;
-  const { vars, flags } = buildDocVars(form, { company, quoteCode: code, contractCode: '', projectName: lead?.boqNote, projectCode: lead?.code, salesName: seller.name, salesPhone: seller.phone ?? company.phone });
+  const { vars, flags } = buildDocVars(form, { company, quoteCode: code, contractCode: '', projectName: lead?.boqNote, projectCode: lead?.code, salesName: seller.name, salesPhone: seller.phone ?? company.phone, salesEmail: seller.email, skus });
   const html = qTpl ? renderTemplate(qTpl.body, vars, flags) : '<p>Chưa chọn mẫu báo giá</p>';
   const canSeeCost = canDo('price.viewCost');
   const costSum = form.items.reduce((a, l) => a + l.qty * (skus.find((s) => s.sku === l.sku)?.costPrice ?? 0), 0);

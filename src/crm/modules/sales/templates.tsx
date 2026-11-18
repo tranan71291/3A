@@ -131,6 +131,18 @@ export function docTotals(f: ComposerForm) {
   return { sub, vat, grand, advance: Math.round((grand * f.advancePct) / 100), guarantee: Math.round((grand * f.guaranteePct) / 100) };
 }
 
+/** v38.7: bảng hàng đầy đủ theo mẫu báo giá thiết bị vật tư (VAT từng dòng, hãng SX lấy từ danh mục sản phẩm) */
+export function itemsTableFullHtml(f: ComposerForm, skus: SkuItem[] = []) {
+  const t = docTotals(f);
+  const n0 = (v: number) => Math.round(v).toLocaleString('vi-VN');
+  const rows = f.items.map((l, i) => {
+    const amount = l.qty * l.price, vat = Math.round((amount * f.vatPct) / 100);
+    return `<tr><td class="c">${i + 1}</td><td class="c">${esc(l.sku)}</td><td>${esc(l.name)}</td><td class="c">${esc(skus.find((x) => x.sku === l.sku)?.brand ?? '')}</td><td class="c">${esc(l.unit)}</td><td class="c">${l.qty.toLocaleString('vi-VN')}</td><td class="r">${n0(l.price)}</td><td class="r">${n0(vat)}</td><td class="r">${n0(amount + vat)}</td><td>${l.discountPct ? `CK ${l.discountPct}%` : ''}</td></tr>`;
+  }).join('');
+  return `<table class="items items-full"><thead><tr><th>STT</th><th>MÃ HÀNG</th><th>HẠNG MỤC</th><th>HÃNG SX</th><th>ĐƠN VỊ</th><th>SỐ LƯỢNG</th><th>ĐƠN GIÁ</th><th>VAT ${f.vatPct}%</th><th>THÀNH TIỀN</th><th>GHI CHÚ</th></tr></thead><tbody>${rows || '<tr><td colspan="10" class="c">Chưa có hàng hóa</td></tr>'}
+<tr class="total"><td colspan="7" class="c"><b>TỔNG TIỀN CÓ VAT</b></td><td class="r"><b>${n0(t.vat)}</b></td><td class="r"><b>${n0(t.grand)}</b></td><td class="c"><b>VND</b></td></tr></tbody></table>`;
+}
+
 export function itemsTableHtml(f: ComposerForm) {
   const t = docTotals(f);
   const rows = f.items.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${esc(l.sku)}</td><td>${esc(l.name)}</td><td class="c">${esc(l.unit)}</td><td class="r">${l.qty.toLocaleString('vi-VN')}</td><td class="r">${Math.round(l.price).toLocaleString('vi-VN')}</td><td class="r">${Math.round(l.qty * l.price).toLocaleString('vi-VN')}</td></tr>`).join('');
@@ -169,6 +181,10 @@ export function buildDocVars(f: ComposerForm, x: DocContext) {
     project_name: x.projectName ?? '',
     project_code: x.projectCode ?? '',
     items_table: itemsTableHtml(f),
+    items_table_full: itemsTableFullHtml(f, x.skus),
+    doc_date_long: `ngày ${String(today.getDate()).padStart(2, '0')} tháng ${String(today.getMonth() + 1).padStart(2, '0')} năm ${today.getFullYear()}`,
+    doc_revision: String(x.revision ?? 1),
+    sales_email: x.salesEmail ?? '',
     subtotal: money(t.sub),
     vat_rate: `${f.vatPct}%`,
     vat_amount: money(t.vat),

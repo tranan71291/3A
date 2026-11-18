@@ -1,17 +1,18 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Columns3, Copy, Download, Gauge, GripVertical, History, ImagePlus, Inbox, List, Lock, Package, Plus, RefreshCw, Sparkles, Trash2, TrendingUp, Upload, Wallet, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Columns3, Copy, Download, Gauge, GripVertical, History, ImagePlus, Inbox, List, Lock, Package, Plus, RefreshCw, Search, Sparkles, Trash2, TrendingUp, Upload, Wallet, X } from 'lucide-react';
+import { ConfirmDialog } from '../../components/crud';
 import { Chip, EmptyState, Field, Panel, SideSheet, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { AI_NAME, aiErrText, AUD_FIELDS, AUD_OPS, AUTO_CH, AUTO_TRIGGER, BANNER_PRESETS, BANNER_SIZE, bizMode, blocksToHtml, blocksToMarkdown, boqTotal, btnAccent, btnGhost, btnPrimary, btnSm, C, compact, CONTENT_STATUS, dayMs, downloadBlob, fillVars, fmtDate, fold, inputBase, inputCls, isoDay, JOB_LABEL, kpiGrid, LEAD_STATUS, leadAt, MKT_CH, MKT_OPEN_EVT, MKT_TABS, rowCls, shrinkImage, SOURCE_LABEL, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stHas, stickyStore, stOutlinePrompt, stSectionPrompt, stStr, STUDIO_STEPS, studioSupports, subjectOf, TASK_STATUS, tdCls, tdFirst, tdLast, uid, useApp, vAspect, vCfgOf, vImg, vKey, WRITER, WRITER_TONES } from '../../lib/core';
+import { AI_NAME, aiErrText, AUD_FIELDS, AUD_OPS, AUTO_CH, AUTO_TRIGGER, BANNER_PRESETS, BANNER_SIZE, bizMode, blocksToHtml, blocksToMarkdown, boqTotal, btnAccent, btnGhost, btnPrimary, btnSm, C, CAMP_STATUS, compact, CONTENT_STATUS, dayMs, downloadBlob, fillVars, fmtDate, fold, inputBase, inputCls, isoDay, JOB_LABEL, kpiGrid, LEAD_STATUS, leadAt, MKT_CH, MKT_OPEN_EVT, MKT_TABS, rowCls, shrinkImage, SOURCE_LABEL, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stFold, stHas, stickyStore, stOutlinePrompt, stSectionPrompt, stStr, STUDIO_STEPS, studioSupports, subjectOf, TASK_STATUS, tdCls, tdFirst, tdLast, uid, useApp, vAspect, vCfgOf, vImg, vKey, WRITER, WRITER_TONES } from '../../lib/core';
 import { downloadCsv, xlsxBlob } from '../../lib/csv';
-import type { AiJob, AppCtx, AudBase, Audience, AudOp, AudRule, AutoChannel, Automation, AutoRun, AutoStep, AutoSubject, AutoTrigger, BannerSize, BannerSpec, CalView, Campaign, CompanyInfo, ContentBlock, ContentStatus, Customer, ImgAspect, Job, Lead, MktChannel, MktContent, MktContentType, MktTab, MktTask, StArticle, StSettings, TaskStatus, TitleReport, WriterPreset } from '../../lib/types';
+import type { AiJob, AppCtx, AudBase, Audience, AudOp, AudRule, AutoChannel, Automation, AutoRun, AutoStep, AutoSubject, AutoTrigger, BannerSize, BannerSpec, CalView, Campaign, CompanyInfo, ConfirmState, ContentBlock, ContentStatus, Customer, ImgAspect, Job, Lead, MktChannel, MktContent, MktContentType, MktTab, MktTask, StArticle, StSettings, TaskStatus, TitleReport, WriterPreset } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { apiPost, parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
 import { useWriter } from '../ai/copilot-plus';
 import { loadImg } from '../ai/visual-search';
 import { applyWatermark, getPlatform, stClip, StudioWorkspace } from './content-studio';
-import { AutomationHub, CampaignSheet, ImageStudioTab, TaskSheet, vText } from './content-workspace';
+import { AutomationHub, CampaignRowMenu, CampaignSheet, ContentRowMenu, ImageStudioTab, TaskRowMenu, TaskSheet, vText } from './content-workspace';
 import { Switch } from '../platform/console';
 
 /** Kết quả chiến dịch: lead theo kênh nguồn trong thời gian chạy (+30 ngày), doanh thu từ lead đã chốt / đơn đã ký */
@@ -423,6 +424,8 @@ export function AiContentWorker() {
 export function ContentStudio() {
   const { contents, campaigns, userName, canDo } = useApp();
   const [edit, setEdit] = useState<MktContent | null | 'new'>(null);
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [q, setQ] = useState('');
   const [openId, setOpenId] = useSticky<string | null>('Mkt.openContent', null);
   const [st, setSt] = useSticky<'ALL' | ContentStatus>('Mkt.cst', 'ALL');
   useEffect(() => { if (openId) { const c = contents.find((x) => x.id === openId); if (c) setEdit(c); setOpenId(null); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [openId]);
@@ -432,7 +435,11 @@ export function ContentStudio() {
     window.addEventListener(MKT_OPEN_EVT, f);
     return () => window.removeEventListener(MKT_OPEN_EVT, f);
   }, []);
-  const list = contents.filter((c) => st === 'ALL' || c.status === st).sort((a, b) => b.updatedAt - a.updatedAt);
+  const list = contents.filter((c) => (st === 'ALL' || c.status === st) && (!q.trim() || stFold(`${c.title} ${stStr(c.settings?.focusKeyword)}`).includes(stFold(q)))).sort((a, b) => b.updatedAt - a.updatedAt);
+  const exportList = () => downloadBlob(`NoiDung_${isoDay(Date.now())}.xlsx`, xlsxBlob([{ name: 'Noi dung', widths: [6, 44, 18, 16, 26, 24, 18, 14, 14], rows: [
+    ['STT', 'Tiêu đề', 'Loại', 'Kênh', 'Chiến dịch', 'Từ khóa chính', 'Người soạn', 'Cập nhật', 'Trạng thái'],
+    ...list.map((c, i) => [i + 1, c.title, WRITER[c.type].label, c.platform ? getPlatform(c.platform).label : c.channel ? MKT_CH[c.channel].label : '', campaigns.find((x) => x.id === c.campaignId)?.name ?? '', stStr(c.settings?.focusKeyword), userName(c.ownerId), new Date(c.updatedAt).toLocaleDateString('vi-VN'), CONTENT_STATUS[c.status].label]),
+  ] }]));
   const live = edit && edit !== 'new' ? contents.find((x) => x.id === edit.id) ?? edit : edit;
   // v37: soạn mới và bài quảng cáo / PR / Zalo OA mở Studio đa kênh toàn khung; ZNS, email, tin chăm sóc giữ trình soạn cũ
   if (live && (live === 'new' || studioSupports(live))) return <section className="glass-card rounded-md p-5"><StudioWorkspace c={live === 'new' ? null : live} onClose={() => setEdit(null)} /></section>;
@@ -440,9 +447,11 @@ export function ContentStudio() {
     <section className="glass-card rounded-md p-5">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1">{(['ALL', ...Object.keys(CONTENT_STATUS)] as ('ALL' | ContentStatus)[]).map((s) => <button key={s} onClick={() => setSt(s)} className={cn('rounded-full border px-2.5 py-1 text-xs', st === s ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.1)] text-[rgb(var(--accent-fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))]')}>{s === 'ALL' ? 'Tất cả' : CONTENT_STATUS[s].label} {s === 'ALL' ? contents.length : contents.filter((c) => c.status === s).length}</button>)}</div>
-        {canDo('mkt.manage') && <button className={cn(btnAccent, 'ml-auto')} onClick={() => setEdit('new')}><Sparkles className="h-4 w-4" aria-hidden />Nội dung mới</button>}
+        <div className="relative ml-auto"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><input className={cn(inputCls, 'h-9 w-56 py-0 pl-8')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm tiêu đề, từ khóa…" aria-label="Tìm nội dung" /></div>
+        <button className={cn(btnGhost, btnSm)} onClick={exportList} disabled={!list.length}><Download className="h-3.5 w-3.5" aria-hidden />Xuất Excel</button>
+        {canDo('mkt.manage') && <button className={btnAccent} onClick={() => setEdit('new')}><Sparkles className="h-4 w-4" aria-hidden />Nội dung mới</button>}
       </div>
-      <Table head={['Tiêu đề', 'Loại · kênh', 'Chiến dịch', 'Dàn ý · ảnh', 'Người soạn', 'Cập nhật', 'Trạng thái']} minW={960}>
+      <Table head={['Tiêu đề', 'Loại · kênh', 'Chiến dịch', 'Dàn ý · ảnh', 'Người soạn', 'Cập nhật', 'Trạng thái', '']} minW={1000}>
         {list.map((c) => (
           <tr key={c.id} className={cn(rowCls, 'cursor-pointer')} onClick={() => setEdit(c)}>
             <td className={tdFirst}><p className="max-w-[300px] truncate font-medium">{c.title || '(Chưa có tiêu đề)'}</p><p className="max-w-[300px] truncate text-[11px] text-[rgb(var(--muted))]">{c.body.replace(/^#[^\n]*\n+/, '').replace(/[#*]/g, '').slice(0, 90)}</p></td>
@@ -451,12 +460,14 @@ export function ContentStudio() {
             <td className={cn(tdCls, 'whitespace-nowrap')}>{c.blocks?.length ? `${c.blocks.length} mục · ${c.blocks.filter((b) => b.image).length} ảnh` : '—'}</td>
             <td className={tdCls}>{userName(c.ownerId)}{c.by && <p className="text-[10px] text-[rgb(var(--muted))]">{c.by}</p>}</td>
             <td className={cn(tdCls, 'whitespace-nowrap')}>{new Date(c.updatedAt).toLocaleDateString('vi-VN')}</td>
-            <td className={tdLast}><div className="flex flex-col items-end gap-1">{c.aiJob && c.aiJob.status !== 'DONE' && <Chip tone={JOB_LABEL[c.aiJob.status].tone}>{JOB_LABEL[c.aiJob.status].label}</Chip>}<Chip tone={CONTENT_STATUS[c.status].tone}>{CONTENT_STATUS[c.status].label}</Chip></div></td>
+            <td className={tdCls}><div className="flex flex-col items-end gap-1">{c.aiJob && c.aiJob.status !== 'DONE' && <Chip tone={JOB_LABEL[c.aiJob.status].tone}>{JOB_LABEL[c.aiJob.status].label}</Chip>}<Chip tone={CONTENT_STATUS[c.status].tone}>{CONTENT_STATUS[c.status].label}</Chip></div></td>
+            <td className={cn(tdLast, 'w-12')} onClick={(e) => e.stopPropagation()}><ContentRowMenu c={c} onOpen={() => setEdit(c)} onConfirm={setConfirm} /></td>
           </tr>
         ))}
-        {!list.length && <tr><td colSpan={7} className="py-8 text-center text-sm text-[rgb(var(--muted))]">Chưa có nội dung. Bấm “Nội dung mới” hoặc giao việc cho AI từ tab Plan.</td></tr>}
+        {!list.length && <tr><td colSpan={8} className="py-8 text-center text-sm text-[rgb(var(--muted))]">{q.trim() ? 'Không có nội dung khớp' : <>Chưa có nội dung. Bấm “Nội dung mới” hoặc giao việc cho AI từ tab Plan.</>}</td></tr>}
       </Table>
       {live && <ContentStudioSheet c={live as MktContent} onClose={() => setEdit(null)} />}
+      {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
     </section>
   );
 }
@@ -730,6 +741,7 @@ export function CampaignCalendar() {
   const [view, setView] = useSticky<CalView>('Mkt.calView', 'calendar');
   const [edit, setEdit] = useState<Campaign | null | 'new'>(null);
   const [task, setTask] = useState<MktTask | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [stF, setStF] = useSticky<'ALL' | TaskStatus>('Mkt.taskSt', 'ALL');
   const [y, m] = ym.split('-').map(Number);
   const first = new Date(y, m - 1, 1);
@@ -764,7 +776,7 @@ export function CampaignCalendar() {
           {([['calendar', 'Lịch tháng', CalendarDays], ['list', 'Danh sách', List], ['board', 'Bảng', Columns3]] as const).map(([v, l, I]) => <button key={v} role="radio" aria-checked={view === v} onClick={() => setView(v)} className={cn('flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium', view === v ? 'bg-[rgb(var(--surface))] text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))]')}><I className="h-3.5 w-3.5" aria-hidden />{l}</button>)}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {view === 'list' && <button className={cn(btnGhost, btnSm)} onClick={exportXlsx}><Download className="h-3.5 w-3.5" aria-hidden />Xuất Excel</button>}
+          <button className={cn(btnGhost, btnSm)} onClick={exportXlsx} disabled={!rows.length} title={`Xuất ${rows.length} nhiệm vụ tháng ${m}/${y}`}><Download className="h-3.5 w-3.5" aria-hidden />Xuất Excel</button>
           {canEdit && <button className={btnGhost} onClick={() => setEdit('new')}><Plus className="h-4 w-4" aria-hidden />Chiến dịch</button>}
           {canEdit && <button className={btnAccent} onClick={() => setTask(neu(today.startsWith(ym) ? today : `${ym}-01`))}><Plus className="h-4 w-4" aria-hidden />Nhiệm vụ nội dung</button>}
         </div>
@@ -809,7 +821,7 @@ export function CampaignCalendar() {
                 <td className={tdCls}><p className="line-clamp-2 max-w-[200px] text-xs">{t.imagePrompt || '—'}</p></td>
                 <td className={tdCls}>{userName(t.ownerId)}</td>
                 <td className={tdCls}><span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: TASK_STATUS[st].bg, color: TASK_STATUS[st].fg }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: TASK_STATUS[st].color }} aria-hidden />{TASK_STATUS[st].label}</span></td>
-                <td className={tdLast} onClick={(e) => e.stopPropagation()}>{canEdit && (st === 'PLAN' ? <button className={cn(btnGhost, btnSm)} onClick={() => assign(t)}><Sparkles className="h-3.5 w-3.5 text-[rgb(var(--accent))]" aria-hidden />Giao cho AI</button> : <button className={cn(btnGhost, btnSm)} onClick={() => setTask(t)}>Chi tiết</button>)}</td>
+                <td className={tdLast} onClick={(e) => e.stopPropagation()}><div className="flex items-center justify-end gap-1">{canEdit && st === 'PLAN' && t.title.trim() && <button className={cn(btnGhost, btnSm)} onClick={() => assign(t)}><Sparkles className="h-3.5 w-3.5 text-[rgb(var(--accent))]" aria-hidden />Giao AI</button>}<TaskRowMenu t={t} onEdit={() => setTask(t)} onConfirm={setConfirm} /></div></td>
               </tr>
             ))}
             {!rows.length && <tr><td colSpan={9} className="py-8 text-center text-sm text-[rgb(var(--muted))]">Chưa có nhiệm vụ trong tháng</td></tr>}
@@ -836,6 +848,7 @@ export function CampaignCalendar() {
       )}
       {edit && <CampaignSheet c={edit === 'new' ? null : edit} onClose={() => setEdit(null)} />}
       {task && <TaskSheet t={task} onClose={() => setTask(null)} />}
+      {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
     </section>
   );
 }
@@ -843,6 +856,7 @@ export function CampaignCalendar() {
 export function CampaignRoi() {
   const { campaigns, myLeads, jobs } = useApp();
   const [edit, setEdit] = useState<Campaign | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const rows = campaigns.map((c) => ({ c, s: campaignStats(c, myLeads, jobs) }));
   const byCh = (Object.keys(MKT_CH) as MktChannel[]).map((ch) => {
     const rs = rows.filter((r) => r.c.channels.includes(ch));
@@ -856,8 +870,11 @@ export function CampaignRoi() {
   const max = Math.max(1, ...byCh.map((x) => Math.max(x.spent, x.revenue)));
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_420px] [&>*]:min-w-0">
-      <Panel title="Hiệu quả từng chiến dịch">
-        <Table head={['Chiến dịch', 'Ngân sách', 'Đã chi', 'Lead', 'CPL', 'Chốt', 'Doanh thu', 'ROI']} minW={900}>
+      <Panel title="Hiệu quả từng chiến dịch" action={<button className={cn(btnGhost, btnSm)} disabled={!rows.length} onClick={() => downloadBlob(`ChienDich_ROI_${isoDay(Date.now())}.xlsx`, xlsxBlob([{ name: 'Chien dich', widths: [14, 36, 24, 12, 12, 14, 14, 10, 8, 14, 10, 14], rows: [
+        ['Mã', 'Chiến dịch', 'Kênh', 'Bắt đầu', 'Kết thúc', 'Ngân sách', 'Đã chi', 'Lead', 'Chốt', 'Doanh thu', 'ROI %', 'Trạng thái'],
+        ...rows.map(({ c, s: x }) => [c.code, c.name, c.channels.map((ch) => MKT_CH[ch].label).join(', '), fmtDate(c.start), fmtDate(c.end), c.budget, c.spent, x.leads, x.won, Math.round(x.revenue), c.spent ? Math.round(x.roi * 100) : '', CAMP_STATUS[c.status].label]),
+      ] }]))}><Download className="h-3.5 w-3.5" aria-hidden />Xuất Excel</button>}>
+        <Table head={['Chiến dịch', 'Ngân sách', 'Đã chi', 'Lead', 'CPL', 'Chốt', 'Doanh thu', 'ROI', '']} minW={940}>
           {rows.map(({ c, s }) => (
             <tr key={c.id} className={cn(rowCls, 'cursor-pointer')} onClick={() => setEdit(c)}>
               <td className={tdFirst}><p className="max-w-[260px] truncate font-medium">{c.name}</p><p className="text-[11px] text-[rgb(var(--muted))]">{c.channels.map((ch) => MKT_CH[ch].label).join(', ')}</p></td>
@@ -867,10 +884,11 @@ export function CampaignRoi() {
               <td className={cn(tdCls, 'text-right tabular-nums')}>{s.leads ? compact(s.cpl) : '—'}</td>
               <td className={cn(tdCls, 'text-right tabular-nums')}>{s.won}</td>
               <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(s.revenue)}</td>
-              <td className={cn(tdLast, 'text-right font-semibold tabular-nums', c.spent ? (s.roi >= 0 ? 'text-[rgb(var(--success))]' : 'text-[rgb(var(--danger-fg))]') : '')}>{c.spent ? `${Math.round(s.roi * 100)}%` : '—'}</td>
+              <td className={cn(tdCls, 'text-right font-semibold tabular-nums', c.spent ? (s.roi >= 0 ? 'text-[rgb(var(--success))]' : 'text-[rgb(var(--danger-fg))]') : '')}>{c.spent ? `${Math.round(s.roi * 100)}%` : '—'}</td>
+            <td className={cn(tdLast, 'w-12')} onClick={(e) => e.stopPropagation()}><CampaignRowMenu c={c} onEdit={() => setEdit(c)} onConfirm={setConfirm} /></td>
             </tr>
           ))}
-          {!rows.length && <tr><td colSpan={8} className="py-8 text-center text-sm text-[rgb(var(--muted))]">Chưa có chiến dịch. Tạo ở tab Plan.</td></tr>}
+          {!rows.length && <tr><td colSpan={9} className="py-8 text-center text-sm text-[rgb(var(--muted))]">Chưa có chiến dịch. Tạo ở tab Plan.</td></tr>}
         </Table>
         <p className="mt-3 text-[11px] text-[rgb(var(--muted))]">Lead gắn chiến dịch theo kênh nguồn và thời gian chạy (cộng 30 ngày theo dõi); doanh thu = lead đã chốt + đơn công trình ký từ lead đó + số liệu ngoài hệ thống nhập tay.</p>
       </Panel>
@@ -889,6 +907,7 @@ export function CampaignRoi() {
           {!byCh.length && <li className="text-sm text-[rgb(var(--muted))]">Chưa có dữ liệu</li>}
         </ul>
       </Panel>
+      {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
       {edit && <CampaignSheet c={edit} onClose={() => setEdit(null)} />}
     </div>
   );
