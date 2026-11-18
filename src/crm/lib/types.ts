@@ -3,7 +3,7 @@
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Wallet } from 'lucide-react';
 import { type Editor, type JSONContent } from '@tiptap/core';
-import { createStudioStore, WS_TONES } from './core';
+import { createStudioStore, REACTS, WS_TONES } from './core';
 import { useDashData } from '../modules/dashboard/exec-dashboard';
 
 // =====================================================================
@@ -1012,6 +1012,8 @@ export type Post = {
   id: string; kind: PostKind; authorId: string; at: number; text: string; files?: ChatFile[];
   likes: string[]; pinned?: { by: string; at: number }; hidden?: { by: string; at: number }; editedAt?: number;
   poll?: { options: PollOption[]; multi: boolean; closesAt?: string };
+  /** v38.8: cảm xúc / hoạt động, gắn thẻ đồng nghiệp, địa điểm, người đã xem, bài gốc được chia sẻ, cảm xúc khác ngoài Thích */
+  feeling?: { emoji: string; label: string; verb: 'feel' | 'act' }; tagged?: string[]; place?: string; views?: string[]; sharedId?: string; reacts?: Record<string, string[]>;
 };
 
 export type ChatFile = { name: string; url: string; size: number; type: string };
@@ -1601,6 +1603,12 @@ export type AiMsg = { id: string; role: 'user' | 'ai'; text: string; kpis?: { la
 export type Thread = { entity: CommentEntity; entityId: string; title: string; sub?: string; module: Module; token?: string };
 
 export type FeedAuto = { id: string; at: number; icon: typeof Wallet; tone: Tone; text: ReactNode; open?: () => void };
+
+// ---- v38.8: Bàn làm việc tối giản, bảng tin bố cục kiểu Facebook (ảnh dạng lưới, cảm xúc, gắn thẻ, địa điểm, chia sẻ kèm ảnh, lượt xem) ----
+
+export type PostFeeling = { emoji: string; label: string; verb: 'feel' | 'act' };
+
+export type ReactId = (typeof REACTS)[number]['id'];
 
 // =====================================================================
 //  BÀN LÀM VIỆC — SOCIAL INTRANET: thanh lệnh trợ lý số, widget Truyền thông đa kênh

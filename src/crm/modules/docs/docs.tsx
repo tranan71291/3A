@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, Eye, FolderOpen, HardDrive, Lock, Pencil, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Download, Eye, Pencil, Trash2, Upload } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
-import { Chip, EmptyState, Field, FilePicker, Modal, Panel, StatCard, Table, useSort, useSticky } from '../../components/ui';
-import { btnGhost, btnPrimary, btnSm, C, canViewDoc, DOC_CATEGORY, docVisibility, fmtDate, FORMAT_COLOR, inputCls, kpiGrid, ROLE_LABEL, rowCls, slug, tdCls, tdFirst, tdLast, todayISO, uid, useApp, visibilityOptions } from '../../lib/core';
+import { Chip, EmptyState, Field, FilePicker, Modal, Panel, Table, useSort, useSticky } from '../../components/ui';
+import { btnGhost, btnPrimary, btnSm, canViewDoc, DOC_CATEGORY, docVisibility, fmtDate, FORMAT_COLOR, inputCls, rowCls, slug, tdCls, tdFirst, tdLast, todayISO, uid, useApp, visibilityOptions } from '../../lib/core';
 import type { ConfirmState, Department, DocCategory, DocItem, DocVisibility } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
@@ -109,7 +109,6 @@ export function DocsPage() {
   const [uploading, setUploading] = useState(false);
 
   const visible = docs.filter((d) => canViewDoc(d, me));
-  const hidden = docs.length - visible.length;
   const list = visible.filter((d) => {
     const t = q.trim().toLowerCase();
     return (!t || [d.title, d.summary, ...d.tags].some((v) => v.toLowerCase().includes(t))) && (cat === 'ALL' || d.category === cat) && (vis === 'ALL_VIS' || d.visibility === vis) && inR(d.updatedAt);
@@ -118,16 +117,8 @@ export function DocsPage() {
   const srt = useSort('DocsPage', list, { 0: (d) => d.title, 1: (d) => d.category, 4: (d) => d.updatedAt, 5: (d) => d.sizeKb });
   const paged = usePaged(srt.rows, 12);
   const sizeOf = (kb: number) => (kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`);
-  const recent = visible.filter((d) => inR(d.updatedAt)).length;
   return (
     <div className="space-y-4">
-      <div className={kpiGrid('lg:grid-cols-4')}>
-        <StatCard label="Tài liệu được xem" value={String(visible.length)} icon={FolderOpen} color={C.orange} sub={`${Object.keys(DOC_CATEGORY).length} danh mục`} />
-        <StatCard label="Cập nhật trong kỳ" value={String(recent)} icon={RefreshCw} color={C.teal} sub="Theo bộ lọc thời gian" />
-        <StatCard label="Ẩn theo phạm vi" value={String(hidden)} icon={Lock} color={hidden ? C.red : C.teal} sub={`Vai trò ${ROLE_LABEL[me.role]}`} />
-        <StatCard label="Dung lượng" value={sizeOf(visible.reduce((x, d) => x + d.sizeKb, 0))} icon={HardDrive} color={C.orange} sub="Tổng các tài liệu xem được" />
-      </div>
-
       <FilterBar
         q={q} onQ={setQ} placeholder="Tìm tên tài liệu, nội dung, từ khóa"
         status={cat} onStatus={setCat} statusLabel="Danh mục" extraActive={vis !== 'ALL_VIS' ? 1 : 0}
