@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, ArrowLeftRight, AtSign, Banknote, Bell, BookUser, Boxes, Briefcase, Building2, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Coins, Columns3, Database, Factory, FileCheck2, FileText, FolderOpen, HardHat, House, Inbox, LayoutDashboard, Lightbulb, Megaphone, MessageCircle, MessagesSquare, Newspaper, Package, PackageMinus, PackagePlus, Plane, Receipt as ReceiptIcon, RefreshCw, Rows3, Ruler, Settings, ShieldCheck, Ship, SlidersHorizontal, SquarePlay, Target, ThumbsUp, Truck, Users, Vote, Wallet, Warehouse, XCircle, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, AtSign, Banknote, Bell, BookUser, Boxes, Briefcase, Building2, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Coins, Columns3, Copy, Database, Download, Factory, FileCheck2, FileText, FolderOpen, HardHat, House, Inbox, LayoutDashboard, Lightbulb, Megaphone, MessageCircle, MessagesSquare, Newspaper, Package, PackageMinus, PackagePlus, Plane, Receipt as ReceiptIcon, RefreshCw, Rows3, Ruler, Settings, ShieldCheck, Ship, SlidersHorizontal, SquarePlay, Target, ThumbsUp, Truck, Users, Vote, Wallet, Warehouse, XCircle, Zap } from 'lucide-react';
 import { Component, Fragment, createContext, memo, type ReactNode, useContext, useDeferredValue, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { type JSONContent } from '@tiptap/core';
@@ -8,11 +8,11 @@ import { PluginKey } from '@tiptap/pm/state';
 import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
-import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
-import { vGroups, vPicked, vWords, wsDocHtml, wsDocToSections, wsInline } from '../modules/marketing/content-workspace';
+import { useContentExport, vGroups, vPicked, vWords, wsDocHtml, wsDocToSections, wsInline } from '../modules/marketing/content-workspace';
 
 // =====================================================================
 //  DESIGN TOKENS & HELPERS
@@ -2029,6 +2029,23 @@ export const dataKb = (u: string) => Math.round(((u.length - u.indexOf(',') - 1)
 
 export const downloadData = (url: string, name: string) => { const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
 
+/** Các mục menu xuất nội dung dùng chung */
+export const contentExportItems = (c: MktContent, ex: ReturnType<typeof useContentExport>): MenuItem[] => [
+  { label: 'Tải Word (.doc)', icon: FileText, onClick: () => ex(c, 'word') },
+  { label: 'Tải PDF (in / lưu PDF)', icon: Download, onClick: () => ex(c, 'pdf') },
+  { label: 'Tải HTML', icon: Download, onClick: () => ex(c, 'html') },
+  { label: 'Sao chép nội dung', icon: Copy, onClick: () => ex(c, 'copy') },
+];
+
+/** Bản sao nháp của nội dung (không mang việc AI, nhiệm vụ, duyệt) */
+export const cloneContent = (c: MktContent, by?: string): MktContent => ({
+  ...c, id: uid('ct'), title: `${c.title} (bản sao)`, status: 'DRAFT', aiJob: undefined, taskId: undefined, submittedBy: undefined, submittedAt: undefined,
+  reviewNote: undefined, approvedBy: undefined, approvedAt: undefined, ownerId: by ?? c.ownerId, updatedAt: Date.now(),
+  settings: c.settings ? { ...c.settings, slug: c.settings.slug ? `${stStr(c.settings.slug)}-ban-sao` : c.settings.slug } : c.settings,
+});
+
+export const contentBusy = (c: MktContent) => c.aiJob?.status === 'QUEUED' || c.aiJob?.status === 'RUNNING';
+
 /**
  * v36 — Copilot giao tiếp tự nhiên.
  * Lượt xã giao (chào, cảm ơn, hỏi "bạn là ai"…) không chạy bộ phân tích, không gửi số liệu, trả lời 1–2 câu.
@@ -2267,6 +2284,8 @@ export const TEMPLATE_VARS: [string, string][] = [
   ['doc_code', 'Số báo giá'],
   ['contract_code', 'Số hợp đồng'],
   ['doc_date', 'Ngày lập (dd/mm/yyyy)'],
+  ['doc_date_long', 'Ngày lập dạng chữ: ngày 29 tháng 07 năm 2026'],
+  ['doc_revision', 'Lần báo giá (1, 2, 3…)'],
   ['valid_until', 'Báo giá hiệu lực đến'],
   ['company_name', 'Tên pháp lý công ty bán'],
   ['company_tax_code', 'MST công ty bán'],
@@ -2287,6 +2306,7 @@ export const TEMPLATE_VARS: [string, string][] = [
   ['project_name', 'Tên dự án / nhu cầu'],
   ['project_code', 'Mã dự án'],
   ['items_table', 'Bảng hàng hóa (SKU, SL, đơn giá, thành tiền, VAT, tổng)'],
+  ['items_table_full', 'Bảng hàng hóa đầy đủ: STT, mã hàng, hạng mục, hãng SX, đơn vị, SL, đơn giá, VAT, thành tiền, ghi chú'],
   ['subtotal', 'Cộng tiền hàng trước VAT'],
   ['vat_rate', 'Thuế suất VAT'],
   ['vat_amount', 'Tiền thuế VAT'],
@@ -2302,6 +2322,7 @@ export const TEMPLATE_VARS: [string, string][] = [
   ['note', 'Ghi chú thêm'],
   ['sales_name', 'Nhân viên phụ trách'],
   ['sales_phone', 'Điện thoại nhân viên phụ trách'],
+  ['sales_email', 'Email nhân viên phụ trách'],
 ];
 
 export const TEMPLATE_FLAGS: [string, string][] = [
@@ -2314,7 +2335,7 @@ export const TEMPLATE_FLAGS: [string, string][] = [
   ['note', 'Có ghi chú'],
 ];
 
-export const RAW_VARS = new Set(['items_table', 'company_stamp', 'company_logo']);
+export const RAW_VARS = new Set(['items_table', 'items_table_full', 'company_stamp', 'company_logo']);
 
 export const TX_CLAUSE: Record<TxType, { quote: string; contract: string }> = {
   DEALER: {
@@ -2385,6 +2406,7 @@ h1{font-size:17pt;text-align:center;margin:18px 0 4px}h3{font-size:13pt;margin:1
 p{margin:6px 0}ul{margin:4px 0;padding-left:22px}
 table.items{width:100%;border-collapse:collapse;font-size:11.5pt;margin:8px 0}
 table.items th,table.items td{border:1px solid #333;padding:4px 6px}table.items th{background:#f1f1f1}
+table.items-full{font-size:10pt}table.items-full th{background:#FFFF00;font-size:9pt}table.items-full tr.total td{background:#FFFF00}
 table.layout{width:100%;border-collapse:collapse}table.layout td{vertical-align:top;padding:0}
 .sign td{text-align:center;width:50%;padding-top:16px}
 .r{text-align:right}.c{text-align:center}.small{font-size:10.5pt;color:#444}

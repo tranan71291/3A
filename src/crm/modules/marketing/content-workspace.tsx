@@ -8,15 +8,18 @@ import StarterKit from '@tiptap/starter-kit';
 import { type Node as PMNode } from '@tiptap/pm/model';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
-import { CheckCircle2, ChevronDown, Copy, Download, ExternalLink, ImagePlus, Lock, RefreshCw, Search, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Copy, Download, ExternalLink, Eye, ImagePlus, Lock, Pencil, RefreshCw, Search, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { removeWithUndo } from '../../app/context';
+import { RowMenu } from '../../components/controls';
 import { Chip, Field, MoneyInput, Panel, SideSheet, useSticky } from '../../components/ui';
-import { btnAccent, btnGhost, btnPrimary, btnSm, CAMP_STATUS, cloud, CLOUD_ON, compact, CONTENT_STATUS, CONTENT_TEMPLATES, countOf, CV_KIND, CV_MAX, dataKb, dayMs, downloadData, GHOST_PREF, ghostEligible, ghostPrefOff, HS_CLICHES_DEFAULT, IMG_SIZES, inputBase, inputCls, isoDay, maskPii, MKT_CH, MKT_IMG_MAX, MKT_OPEN_EVT, MKT_REVIEW_EVT, openContentReview, SeoSidebar, slugify, ST_BRAND, ST_BRIEF_FIELDS, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stEsc, stFold, stHas, stickyStore, stSectionPrompt, stStr, TASK_STATUS, todayISO, uid, useApp, VARIANT_GROUPS, vAspect, vCfgOf, vImg, vKey, WRITER, WS_BLOCK_TYPES, WS_CSS, WS_GHOST, WS_MARKS, WS_TONES, wsClamp, wsCleanAi, wsHeadKey, wsId, wsImages, wsInlineMd, wsPara, wsPushVersion, wsSafeHref, wsSecKey, wsSentences, wsText, wsWords } from '../../lib/core';
-import type { AiQuotaCfg, AnyRec, Campaign, CampaignStatus, ContentVariantCfg, ContentVersion, ContentVersionKind, HumanBlock, HumanReport, MenuOption, MktChannel, MktContent, MktContentType, MktImage, MktTask, Module, StArticle, StCompany, StSection, StSettings, StudioApi, TaskStatus, User, VariantGroup, VariantKind, WriterPreset, WsBlock, WsDiffPart, WsGhost, WsImagePanel, WsMarks, WsProposal, WsSlash, WsSlashItem, WsTone } from '../../lib/types';
+import { btnAccent, btnGhost, btnPrimary, btnSm, CAMP_STATUS, cloneContent, cloud, CLOUD_ON, compact, CONTENT_STATUS, CONTENT_TEMPLATES, contentBusy, contentExportItems, countOf, CV_KIND, CV_MAX, dataKb, dayMs, downloadBlob, downloadData, esc, fmtDate, GHOST_PREF, ghostEligible, ghostPrefOff, HS_CLICHES_DEFAULT, IMG_SIZES, inputBase, inputCls, isoDay, maskPii, MKT_CH, MKT_IMG_MAX, MKT_OPEN_EVT, MKT_REVIEW_EVT, openContentReview, SeoSidebar, slugify, ST_BRAND, ST_BRIEF_FIELDS, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stEsc, stFold, stHas, stickyStore, stSectionPrompt, stStr, TASK_STATUS, todayISO, uid, useApp, VARIANT_GROUPS, vAspect, vCfgOf, vImg, vKey, WRITER, WS_BLOCK_TYPES, WS_CSS, WS_GHOST, WS_MARKS, WS_TONES, wsClamp, wsCleanAi, wsHeadKey, wsId, wsImages, wsInlineMd, wsPara, wsPushVersion, wsSafeHref, wsSecKey, wsSentences, wsText, wsWords } from '../../lib/core';
+import type { AiQuotaCfg, AnyRec, Campaign, CampaignStatus, ConfirmState, ContentVariantCfg, ContentVersion, ContentVersionKind, HumanBlock, HumanReport, MenuOption, MktChannel, MktContent, MktContentType, MktImage, MktTask, Module, StArticle, StCompany, StSection, StSettings, StudioApi, TaskStatus, User, VariantGroup, VariantKind, WriterPreset, WsBlock, WsDiffPart, WsGhost, WsImagePanel, WsMarks, WsProposal, WsSlash, WsSlashItem, WsTone } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { parseAiJson, useAi } from '../ai/ai-core';
 import { applyWatermark, contentToArticle, getPlatform, scoreArticle, stClip, StFieldControl, stShrinkImage, useStudio, useStudioActions, useStudioApi, useStudioPort } from './content-studio';
 import { AudienceBuilder, AutomationList, BannerStudio, taskStatusOf, useAssignToAi } from './marketing-hub';
 import { Switch } from '../platform/console';
+import { docShell, downloadWord, printHtml } from '../sales/templates';
 
 /** "**đậm** thường" -> các nút chữ có dấu đậm */
 export function wsInline(s: string): JSONContent[] {
@@ -2149,6 +2152,96 @@ export function ImageLibrary({ onPick }: { onPick?: (img: MktImage) => void }) {
         ))}
       </div>
     </section>
+  );
+}
+
+// ---------- v38.7: thao tác Sửa / Nhân bản / Xuất / Xóa cho nhiệm vụ, nội dung, chiến dịch ----------
+
+/** Xuất một nội dung đúng như bản đăng theo kênh: Word (.doc), PDF (in), HTML, hoặc sao chép */
+export function useContentExport() {
+  const { company, notify } = useApp();
+  const co = useMemo(() => stCompanyOf(company), [company]);
+  const build = (c: MktContent) => {
+    const art0 = contentToArticle(c, co);
+    const art = { ...art0, doc: art0.doc ?? wsArticleToDoc(art0) };
+    const out = getPlatform(art.platform).render(art, co);
+    const html = out.format === 'html' ? out.body : out.body.split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('\n');
+    const head = out.format === 'html' && /<h1/i.test(out.body) ? '' : `<h1>${esc(c.title)}</h1>`;
+    return { out, html: head + html, file: slugify(stStr(art.settings.slug) || c.title) || 'noi-dung' };
+  };
+  return (c: MktContent, fmt: 'word' | 'pdf' | 'html' | 'copy') => {
+    const { out, html, file } = build(c);
+    if (fmt === 'word') downloadWord(file, c.title, html);
+    else if (fmt === 'pdf') printHtml(docShell(c.title, html));
+    else if (fmt === 'html') downloadBlob(`${file}.html`, new Blob([docShell(c.title, html)], { type: 'text/html;charset=utf-8' }));
+    else void navigator.clipboard?.writeText(out.body).then(() => notify(out.format === 'html' ? 'Đã sao chép HTML bài viết' : 'Đã sao chép nội dung', 'teal'), () => notify('Trình duyệt chặn sao chép', 'orange'));
+  };
+}
+
+/** Menu thao tác của một dòng nội dung (tab Content) */
+export function ContentRowMenu({ c, onOpen, onConfirm }: { c: MktContent; onOpen: () => void; onConfirm: (s: ConfirmState) => void }) {
+  const { setContents, mktTasks, canDo, notify, me } = useApp();
+  const ex = useContentExport();
+  const can = canDo('mkt.manage');
+  const task = mktTasks.find((t) => t.contentId === c.id);
+  return (
+    <RowMenu label={`Thao tác: ${c.title}`} items={[
+      { label: can ? 'Mở / sửa' : 'Mở', icon: Pencil, onClick: onOpen },
+      ...(c.status !== 'DRAFT' ? [{ label: c.status === 'REVIEW' && can ? 'Xem & duyệt' : 'Xem bản đăng', icon: Eye, onClick: () => openContentReview(c.id) }] : []),
+      ...(can ? [{ label: 'Nhân bản', icon: Copy, onClick: () => { const n = cloneContent(c, me?.id); setContents((p) => [n, ...p]); notify(`Đã tạo bản sao "${n.title}"`, 'teal'); } }] : []),
+      ...contentExportItems(c, ex),
+      ...(can ? [{ label: 'Xóa', icon: Trash2, danger: true, onClick: () => onConfirm({
+        title: 'Xóa nội dung', confirmLabel: 'Xóa',
+        blocked: contentBusy(c) ? 'AI đang soạn bài này, chờ xong rồi xóa.' : undefined,
+        message: <>Xóa <b>{c.title || '(chưa có tiêu đề)'}</b>?{task ? <> Nhiệm vụ "{task.title}" trên Plan được giữ lại, chuyển về Kế hoạch.</> : null} Có thể hoàn tác ngay sau khi xóa.</>,
+        onConfirm: () => removeWithUndo(setContents, c, notify, `Đã xóa "${c.title}"`),
+      }) }] : []),
+    ]} />
+  );
+}
+
+/** Menu thao tác của một nhiệm vụ trên Plan (dạng danh sách) */
+export function TaskRowMenu({ t, onEdit, onConfirm }: { t: MktTask; onEdit: () => void; onConfirm: (s: ConfirmState) => void }) {
+  const { setMktTasks, contents, canDo, notify, go } = useApp();
+  const assign = useAssignToAi();
+  const ex = useContentExport();
+  const can = canDo('mkt.manage');
+  const c = contents.find((x) => x.id === t.contentId);
+  const st = taskStatusOf(t, contents);
+  return (
+    <RowMenu label={`Thao tác: ${t.title}`} items={[
+      { label: can ? 'Sửa' : 'Xem', icon: Pencil, onClick: onEdit },
+      ...(can && st === 'PLAN' && t.title.trim() ? [{ label: 'Giao cho AI', icon: Sparkles, onClick: () => assign(t) }] : []),
+      ...(c && c.status !== 'DRAFT' ? [{ label: c.status === 'REVIEW' && can ? 'Xem & duyệt' : 'Xem bài', icon: Eye, onClick: () => openContentReview(c.id) }] : []),
+      ...(c ? [{ label: 'Mở Workspace', icon: ExternalLink, onClick: () => openMktContent(c.id, go) }] : []),
+      ...(can ? [{ label: 'Nhân bản', icon: Copy, onClick: () => { setMktTasks((p) => [{ ...t, id: uid('tk'), title: `${t.title} (bản sao)`, contentId: undefined, status: 'PLAN', createdAt: Date.now() }, ...p]); notify('Đã nhân bản nhiệm vụ (chưa giao AI)', 'teal'); } }] : []),
+      ...(c ? contentExportItems(c, ex) : []),
+      ...(can ? [{ label: 'Xóa', icon: Trash2, danger: true, onClick: () => onConfirm({
+        title: 'Xóa nhiệm vụ', confirmLabel: 'Xóa',
+        blocked: c && contentBusy(c) ? 'AI đang soạn bài của nhiệm vụ này, chờ xong rồi xóa.' : undefined,
+        message: <>Xóa nhiệm vụ <b>{t.title || '(chưa đặt tên)'}</b> ngày {fmtDate(t.date)}?{c ? ' Bài AI đã soạn vẫn giữ ở tab Content.' : ''} Có thể hoàn tác ngay sau khi xóa.</>,
+        onConfirm: () => removeWithUndo(setMktTasks, t, notify, `Đã xóa nhiệm vụ "${t.title}"`),
+      }) }] : []),
+    ]} />
+  );
+}
+
+/** Menu thao tác của một chiến dịch (tab Budget) */
+export function CampaignRowMenu({ c, onEdit, onConfirm }: { c: Campaign; onEdit: () => void; onConfirm: (s: ConfirmState) => void }) {
+  const { campaigns, setCampaigns, mktTasks, contents, canDo, notify } = useApp();
+  const can = canDo('mkt.manage');
+  const nTask = mktTasks.filter((t) => t.campaignId === c.id).length;
+  const nContent = contents.filter((x) => x.campaignId === c.id).length;
+  return (
+    <RowMenu label={`Thao tác: ${c.name}`} items={[
+      { label: can ? 'Sửa' : 'Xem', icon: Pencil, onClick: onEdit },
+      ...(can ? [{ label: 'Nhân bản', icon: Copy, onClick: () => { setCampaigns((p) => [{ ...c, id: uid('cp'), code: `CD-${new Date().getFullYear()}-${String(campaigns.length + 1).padStart(3, '0')}`, name: `${c.name} (bản sao)`, spent: 0, status: 'PLANNED', manualLeads: undefined, manualRevenue: undefined, createdAt: Date.now() }, ...p]); notify('Đã nhân bản chiến dịch (đã chi về 0)', 'teal'); } }] : []),
+      ...(can ? [{ label: 'Xóa', icon: Trash2, danger: true, onClick: () => onConfirm({
+        title: 'Xóa chiến dịch', confirmLabel: 'Xóa',
+        message: <>Xóa chiến dịch <b>{c.name}</b>?{nTask + nContent ? <> {nTask} nhiệm vụ và {nContent} nội dung đang gắn chiến dịch này được giữ lại, chỉ bỏ liên kết.</> : null} Có thể hoàn tác ngay sau khi xóa.</>,
+        onConfirm: () => removeWithUndo(setCampaigns, c, notify, `Đã xóa chiến dịch "${c.name}"`),
+      }) }] : []),
+    ]} />
   );
 }
 

@@ -1679,7 +1679,7 @@ export type SkuFilter = { q: string; brand: string; cat: string; level: '' | Sto
 
 export type WhTab = 'stock' | 'in' | 'out' | 'transfer' | 'count' | 'card' | 'xnt' | 'list';
 
-export type DocContext = { company: CompanyInfo; quoteCode: string; contractCode: string; projectName?: string; projectCode?: string; salesName: string; salesPhone: string };
+export type DocContext = { company: CompanyInfo; quoteCode: string; contractCode: string; projectName?: string; projectCode?: string; salesName: string; salesPhone: string; salesEmail?: string; revision?: number; skus?: SkuItem[] };
 
 export type ComposerMode = 'QUOTE' | 'CONTRACT';
 
