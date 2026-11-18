@@ -88,7 +88,7 @@ export function EmailSettings() {
             </div>
           </Field>
           <Field label="Tên người gửi"><input className={inputCls} disabled={!canEdit} value={f.fromName} onChange={(ev) => set('fromName', ev.target.value)} /></Field>
-          <Field label="Email người gửi" error={err('fromEmail')}><input className={inputCls} disabled={!canEdit} value={f.fromEmail} onChange={(ev) => set('fromEmail', ev.target.value.trim())} /></Field>
+          <Field label="Email người gửi" error={err('fromEmail')}><input type="email" autoComplete="email" spellCheck={false} className={inputCls} disabled={!canEdit} value={f.fromEmail} onChange={(ev) => set('fromEmail', ev.target.value.trim())} /></Field>
           <Field label="Email trả lời" error={err('replyTo')}><input className={inputCls} disabled={!canEdit} value={f.replyTo} onChange={(ev) => set('replyTo', ev.target.value.trim())} /></Field>
           <label className="flex items-center gap-2 text-sm md:col-span-3"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" disabled={!canEdit} checked={f.secure} onChange={(ev) => set('secure', ev.target.checked)} />Kết nối SSL/TLS trực tiếp (cổng 465). Bỏ chọn để dùng STARTTLS (cổng 587).</label>
         </div>

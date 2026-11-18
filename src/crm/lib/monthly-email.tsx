@@ -112,7 +112,7 @@ export function MonthlyReportModal({ onClose }: { onClose: () => void }) {
       footer={
         <>
           <button className={btnGhost} onClick={downloadHtml}><Download className="h-4 w-4" aria-hidden />Tải HTML</button>
-          <button className={btnPrimary} disabled={sending} onClick={send}><Send className="h-4 w-4" aria-hidden />{sending ? 'Đang gửi...' : 'Gửi thử nghiệm'}</button>
+          <button className={btnPrimary} disabled={sending} onClick={send}><Send className="h-4 w-4" aria-hidden />{sending ? 'Đang gửi…' : 'Gửi thử nghiệm'}</button>
         </>
       }
     >

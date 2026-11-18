@@ -17,7 +17,7 @@ export function BrandMark({ size = 32 }: { size?: number }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img src={company.logo} alt={company.shortName} style={{ width: size, height: size }} className="shrink-0 rounded bg-white object-contain p-0.5" />
   ) : (
-    <span style={{ width: size, height: size }} className="flex shrink-0 items-center justify-center rounded bg-[rgb(var(--accent))] text-xs font-bold text-[rgb(var(--on-accent))]">{initials(company.shortName || company.appName)}</span>
+    <span style={{ width: size, height: size }} className="flex shrink-0 items-center justify-center rounded bg-[rgb(var(--accent))] text-xs font-semibold text-[rgb(var(--on-accent))]">{initials(company.shortName || company.appName)}</span>
   );
 }
 
@@ -71,9 +71,9 @@ export function CompanySettings() {
           <Field label="Tên viết tắt"><input className={inputCls} disabled={!canEdit} value={f.shortName} onChange={(ev) => set('shortName', ev.target.value)} /></Field>
           <Field label="Tên pháp lý" error={err('legalName')} className="sm:col-span-2"><input className={inputCls} disabled={!canEdit} value={f.legalName} onChange={(ev) => set('legalName', ev.target.value)} /></Field>
           <Field label="Mã số thuế" error={err('taxCode')}><input className={inputCls} disabled={!canEdit} value={f.taxCode} onChange={(ev) => set('taxCode', ev.target.value.trim())} /></Field>
-          <Field label="Điện thoại"><input className={inputCls} disabled={!canEdit} value={f.phone} onChange={(ev) => set('phone', ev.target.value)} /></Field>
+          <Field label="Điện thoại"><input type="tel" autoComplete="tel" className={inputCls} disabled={!canEdit} inputMode="tel" value={f.phone} onChange={(ev) => set('phone', ev.target.value)} /></Field>
           <Field label="Địa chỉ" className="sm:col-span-2"><input className={inputCls} disabled={!canEdit} value={f.address} onChange={(ev) => set('address', ev.target.value)} /></Field>
-          <Field label="Email" error={err('email')}><input className={inputCls} disabled={!canEdit} value={f.email} onChange={(ev) => set('email', ev.target.value.trim())} /></Field>
+          <Field label="Email" error={err('email')}><input type="email" autoComplete="email" spellCheck={false} className={inputCls} disabled={!canEdit} value={f.email} onChange={(ev) => set('email', ev.target.value.trim())} /></Field>
           <Field label="Website"><input className={inputCls} disabled={!canEdit} value={f.website} onChange={(ev) => set('website', ev.target.value.trim())} /></Field>
           <Field label="Người đại diện ký báo giá / hợp đồng"><input className={inputCls} disabled={!canEdit} value={f.representative} onChange={(ev) => set('representative', ev.target.value)} /></Field>
           <Field label="Chức vụ"><input className={inputCls} disabled={!canEdit} value={f.representativeTitle} onChange={(ev) => set('representativeTitle', ev.target.value)} /></Field>

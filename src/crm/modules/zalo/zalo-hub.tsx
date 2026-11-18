@@ -143,7 +143,7 @@ export function ZaloHubInner({ me }: { me: User }) {
   const canReply = canDo('zalo.reply');
   const section = (title: string, children: ReactNode, action?: ReactNode) => (
     <section className="border-b border-[rgb(var(--line))] px-4 py-3.5">
-      <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">{title}</h3>{action}</div>
+      <div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-[11px] font-semibold text-[rgb(var(--muted))]">{title}</h3>{action}</div>
       {children}
     </section>
   );
@@ -154,9 +154,9 @@ export function ZaloHubInner({ me }: { me: User }) {
       <aside className={cn('flex w-full shrink-0 flex-col border-r border-[rgb(var(--line))] md:w-[320px]', cur && 'max-md:hidden')} aria-label="Danh sách hội thoại">
         <div className="border-b border-[rgb(var(--line))] px-4 pb-3 pt-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0068FF] text-xs font-bold text-white" aria-hidden>Zalo</span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0068FF] text-xs font-semibold text-white" aria-hidden>Zalo</span>
             <div className="min-w-0 flex-1">
-              <h2 className="truncate font-display text-base font-bold">{hubCfg.zalo.oaName || 'Zalo Official Account'}</h2>
+              <h2 className="truncate font-display text-base font-semibold">{hubCfg.zalo.oaName || 'Zalo Official Account'}</h2>
               <p className="flex items-center gap-1.5 text-[11px] text-[rgb(var(--muted))]"><span className={cn('h-1.5 w-1.5 rounded-full', live ? 'bg-[rgb(var(--success))]' : 'bg-[#F59E0B]')} aria-hidden />{live ? 'Đã kết nối OA' : 'Chế độ mô phỏng'}{srv.zalo.webhook ? ' · nhận tin tự động' : ''}</p>
             </div>
           </div>
@@ -176,15 +176,15 @@ export function ZaloHubInner({ me }: { me: User }) {
             return (
               <li key={c.id}>
                 <button className={cn('flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left', c.id === cur?.id ? 'bg-[rgb(var(--secondary)/0.12)]' : 'hover:bg-[rgb(var(--ink)/0.04)]')} onClick={() => { setCurId(c.id); setCtxOpen(false); }}>
-                  <span className="relative shrink-0">{c.avatar ? <img src={c.avatar} alt="" className="h-10 w-10 rounded-full object-cover" /> : <Avatar name={c.displayName} size={40} />}<span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[rgb(var(--surface))] bg-[#0068FF] text-[7px] font-bold text-white" aria-hidden>Z</span></span>
+                  <span className="relative shrink-0">{c.avatar ? <img src={c.avatar} alt="" className="h-10 w-10 rounded-full object-cover" /> : <Avatar name={c.displayName} size={40} />}<span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[rgb(var(--surface))] bg-[#0068FF] text-[7px] font-semibold text-white" aria-hidden>Z</span></span>
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2"><b className={cn('truncate text-sm', (c.unread ?? 0) > 0 ? 'font-bold' : 'font-semibold')}>{c.displayName}</b><span className="ml-auto shrink-0 text-[11px] text-[rgb(var(--faint))]">{zTime(c.lastAt)}</span></span>
+                    <span className="flex items-center gap-2"><b className={cn('truncate text-sm', (c.unread ?? 0) > 0 ? 'font-semibold' : 'font-semibold')}>{c.displayName}</b><span className="ml-auto shrink-0 text-[11px] text-[rgb(var(--faint))]">{zTime(c.lastAt)}</span></span>
                     <span className={cn('mt-0.5 block truncate text-[13px]', (c.unread ?? 0) > 0 ? 'text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))]')}>{c.lastText}</span>
                     <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {lk && <span className="inline-flex max-w-[150px] items-center gap-1 truncate rounded bg-[rgb(var(--secondary)/0.1)] px-1.5 py-0.5 text-[10px] font-medium text-[rgb(var(--secondary-fg))]"><Link2 className="h-2.5 w-2.5 shrink-0" aria-hidden />{linkLabel(lk)}</span>}
-                      {c.assignee ? <span className="text-[10px] text-[rgb(var(--muted))]">{userName(c.assignee)}</span> : <span className="text-[10px] font-medium text-[rgb(var(--accent-fg))]">Chưa nhận</span>}
-                      {w >= hubCfg.zalo.replyMinutes && c.status !== 'CLOSED' && <span className="text-[10px] font-semibold text-[rgb(var(--danger-fg))]">Chờ {w >= 60 ? `${Math.round(w / 60)} giờ` : `${w} phút`}</span>}
-                      {(c.unread ?? 0) > 0 && <span className="ml-auto rounded-full bg-[rgb(var(--danger))] px-1.5 text-[10px] font-bold text-white">{c.unread}</span>}
+                      {lk && <span className="inline-flex max-w-[150px] items-center gap-1 truncate rounded bg-[rgb(var(--secondary)/0.1)] px-1.5 py-0.5 text-[11px] font-medium text-[rgb(var(--secondary-fg))]"><Link2 className="h-2.5 w-2.5 shrink-0" aria-hidden />{linkLabel(lk)}</span>}
+                      {c.assignee ? <span className="text-[11px] text-[rgb(var(--muted))]">{userName(c.assignee)}</span> : <span className="text-[11px] font-medium text-[rgb(var(--accent-fg))]">Chưa nhận</span>}
+                      {w >= hubCfg.zalo.replyMinutes && c.status !== 'CLOSED' && <span className="text-[11px] font-semibold text-[rgb(var(--danger-fg))]">Chờ {w >= 60 ? `${Math.round(w / 60)} giờ` : `${w} phút`}</span>}
+                      {(c.unread ?? 0) > 0 && <span className="ml-auto rounded-full bg-[rgb(var(--danger))] px-1.5 text-[11px] font-semibold text-white">{c.unread}</span>}
                     </span>
                   </span>
                 </button>
@@ -217,11 +217,11 @@ export function ZaloHubInner({ me }: { me: User }) {
               ) : (
                 <div key={m.id} className={cn('flex', m.dir === 'IN' ? 'justify-start' : 'justify-end')}>
                   <div className={cn('max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-sm', m.dir === 'IN' ? 'rounded-bl-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))]' : m.dir === 'NOTE' ? 'rounded-br-md border border-dashed border-[#F59E0B] bg-[#FEF3C7] text-[#78350F]' : 'rounded-br-md bg-[#0068FF] text-white')}>
-                    {m.dir === 'NOTE' && <p className="mb-0.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider"><StickyNote className="h-3 w-3" aria-hidden />Ghi chú nội bộ · khách không thấy</p>}
-                    {m.kind === 'zns' && <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider opacity-80">Tin ZNS</p>}
+                    {m.dir === 'NOTE' && <p className="mb-0.5 flex items-center gap-1 text-[11px] font-semibold"><StickyNote className="h-3 w-3" aria-hidden />Ghi chú nội bộ · khách không thấy</p>}
+                    {m.kind === 'zns' && <p className="mb-0.5 text-[11px] font-semibold opacity-80">Tin ZNS</p>}
                     {m.kind === 'image' && m.url && <img src={m.url} alt="Ảnh khách gửi" className="mb-1 max-h-56 rounded-lg" />}
                     <p className="whitespace-pre-wrap break-words">{m.text}</p>
-                    <p className={cn('mt-1 flex items-center justify-end gap-1 text-[10px]', m.dir === 'OUT' ? 'text-white/75' : 'text-[rgb(var(--muted))]')}>
+                    <p className={cn('mt-1 flex items-center justify-end gap-1 text-[11px]', m.dir === 'OUT' ? 'text-white/75' : 'text-[rgb(var(--muted))]')}>
                       {m.dir !== 'IN' && m.by && <span>{m.by === 'zalo-oa' ? 'Gửi từ app Zalo OA' : userName(m.by)} ·</span>}{zTime(m.at)}
                       {m.status === 'SENDING' && ' · đang gửi'}{m.status === 'DEMO' && ' · mô phỏng'}{m.status === 'FAILED' && <b className="text-[#FECACA]"> · lỗi: {m.error}</b>}
                     </p>
@@ -249,7 +249,7 @@ export function ZaloHubInner({ me }: { me: User }) {
                   </div>
                   <button className={cn(btnGhost, btnSm)} onClick={suggest} disabled={busy}><Sparkles className="h-3.5 w-3.5 text-[rgb(var(--accent))]" aria-hidden />{busy ? 'Đang soạn…' : 'Gợi ý trả lời'}</button>
                   <button className={cn(btnGhost, btnSm)} onClick={() => setWriter(true)}><PenLine className="h-3.5 w-3.5" aria-hidden />Soạn tin chăm sóc</button>
-                  <span className="ml-auto text-[10px] text-[rgb(var(--faint))]">{ai.available ? `AI: ${ai.label}` : 'Gợi ý theo mẫu'}</span>
+                  <span className="ml-auto text-[11px] text-[rgb(var(--faint))]">{ai.available ? `AI: ${ai.label}` : 'Gợi ý theo mẫu'}</span>
                 </div>
                 <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); void send(); }}>
                   <textarea className={cn(inputCls, 'min-h-[44px] flex-1 resize-none', mode === 'note' && 'border-[#F59E0B] bg-[#FEF3C7]/40')} rows={Math.min(5, Math.max(1, text.split('\n').length))} value={text} onChange={(e) => setText(e.target.value)}
@@ -281,7 +281,7 @@ export function ZaloHubInner({ me }: { me: User }) {
               <div className="flex flex-wrap gap-1.5">
                 {(cur.links ?? []).map((l) => (
                   <span key={`${l.kind}${l.id}`} className="inline-flex max-w-full items-center gap-1 rounded-full border border-[rgb(var(--secondary)/0.4)] bg-[rgb(var(--secondary)/0.08)] py-0.5 pl-2 pr-1 text-xs">
-                    <span className="truncate"><b className="font-semibold">{ZLINK_LABEL[l.kind]}:</b> {linkLabel(l)}</span>{l.auto && <span className="text-[10px] text-[rgb(var(--muted))]">tự động</span>}
+                    <span className="truncate"><b className="font-semibold">{ZLINK_LABEL[l.kind]}:</b> {linkLabel(l)}</span>{l.auto && <span className="text-[11px] text-[rgb(var(--muted))]">tự động</span>}
                     <button className="rounded-full p-0.5 hover:bg-[rgb(var(--ink)/0.08)]" onClick={() => patch(cur.id, (c) => ({ ...c, links: (c.links ?? []).filter((x) => !(x.kind === l.kind && x.id === l.id)) }))} aria-label={`Bỏ liên kết ${linkLabel(l)}`}><X className="h-3 w-3" /></button>
                   </span>
                 ))}
@@ -303,8 +303,8 @@ export function ZaloHubInner({ me }: { me: User }) {
               <p className="text-[rgb(var(--muted))]">{cust.contactName}{cust.contactPhone ? ` · ${cust.contactPhone}` : ''}</p>
               <p className="text-[rgb(var(--muted))]">{cust.address}</p>
               <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="rounded-md bg-[rgb(var(--sunken))] px-2.5 py-2"><p className="text-[10px] uppercase text-[rgb(var(--muted))]">Doanh số năm nay</p><p className="font-num font-semibold">{compact(cust.ytdRevenue)}</p></div>
-                <div className="rounded-md bg-[rgb(var(--sunken))] px-2.5 py-2"><p className="text-[10px] uppercase text-[rgb(var(--muted))]">Công nợ</p><p className={cn('font-num font-semibold', cust.debt > cust.creditLimit && 'text-[rgb(var(--danger-fg))]')}>{compact(cust.debt)}</p></div>
+                <div className="rounded-md bg-[rgb(var(--sunken))] px-2.5 py-2"><p className="text-[11px] uppercase text-[rgb(var(--muted))]">Doanh số năm nay</p><p className="font-num font-semibold">{compact(cust.ytdRevenue)}</p></div>
+                <div className="rounded-md bg-[rgb(var(--sunken))] px-2.5 py-2"><p className="text-[11px] uppercase text-[rgb(var(--muted))]">Công nợ</p><p className={cn('font-num font-semibold', cust.debt > cust.creditLimit && 'text-[rgb(var(--danger-fg))]')}>{compact(cust.debt)}</p></div>
               </div>
               <p>Phụ trách: <b>{userName(cust.amId)}</b></p>
             </div>
@@ -313,14 +313,14 @@ export function ZaloHubInner({ me }: { me: User }) {
             <ul className="space-y-1.5">
               {related.jobs.slice(0, 5).map((j) => { const st = JOB_STAGE[jobStageOf(j, app.workOrders, app.installJobs, app.receipts)]; return (
                 <li key={j.id}><button className="w-full rounded-md border border-[rgb(var(--line))] px-2.5 py-2 text-left hover:border-[rgb(var(--secondary)/0.6)]" onClick={() => app.openJob(j.id)}>
-                  <span className="flex items-center gap-2 text-xs"><b className="font-mono text-[rgb(var(--accent-fg))]">{j.code}</b><span className="ml-auto"><Chip tone={st.tone}>{st.short}</Chip></span></span>
+                  <span className="flex items-center gap-2 text-xs"><b className="code-chip">{j.code}</b><span className="ml-auto"><Chip tone={st.tone}>{st.short}</Chip></span></span>
                   <span className="mt-0.5 block truncate text-xs">{j.title}</span>
                   {j.contractValue ? <span className="text-[11px] text-[rgb(var(--muted))]">Giá trị HĐ {compact(j.contractValue)}</span> : null}
                 </button></li>
               ); })}
               {related.leads.slice(0, 5).map((l) => (
                 <li key={l.id}><button className="w-full rounded-md border border-[rgb(var(--line))] px-2.5 py-2 text-left hover:border-[rgb(var(--secondary)/0.6)]" onClick={() => app.go(['ACCEPTED', 'QUOTED', 'WON', 'LOST'].includes(l.status) ? 'projects' : 'leads', l.code)}>
-                  <span className="flex items-center gap-2 text-xs"><b className="font-mono text-[rgb(var(--accent-fg))]">{l.code}</b><span className="ml-auto"><Chip tone={LEAD_STATUS[l.status].tone}>{LEAD_STATUS[l.status].label}</Chip></span></span>
+                  <span className="flex items-center gap-2 text-xs"><b className="code-chip">{l.code}</b><span className="ml-auto"><Chip tone={LEAD_STATUS[l.status].tone}>{LEAD_STATUS[l.status].label}</Chip></span></span>
                   <span className="mt-0.5 block truncate text-xs">{l.company} · {compact(boqTotal(l))}</span>
                 </button></li>
               ))}
@@ -389,7 +389,7 @@ export function ZnsSendSheet({ conv, cust, job, onClose }: { conv: ZaloConv; cus
       ) : (
         <div className="space-y-4">
           <Field label="Mẫu tin"><select className={inputCls} value={tid} onChange={(e) => setTid(e.target.value)}>{tpls.map((x) => <option key={x.id} value={x.id}>{x.name} (ID {x.templateId})</option>)}</select></Field>
-          <Field label="Số điện thoại nhận" hint="Số đăng ký Zalo của khách"><input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" /></Field>
+          <Field label="Số điện thoại nhận" hint="Số đăng ký Zalo của khách"><input type="tel" autoComplete="tel" className={inputCls} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
           {(tpl?.params ?? []).map((p) => (
             <Field key={p.key} label={`${p.key}${p.source ? ` · ${ZNS_SOURCES[p.source] ?? p.source}` : ''}`}><input className={inputCls} value={vals[p.key] ?? ''} onChange={(e) => setVals((v) => ({ ...v, [p.key]: e.target.value }))} /></Field>
           ))}

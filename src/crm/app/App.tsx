@@ -1,15 +1,15 @@
 'use client';
 
-import { AlertTriangle, Briefcase, Building2, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronRight, Command, Factory, Globe, Inbox, LogOut, Menu, MessageSquare, MessagesSquare, Moon, Newspaper, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Search, Sparkles, Sun, Target, Users, Wallet, X, XCircle } from 'lucide-react';
 import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useRef, useState } from 'react';
-import { ChangePasswordModal, Logo3A, NotificationBell, SyncChip, TenantSwitcher, useOutsideClose, UserMenu } from './header';
+import { AlertTriangle, Building2, Camera, CheckCircle2, ChevronDown, Command, Factory, Globe, LogOut, Menu, MessageSquare, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Sparkles, Sun, Wallet, X, XCircle } from 'lucide-react';
+import { ChangePasswordModal, Logo3A, NotificationBell, SyncChip, TenantSwitcher, UserMenu } from './header';
 import { CommandPalette } from '../components/command-palette';
 import { DateRangePicker } from '../components/controls';
 import { periodRange } from '../components/filters';
 import { Skeleton } from '../components/ui';
 import { fundUsage, scoreLead, shipmentAllocation } from '../lib/business';
 import { canon, cloudMessage, statsOf } from '../lib/cloud';
-import { AVATARS, bizMode, blockersOf, btnAccent, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, znsPhone } from '../lib/core';
+import { AVATARS, bizMode, blockersOf, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, znsPhone } from '../lib/core';
 import { buildGetflyPayload, financialsFromOrders } from '../lib/getfly';
 import { LoginScreen, orgDefaults, pathOrgOf, registerOrgs, regsFromStored, setPathOrg } from '../lib/modules';
 import { initialNotices } from '../lib/notify';
@@ -50,25 +50,6 @@ import { SupplyModule } from '../modules/supply/purchase-orders';
 import { TaskBadge, TasksModule } from '../modules/tasks/tasks';
 import { WarehouseModule } from '../modules/warehouse/warehouse';
 import { ZaloHubPage } from '../modules/zalo/zalo-hub';
-
-/** Nút "Thêm nhanh": tạo mới theo quyền của người đang đăng nhập */
-export function QuickAdd({ mini, items }: { mini: boolean; items: { id: string; label: string; icon: typeof Wallet; run: () => void }[] }) {
-  const [open, setOpen] = useState(false);
-  const ref = useOutsideClose(open, () => setOpen(false));
-  if (!items.length) return null;
-  return (
-    <div className="relative mb-4" ref={ref}>
-      <button className={cn(btnAccent, 'w-full', mini ? 'h-10 px-0' : 'h-10')} onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu" title={mini ? 'Thêm nhanh' : undefined} aria-label="Thêm nhanh">
-        <Plus className="h-4 w-4" aria-hidden />{!mini && 'Thêm nhanh'}
-      </button>
-      {open && (
-        <div className="absolute left-0 top-12 z-[70] w-56 rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-[var(--shadow-lg)]" role="menu">
-          {items.map((i) => <button key={i.id} role="menuitem" className="flex w-full items-center gap-2.5 rounded px-3 py-2 text-left text-sm text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--fg))]" onClick={() => { setOpen(false); i.run(); }}><i.icon className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{i.label}</button>)}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function DashboardApp() {
   const [ready, setReady] = useState(false);
@@ -394,7 +375,7 @@ export default function DashboardApp() {
   }, [now]);
 
   // Sidebar mặc định thu gọn (chỉ icon), rê chuột thì mở rộng dạng nổi; ghim (Ctrl + B) để luôn mở. Nhớ theo trình duyệt
-  const [sideMini, setSideMini] = useState(true);
+  const [sideMini, setSideMini] = useState(false);
   /** Nhãn nổi khi rê chuột / focus vào icon menu thu gọn (không mở rộng menu) */
   const [railTip, setRailTip] = useState<{ label: string; y: number } | null>(null);
   const [fundOpen, setFundOpen] = useState(false);
@@ -422,8 +403,8 @@ export default function DashboardApp() {
   const [foldGroups, setFoldGroups] = useState<string[]>([]);
   useEffect(() => {
     try {
-      const v = JSON.parse(localStorage.getItem(UI_KEY) ?? '{}') as { pin?: boolean; fold?: string[]; fund?: boolean; gf?: unknown };
-      setSideMini(v.pin !== true);
+      const v = JSON.parse(localStorage.getItem(UI_KEY) ?? '{}') as { pin40?: boolean; fold?: string[]; fund?: boolean; gf?: unknown };
+      setSideMini(v.pin40 === false);
       setFundOpen(v.fund === true);
       setFoldGroups(Array.isArray(v.fold) ? v.fold : []);
     } catch { /* bỏ qua */ }
@@ -431,7 +412,7 @@ export default function DashboardApp() {
   const uiSaved = useRef(false);
   useEffect(() => {
     if (!uiSaved.current) { uiSaved.current = true; return; }
-    try { localStorage.setItem(UI_KEY, JSON.stringify({ pin: !sideMini, fold: foldGroups, fund: fundOpen })); } catch { /* bỏ qua */ }
+    try { localStorage.setItem(UI_KEY, JSON.stringify({ pin40: !sideMini, fold: foldGroups, fund: fundOpen })); } catch { /* bỏ qua */ }
   }, [sideMini, foldGroups, fundOpen]);
   const sideOpen = !sideMini;
   const toggleSide = () => setSideMini((v) => !v);
@@ -1394,7 +1375,7 @@ export default function DashboardApp() {
   if (!ready || cloudBoot) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[rgb(var(--bg))] text-sm text-[rgb(var(--muted))]" role="status">
-        {cloudBoot && <><RefreshCw className="h-6 w-6 text-[rgb(var(--accent))] motion-safe:animate-spin" aria-hidden />Đang kết nối máy chủ và tải dữ liệu...</>}
+        {cloudBoot && <><RefreshCw className="h-6 w-6 text-[rgb(var(--accent))] motion-safe:animate-spin" aria-hidden />Đang kết nối máy chủ và tải dữ liệu…</>}
       </div>
     );
   }
@@ -1402,20 +1383,35 @@ export default function DashboardApp() {
   const fontStyle = (
     <>
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Archivo:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
       ${THEME_CSS}
       /* Màu nhấn cam (trạng thái đang chọn, số đếm, KPI nổi bật) */
       .g-brand { background-color: rgb(var(--accent)); }
       .g-brand-text { color: rgb(var(--accent-fg)); }
-      .font-display, h1, h2 { font-family: 'Archivo', 'Be Vietnam Pro', system-ui, sans-serif; letter-spacing: -0.01em; }
-      .font-num, table.dt td.tabular-nums, table.dt td.text-right:not(:last-child), table.dt td .tabular-nums { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; }
-      table.dt tbody tr:nth-child(even) { background-color: rgb(var(--ink) / 0.022); }
-      table.dt tbody tr:hover { background-color: rgb(var(--secondary) / 0.08); }
-      table.dt thead th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: rgb(var(--muted) / .85); white-space: nowrap; }
+      .font-display, h1, h2 { font-family: 'Be Vietnam Pro', system-ui, sans-serif; letter-spacing: -0.01em; font-weight: 500; }
+      .font-mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0; }
+      .font-num, table.dt td.tabular-nums, table.dt td.text-right:not(:last-child), table.dt td .tabular-nums { font-variant-numeric: tabular-nums; }
+      table.dt tbody tr { transition: background-color .15s var(--ease); }
+      table.dt tbody tr:hover { background-color: rgb(var(--ink) / 0.03); }
+      table.dt thead th { font-size: 12.5px; font-weight: 400; text-transform: none; letter-spacing: 0; color: rgb(var(--muted)); white-space: nowrap; }
+      table.dt thead th button { text-transform: none !important; letter-spacing: 0 !important; }
+      @media (min-width: 768px) {
+        /* v40: mỗi ô một dòng, chữ dài rút gọn bằng dấu … */
+        table.dt > tbody > tr > td { white-space: nowrap; }
+        table.dt > tbody > tr > td .truncate { max-width: 190px; }
+        table.dt > tbody > tr > td[class*="--fg2"] .truncate, table.dt > tbody > tr > td[class*="--muted"] .truncate { max-width: 150px; }
+        table.dt > tbody > tr > td, table.dt > thead > tr > th { padding-left: 10px; padding-right: 10px; }
+        table.dt > tbody > tr > td:first-child, table.dt > thead > tr > th:first-child { padding-left: 16px; }
+        table.dt > tbody > tr > td:last-child, table.dt > thead > tr > th:last-child { padding-right: 16px; }
+        table.dt > tbody > tr > td[colspan] { white-space: normal; }
+      }
+      .code-chip { display: inline-block; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11.5px; line-height: 18px; padding: 0 6px; border-radius: 4px; background: rgb(var(--ink) / 0.06); color: rgb(var(--fg2)); white-space: nowrap; }
+      .skip-link { position: absolute; left: 12px; top: -48px; z-index: 100; padding: 8px 12px; border-radius: 8px; background: rgb(var(--surface)); color: rgb(var(--fg)); box-shadow: var(--shadow); }
+      .skip-link:focus { top: 12px; }
       table.dt-stt > tbody > tr { counter-increment: stt; }
       table.dt-stt > tbody > tr:has(> td[colspan]), table.dt-stt > tbody > tr[data-sub] { counter-increment: none; }
       table.dt-stt > tbody > tr[data-sub]::before { content: ''; }
-      table.dt-stt > tbody > tr::before { content: counter(stt); display: table-cell; vertical-align: middle; width: 3.5rem; padding: .75rem .75rem .75rem 1.25rem; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: .8rem; color: rgb(var(--muted)); }
+      table.dt-stt > tbody > tr::before { content: counter(stt); display: table-cell; vertical-align: middle; width: 3.5rem; padding: .75rem .75rem .75rem 1.25rem; font-variant-numeric: tabular-nums; font-size: 13px; color: rgb(var(--muted)); }
       table.dt-stt > tbody > tr:has(> td[colspan])::before { content: ''; }
       table.dt-stt > tbody > tr > td:first-child { padding-left: .75rem; }
       @media (min-width: 768px) {
@@ -1432,22 +1428,25 @@ export default function DashboardApp() {
         table.dt-cards tbody td * { white-space: normal !important; }
         table.dt-cards tbody td [class*="max-w-["], table.dt-cards tbody td .truncate { max-width: 100%; }
         table.dt-cards tbody td > .flex, table.dt-cards tbody td > div { justify-content: flex-end; flex-wrap: wrap; }
-        table.dt-cards tbody td::before { content: attr(data-label); font-family: 'Be Vietnam Pro', system-ui, sans-serif; position: absolute; left: 0; top: 7px; width: 38%; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: rgb(var(--muted)); }
+        table.dt-cards tbody td::before { content: attr(data-label); font-family: 'Be Vietnam Pro', system-ui, sans-serif; position: absolute; left: 0; top: 7px; width: 38%; text-align: left; font-size: 12px; font-weight: 400; color: rgb(var(--muted)); }
         table.dt-cards tbody td[data-label=""], table.dt-cards tbody td:not([data-label]), table.dt-cards tbody td[colspan] { padding-left: 0 !important; text-align: left; }
         table.dt-cards tbody td[data-label=""] > .flex, table.dt-cards tbody td[data-label=""] > div { justify-content: flex-start; }
         table.dt-cards tbody td[data-label=""]::before, table.dt-cards tbody td:not([data-label])::before, table.dt-cards tbody td[colspan]::before { display: none; }
         table.dt-cards tbody td[colspan] { text-align: center; }
-        table.dt-cards tbody td:first-child { font-weight: 600; }
+        table.dt-cards tbody td:first-child { font-weight: 500; }
         table.dt-cards.dt-stt > tbody > tr::before { display: none; }
       }
       .kpi-row > .kpi:first-child { border-left-color: transparent; padding-left: 0; }
+      .kpi-strip { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 12px; overflow: hidden; }
+      .kpi-strip > * { border-left: 1px solid rgb(var(--line)); border-top: 1px solid rgb(var(--line)); margin: 0 0 -1px -1px; }
       /* Card chuẩn: nền surface, viền mảnh, bóng nhẹ (thay hiệu ứng kính để dễ đọc và nhẹ máy) */
-      .glass-card { background: rgb(var(--surface)); border: 1px solid rgb(var(--line) / 0.9); box-shadow: var(--shadow-sm); }
+      .glass-card { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); }
       .ambient { display: none; }
       .glass { background: rgb(var(--raised) / 0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--shadow-lg); }
       option { background: rgb(var(--surface)); color: rgb(var(--fg)); }
       select:not([multiple]) { appearance: none; -webkit-appearance: none; padding-right: 2rem !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .6rem center; background-size: 1rem; }
-      :focus-visible { outline: 2px solid rgb(var(--secondary)); outline-offset: 2px; }
+      :focus-visible { outline: 2px solid rgb(var(--fg) / .7); outline-offset: 2px; }
+      button, a, [role=tab] { -webkit-tap-highlight-color: transparent; }
       @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
       .chamfer { clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
       ::selection { background: rgb(var(--accent) / .3); }
@@ -1566,23 +1565,13 @@ export default function DashboardApp() {
   const bottomNav = ((bizMode(company) === 'MFG' ? ['overview', 'leads', 'jobs', 'production', 'install', 'tasks'] : ['overview', 'tasks', 'customers', 'docs', 'staff', 'leads', 'projects']) as Module[]).filter((m) => seeModule(m) && moduleEnabled(company, m)).slice(0, 5);
   const spentPct = budget.total ? (budget.spent / budget.total) * 100 : 0;
   const commitPct = budget.total ? (budget.committed / budget.total) * 100 : 0;
-  const PageIcon = MODULE_ICON[page];
 
   const consoleMode = !!platformId && consoleView;
 
   const tenantReg = platformTenants.find((t) => t.id === orgId);
   const contractLeft = tenantReg ? daysTo(tenantReg.contractEnd) : 999;
-  const groups = NAV_GROUPS.map((g) => ({ ...g, list: g.list.filter((m) => nav.includes(m)) })).filter((g) => g.list.length);
+  const groups = NAV_GROUPS.map((g) => ({ ...g, title: g.id === 'supply' && bizMode(company) === 'MFG' ? 'Xưởng' : g.title, list: g.list.filter((m) => nav.includes(m) && m !== 'overview') })).filter((g) => g.list.length);
   const showDate = !consoleMode && DATE_PAGES.includes(page);
-  const quickItems = [
-    nav.includes('home') && { id: 'q-post', label: 'Bài đăng bảng tin', icon: Newspaper, run: () => ctx.go('home', 'compose') },
-    nav.includes('leads') && ctx.canDo('lead.create') && { id: 'q-lead', label: 'Lead mới', icon: Inbox, run: () => ctx.openLeadForm() },
-    nav.includes('projects') && ctx.canDo('project.update') && { id: 'q-project', label: 'Dự án / cơ hội mới', icon: Target, run: () => { ctx.go('projects'); ctx.openLeadForm(true); } },
-    nav.includes('customers') && bizMode(company) !== 'MFG' && ctx.canDo('customer.edit') && { id: 'q-cust', label: 'Khách hàng mới', icon: Users, run: () => { ctx.go('customers'); ctx.openCustomerForm(); } },
-    nav.includes('claims') && ctx.canDo('program.create') && { id: 'q-prog', label: 'Đề xuất chương trình MDF', icon: Briefcase, run: () => { ctx.go('claims'); ctx.openProgramForm(); } },
-    nav.includes('staff') && { id: 'q-staff', label: 'Lịch công tác', icon: CalendarDays, run: () => ctx.go('staff') },
-    nav.includes('messages') && { id: 'q-chat', label: 'Tin nhắn mới', icon: MessagesSquare, run: () => ctx.go('messages') },
-  ].filter(Boolean) as { id: string; label: string; icon: typeof Wallet; run: () => void }[];
 
   /** Một mục menu: đầy đủ (icon + nhãn + badge) hoặc thu gọn (chỉ icon, tooltip, chấm báo) */
   const navBtn = (o: { id: string; label: string; icon: typeof Wallet; active: boolean; onClick: () => void; mini: boolean; badge?: { n: number; tone: Tone }; extra?: ReactNode }) => {
@@ -1597,12 +1586,12 @@ export default function DashboardApp() {
         onFocus={o.mini ? (e) => { const r = e.currentTarget.getBoundingClientRect(); setRailTip({ label: o.label, y: r.top + r.height / 2 }); } : undefined}
         onBlur={o.mini ? () => setRailTip(null) : undefined}
         aria-current={o.active ? 'page' : undefined}
-        className={cn('relative flex w-full items-center gap-3 rounded text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent))]', o.mini ? 'h-8 justify-center px-0' : 'px-3 py-2', o.active ? 'bg-[rgb(var(--accent)/0.1)] text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))] hover:bg-[rgb(var(--raised))] hover:text-[rgb(var(--fg))]')}
+        className={cn('relative flex h-[30px] w-full items-center gap-2.5 rounded-lg text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--fg)/0.5)]', o.mini ? 'justify-center px-0' : 'px-2.5', o.active ? 'bg-[rgb(var(--ink)/0.08)] text-white' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)] hover:text-[rgb(var(--fg))]')}
       >
-        {o.active && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-[rgb(var(--accent))]" aria-hidden />}
-        <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
+        {o.active && <span className="absolute inset-y-2 -left-2.5 w-[3px] rounded-r bg-[rgb(var(--accent))]" aria-hidden />}
+        <Icon className={cn('h-4 w-4 shrink-0', o.active ? 'text-white' : 'text-[rgb(var(--muted))]')} aria-hidden />
         {!o.mini && <span className="min-w-0 flex-1 truncate">{o.label}</span>}
-        {!o.mini && o.badge && <span className={cn('min-w-[1.375rem] rounded-md px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums', o.badge.tone === 'red' ? 'bg-[rgb(var(--danger)/0.2)] text-[rgb(var(--danger-fg))]' : 'bg-[rgb(var(--accent)/0.2)] text-[rgb(var(--accent-fg))]')}>{o.badge.n}</span>}
+        {!o.mini && o.badge && <span className={cn('font-mono text-xs tabular-nums', o.badge.tone === 'red' ? 'text-[#fca5a5]' : 'text-[rgb(var(--muted))]')}>{o.badge.n}</span>}
         {o.mini && o.badge && <span className={cn('absolute right-2.5 top-1.5 h-2 w-2 rounded-full', o.badge.tone === 'red' ? 'bg-[rgb(var(--danger))]' : 'bg-[rgb(var(--accent))]')} aria-hidden />}
         {!o.mini && o.extra}
       </button>
@@ -1611,8 +1600,8 @@ export default function DashboardApp() {
   const groupHead = (id: string, title: string, mini: boolean, first: boolean, folded?: boolean, onToggle?: () => void) => mini
     ? (first ? null : <div className="mx-3 mb-2 border-t border-[rgb(var(--line))]" aria-hidden />)
     : onToggle
-      ? <button className="mb-1 flex w-full items-center gap-1 rounded px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))] hover:text-[rgb(var(--fg2))]" onClick={onToggle} aria-expanded={!folded} aria-controls={`nav-${id}`}><span className="min-w-0 flex-1 truncate text-left">{title}</span><ChevronDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform', folded && '-rotate-90')} aria-hidden /></button>
-      : <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">{title}</p>;
+      ? !title ? <div className="mx-1 mb-2 border-t border-[rgb(var(--ink)/0.08)]" aria-hidden /> : <button className="mb-1 flex w-full items-center gap-1 rounded px-2.5 py-0.5 text-xs text-[rgb(var(--muted))] hover:text-[rgb(var(--fg2))]" onClick={onToggle} aria-expanded={!folded} aria-controls={`nav-${id}`}><span className="min-w-0 flex-1 truncate text-left">{title}</span><ChevronDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform', folded && '-rotate-90')} aria-hidden /></button>
+      : <p className="mb-1 px-2.5 text-xs text-[rgb(var(--muted))]">{title}</p>;
 
   const navList = (onPick?: () => void, mini = false) => consoleMode ? (
     <nav className="space-y-4" aria-label="3A Platform Console">
@@ -1630,16 +1619,16 @@ export default function DashboardApp() {
       </div>
     </nav>
   ) : (
-    <nav className={mini ? 'space-y-1.5' : 'space-y-4'} aria-label="Điều hướng chính">
-      <QuickAdd mini={mini} items={quickItems} />
+    <nav className={mini ? 'space-y-1.5' : 'space-y-3.5'} aria-label="Điều hướng chính">
+      {nav.includes('overview') && <div className="space-y-0.5">{navBtn({ id: 'overview', label: MODULE_SHORT.overview ?? MODULE_LABEL.overview, icon: MODULE_ICON.overview, active: page === 'overview', mini, badge: badges.overview, onClick: () => { ctx.go('overview'); onPick?.(); } })}</div>}
       {groups.map((g, gi) => {
         const folded = !mini && foldGroups.includes(g.id) && !g.list.includes(page);
         return (
           <div key={g.id}>
             {groupHead(g.id, g.title, mini, gi === 0, folded, () => toggleGroup(g.id))}
             {!folded && (
-              <div id={`nav-${g.id}`} className="space-y-0.5">
-                {g.list.map((m) => navBtn({ id: m, label: MODULE_LABEL[m], icon: MODULE_ICON[m], active: page === m, mini, badge: badges[m], onClick: () => { ctx.go(m); onPick?.(); }, extra: m === 'tasks' ? <TaskBadge /> : undefined }))}
+              <div id={`nav-${g.id}`} className="space-y-px">
+                {g.list.map((m) => navBtn({ id: m, label: MODULE_SHORT[m] ?? MODULE_LABEL[m], icon: MODULE_ICON[m], active: page === m, mini, badge: badges[m], onClick: () => { ctx.go(m); onPick?.(); }, extra: m === 'tasks' ? <TaskBadge /> : undefined }))}
               </div>
             )}
           </div>
@@ -1659,7 +1648,7 @@ export default function DashboardApp() {
   ) : (
     <button className="w-full rounded p-2.5 text-left hover:bg-[rgb(var(--ink)/0.04)]" onClick={() => ctx.go(perms.modules[role].claims ? 'claims' : 'overview')}>
       <p className="text-xs text-[rgb(var(--muted))]">Quỹ 3M {budget.fiscalYear} (MDF + CS)</p>
-      <p className="font-display mt-1 text-xl font-extrabold"><span className="g-brand-text">{spentPct.toFixed(0)}%</span> <span className="text-xs font-medium text-[rgb(var(--muted))]">đã tiêu</span></p>
+      <p className="font-display mt-1 text-xl font-semibold"><span className="g-brand-text">{spentPct.toFixed(0)}%</span> <span className="text-xs font-medium text-[rgb(var(--muted))]">đã tiêu</span></p>
       <p className="text-xs tabular-nums text-[rgb(var(--muted))]">{compact(budget.spent)} / {compact(budget.total)}</p>
       <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-[rgb(var(--bg))]">
         <div style={{ width: `${spentPct}%`, background: GRAD }} />
@@ -1672,7 +1661,7 @@ export default function DashboardApp() {
     <div className="flex min-w-0 items-center gap-3">
       <Logo3A size={34} />
       <div className="min-w-0">
-        <p className="font-display truncate text-[15px] font-extrabold leading-tight tracking-tight">3A GROUP</p>
+        <p className="font-display truncate text-[15px] font-semibold leading-tight tracking-normal">3A GROUP</p>
         <p className="truncate text-xs text-[rgb(var(--muted))]">Master Console · {platformUser?.email}</p>
       </div>
     </div>
@@ -1680,7 +1669,7 @@ export default function DashboardApp() {
     <div className="flex min-w-0 items-center gap-3">
       <BrandMark size={36} />
       <div className="min-w-0">
-        <p className="font-display truncate text-[15px] font-bold leading-tight">{company.appName}</p>
+        <p className="truncate text-sm font-medium leading-tight text-white">{company.shortName}</p>
         <p className="truncate text-xs text-[rgb(var(--muted))]">{(company.profile ?? 'TRADING') === 'TRADING' ? `${company.shortName} x 3M Việt Nam` : BUSINESS_PROFILE[company.profile ?? 'TRADING'].label}</p>
       </div>
     </div>
@@ -1689,13 +1678,13 @@ export default function DashboardApp() {
   const switcher = platformId
     ? <TenantSwitcher orgId={orgId} consoleOn={consoleMode} onConsole={() => ctx.platform.openConsole()} onSwitch={switchTenant} />
     : null;
-  const HeadIcon = consoleMode ? Globe : PageIcon;
 
   return (
     <Ctx.Provider value={ctx}>
       <div className="min-h-screen bg-[rgb(var(--bg))] text-[rgb(var(--fg))] antialiased" style={shellStyle}>
         {fontStyle}
-        {cloudBusy && <div className="fixed inset-x-0 top-16 z-50 flex justify-center"><p className="mt-2 flex items-center gap-2 rounded-full border border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--surface))] px-4 py-1.5 text-xs text-[rgb(var(--accent-fg))] shadow-xl" role="status"><RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden />Đang tải dữ liệu từ máy chủ...</p></div>}
+        <a href="#noi-dung" className="skip-link">Bỏ qua, tới nội dung</a>
+        {cloudBusy && <div className="fixed inset-x-0 top-16 z-50 flex justify-center"><p className="mt-2 flex items-center gap-2 rounded-full border border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--surface))] px-4 py-1.5 text-xs text-[rgb(var(--accent-fg))] shadow-xl" role="status"><RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden />Đang tải dữ liệu từ máy chủ…</p></div>}
         <div className="flex">
           {/* ---------- Sidebar: mặc định chỉ icon, rê chuột / focus thì mở rộng nổi trên nội dung; ghim để luôn mở ---------- */}
           <aside className={cn('side-dark sticky top-0 z-50 hidden h-screen shrink-0 transition-[width] duration-200 lg:block', sideMini ? 'w-16' : 'w-60')} aria-label="Menu chính">
@@ -1703,10 +1692,11 @@ export default function DashboardApp() {
               className={cn('absolute inset-y-0 left-0 flex flex-col overflow-hidden border-r border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--sunken))] transition-[width] duration-200', sideOpen ? 'w-60' : 'w-16')}
               onScroll={() => setRailTip(null)}
             >
-              <div className={cn('flex h-16 shrink-0 items-center border-b border-[rgb(var(--ink)/0.06)]', sideOpen ? 'px-4' : 'justify-center px-0')}>
+              <div className={cn('flex h-14 shrink-0 items-center border-b border-[rgb(var(--ink)/0.06)]', sideOpen ? 'px-4' : 'justify-center px-0')}>
                 {sideOpen ? brand : (consoleMode ? <Logo3A size={30} /> : <BrandMark size={32} />)}
               </div>
-              <div className={cn('flex-1 overflow-y-auto overflow-x-hidden py-4 [scrollbar-width:thin]', sideOpen ? 'px-3' : 'px-2')}>
+              {sideOpen && switcher && <div className="shrink-0 border-b border-[rgb(var(--ink)/0.06)] px-3 py-2">{switcher}</div>}
+              <div className={cn('flex-1 overflow-y-auto overflow-x-hidden py-3 [scrollbar-width:thin]', sideOpen ? 'px-2.5' : 'px-2')}>
                 {navList(() => setRailTip(null), !sideOpen)}
               </div>
               <div className={cn('flex shrink-0 items-center gap-2 border-t border-[rgb(var(--ink)/0.06)] py-2.5', sideOpen ? 'px-3' : 'justify-center')}>
@@ -1723,20 +1713,18 @@ export default function DashboardApp() {
 
           <div className="min-w-0 flex-1">
         {/* ---------- Thanh trên cùng: breadcrumb (3A Group › doanh nghiệp ▾ › phân hệ) · Spotlight ⌘K · công cụ ---------- */}
-        <header className="sticky top-0 z-40 border-b border-[rgb(var(--line))] bg-[rgb(var(--surface)/0.92)] pt-[env(safe-area-inset-top)] backdrop-blur-xl">
-          <div className="flex h-16 items-center gap-2 px-3 sm:gap-3 sm:px-6 lg:px-6">
+        <header className="sticky top-0 z-40 border-b border-[rgb(var(--line))] bg-[rgb(var(--surface))] pt-[env(safe-area-inset-top)]">
+          <div className="flex h-14 items-center gap-2 px-3 sm:gap-3 sm:px-6 lg:px-8">
             <button className={cn(btnGhost, 'p-2 lg:hidden')} onClick={() => setDrawerOpen(true)} aria-label="Mở menu"><Menu className="h-5 w-5" /></button>
-            <nav className="flex min-w-0 shrink items-center gap-1.5" aria-label="Vị trí hiện tại">
-              {switcher ?? <span className="hidden items-center gap-2 text-sm text-[rgb(var(--muted))] md:flex"><BrandMark size={20} />{orgOf(orgId).shortName}</span>}
-              <ChevronRight className={cn('hidden h-4 w-4 shrink-0 text-[rgb(var(--faint))]', switcher ? 'sm:block' : 'md:block')} aria-hidden />
-              <HeadIcon className="h-[18px] w-[18px] shrink-0 text-[rgb(var(--accent))]" aria-hidden />
-              <h1 className="truncate text-base font-bold leading-tight tracking-tight lg:text-lg">{consoleMode ? '3A Platform Console' : MODULE_LABEL[page]}</h1>
-            </nav>
-            <div className="hidden min-w-0 flex-1 justify-center px-2 lg:flex">
+            <div className="flex min-w-0 shrink items-center gap-2">
+              {switcher && <div className="lg:hidden">{switcher}</div>}
+              <h1 className="truncate text-base font-medium leading-tight lg:text-lg">{consoleMode ? '3A Platform Console' : MODULE_LABEL[page]}</h1>
+            </div>
+            <div className="hidden min-w-0 flex-1 justify-end px-2 lg:flex">
 {page === 'home' && !consoleMode ? <AssistantCommandBar variant="header" /> : <>
-<div className="relative w-full max-w-[520px]" onDragOver={(e) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }} onDrop={(e) => { const f = e.dataTransfer.files?.[0]; if (f) { e.preventDefault(); setPaletteImg(f); setPaletteOpen(true); } }}>
-              <button className="glass flex h-10 w-full items-center gap-3 pr-2 rounded-md border border-[rgb(var(--ink)/0.08)] px-3.5 text-left text-sm text-[rgb(var(--muted))] shadow-[0_8px_30px_rgba(0,0,0,.25)] transition-colors hover:border-[rgb(var(--secondary)/0.7)] hover:text-[rgb(var(--fg2))]" onClick={() => setPaletteOpen(true)} title="Spotlight: tìm nhanh, gõ > để chạy lệnh (Ctrl / ⌘ + K), kéo thả ảnh để tìm sản phẩm tương tự">
-                <Search className="h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 flex-1 truncate">Tìm khách hàng, MST, mã đơn… hoặc gõ <b className="font-mono text-[rgb(var(--accent-fg))]">&gt;</b> để ra lệnh</span>
+<div className="relative w-full max-w-[420px]" onDragOver={(e) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }} onDrop={(e) => { const f = e.dataTransfer.files?.[0]; if (f) { e.preventDefault(); setPaletteImg(f); setPaletteOpen(true); } }}>
+              <button className="flex h-9 w-full items-center gap-3 rounded-lg bg-[rgb(var(--raised))] px-3 pr-2 text-left text-sm text-[rgb(var(--muted))] transition-colors hover:text-[rgb(var(--fg2))]" onClick={() => setPaletteOpen(true)} title="Spotlight: tìm nhanh, gõ > để chạy lệnh (Ctrl / ⌘ + K), kéo thả ảnh để tìm sản phẩm tương tự">
+                <Search className="h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 flex-1 truncate">Tìm khách hàng, MST, mã đơn</span>
                 <span className="w-8 shrink-0" aria-hidden /><kbd className="flex shrink-0 items-center gap-0.5 rounded-sm border border-[rgb(var(--ink)/0.1)] px-1.5 py-0.5 text-[11px]"><Command className="h-3 w-3" aria-hidden />K</kbd>
               </button>
                 <button className="absolute right-[3.25rem] top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--accent-fg))]" onClick={() => { setPaletteImg('pick'); setPaletteOpen(true); }} title="Tìm bằng hình ảnh: ảnh mẫu, bản vẽ, phụ kiện" aria-label="Tìm bằng hình ảnh"><Camera className="h-4 w-4" /></button>
@@ -1754,7 +1742,7 @@ export default function DashboardApp() {
                   {theme === 'dark' ? <Moon className="h-[18px] w-[18px]" aria-hidden /> : <Sun className="h-[18px] w-[18px]" aria-hidden />}
                 </button>
                 {!consoleMode && (
-                  <div className="flex items-center xl:hidden">
+                  <div className="flex items-center">
                     <button className={cn('relative rounded p-1.5 transition-colors hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--fg))]', hub === 'chat' ? 'bg-[rgb(var(--ink)/0.08)] text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))]')} onClick={() => setHub((h) => (h === 'chat' ? null : 'chat'))} aria-pressed={hub === 'chat'} aria-label={`Chat nội bộ${chatUnread ? `, ${chatUnread} tin chưa đọc` : ''}`} title="Chat nhanh">
                       <MessageSquare className="h-[18px] w-[18px]" aria-hidden />{chatUnread > 0 && <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-[rgb(var(--accent))] ring-2 ring-[rgb(var(--bg))]" aria-hidden />}
                     </button>
@@ -1770,8 +1758,8 @@ export default function DashboardApp() {
 
         {CLOUD_ON && dataLocked && <p className="bg-[rgb(var(--danger)/0.15)] px-4 py-2 text-center text-xs text-[rgb(var(--danger-fg))]" role="alert">Dữ liệu trên máy chủ thuộc phiên bản v{dataLocked}, mới hơn bản app đang mở (v{DATA_VERSION}). Đang ở chế độ chỉ xem; tải lại trang để dùng bản app mới nhất.</p>}
           <div className="ambient pointer-events-none fixed inset-0 -z-0" aria-hidden />
-          <main className={cn('relative min-w-0 flex-1 lg:pb-0', consoleMode ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-[calc(5rem+env(safe-area-inset-bottom))]')}>
-            <div className="mx-auto w-full max-w-[2400px] px-3 py-5 sm:px-6 lg:px-6">
+          <main id="noi-dung" tabIndex={-1} className={cn('relative min-w-0 flex-1 outline-none lg:pb-0', consoleMode ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-[calc(5rem+env(safe-area-inset-bottom))]')}>
+            <div className="mx-auto w-full max-w-[1680px] px-3 py-5 sm:px-6 lg:px-8">
               {!consoleMode && tenantReg && contractLeft <= 30 && (role === 'BOD' || !!platformId) && (
                 <p className={cn('mb-4 flex items-center gap-2 rounded border px-3 py-2 text-sm', contractLeft < 0 ? 'border-[rgb(var(--danger)/0.5)] bg-[rgb(var(--danger)/0.1)] text-[rgb(var(--danger-fg))]' : 'border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--accent)/0.1)] text-[rgb(var(--accent-fg))]')} role="status">
                   <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
@@ -1821,29 +1809,14 @@ export default function DashboardApp() {
               </aside>
             </>
           )}
-          {/* ---------- Thanh ứng dụng dọc bên phải (màn ≥1280px): mở công cụ phụ mà không rời trang ---------- */}
-          {!consoleMode && (
-            <nav className="sticky top-0 z-30 hidden h-screen w-14 shrink-0 flex-col items-center gap-1 border-l border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--sunken))] py-3 xl:flex" aria-label="Công cụ nhanh">
-              {([
-                { id: 'chat', label: 'Chat nhanh', icon: MessageSquare, on: hub === 'chat', dot: chatUnread > 0, run: () => setHub((h) => (h === 'chat' ? null : 'chat')) },
-                { id: 'ai', label: 'Trợ lý AI', icon: Sparkles, on: hub === 'ai', dot: false, run: () => setHub((h) => (h === 'ai' ? null : 'ai')) },
-              ]).map((b) => (
-                <button key={b.id} onClick={b.run} title={b.label} aria-label={b.label} aria-pressed={b.on}
-                  className={cn('relative flex h-10 w-10 items-center justify-center rounded-md transition-colors', b.on ? 'bg-[rgb(var(--secondary)/0.15)] text-[rgb(var(--secondary-fg))]' : 'text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--fg))]')}>
-                  <b.icon className="h-5 w-5" aria-hidden />
-                  {b.dot && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[rgb(var(--accent))] ring-2 ring-[rgb(var(--sunken))]" aria-hidden />}
-                </button>
-              ))}
-            </nav>
-          )}
         </div>
 
         {/* ---------- Widget nổi: Quỹ 3M / tiền chưa về quỹ (desktop) ---------- */}
         {!consoleMode && fundOpen && (
-          <div className={cn('fixed bottom-5 right-5 z-30 hidden lg:block xl:right-[76px]', hub && 'xl:right-[456px]')}>
+          <div className={cn('fixed bottom-5 right-5 z-30 hidden lg:block', hub && 'xl:right-[400px]')}>
               <div className="glass w-64 rounded-md border border-[rgb(var(--ink)/0.08)] p-1 shadow-[0_16px_40px_rgba(0,0,0,.45)] motion-safe:animate-[popIn_.18s_ease-out]">
                 <div className="flex items-center justify-between px-2 pt-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">Theo dõi nhanh</span>
+                  <span className="text-[11px] font-semibold text-[rgb(var(--faint))]">Theo dõi nhanh</span>
                   <button className="rounded p-0.5 text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.1)] hover:text-[rgb(var(--fg))]" onClick={() => setFundOpen(false)} aria-label="Thu nhỏ widget"><ChevronDown className="h-4 w-4" aria-hidden /></button>
                 </div>
                 {fundCard}
@@ -1859,7 +1832,7 @@ export default function DashboardApp() {
               const Icon = MODULE_ICON[m];
               const b = badges[m];
               return (
-                <button key={m} onClick={() => ctx.go(m)} className={cn('relative flex min-h-[60px] flex-col items-center justify-center gap-1 text-[10px] font-medium', page === m ? 'text-[rgb(var(--accent))]' : 'text-[rgb(var(--muted))]')} aria-current={page === m ? 'page' : undefined}>
+                <button key={m} onClick={() => ctx.go(m)} className={cn('relative flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px] font-medium', page === m ? 'text-[rgb(var(--accent))]' : 'text-[rgb(var(--muted))]')} aria-current={page === m ? 'page' : undefined}>
                   <Icon className="h-5 w-5" aria-hidden />
                   <span className="block w-full truncate px-0.5 text-center">{MODULE_SHORT[m] ?? MODULE_LABEL[m]}</span>
                   {b && <span className={cn('absolute right-[22%] top-2 h-2 w-2 rounded-full', b.tone === 'red' ? 'bg-[rgb(var(--danger))]' : 'bg-[rgb(var(--accent))]')} aria-label={`${b.n} việc cần xử lý`} />}
@@ -1867,7 +1840,7 @@ export default function DashboardApp() {
                 </button>
               );
             })}
-            <button onClick={() => setDrawerOpen(true)} className={cn('flex min-h-[60px] flex-col items-center justify-center gap-1 text-[10px] font-medium', !bottomNav.includes(page) ? 'text-[rgb(var(--accent))]' : 'text-[rgb(var(--muted))]')}>
+            <button onClick={() => setDrawerOpen(true)} className={cn('flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px] font-medium', !bottomNav.includes(page) ? 'text-[rgb(var(--accent))]' : 'text-[rgb(var(--muted))]')}>
               <Menu className="h-5 w-5" aria-hidden /><span>Menu</span>
             </button>
           </div>
@@ -1897,7 +1870,7 @@ export default function DashboardApp() {
               <div className="space-y-2 px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
                 {!consoleMode && (
                   <div className="grid grid-cols-3 gap-2">
-                    <button className={cn(btnGhost, 'relative flex-col gap-1 py-2 text-xs')} onClick={() => { setDrawerOpen(false); setHub('chat'); }}><MessageSquare className="h-4 w-4" aria-hidden />Chat{chatUnread > 0 && <span className="g-brand absolute right-1.5 top-1 rounded-full px-1 text-[10px] font-bold text-[rgb(var(--on-accent))]">{chatUnread}</span>}</button>
+                    <button className={cn(btnGhost, 'relative flex-col gap-1 py-2 text-xs')} onClick={() => { setDrawerOpen(false); setHub('chat'); }}><MessageSquare className="h-4 w-4" aria-hidden />Chat{chatUnread > 0 && <span className="g-brand absolute right-1.5 top-1 rounded-full px-1 text-[11px] font-semibold text-[rgb(var(--on-accent))]">{chatUnread}</span>}</button>
                     <button className={cn(btnGhost, 'flex-col gap-1 py-2 text-xs')} onClick={() => { setDrawerOpen(false); setHub('ai'); }}><Sparkles className="h-4 w-4 text-[rgb(var(--accent-fg))]" aria-hidden />AI Copilot</button>
                     <button className={cn(btnGhost, 'flex-col gap-1 py-2 text-xs')} onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}>{theme === 'dark' ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}{theme === 'dark' ? 'Nền sáng' : 'Nền tối'}</button>
                   </div>

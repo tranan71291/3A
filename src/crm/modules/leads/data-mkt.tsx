@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, Download, FileSpreadsheet, Paperclip, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import { CheckCircle2, Download, FileSpreadsheet, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { FilterBar, useInRange } from '../../components/filters';
 import { ImportModal } from '../../components/import-csv';
-import { Chip, EmptyState, Panel, Table, useSort, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Panel, Table, useSort, useSticky } from '../../components/ui';
 import { scoreLead } from '../../lib/business';
-import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, compact, digits, findByTax, inputBase, inputCls, LEAD_STATUS, leadDate, LOST_REASON, MQL_THRESHOLD, nextCode, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, SOURCE_LABEL, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
+import { boqIsEstimate, boqTotal, btnGhost, btnPrimary, btnSm, compact, digits, findByTax, inputBase, inputCls, LEAD_STATUS, leadDate, LOST_REASON, nextCode, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, SOURCE_LABEL, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
 import { downloadCsv, matchEnum } from '../../lib/csv';
 import type { ConfirmState, ImportSpec, Lead, LeadForm, LeadStatus, Source } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -37,7 +37,7 @@ export function DataMktPage() {
     return hit && (status === 'ALL' || l.status === status) && (src === 'ALL' || l.source === src) && (dp === 'ALL' || l.dept === dp) && inR(leadDate(l));
   });
 
-  const srt = useSort('DataMktPage', list, { 1: (l) => l.code, 2: (l) => l.company, 5: (l) => l.boqValue, 6: (l) => l.score ?? scoreLead(l, customers), 7: (l) => l.status });
+  const srt = useSort('DataMkt40b', list, { 1: (l) => l.code, 2: (l) => l.company, 8: (l) => l.boqValue, 9: (l) => l.score ?? scoreLead(l, customers), 10: (l) => l.status });
   const paged = usePaged(srt.rows, 12);
   const sel = useSelection(list.map((l) => l.id));
   const { routeLeads, routableDepts } = useApp();
@@ -96,7 +96,7 @@ export function DataMktPage() {
 
       <BulkBar count={sel.ids.length} onClear={sel.clear}>
         <select className={cn(inputBase, 'w-auto py-1 text-xs')} disabled={!canDo('lead.route')} value="" onChange={(e) => { if (!e.target.value) return; const ids = allLeads.filter((l) => sel.has(l.id) && ['NEW', 'NURTURE', 'ROUTED'].includes(l.status)).map((l) => l.id); routeLeads(ids, e.target.value); sel.clear(); }} aria-label="Phân về phòng">
-          <option value="">Phân về phòng...</option>
+          <option value="">Phân về phòng…</option>
           {routableDepts.map((d) => <option key={d.code} value={d.code}>{d.name}</option>)}
         </select>
         <button className={cn(btnGhost, btnSm, 'hover:text-[rgb(var(--danger-fg))]')} disabled={!canEdit} onClick={() => {
@@ -123,33 +123,35 @@ export function DataMktPage() {
           ))}
         </div>
         <div className="hidden md:block">
-        <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Mã lead', 'Công ty / liên hệ', 'MST', 'Nhóm / nguồn', 'Giá trị', 'Điểm', 'Trạng thái', 'Phòng ban / phụ trách', '']} minW={1000} sort={srt.th}>
+        <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Mã', 'Công ty', 'Liên hệ', 'Điện thoại', 'MST', 'Nhóm khách', 'Nguồn', <span key="v" className="block text-right">Giá trị</span>, <span key="s" className="block text-right">Điểm</span>, 'Trạng thái', 'Phụ trách', '']} minW={1080} sort={srt.th}>
           {paged.slice.map((l) => {
             const score = l.score ?? scoreLead(l, customers);
+            const v = boqTotal(l);
             return (
               <tr key={l.id} className={rowCls}>
                 <td className={cn(tdFirst, 'w-10')}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.has(l.id)} onChange={() => sel.toggle(l.id)} aria-label={`Chọn ${l.code}`} /></td>
-                <td className={tdCls}><p className="font-medium text-[rgb(var(--fg))]">{l.code}</p><p className="text-xs text-[rgb(var(--muted))]">{l.receivedDaysAgo === 0 ? 'Hôm nay' : `${l.receivedDaysAgo} ngày trước`}</p></td>
-                <td className={cn(tdCls, 'max-w-[230px]')}><p className="truncate text-[rgb(var(--fg))]" title={l.company}>{l.company}</p><p className="truncate text-xs text-[rgb(var(--muted))]">{l.contact}, {l.phone}</p></td>
-                <td className={cn(tdCls, 'tabular-nums')}>{l.taxCode ?? <span className="text-[rgb(var(--muted))]">Chưa có</span>}{findByTax(customers, l.taxCode) && <p><Chip tone="teal">Khách hiện hữu</Chip></p>}</td>
-                <td className={tdCls}><p>{segName(l.segment)}</p><p className="text-xs text-[rgb(var(--muted))]">{SOURCE_LABEL[l.source]}, {REGION_LABEL[l.region]}</p></td>
-                <td className={cn(tdCls, 'tabular-nums')}>{boqTotal(l) ? compact(boqTotal(l)) : '—'}<p className="text-xs text-[rgb(var(--muted))]">{boqIsEstimate(l) ? 'Ước tính' : 'Theo BOQ'}</p>{l.attachments?.length ? <p className="flex items-center gap-1 text-xs text-[rgb(var(--secondary-fg))]"><Paperclip className="h-3 w-3" aria-hidden />{l.attachments.length} file</p> : null}</td>
-                <td className={tdCls}><Chip tone={score >= 80 ? 'red' : score >= MQL_THRESHOLD ? 'orange' : 'muted'}>{score}</Chip></td>
-                <td className={tdCls}>
-                  <Chip tone={LEAD_STATUS[l.status].tone}>{LEAD_STATUS[l.status].label}</Chip>
-                  {l.status === 'LOST' && l.lostReason && <p className="mt-1 text-xs text-[rgb(var(--danger-fg))]">{LOST_REASON[l.lostReason]}</p>}
-                  {l.status === 'QUOTED' && <button disabled={!canDo('project.update')} className={cn(btnBase, btnSm, 'mt-1.5 flex bg-[rgb(var(--success)/0.15)] text-[rgb(var(--success-fg))] hover:bg-[rgb(var(--success)/0.25)]')} onClick={() => openWin(l.id)}>Chốt đơn</button>}
-                  {l.getflySync?.status === 'SYNCED' && <p className="mt-1 text-xs text-[rgb(var(--success-fg))]">Getfly {l.getflySync.orderCode}</p>}
-                </td>
-                <td className={tdCls}>{l.dept ? <><p>{dept(l.dept)?.short}</p><p className="text-xs text-[rgb(var(--muted))]">{userName(l.assignee)}</p></> : <span className="text-[rgb(var(--muted))]">Chưa phân bổ</span>}</td>
+                <td className={tdCls} title={`Nhận ${l.receivedDaysAgo === 0 ? 'hôm nay' : `${l.receivedDaysAgo} ngày trước`}`}><Code>{l.code}</Code></td>
+                <td className={tdCls}><span className="block max-w-[240px] truncate font-medium" title={l.company}>{l.company}</span></td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[160px] truncate">{l.contact || '—'}</span></td>
+                <td className={cn(tdCls, 'tabular-nums text-[rgb(var(--fg2))]')}>{l.phone || '—'}</td>
+                <td className={cn(tdCls, 'tabular-nums')} title={findByTax(customers, l.taxCode) ? 'Khách hiện hữu' : undefined}>{l.taxCode ? <span className={findByTax(customers, l.taxCode) ? 'text-[rgb(var(--success-fg))]' : ''}>{l.taxCode}</span> : <span className="text-[rgb(var(--faint))]">—</span>}</td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[170px] truncate">{segName(l.segment)}</span></td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')} title={REGION_LABEL[l.region]}>{SOURCE_LABEL[l.source]}</td>
+                <td className={cn(tdCls, 'text-right tabular-nums')} title={v ? (boqIsEstimate(l) ? 'Ước tính' : 'Theo BOQ') : undefined}>{v ? compact(v) : '—'}</td>
+                <td className={cn(tdCls, 'text-right tabular-nums', score >= 80 ? 'font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))]')}>{score}</td>
+                <td className={tdCls} title={l.status === 'LOST' && l.lostReason ? LOST_REASON[l.lostReason] : l.getflySync?.status === 'SYNCED' ? `Getfly ${l.getflySync.orderCode}` : undefined}><Chip tone={LEAD_STATUS[l.status].tone}>{LEAD_STATUS[l.status].label}</Chip></td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')} title={l.dept ? dept(l.dept)?.short : 'Chưa phân bổ'}><span className="block max-w-[150px] truncate">{l.assignee ? userName(l.assignee) : l.dept ? dept(l.dept)?.short : <span className="text-[rgb(var(--faint))]">Chưa phân bổ</span>}</span></td>
                 <td className={cn(tdLast, 'whitespace-nowrap text-right')}>
-                  <button className={cn(btnGhost, 'mr-1 p-1.5')} disabled={!canEdit} onClick={() => setEditId(l.id)} aria-label={`Sửa ${l.code}`}><Pencil className="h-3.5 w-3.5" /></button>
-                  <button className={cn(btnGhost, 'p-1.5 hover:text-[rgb(var(--danger-fg))]')} disabled={!canEdit} onClick={() => setConfirm({
-                    title: 'Xóa lead',
-                    message: <>Xóa lead <b>{l.code}</b> {l.company}?</>,
-                    blocked: l.status === 'WON' ? 'Lead đã chốt đơn và gắn khách hàng / đơn Getfly, không thể xóa.' : undefined,
-                    onConfirm: () => removeWithUndo(setLeads, l, notify, `Đã xóa lead ${l.code}`),
-                  })} aria-label={`Xóa ${l.code}`}><Trash2 className="h-3.5 w-3.5" /></button>
+                  <RowMenu label={`Thao tác ${l.code}`} items={[
+                    ...(l.status === 'QUOTED' ? [{ label: 'Chốt đơn', icon: CheckCircle2, disabled: !canDo('project.update'), onClick: () => openWin(l.id) }] : []),
+                    { label: 'Sửa', icon: Pencil, disabled: !canEdit, onClick: () => setEditId(l.id) },
+                    { label: 'Xóa', icon: Trash2, danger: true, disabled: !canEdit, onClick: () => setConfirm({
+                      title: 'Xóa lead',
+                      message: <>Xóa lead <b>{l.code}</b> {l.company}?</>,
+                      blocked: l.status === 'WON' ? 'Lead đã chốt đơn và gắn khách hàng / đơn Getfly, không thể xóa.' : undefined,
+                      onConfirm: () => removeWithUndo(setLeads, l, notify, `Đã xóa lead ${l.code}`),
+                    }) },
+                  ]} />
                 </td>
               </tr>
             );

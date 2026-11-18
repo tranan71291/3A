@@ -8,7 +8,7 @@ import { CommentButton } from '../../components/comments';
 import { Fab, Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { FilterBar } from '../../components/filters';
-import { Chip, EmptyState, Field, Modal, Panel, StatCard, Table, Tabs, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, Modal, Panel, StatCard, Table, Tabs, useSticky } from '../../components/ui';
 import { poLineStats, poProgress, poState, shipmentAllocation } from '../../lib/business';
 import { btnGhost, btnPrimary, btnSm, C, compact, daysBetween, digits, fmtDate, inputBase, inputCls, inRangeOf, iso, kpiGrid, PO_PURPOSE, receivedReservedFor, rowCls, SHIP_MODE, SHIPMENT_STATUS, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd } from '../../lib/core';
 import type { ConfirmState, MenuItem, PoAllocation, PoLine, PoPurpose, Shipment, ShipmentStatus, ShipMode, SkuItem, VendorPO } from '../../lib/types';
@@ -101,12 +101,12 @@ export function POPage() {
   const progressCell = (p: VendorPO) => {
     const g = poProgress(p);
     return (
-      <div className="w-44">
-        <div className="flex h-2 overflow-hidden rounded-full bg-[rgb(var(--line))]">
-          <div style={{ width: `${g.pct}%`, background: C.teal }} />
-          <div style={{ width: `${g.transitPct}%`, background: C.blue }} />
+      <div className="flex items-center gap-2" title={`${g.pct.toFixed(0)}% đã về${g.transit ? `, ${g.transitPct.toFixed(0)}% đang về` : ''}`}>
+        <div className="flex h-1 w-20 overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]">
+          <div style={{ width: `${g.pct}%`, background: 'rgb(var(--fg2))' }} />
+          <div style={{ width: `${g.transitPct}%`, background: 'rgb(var(--faint))' }} />
         </div>
-        <p className="mt-1 text-xs tabular-nums text-[rgb(var(--muted))]">{g.pct.toFixed(0)}% đã về{g.transit ? `, ${g.transitPct.toFixed(0)}% đang về` : ''}</p>
+        <span className="font-mono text-xs tabular-nums text-[rgb(var(--fg2))]">{g.pct.toFixed(0)}% / {g.transitPct.toFixed(0)}%</span>
       </div>
     );
   };
@@ -220,7 +220,7 @@ export function POPage() {
         <StatCard label="Hãng còn nợ" value={compact(oweValue)} icon={Warehouse} color="#8B5CF6" sub="Giá trị chưa về kho của các PO" />
       </div>
 
-      <FilterBar q={q} onQ={setQ} placeholder="Tìm mã PO, SKU, số BL / AWB..." status={st} onStatus={setSt} statusOptions={['Chờ hàng', 'Về một phần', 'Trễ ETA', 'Đã về đủ', 'Đã hủy'].map((x) => ({ value: x, label: x }))} extraActive={purpose !== 'ALL' ? 1 : 0}>
+      <FilterBar q={q} onQ={setQ} placeholder="Tìm mã PO, SKU, số BL / AWB…" status={st} onStatus={setSt} statusOptions={['Chờ hàng', 'Về một phần', 'Trễ ETA', 'Đã về đủ', 'Đã hủy'].map((x) => ({ value: x, label: x }))} extraActive={purpose !== 'ALL' ? 1 : 0}>
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={purpose} onChange={(e) => setPurpose(e.target.value)} aria-label="Mục đích">
           <option value="ALL">Mọi mục đích</option>
           {(Object.keys(PO_PURPOSE) as PoPurpose[]).map((x) => <option key={x} value={x}>{PO_PURPOSE[x]}</option>)}
@@ -251,7 +251,7 @@ export function POPage() {
         </div>
         {/* Desktop */}
         <div className="hidden md:block">
-          <Table stt={Math.max(0, paged.from - 1)} head={['', 'Mã PO', 'Ngày đặt', 'Mục đích', 'Giá trị', 'Tiến độ hàng về', 'Đợt hàng', 'Trạng thái', 'Thao tác']} minW={1080}>
+          <Table stt={Math.max(0, paged.from - 1)} head={['', 'Mã PO', 'Nhà cung cấp', 'Ngày đặt', 'Mục đích', <span key="s" className="block text-right">SKU</span>, <span key="v" className="block text-right">Giá trị</span>, 'Tiến độ hàng về', <span key="d" className="block text-right">Đợt</span>, 'Đợt tới', 'Trạng thái', 'Thao tác']} minW={1080}>
             {paged.slice.map((p) => {
               const stt = poState(p, today);
               const nextShip = [...p.shipments].filter((s) => s.status !== 'RECEIVED').sort((a, b) => a.eta.localeCompare(b.eta))[0];
@@ -259,16 +259,19 @@ export function POPage() {
               return [
                 <tr key={p.id} className={cn(rowCls, 'cursor-pointer', p.cancelled && 'opacity-50')} onClick={() => toggle(p.id)}>
                   <td className={cn(tdFirst, 'w-10')}><ChevronRight className={cn('h-4 w-4 text-[rgb(var(--muted))] transition-transform', isOpen && 'rotate-90 text-[rgb(var(--accent))]')} aria-hidden /></td>
-                  <td className={tdCls}><p className="font-medium text-[rgb(var(--fg))]">{p.code}</p><p className="text-xs text-[rgb(var(--muted))]">{p.vendor}</p></td>
-                  <td className={cn(tdCls, 'tabular-nums')}>{fmtDate(p.orderDate)}<p className="text-xs text-[rgb(var(--muted))]">{daysBetween(p.orderDate, today)} ngày trước</p></td>
-                  <td className={tdCls}><span className="text-xs">{PO_PURPOSE[p.purpose]}</span></td>
-                  <td className={cn(tdCls, 'tabular-nums')}>{compact(poProgress(p).value)}<p className="text-xs text-[rgb(var(--muted))]">{p.lines.length} SKU</p></td>
+                  <td className={tdCls}><Code>{p.code}</Code></td>
+                  <td className={tdCls}><span className="block max-w-[220px] truncate font-medium">{p.vendor}</span></td>
+                  <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')} title={`${daysBetween(p.orderDate, today)} ngày trước`}>{fmtDate(p.orderDate)}</td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{PO_PURPOSE[p.purpose]}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{p.lines.length}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(poProgress(p).value)}</td>
                   <td className={tdCls}>{progressCell(p)}</td>
-                  <td className={cn(tdCls, 'text-xs')}><p>{p.shipments.length} đợt</p>{nextShip && <p className={cn(nextShip.eta < today ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')}>Tiếp theo {fmtDate(nextShip.eta)}</p>}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{p.shipments.length}</td>
+                  <td className={cn(tdCls, 'font-mono text-xs', nextShip && nextShip.eta < today ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--fg2))]')}>{nextShip ? fmtDate(nextShip.eta) : '—'}</td>
                   <td className={tdCls}><Chip tone={stt.tone}>{stt.label}</Chip></td>
                   <td className={tdLast} onClick={(e) => e.stopPropagation()}><div className="flex items-center justify-end gap-1.5"><CommentButton entity="po" entityId={p.id} title={`${p.code} · ${p.vendor}`} module="supply" /><RowMenu items={poMenu(p)} /></div></td>
                 </tr>,
-                isOpen && <tr key={`${p.id}-d`}><td colSpan={9} className="p-0">{detail(p)}</td></tr>,
+                isOpen && <tr key={`${p.id}-d`}><td colSpan={13} className="p-0">{detail(p)}</td></tr>,
               ];
             })}
           </Table>
@@ -302,7 +305,7 @@ export function SkuPicker({ value, onChange, exclude = [] }: { value: string; on
       <input
         className={cn(inputCls, 'py-1.5 text-xs')}
         value={open ? q : cur ? `${cur.sku} – ${cur.name}` : ''}
-        placeholder="Tìm mã SKU hoặc tên hàng..."
+        placeholder="Tìm mã SKU hoặc tên hàng…"
         onFocus={() => { setOpen(true); setQ(''); setHi(0); }}
         onChange={(e) => { setQ(e.target.value); setOpen(true); setHi(0); }}
         onKeyDown={(e) => {
@@ -321,7 +324,7 @@ export function SkuPicker({ value, onChange, exclude = [] }: { value: string; on
           {opts.map((s, i) => (
             <li key={s.sku} role="option" aria-selected={i === hi}>
               <button className={cn('w-full px-3 py-2 text-left text-xs', i === hi ? 'bg-[rgb(var(--accent)/0.1)]' : 'hover:bg-[rgb(var(--raised))]')} onMouseEnter={() => setHi(i)} onMouseDown={(e) => { e.preventDefault(); pick(s); }}>
-                <span className="font-mono text-[rgb(var(--accent-fg))]">{s.sku}</span> <span className="text-[rgb(var(--fg))]">{s.name}</span>
+                <span className="code-chip">{s.sku}</span> <span className="text-[rgb(var(--fg))]">{s.name}</span>
                 <span className="block text-[rgb(var(--muted))]">{s.brand}, {s.category}, {s.unit}, lead-time {s.leadTimeDays} ngày, tồn {s.stock.toLocaleString('vi-VN')}</span>
               </button>
             </li>
@@ -464,7 +467,7 @@ export function ShipmentModal({ poId, shipmentId, onClose }: { poId: string; shi
       <div className="space-y-2">
         {po.lines.map((l) => (
           <div key={l.sku} className="flex items-center gap-3 rounded bg-[rgb(var(--raised))] px-3 py-2 text-sm">
-            <div className="min-w-0 flex-1"><p className="font-mono text-xs text-[rgb(var(--accent-fg))]">{l.sku}</p><p className="truncate text-xs text-[rgb(var(--muted))]">{skus.find((s) => s.sku === l.sku)?.name}, đặt {l.qty}, các đợt khác {otherQty(l.sku)}</p></div>
+            <div className="min-w-0 flex-1"><p className="code-chip">{l.sku}</p><p className="truncate text-xs text-[rgb(var(--muted))]">{skus.find((s) => s.sku === l.sku)?.name}, đặt {l.qty}, các đợt khác {otherQty(l.sku)}</p></div>
             <input className={cn(inputBase, 'w-28 py-1.5 text-right text-xs tabular-nums')} type="number" min={0} max={l.qty - otherQty(l.sku)} value={qty[l.sku] ?? 0} onChange={(e) => setQty({ ...qty, [l.sku]: Number(e.target.value) })} aria-label={`Số lượng ${l.sku}`} />
           </div>
         ))}
@@ -510,7 +513,7 @@ export function AllocationModal({ poId, sku, onClose }: { poId: string; sku: str
               <option value="CUSTOMER">Khách hàng / đại lý</option>
             </select>
             <select className={cn(inputCls, 'col-span-8 py-1.5 text-xs sm:col-span-6')} value={r.refId} onChange={(e) => setRow(i, { refId: e.target.value })} aria-label="Đích giữ chỗ">
-              <option value="">Chọn...</option>
+              <option value="">Chọn…</option>
               {r.kind === 'LEAD' ? projects.map((l) => <option key={l.id} value={l.id}>{l.company}: {l.boqNote}</option>) : customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <input className={cn(inputCls, 'col-span-9 py-1.5 text-right text-xs tabular-nums sm:col-span-2')} type="number" min={lockedOf(r.kind, r.refId)} value={r.qty || ''} onChange={(e) => setRow(i, { qty: Number(e.target.value) })} aria-label="Số lượng giữ" />

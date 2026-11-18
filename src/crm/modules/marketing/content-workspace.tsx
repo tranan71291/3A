@@ -770,9 +770,9 @@ export function ContentWorkspace({ api, ro, contentId }: { api: StudioApi; ro: b
       {view === 'compare' && compare && <WsCompare a={versions.find((v) => v.id === compare[0])} b={versions.find((v) => v.id === compare[1])} onClose={() => { setCompare(null); setView('edit'); }} />}
 
       <div className={cn('mx-auto px-6 pt-6', zen ? 'max-w-[720px]' : 'max-w-[780px]', view === 'edit' ? '' : 'hidden')}>
-        <h1 className="font-display text-[28px] font-bold leading-tight">{article.title || 'Chưa có tiêu đề'}</h1>
+        <h1 className="font-display text-[28px] font-semibold leading-tight">{article.title || 'Chưa có tiêu đề'}</h1>
         <label className="mt-3 block">
-          <span className="mb-1 flex items-baseline justify-between text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">{platform.structure.sapoLabel}{platform.structure.sapoMax && <span className={cn('tabular-nums', article.sapo.length > platform.structure.sapoMax && 'text-[rgb(var(--danger-fg))]')}>{article.sapo.length}/{platform.structure.sapoMax}</span>}</span>
+          <span className="mb-1 flex items-baseline justify-between text-xs font-semibold text-[rgb(var(--muted))]">{platform.structure.sapoLabel}{platform.structure.sapoMax && <span className={cn('tabular-nums', article.sapo.length > platform.structure.sapoMax && 'text-[rgb(var(--danger-fg))]')}>{article.sapo.length}/{platform.structure.sapoMax}</span>}</span>
           <textarea rows={2} value={article.sapo} readOnly={ro} onChange={(e) => setSapo(e.target.value)} className="w-full resize-y rounded-md border border-transparent bg-transparent text-[16px] font-medium italic leading-relaxed text-[rgb(var(--fg2))] outline-none focus:border-[rgb(var(--line))]" />
         </label>
         {editor ? <EditorContent editor={editor} /> : <p className="py-10 text-sm text-[rgb(var(--muted))]">Đang mở trình soạn…</p>}
@@ -803,7 +803,7 @@ export function ContentWorkspace({ api, ro, contentId }: { api: StudioApi; ro: b
       )}
       {view === 'edit' && slash && slashList.length > 0 && (
         <ul role="listbox" aria-label="Chèn khối" className="absolute z-30 w-72 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-xl" style={{ top: slash.top, left: Math.max(8, slash.left) }} onMouseDown={(e) => e.preventDefault()}>
-          <li className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">Chèn khối</li>
+          <li className="px-2 py-1 text-[11px] font-semibold text-[rgb(var(--faint))]">Chèn khối</li>
           {slashList.map((it, i) => (
             <li key={it.id} role="option" aria-selected={i === slash.idx}>
               <button type="button" className={cn('flex w-full items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm', i === slash.idx ? 'bg-[rgb(var(--ink)/0.07)]' : '')} onClick={() => runSlash(it)} onMouseEnter={() => setSlash({ ...slash, idx: i })}>
@@ -826,7 +826,7 @@ export function ContentWorkspace({ api, ro, contentId }: { api: StudioApi; ro: b
   return (
     <div ref={zenRef} className={zen ? 'fixed inset-0 z-[60] grid grid-cols-1 bg-[rgb(var(--bg))]' : 'grid h-[calc(100vh-11rem)] min-h-[560px] grid-cols-1 overflow-hidden rounded-xl border border-[rgb(var(--line))] lg:grid-cols-[230px_1fr] xl:grid-cols-[230px_1fr_340px]'}>
       <nav aria-label="Dàn ý" className={cn('hidden min-h-0 flex-col border-r border-[rgb(var(--line))] bg-[rgb(var(--surface))]', !zen && 'lg:flex')}>
-        <p className="px-3 pb-2 pt-3 text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">Dàn ý</p>
+        <p className="px-3 pb-2 pt-3 text-xs font-semibold text-[rgb(var(--muted))]">Dàn ý</p>
         <ol className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2">
           {(docJson.content ?? []).filter((n) => n.type === 'heading').map((n) => {
             const id = String(n.attrs?.id ?? '');
@@ -1019,7 +1019,7 @@ export function WsImageList({ editor, doc, ro, keyword, onAdd }: { editor: Edito
                 <input className={cn(inputCls, 'h-7 py-0 text-xs')} defaultValue={a} readOnly={ro} maxLength={125} onBlur={(e) => e.target.value !== a && setAttr(id, 'alt', e.target.value)} aria-label="Alt text" placeholder="Alt text" />
                 <input className={cn(inputCls, 'h-7 py-0 text-xs')} defaultValue={String(n.attrs?.caption ?? '')} readOnly={ro} onBlur={(e) => setAttr(id, 'caption', e.target.value)} aria-label="Chú thích" placeholder="Chú thích" />
                 {warn && <p className="text-[11px] text-[rgb(var(--accent-fg))]">! {warn}</p>}
-                {n.attrs?.fileName && <p className="truncate font-mono text-[10px] text-[rgb(var(--faint))]">{String(n.attrs.fileName)}</p>}
+                {n.attrs?.fileName && <p className="truncate font-mono text-[11px] text-[rgb(var(--faint))]">{String(n.attrs.fileName)}</p>}
               </div>
             </li>
           );
@@ -1096,8 +1096,8 @@ export function WsLsiTab({ blocks, focus, lsi, ro, onAdd, onRemove, onHighlight,
           return (
             <li key={k} className="rounded-md border border-[rgb(var(--line))]">
               <div className="flex items-center gap-2 px-2.5 py-1.5">
-                <span className={cn('w-4 text-center font-bold', c ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')} aria-hidden>{c ? '✓' : '○'}</span>
-                <button type="button" className="min-w-0 flex-1 truncate text-left" onClick={() => { const nx = open === k ? null : k; setOpen(nx); onHighlight(nx ? best(k).map((b) => b.id) : []); }}>{k}{main && <span className="ml-1 text-[10px] text-[rgb(var(--muted))]">chính</span>}</button>
+                <span className={cn('w-4 text-center font-semibold', c ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')} aria-hidden>{c ? '✓' : '○'}</span>
+                <button type="button" className="min-w-0 flex-1 truncate text-left" onClick={() => { const nx = open === k ? null : k; setOpen(nx); onHighlight(nx ? best(k).map((b) => b.id) : []); }}>{k}{main && <span className="ml-1 text-[11px] text-[rgb(var(--muted))]">chính</span>}</button>
                 <span className="text-xs tabular-nums text-[rgb(var(--muted))]">{c}×</span>
                 {!main && !ro && <button type="button" aria-label={`Bỏ ${k}`} className="text-[rgb(var(--faint))] hover:text-[rgb(var(--danger-fg))]" onClick={() => onRemove(k)}>×</button>}
               </div>
@@ -1299,7 +1299,7 @@ export function VariantSettingsPanel() {
                   return (
                     <span key={k} className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs', hidden ? 'border-dashed border-[rgb(var(--line))] text-[rgb(var(--faint))] line-through' : isDef ? 'border-[rgb(var(--fg)/0.35)]' : 'border-[rgb(var(--line))]')}>
                       <button type="button" disabled={ro} onClick={() => setCfg({ hidden: hidden ? cfg.hidden.filter((x) => x !== k) : [...cfg.hidden, k] })} title={o.prompt}>{o.label}{o.channels ? ` (${o.channels.join(', ')})` : ''}</button>
-                      <button type="button" disabled={ro} aria-label={`Mặc định: ${o.label}`} className={cn('text-[10px]', isDef ? 'font-semibold text-[rgb(var(--fg))]' : 'text-[rgb(var(--faint))] hover:text-[rgb(var(--muted))]')} onClick={() => setCfg({ defaults: { ...cfg.defaults, [g.id]: g.multi ? (isDef ? defs.filter((x) => x !== o.id) : [...defs, o.id]) : [o.id] } })}>{isDef ? '· mặc định' : '· đặt mặc định'}</button>
+                      <button type="button" disabled={ro} aria-label={`Mặc định: ${o.label}`} className={cn('text-[11px]', isDef ? 'font-semibold text-[rgb(var(--fg))]' : 'text-[rgb(var(--faint))] hover:text-[rgb(var(--muted))]')} onClick={() => setCfg({ defaults: { ...cfg.defaults, [g.id]: g.multi ? (isDef ? defs.filter((x) => x !== o.id) : [...defs, o.id]) : [o.id] } })}>{isDef ? '· mặc định' : '· đặt mặc định'}</button>
                       {o.custom && !ro && <button type="button" aria-label={`Xóa ${o.label}`} className="text-[rgb(var(--faint))] hover:text-[rgb(var(--danger-fg))]" onClick={() => setCfg({ custom: cfg.custom.filter((c) => !(c.group === g.id && c.id === o.id)) })}>×</button>}
                     </span>
                   );
@@ -1427,9 +1427,9 @@ export function ContentReviewSheet({ id, onClose }: { id: string; onClose: () =>
         {running && <p className="rounded-md bg-[#FEF9C3] px-3 py-2 text-sm text-[#713F12]">AI đang soạn lại bài này ({c.aiJob?.step ?? 'đang chạy'}), chờ xong mới duyệt được.</p>}
         {c.status === 'DRAFT' && c.reviewNote && <p className="rounded-md bg-[rgb(var(--accent)/0.12)] px-3 py-2 text-sm"><b>Đã trả về:</b> {c.reviewNote}</p>}
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-md bg-[rgb(var(--sunken))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Điểm SEO {p.label}</dt><dd className={cn('text-xl font-bold tabular-nums', tone(seo.score))}>{seo.score}</dd></div>
-          <div className="rounded-md bg-[rgb(var(--sunken))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Tự nhiên (ước lượng)</dt><dd className={cn('text-xl font-bold tabular-nums', human.scored ? tone(human.score + 10) : '')}>{human.scored ? human.score : '—'}</dd></div>
-          <div className="rounded-md bg-[rgb(var(--sunken))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Số từ · ảnh</dt><dd className="text-xl font-bold tabular-nums">{seo.words.toLocaleString('vi-VN')} · {seo.images}</dd></div>
+          <div className="rounded-md bg-[rgb(var(--sunken))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Điểm SEO {p.label}</dt><dd className={cn('text-xl font-semibold tabular-nums', tone(seo.score))}>{seo.score}</dd></div>
+          <div className="rounded-md bg-[rgb(var(--sunken))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Tự nhiên (ước lượng)</dt><dd className={cn('text-xl font-semibold tabular-nums', human.scored ? tone(human.score + 10) : '')}>{human.scored ? human.score : '—'}</dd></div>
+          <div className="rounded-md bg-[rgb(var(--sunken))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Số từ · ảnh</dt><dd className="text-xl font-semibold tabular-nums">{seo.words.toLocaleString('vi-VN')} · {seo.images}</dd></div>
           <div className="rounded-md bg-[rgb(var(--sunken))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Từ khóa chính</dt><dd className="truncate text-sm font-semibold">{stStr(art.settings.focusKeyword) || stStr(art.settings.localKeyword) || '—'}</dd></div>
         </dl>
         {missing.length > 0 && <p className="rounded-md bg-[rgb(var(--danger)/0.1)] px-3 py-2 text-sm text-[rgb(var(--danger-fg))]">Thiếu thông số kênh: {missing.join(', ')}. Bấm "Mở để sửa" → Cài đặt.</p>}
@@ -1442,7 +1442,7 @@ export function ContentReviewSheet({ id, onClose }: { id: string; onClose: () =>
         {human.blocks.length > 0 && <p className="text-xs text-[rgb(var(--muted))]">{human.blocks.length} đoạn nên biên tập cho tự nhiên hơn (xem tab Tự nhiên khi mở để sửa).</p>}
         {out.meta?.title && (
           <div className="rounded-md border border-[rgb(var(--line))] p-3">
-            <p className="text-[11px] uppercase tracking-wider text-[rgb(var(--muted))]">Hiển thị trên Google (mô phỏng)</p>
+            <p className="text-[11px] text-[rgb(var(--muted))]">Hiển thị trên Google (mô phỏng)</p>
             <p className="mt-1 truncate text-[17px] text-[#1a0dab]">{out.meta.title}</p>
             <p className="truncate text-xs text-[#006621]">{co.website || 'website'}/{stStr(art.settings.slug)}</p>
             <p className="line-clamp-2 text-[13px] text-[rgb(var(--fg2))]">{out.meta.description}</p>
@@ -1517,10 +1517,10 @@ export function SelectMenu({ options, value, multi, onChange, placeholder, ariaL
               return (
                 <li key={o.id} role="option" aria-selected={on}>
                   <button type="button" onClick={() => pick(o.id)} className={cn('flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-[rgb(var(--ink)/0.05)]', on && !multi && 'bg-[rgb(var(--accent)/0.08)]')}>
-                    {multi && <span className={cn('flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px]', on ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent))] text-white' : 'border-[rgb(var(--line))]')}>{on ? '✓' : ''}</span>}
+                    {multi && <span className={cn('flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[11px]', on ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent))] text-white' : 'border-[rgb(var(--line))]')}>{on ? '✓' : ''}</span>}
                     {o.img && <img src={o.img} alt="" className="h-7 w-7 shrink-0 rounded object-cover" />}
                     <span className={cn('min-w-0 flex-1', on && !multi && 'font-semibold')}>{o.label}{o.hint && <span className="block truncate text-[11px] text-[rgb(var(--muted))]">{o.hint}</span>}</span>
-                    {defaults?.includes(o.id) && <span className="shrink-0 text-[10px] text-[rgb(var(--faint))]">mặc định</span>}
+                    {defaults?.includes(o.id) && <span className="shrink-0 text-[11px] text-[rgb(var(--faint))]">mặc định</span>}
                   </button>
                 </li>
               );
@@ -2064,7 +2064,7 @@ export function ImageGeneratorPanel({ onSaved }: { onSaved: () => void }) {
         <FormCard title="Ảnh tham chiếu" aside={<span className="text-[11px] text-[rgb(var(--muted))]">AI bám theo hình sản phẩm thật</span>}>
           <div className="flex flex-wrap gap-2">
             {refs.map((u, i) => <div key={i} className="relative"><img src={u} alt={`Ảnh tham chiếu ${i + 1}`} className="h-16 w-16 rounded-md object-cover" /><button type="button" aria-label="Bỏ ảnh" className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-[rgb(var(--danger))] text-xs text-white" onClick={() => setRefs((p) => p.filter((_, k) => k !== i))}>×</button></div>)}
-            {refs.length < 3 && <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-[rgb(var(--line))] text-[10px] text-[rgb(var(--muted))] hover:border-[rgb(var(--accent))]" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void addFiles(e.dataTransfer.files); }}><Upload className="h-4 w-4" aria-hidden />Tải ảnh<input type="file" multiple accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => void addFiles(e.target.files)} /></label>}
+            {refs.length < 3 && <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-[rgb(var(--line))] text-[11px] text-[rgb(var(--muted))] hover:border-[rgb(var(--accent))]" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void addFiles(e.dataTransfer.files); }}><Upload className="h-4 w-4" aria-hidden />Tải ảnh<input type="file" multiple accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => void addFiles(e.target.files)} /></label>}
           </div>
           <div className="mt-3"><SelectMenu ariaLabel="Ảnh sản phẩm trong danh mục" multi value={skuRefs} onChange={(v) => setSkuRefs(v.slice(-2))} placeholder="Hoặc chọn ảnh sản phẩm trong danh mục…" options={skus.filter((x) => x.image && !x.archived).slice(0, 200).map((x) => ({ id: x.sku, label: x.sku, hint: x.name, img: x.image }))} /></div>
           {refImages.length > 0 && <div className="mt-3"><div className="flex justify-between text-xs"><span className="text-[rgb(var(--muted))]">Bám ảnh gốc</span><span className="tabular-nums">{strength.toFixed(2)}</span><span className="text-[rgb(var(--muted))]">Sáng tạo tự do</span></div><input type="range" min={0} max={1} step={0.05} value={strength} onChange={(e) => setStrength(Number(e.target.value))} className="w-full accent-[rgb(var(--accent))]" aria-label="Mức bám ảnh gốc" /><p className="text-[11px] text-[rgb(var(--faint))]">Nhiều phương án sẽ lần lượt dùng từng ảnh tham chiếu.</p></div>}

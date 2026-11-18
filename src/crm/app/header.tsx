@@ -73,7 +73,7 @@ export function NotificationBell() {
 export function SyncChip({ info }: { info: SyncInfo }) {
   const ago = info.lastOk ? Math.max(0, Math.round((Date.now() - info.lastOk) / 1000)) : null;
   const tone = info.state === 'error' || info.state === 'offline' ? 'red' : info.state === 'syncing' || info.pending > 0 ? 'orange' : 'teal';
-  const label = info.state === 'offline' ? 'Mất kết nối' : info.state === 'error' ? 'Lỗi đồng bộ' : info.state === 'syncing' ? 'Đang lưu...' : info.pending > 0 ? `Chờ lưu ${info.pending}` : 'Đã đồng bộ';
+  const label = info.state === 'offline' ? 'Mất kết nối' : info.state === 'error' ? 'Lỗi đồng bộ' : info.state === 'syncing' ? 'Đang lưu…' : info.pending > 0 ? `Chờ lưu ${info.pending}` : 'Đã đồng bộ';
   const title = `${label}${info.error ? `: ${info.error}` : ''}${ago !== null ? `. Lần cuối ${ago < 60 ? `${ago} giây` : `${Math.round(ago / 60)} phút`} trước` : ''}${info.state === 'offline' || info.state === 'error' ? '. Thay đổi vẫn giữ trên máy và tự gửi lại khi có mạng; đừng đóng tab.' : ''}`;
   const color = tone === 'red' ? 'border-[rgb(var(--danger)/0.5)] text-[rgb(var(--danger-fg))]' : tone === 'orange' ? 'border-[rgb(var(--accent)/0.5)] text-[rgb(var(--accent-fg))]' : 'border-[rgb(var(--success)/0.4)] text-[rgb(var(--success-fg))]';
   return (
@@ -181,7 +181,7 @@ export function ChangePasswordModal({ forced, onClose }: { forced?: boolean; onC
     }
   };
   return (
-    <Modal title={forced ? 'Đổi mật khẩu trước khi tiếp tục' : 'Đổi mật khẩu'} onClose={forced ? logout : onClose} footer={<>{forced ? <button className={btnGhost} onClick={logout}>Đăng xuất</button> : <button className={btnGhost} onClick={onClose}>Hủy</button>}<button className={btnPrimary} disabled={busy} onClick={() => void submit()}>{busy ? 'Đang lưu...' : 'Đổi mật khẩu'}</button></>}>
+    <Modal title={forced ? 'Đổi mật khẩu trước khi tiếp tục' : 'Đổi mật khẩu'} onClose={forced ? logout : onClose} footer={<>{forced ? <button className={btnGhost} onClick={logout}>Đăng xuất</button> : <button className={btnGhost} onClick={onClose}>Hủy</button>}<button className={btnPrimary} disabled={busy} onClick={() => void submit()}>{busy ? 'Đang lưu…' : 'Đổi mật khẩu'}</button></>}>
       {forced && <p className="mb-3 rounded bg-[rgb(var(--accent)/0.1)] p-3 text-sm text-[rgb(var(--accent-fg))]">Tài khoản đang dùng mật khẩu tạm hoặc mật khẩu mặc định. Đặt mật khẩu riêng để tiếp tục.</p>}
       <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
         <Field label="Mật khẩu hiện tại"><input className={inputCls} type="password" autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} /></Field>

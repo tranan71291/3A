@@ -458,7 +458,7 @@ export function ContentStudio() {
             <td className={tdCls}>{WRITER[c.type].label}{c.channel && <p className="text-[11px] text-[rgb(var(--muted))]">{MKT_CH[c.channel].label}</p>}</td>
             <td className={tdCls}>{campaigns.find((x) => x.id === c.campaignId)?.name ?? '—'}</td>
             <td className={cn(tdCls, 'whitespace-nowrap')}>{c.blocks?.length ? `${c.blocks.length} mục · ${c.blocks.filter((b) => b.image).length} ảnh` : '—'}</td>
-            <td className={tdCls}>{userName(c.ownerId)}{c.by && <p className="text-[10px] text-[rgb(var(--muted))]">{c.by}</p>}</td>
+            <td className={tdCls}>{userName(c.ownerId)}{c.by && <p className="text-[11px] text-[rgb(var(--muted))]">{c.by}</p>}</td>
             <td className={cn(tdCls, 'whitespace-nowrap')}>{new Date(c.updatedAt).toLocaleDateString('vi-VN')}</td>
             <td className={tdCls}><div className="flex flex-col items-end gap-1">{c.aiJob && c.aiJob.status !== 'DONE' && <Chip tone={JOB_LABEL[c.aiJob.status].tone}>{JOB_LABEL[c.aiJob.status].label}</Chip>}<Chip tone={CONTENT_STATUS[c.status].tone}>{CONTENT_STATUS[c.status].label}</Chip></div></td>
             <td className={cn(tdLast, 'w-12')} onClick={(e) => e.stopPropagation()}><ContentRowMenu c={c} onOpen={() => setEdit(c)} onConfirm={setConfirm} /></td>
@@ -478,7 +478,7 @@ export function ScoreRing({ v, label, size = 64 }: { v: number; label: string; s
     <div className="flex flex-col items-center gap-1">
       <div className="relative" style={{ width: size, height: size }}>
         <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" aria-hidden><circle cx="18" cy="18" r="15.5" fill="none" stroke="rgb(var(--line))" strokeWidth="3" /><circle cx="18" cy="18" r="15.5" fill="none" stroke={col} strokeWidth="3" strokeDasharray={`${(v / 100) * 97.4} 97.4`} strokeLinecap="round" /></svg>
-        <span className="absolute inset-0 flex items-center justify-center font-num text-sm font-bold" style={{ color: col }}>{Math.round(v)}</span>
+        <span className="absolute inset-0 flex items-center justify-center font-num text-sm font-semibold" style={{ color: col }}>{Math.round(v)}</span>
       </div>
       <span className="text-[11px] text-[rgb(var(--muted))]">{label}</span>
     </div>
@@ -555,7 +555,7 @@ export function ContentStudioSheet({ c, onClose }: { c: MktContent | null; onClo
       <ol className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Các bước">
         {STUDIO_STEPS.map((s, i) => { const n = i + 1; const on = step === n; const done = step > n; return (
           <li key={s}><button disabled={!canGo(n)} onClick={() => setStep(n)} aria-current={on ? 'step' : undefined} className={cn('flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors disabled:opacity-40', on ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.08)] text-[rgb(var(--accent-fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>
-            <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold', on ? 'bg-[rgb(var(--accent))] text-white' : done ? 'bg-[rgb(var(--success))] text-white' : 'bg-[rgb(var(--ink)/0.08)]')}>{done ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> : n}</span>{s}
+            <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold', on ? 'bg-[rgb(var(--accent))] text-white' : done ? 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] text-[rgb(var(--fg))]' : 'bg-[rgb(var(--ink)/0.08)]')}>{done ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> : n}</span>{s}
           </button></li>
         ); })}
       </ol>
@@ -588,13 +588,13 @@ export function ContentStudioSheet({ c, onClose }: { c: MktContent | null; onClo
                 <div className="space-y-3">
                   <div className="flex justify-around"><ScoreRing v={tr.score} label="Hấp dẫn" size={72} /><ScoreRing v={tr.seo.score} label="SEO" /><ScoreRing v={tr.social.score} label="Social" /></div>
                   {[['SEO', tr.seo.notes], ['Mạng xã hội', tr.social.notes], ['Nên cải thiện', tr.tips]].filter(([, n]) => (n as string[]).length).map(([l, n]) => (
-                    <div key={l as string}><p className="text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">{l as string}</p><ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-xs">{(n as string[]).map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+                    <div key={l as string}><p className="text-[11px] font-semibold text-[rgb(var(--muted))]">{l as string}</p><ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-xs">{(n as string[]).map((x, i) => <li key={i}>{x}</li>)}</ul></div>
                   ))}
                   <div>
-                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">Gợi ý tiêu đề (bấm để dùng)</p>
+                    <p className="mb-1 text-[11px] font-semibold text-[rgb(var(--muted))]">Gợi ý tiêu đề (bấm để dùng)</p>
                     <div className="space-y-1.5">{tr.suggestions.map((s) => <button type="button" key={s} onClick={() => setF((p) => ({ ...p, title: s, titleReport: undefined }))} className="block w-full rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-3 py-2 text-left text-sm hover:border-[rgb(var(--accent))]">{s}</button>)}</div>
                   </div>
-                  <p className="text-[10px] text-[rgb(var(--faint))]">{tr.by}</p>
+                  <p className="text-[11px] text-[rgb(var(--faint))]">{tr.by}</p>
                 </div>
               )}
             </aside>
@@ -607,7 +607,7 @@ export function ContentStudioSheet({ c, onClose }: { c: MktContent | null; onClo
               <p className="text-sm text-[rgb(var(--muted))]">Kéo thả khối để sắp xếp, sửa tiêu đề và ý chính, thêm / xóa mục trước khi viết.</p>
               <button type="button" className={cn(btnGhost, btnSm, 'ml-auto')} onClick={() => void makeOutline()} disabled={!!busy.outline}><RefreshCw className="h-3.5 w-3.5" aria-hidden />{busy.outline ?? 'Tạo lại dàn ý'}</button>
             </div>
-            <div className="rounded-md border-2 border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--accent)/0.05)] px-4 py-3"><span className="mr-2 rounded bg-[rgb(var(--accent))] px-1.5 py-0.5 text-[10px] font-bold text-white">H1</span><input className="w-[calc(100%-3rem)] bg-transparent text-lg font-bold focus:outline-none" value={f.title} onChange={(e) => set('title', e.target.value)} aria-label="Tiêu đề H1" /></div>
+            <div className="rounded-md border-2 border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--accent)/0.05)] px-4 py-3"><span className="mr-2 rounded bg-[rgb(var(--accent))] px-1.5 py-0.5 text-[11px] font-semibold text-white">H1</span><input className="w-[calc(100%-3rem)] bg-transparent text-lg font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--fg)/0.4)]" value={f.title} onChange={(e) => set('title', e.target.value)} aria-label="Tiêu đề H1" /></div>
             <ol className="space-y-2">
               {blocks.map((b, i) => (
                 <li key={b.id} draggable onDragStart={() => setDragId(b.id)} onDragEnd={() => setDragId(null)} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (dragId) move(blocks.findIndex((x) => x.id === dragId), i); setDragId(null); }}
@@ -615,7 +615,7 @@ export function ContentStudioSheet({ c, onClose }: { c: MktContent | null; onClo
                   <span className="mt-2 cursor-grab text-[rgb(var(--faint))]" title="Kéo để sắp xếp" aria-hidden><GripVertical className="h-4 w-4" /></span>
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex items-center gap-2">
-                      <select className={cn(inputBase, 'h-8 w-16 py-0 text-xs font-bold')} value={b.level} onChange={(e) => patchB(b.id, { level: Number(e.target.value) as 2 | 3 })} aria-label="Cấp tiêu đề"><option value={2}>H2</option><option value={3}>H3</option></select>
+                      <select className={cn(inputBase, 'h-8 w-16 py-0 text-xs font-semibold')} value={b.level} onChange={(e) => patchB(b.id, { level: Number(e.target.value) as 2 | 3 })} aria-label="Cấp tiêu đề"><option value={2}>H2</option><option value={3}>H3</option></select>
                       <input className={cn(inputCls, 'h-9 py-1 font-semibold')} value={b.heading} onChange={(e) => patchB(b.id, { heading: e.target.value })} aria-label="Tiêu đề mục" />
                     </div>
                     <textarea className={cn(inputCls, 'min-h-[44px] text-xs')} value={b.points} onChange={(e) => patchB(b.id, { points: e.target.value })} placeholder="Ý chính của mục, cách nhau dấu ;" aria-label="Ý chính" />
@@ -644,7 +644,7 @@ export function ContentStudioSheet({ c, onClose }: { c: MktContent | null; onClo
             </div>
             {blocks.map((b) => (
               <article key={b.id} className={cn('rounded-md border border-[rgb(var(--line))] p-4', b.level === 3 && 'ml-6')}>
-                <div className="mb-2 flex items-center gap-2"><span className="rounded bg-[rgb(var(--ink)/0.08)] px-1.5 py-0.5 text-[10px] font-bold">H{b.level}</span><h3 className={cn('min-w-0 flex-1 font-semibold', b.level === 2 ? 'text-base' : 'text-sm')}>{b.heading}</h3>
+                <div className="mb-2 flex items-center gap-2"><span className="rounded bg-[rgb(var(--ink)/0.08)] px-1.5 py-0.5 text-[11px] font-semibold">H{b.level}</span><h3 className={cn('min-w-0 flex-1 font-semibold', b.level === 2 ? 'text-base' : 'text-sm')}>{b.heading}</h3>
                   <button type="button" className={cn(btnGhost, btnSm)} onClick={() => void writeOne(b)} disabled={!!busy[b.id]}><Sparkles className="h-3.5 w-3.5 text-[rgb(var(--accent))]" aria-hidden />{busy[b.id] ?? (b.body ? 'Viết lại' : 'Viết đoạn này')}</button>
                 </div>
                 {/* Ảnh minh họa chèn ngay dưới tiểu mục */}
@@ -681,10 +681,10 @@ export function ContentStudioSheet({ c, onClose }: { c: MktContent | null; onClo
       {step === 4 && (
         <div className="grid gap-5 lg:grid-cols-[1fr_260px] [&>*]:min-w-0">
           <article className="rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-6 py-5">
-            <h1 className="mb-4 font-display text-2xl font-bold leading-tight">{f.title}</h1>
+            <h1 className="mb-4 font-display text-2xl font-semibold leading-tight">{f.title}</h1>
             {blocks.map((b) => (
               <section key={b.id} className="mb-4">
-                {b.level === 2 ? <h2 className="mb-2 text-lg font-bold">{b.heading}</h2> : <h3 className="mb-1.5 text-base font-semibold">{b.heading}</h3>}
+                {b.level === 2 ? <h2 className="mb-2 text-lg font-semibold">{b.heading}</h2> : <h3 className="mb-1.5 text-base font-semibold">{b.heading}</h3>}
                 {b.image && <img src={b.image.url} alt={b.heading} className="mb-2 w-full rounded-md" />}
                 <div className="whitespace-pre-wrap text-sm leading-relaxed">{b.body || <i className="text-[rgb(var(--faint))]">Chưa có nội dung</i>}</div>
               </section>
@@ -790,17 +790,17 @@ export function CampaignCalendar() {
       {view === 'calendar' && (
         <div className="overflow-x-auto">
           <div className="grid min-w-[760px] grid-cols-7 text-xs">
-            {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => <div key={d} className="border-b border-[rgb(var(--line))] px-2 py-2 text-center font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">{d}</div>)}
+            {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => <div key={d} className="border-b border-[rgb(var(--line))] px-2 py-2 text-center font-semibold text-[rgb(var(--muted))]">{d}</div>)}
             {cells.map((d, i) => {
               const camps = d ? campaigns.filter((c) => c.start <= d && c.end >= d) : [];
               const ts = d ? rows.filter((r) => r.t.date === d).map((r) => r.t) : [];
               return (
                 <div key={i} role={d && canEdit ? 'button' : undefined} tabIndex={d && canEdit ? 0 : undefined} onClick={() => d && canEdit && setTask(neu(d))} onKeyDown={(e) => { if (d && canEdit && e.key === 'Enter') setTask(neu(d)); }}
                   className={cn('group min-h-[118px] border-b border-r border-[rgb(var(--line)/0.7)] p-1.5', !d && 'bg-[rgb(var(--ink)/0.02)]', d && canEdit && 'cursor-pointer hover:bg-[rgb(var(--secondary)/0.04)]', d === today && 'bg-[rgb(var(--accent)/0.06)]')} aria-label={d ? `Ngày ${fmtDate(d)}: ${ts.length} nhiệm vụ` : undefined}>
-                  {d && <div className="mb-1 flex items-center"><span className="hidden text-[10px] text-[rgb(var(--accent-fg))] group-hover:inline">{canEdit ? '+ Thêm' : ''}</span><p className={cn('ml-auto text-[11px] font-semibold', d === today ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]')}>{Number(d.slice(8))}</p></div>}
+                  {d && <div className="mb-1 flex items-center"><span className="hidden text-[11px] text-[rgb(var(--accent-fg))] group-hover:inline">{canEdit ? '+ Thêm' : ''}</span><p className={cn('ml-auto text-[11px] font-semibold', d === today ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]')}>{Number(d.slice(8))}</p></div>}
                   {camps.slice(0, 2).map((c) => <button key={c.id} onClick={(e) => { e.stopPropagation(); setEdit(c); }} className="mb-0.5 block h-1 w-full rounded-full" style={{ background: MKT_CH[c.channels[0] ?? 'EVENT'].color, opacity: 0.35 }} title={`Chiến dịch: ${c.name}`} aria-label={`Chiến dịch ${c.name}`} />)}
                   {ts.slice(0, 3).map(chip)}
-                  {ts.length > 3 && <p className="text-[10px] text-[rgb(var(--muted))]">+{ts.length - 3} nhiệm vụ</p>}
+                  {ts.length > 3 && <p className="text-[11px] text-[rgb(var(--muted))]">+{ts.length - 3} nhiệm vụ</p>}
                 </div>
               );
             })}
@@ -815,7 +815,7 @@ export function CampaignCalendar() {
               <tr key={t.id} className={cn(rowCls, 'cursor-pointer')} onClick={() => setTask(t)}>
                 <td className={cn(tdFirst, 'whitespace-nowrap')}>{fmtDate(t.date)}</td>
                 <td className={tdCls}><p className="max-w-[240px] truncate font-medium">{t.title}</p><p className="max-w-[240px] truncate text-[11px] text-[rgb(var(--muted))]">{campaigns.find((c) => c.id === t.campaignId)?.name ?? '—'}</p></td>
-                <td className={tdCls}><span className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-white" style={{ background: MKT_CH[t.channel].color }}>{MKT_CH[t.channel].label}</span></td>
+                <td className={tdCls}><span className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: MKT_CH[t.channel].color }}>{MKT_CH[t.channel].label}</span></td>
                 <td className={cn(tdCls, 'whitespace-nowrap')}>{WRITER[t.contentType].label}</td>
                 <td className={tdCls}><p className="line-clamp-2 max-w-[220px] text-xs">{t.textPrompt || '—'}</p></td>
                 <td className={tdCls}><p className="line-clamp-2 max-w-[200px] text-xs">{t.imagePrompt || '—'}</p></td>
@@ -879,8 +879,8 @@ export function CampaignRoi() {
             <tr key={c.id} className={cn(rowCls, 'cursor-pointer')} onClick={() => setEdit(c)}>
               <td className={tdFirst}><p className="max-w-[260px] truncate font-medium">{c.name}</p><p className="text-[11px] text-[rgb(var(--muted))]">{c.channels.map((ch) => MKT_CH[ch].label).join(', ')}</p></td>
               <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(c.budget)}</td>
-              <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(c.spent)}{c.budget ? <span className="block text-[10px] text-[rgb(var(--muted))]">{Math.round((c.spent / c.budget) * 100)}%</span> : null}</td>
-              <td className={cn(tdCls, 'text-right tabular-nums')}>{s.leads}{c.targetLeads ? <span className="text-[10px] text-[rgb(var(--muted))]"> / {c.targetLeads}</span> : null}</td>
+              <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(c.spent)}{c.budget ? <span className="block text-[11px] text-[rgb(var(--muted))]">{Math.round((c.spent / c.budget) * 100)}%</span> : null}</td>
+              <td className={cn(tdCls, 'text-right tabular-nums')}>{s.leads}{c.targetLeads ? <span className="text-[11px] text-[rgb(var(--muted))]"> / {c.targetLeads}</span> : null}</td>
               <td className={cn(tdCls, 'text-right tabular-nums')}>{s.leads ? compact(s.cpl) : '—'}</td>
               <td className={cn(tdCls, 'text-right tabular-nums')}>{s.won}</td>
               <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(s.revenue)}</td>
@@ -959,7 +959,7 @@ export function BannerStudio() {
         <p className="mt-2 text-xs text-[rgb(var(--muted))]">{BANNER_SIZE[cur.size].label} · xuất PNG đúng kích thước để đăng Facebook, Zalo OA, website.</p>
         {banners.length > 0 && (
           <div className="mt-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">Banner đã lưu</h3>
+            <h3 className="mb-2 text-xs font-semibold text-[rgb(var(--muted))]">Banner đã lưu</h3>
             <div className="flex gap-2 overflow-x-auto pb-1">{banners.map((b) => <button key={b.id} onClick={() => setCur(b)} className={cn('shrink-0 rounded-md border p-1', b.id === cur.id ? 'border-[rgb(var(--accent))]' : 'border-[rgb(var(--line))]')} title={b.name}>{b.thumb ? <img src={b.thumb} alt={b.name} className="h-16 w-auto rounded" /> : <span className="block h-16 w-24 rounded" style={{ background: b.bg }} />}</button>)}</div>
           </div>
         )}

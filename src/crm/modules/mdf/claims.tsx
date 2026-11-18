@@ -252,12 +252,12 @@ export function PhotoTile({ p, onVerify, onRemove, canVerify }: { p: Proof; onVe
           </button>
         )}
         {p.watermark ? (
-          <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[10px] leading-tight text-[rgb(var(--fg)/0.85)]">
+          <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[11px] leading-tight text-[rgb(var(--fg)/0.85)]">
             <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" aria-hidden />{p.gps ?? 'Chưa đọc được GPS'}</span>
             <span>{p.capturedAt}</span>
           </div>
         ) : (
-          <div className="absolute inset-x-0 bottom-0 bg-[rgb(var(--danger)/0.8)] px-2 py-1 text-[10px] font-medium text-white">Không có watermark</div>
+          <div className="absolute inset-x-0 bottom-0 bg-[rgb(var(--danger)/0.8)] px-2 py-1 text-[11px] font-medium text-white">Không có watermark</div>
         )}
       </div>
       <div className="flex items-center justify-between gap-1 bg-[rgb(var(--raised))] px-2 py-1.5">
@@ -474,7 +474,7 @@ export function ClaimDrawer({ id, onClose }: { id: string; onClose: () => void }
           </label>
         </div>
         <FilePicker accept="image/*" multiple disabled={!canUpload || busy} onFiles={(f) => addFiles(f, 'SITE_PHOTO')} className="mb-3 flex items-center justify-center gap-2 rounded border border-dashed border-[rgb(var(--line))] px-4 py-4 text-sm text-[rgb(var(--muted))] hover:border-[rgb(var(--accent)/0.6)] hover:text-[rgb(var(--fg))]">
-          <Camera className="h-4 w-4" aria-hidden />{busy ? 'Đang xử lý file...' : 'Chọn ảnh từ máy tính hoặc kéo thả vào đây'}
+          <Camera className="h-4 w-4" aria-hidden />{busy ? 'Đang xử lý file…' : 'Chọn ảnh từ máy tính hoặc kéo thả vào đây'}
         </FilePicker>
         {photos.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

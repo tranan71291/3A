@@ -150,7 +150,7 @@ export function VisualSearchPanel({ file, onReset, onPick }: { file: File; onRes
           <li key={`${h.kind}${h.id}`}>
             <button className="flex w-full items-center gap-3 rounded-md border border-[rgb(var(--line))] px-3 py-2 text-left hover:border-[rgb(var(--secondary)/0.6)] hover:bg-[rgb(var(--secondary)/0.05)]" onClick={() => open(h)}>
               {h.img ? <img src={h.img} alt="" className="h-10 w-10 shrink-0 rounded object-cover" /> : <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-[rgb(var(--ink)/0.05)]"><Package className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /></span>}
-              <span className="min-w-0 flex-1"><span className="flex items-center gap-2"><Chip tone="blue">{VS_KIND[h.kind]}</Chip><b className="font-mono text-xs text-[rgb(var(--accent-fg))]">{h.code}</b></span><span className="mt-0.5 block truncate text-sm">{h.name}</span><span className="block truncate text-[11px] text-[rgb(var(--muted))]">{h.why}{h.sub ? ` · ${h.sub}` : ''}</span></span>
+              <span className="min-w-0 flex-1"><span className="flex items-center gap-2"><Chip tone="blue">{VS_KIND[h.kind]}</Chip><b className="code-chip">{h.code}</b></span><span className="mt-0.5 block truncate text-sm">{h.name}</span><span className="block truncate text-[11px] text-[rgb(var(--muted))]">{h.why}{h.sub ? ` · ${h.sub}` : ''}</span></span>
               <span className="w-16 shrink-0 text-right"><span className="font-num text-sm font-semibold">{h.score}%</span><span className="mt-1 block h-1 rounded-full bg-[rgb(var(--line))]"><span className="block h-1 rounded-full bg-[rgb(var(--accent))]" style={{ width: `${h.score}%` }} /></span></span>
             </button>
           </li>

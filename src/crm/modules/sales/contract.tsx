@@ -1,13 +1,13 @@
 'use client';
 
 import { Fragment, useRef, useState } from 'react';
-import { AlertTriangle, Copy, Download, Eye, FileText, Pencil, Plus, Search, Sparkles, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Copy, Download, Eye, FileText, History, Mail, Pencil, Plus, Search, Trash2, Upload, XCircle } from 'lucide-react';
 import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { Collapse, ConfirmDialog } from '../../components/crud';
 import { FilterBar, useInRange } from '../../components/filters';
-import { Chip, EmptyState, Field, FilePicker, Modal, Panel, Table, Tabs, useOverlay, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, FilePicker, Modal, Panel, StatCard, Table, Tabs, useOverlay, useSticky } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
-import { btnBase, btnGhost, btnPrimary, btnSm, compact, contractVersions, docGroupOf, esc, findByTax, fmtDate, fmtN, GENDOC_STATUS, guessTx, inputBase, inputCls, latestQuote, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, rowCls, SAMPLE_FORM, secHead, tdCls, tdFirst, tdLast, TEMPLATE_FLAGS, TEMPLATE_VARS, todayISO, TX_TYPE, uid, useApp } from '../../lib/core';
+import { btnBase, btnGhost, btnPrimary, btnSm, C, compact, contractVersions, docGroupOf, esc, findByTax, fmtDate, fmtN, GENDOC_STATUS, guessTx, inputBase, inputCls, iso, latestQuote, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, rowCls, SAMPLE_FORM, secHead, tdCls, tdFirst, tdLast, TEMPLATE_FLAGS, TEMPLATE_VARS, todayISO, TX_TYPE, uid, useApp } from '../../lib/core';
 import type { ComposerForm, ComposerMode, ConfirmState, DocTemplate, GenDocStatus, GeneratedDoc, PriceTier, Quote, QuoteStatus, TxType } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { AiWriterSheet } from '../ai/copilot-plus';
@@ -136,7 +136,7 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
             {options.length ? (
               <Field label="Báo giá căn cứ">
                 <select className={inputCls} value={baseId ?? ''} onChange={(e) => pickBase(e.target.value)}>
-                  <option value="" disabled>Chọn báo giá...</option>
+                  <option value="" disabled>Chọn báo giá…</option>
                   {options.map((q) => <option key={q.id} value={q.id}>{q.code} v{q.version}, {compact(q.amount)}{q.status === 'ACCEPTED' ? ' (khách đã chốt)' : ''}</option>)}
                 </select>
               </Field>
@@ -195,7 +195,7 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
           extra={<>
             {locked && shown?.status === 'PENDING_APPROVAL' && canApprove && (
               <>
-                <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} onClick={() => decide(true)}>Duyệt</button>
+                <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]')} onClick={() => decide(true)}>Duyệt</button>
                 <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--danger)/0.15)] text-[rgb(var(--danger-fg))]')} onClick={() => decide(false)}>Từ chối</button>
               </>
             )}
@@ -258,7 +258,7 @@ export function GeneratedDocList({ leadId, customerId }: { leadId?: string; cust
               <button className={cn(btnGhost, btnSm)} onClick={() => openComposer({ docId: d.id, view: true })}><Eye className="h-3.5 w-3.5" aria-hidden />Xem</button>
               {d.status === 'PENDING_APPROVAL' && canApprove(d) && (
                 <>
-                  <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')} onClick={() => decide(d, true)}>Duyệt</button>
+                  <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]')} onClick={() => decide(d, true)}>Duyệt</button>
                   <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--danger)/0.15)] text-[rgb(var(--danger-fg))]')} onClick={() => decide(d, false)}>Từ chối</button>
                 </>
               )}
@@ -354,7 +354,7 @@ export function TemplateEditorModal({ tpl, draft, onClose }: { tpl?: DocTemplate
           <div className="flex flex-wrap items-end gap-2">
             <Field label="Chèn biến tại con trỏ">
               <select className={cn(inputBase, 'w-auto')} value="" onChange={(e) => e.target.value && insert(e.target.value)}>
-                <option value="">Chọn biến...</option>
+                <option value="">Chọn biến…</option>
                 <optgroup label="Biến">{TEMPLATE_VARS.map(([k, d]) => <option key={k} value={`{{${k}}}`}>{`{{${k}}}`}: {d}</option>)}</optgroup>
                 <optgroup label="Khối điều kiện">{TEMPLATE_FLAGS.map(([k, d]) => <option key={k} value={`{{#if ${k}}}...{{/if}}`}>{`{{#if ${k}}}`}: {d}</option>)}</optgroup>
               </select>
@@ -435,7 +435,7 @@ export function TemplateManager() {
       <div className="flex flex-col gap-2 rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden />
-          <input className={cn(inputCls, 'border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 pl-9')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm mẫu theo tên hoặc loại giao dịch..." aria-label="Tìm mẫu" />
+          <input className={cn(inputCls, 'border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 pl-9')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm mẫu theo tên hoặc loại giao dịch…" aria-label="Tìm mẫu" />
         </div>
         <FilePicker accept=".docx" onFiles={importWord} disabled={!canEdit} className={cn(btnGhost, 'justify-center py-2')}><Upload className="h-4 w-4" aria-hidden />Tải lên file Word (.docx) mẫu</FilePicker>
         <button className={cn(btnPrimary, 'justify-center py-2')} disabled={!canEdit} onClick={() => setEditing({})}><Plus className="h-4 w-4" aria-hidden />Thêm mẫu mới</button>
@@ -457,7 +457,7 @@ export function TemplateManager() {
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs text-[rgb(var(--muted))]">Tiêu đề viết dạng {'<h3 class="art">Tên điều</h3>'} được tự đánh số "Điều 1, Điều 2..." theo các khối đang hiện.</p>
+        <p className="mt-3 text-xs text-[rgb(var(--muted))]">Tiêu đề viết dạng {'<h3 class="art">Tên điều</h3>'} được tự đánh số "Điều 1, Điều 2…" theo các khối đang hiện.</p>
       </Collapse>
 
       <Panel title={`Mẫu báo giá (${list('QUOTE').length})`}>{table('QUOTE')}</Panel>
@@ -516,39 +516,68 @@ export function SalesDocsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex rounded bg-[rgb(var(--surface))] p-1" role="radiogroup" aria-label="Loại văn bản">
+        <div className="flex rounded-lg bg-[rgb(var(--raised))] p-0.5" role="radiogroup" aria-label="Loại văn bản">
           {([['QUOTE', `Báo giá (${quoteRows.length})`], ['CONTRACT', `Hợp đồng (${contracts.length})`]] as const).map(([k, label]) => (
-            <button key={k} role="radio" aria-checked={view === k} onClick={() => { setView(k); setSt('ALL'); setOpen(null); }} className={cn('rounded-md px-4 py-2 text-sm font-medium', view === k ? 'bg-[rgb(var(--surface))] font-semibold text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--line))]' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>{label}</button>
+            <button key={k} role="radio" aria-checked={view === k} onClick={() => { setView(k); setSt('ALL'); setOpen(null); }} className={cn('rounded-md px-3.5 py-1.5 text-sm', view === k ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>{label}</button>
           ))}
         </div>
-        {view === 'QUOTE' && <button className={cn(btnPrimary, btnSm, 'ml-auto')} disabled={!(canDo('project.update') || canDo('customer.edit'))} onClick={() => openComposer({ mode: 'QUOTE' })}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo báo giá</button>}
-        {view === 'CONTRACT' && <button className={cn(btnPrimary, btnSm, 'ml-auto')} disabled={!(canDo('project.update') || canDo('customer.edit'))} onClick={() => openComposer({ mode: 'CONTRACT' })}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo hợp đồng</button>}
+        {view === 'QUOTE' && <button className={cn(btnPrimary, 'ml-auto')} disabled={!(canDo('project.update') || canDo('customer.edit'))} onClick={() => openComposer({ mode: 'QUOTE' })}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo báo giá</button>}
+        {view === 'CONTRACT' && <button className={cn(btnPrimary, 'ml-auto')} disabled={!(canDo('project.update') || canDo('customer.edit'))} onClick={() => openComposer({ mode: 'CONTRACT' })}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo hợp đồng</button>}
       </div>
 
-      <FilterBar q={q} onQ={setQ} placeholder={view === 'QUOTE' ? 'Tìm mã báo giá, khách hàng, mã dự án...' : 'Tìm số hợp đồng, bên mua, báo giá căn cứ...'} status={st} onStatus={setSt} statusOptions={statusOpts} />
+      {view === 'QUOTE' ? (
+        <div className="kpi-row grid grid-cols-2 gap-y-3 lg:grid-cols-4">
+          <StatCard label="Bộ báo giá" value={fmtN(quoteRows.length)} sub={`${quotes.length} phiên bản`} />
+          <StatCard label="Đã gửi, chờ phản hồi" value={fmtN(quoteRows.filter((r) => r.latest.status === 'SENT').length)} sub={compact(quoteRows.filter((r) => r.latest.status === 'SENT').reduce((s, r) => s + r.latest.amount, 0)) + ' trước VAT'} />
+          <StatCard label="Khách chấp nhận" value={fmtN(quoteRows.filter((r) => r.latest.status === 'ACCEPTED').length)} sub={compact(quoteRows.filter((r) => r.latest.status === 'ACCEPTED').reduce((s, r) => s + r.latest.amount, 0)) + ' trước VAT'} />
+          <StatCard label="Hết hiệu lực trong 7 ngày" value={fmtN(quoteRows.filter((r) => r.latest.status === 'SENT' && r.latest.validUntil && r.latest.validUntil >= todayISO() && r.latest.validUntil <= iso(new Date(Date.now() + 7 * 864e5))).length)} sub="báo giá đang chờ khách" />
+        </div>
+      ) : (
+        <div className="kpi-row grid grid-cols-2 gap-y-3 lg:grid-cols-4">
+          <StatCard label="Hợp đồng hiệu lực" value={fmtN(contracts.filter((d) => d.status === 'ISSUED' || d.status === 'APPROVED').length)} sub={`${contracts.length} hợp đồng`} />
+          <StatCard label="Giá trị hiệu lực" value={compact(contracts.filter((d) => d.status === 'ISSUED' || d.status === 'APPROVED').reduce((s, d) => s + d.total, 0))} sub="gồm VAT" />
+          <StatCard label="Chờ duyệt" value={fmtN(contracts.filter((d) => d.status === 'PENDING_APPROVAL').length)} sub={compact(contracts.filter((d) => d.status === 'PENDING_APPROVAL').reduce((s, d) => s + d.total, 0))} color={contracts.some((d) => d.status === 'PENDING_APPROVAL') ? C.orange : C.text} />
+          <StatCard label="Bị từ chối, cần sửa" value={fmtN(contracts.filter((d) => d.status === 'REJECTED').length)} sub="mở để sửa và gửi duyệt lại" color={contracts.some((d) => d.status === 'REJECTED') ? C.red : C.text} />
+        </div>
+      )}
+
+      <FilterBar q={q} onQ={setQ} placeholder={view === 'QUOTE' ? 'Tìm mã báo giá, khách hàng, mã dự án' : 'Tìm số hợp đồng, bên mua, báo giá căn cứ'} status={st} onStatus={setSt} statusOptions={statusOpts} />
 
       <Panel title={view === 'QUOTE' ? `${qFiltered.length} bộ báo giá` : `${cFiltered.length} hợp đồng`}>
         {view === 'QUOTE' ? (
           <>
-            <Table stt={Math.max(0, qPaged.from - 1)} head={['Khách hàng / dự án', 'Báo giá mới nhất', 'Ngày', 'Trước VAT', 'Trạng thái', '']} minW={760}>
+            <Table stt={Math.max(0, qPaged.from - 1)} head={['Mã', 'Khách hàng', 'Dự án', 'Ngày', 'Hiệu lực đến', <span key="a" className="block text-right">Trước VAT</span>, <span key="b" className="block text-right">Sau VAT</span>, 'Trạng thái', <span key="c" className="block text-right">Thao tác</span>]} minW={1040}>
               {qPaged.slice.map((r) => (
                 <Fragment key={r.key}>
                   <tr className={rowCls}>
-                    <td className={tdFirst}><p className="max-w-[280px] truncate font-medium text-[rgb(var(--fg))]">{nameOfQuote(r.latest)}</p><p className="text-xs text-[rgb(var(--muted))]">{r.lead ? r.lead.code : 'Không gắn dự án'}</p></td>
-                    <td className={tdCls}><b>{r.latest.code}</b> <span className="text-xs text-[rgb(var(--muted))]">v{r.latest.version}</span>{r.versions.length > 1 && <button className="ml-2 text-xs text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => setOpen(open === r.key ? null : r.key)}>{open === r.key ? 'ẩn' : `${r.versions.length} phiên bản`}</button>}</td>
-                    <td className={cn(tdCls, 'tabular-nums')}>{fmtDate(r.latest.date)}</td>
-                    <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{compact(r.latest.amount)}</td>
+                    <td className={tdFirst}><Code>{r.latest.code}</Code>{r.versions.length > 1 && <button className="ml-1.5 font-mono text-xs text-[rgb(var(--muted))] hover:underline" onClick={() => setOpen(open === r.key ? null : r.key)} aria-expanded={open === r.key} title="Phiên bản cũ">v{r.latest.version}</button>}</td>
+                    <td className={tdCls}><button className="block max-w-[260px] truncate text-left font-medium hover:underline" title={nameOfQuote(r.latest)} onClick={() => openComposer({ quoteId: r.latest.id, mode: 'QUOTE' })}>{nameOfQuote(r.latest)}</button></td>
+                    <td className={tdCls}>{r.lead ? <Code>{r.lead.code}</Code> : <span className="text-[rgb(var(--faint))]">—</span>}</td>
+                    <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(r.latest.date)}</td>
+                    <td className={cn(tdCls, 'font-mono text-xs', r.latest.validUntil && r.latest.validUntil < todayISO() && r.latest.status === 'SENT' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--fg2))]')}>{r.latest.validUntil ? fmtDate(r.latest.validUntil) : '—'}</td>
+                    <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(r.latest.amount)}</td>
+                    <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{compact(Math.round(r.latest.amount * (1 + (r.latest.vatPct ?? 0) / 100)))}</td>
                     <td className={tdCls}><Chip tone={QUOTE_STATUS[r.latest.status].tone}>{QUOTE_STATUS[r.latest.status].label}</Chip></td>
-                    <td className={cn(tdLast, 'text-right')}><div className="flex justify-end gap-1.5"><button className={cn(btnGhost, btnSm)} onClick={() => setMailFor(r.latest)} title="Soạn email gửi báo giá bằng AI"><Sparkles className="h-3.5 w-3.5 text-[rgb(var(--accent))]" aria-hidden />Soạn email</button><button className={cn(btnGhost, btnSm)} onClick={() => openComposer({ quoteId: r.latest.id, mode: 'QUOTE' })}><Eye className="h-3.5 w-3.5" aria-hidden />Xem</button></div></td>
+                    <td className={cn(tdLast, 'text-right')}><div className="flex items-center justify-end gap-1">
+                      <button className={cn(btnGhost, 'h-8 w-8 border-0 p-0')} onClick={() => setMailFor(r.latest)} title="Soạn email gửi báo giá bằng AI" aria-label={`Soạn email ${r.latest.code}`}><Mail className="h-4 w-4" aria-hidden /></button>
+                      <button className={cn(btnGhost, 'h-8 w-8 border-0 p-0')} onClick={() => openComposer({ quoteId: r.latest.id, mode: 'QUOTE' })} title="Xem" aria-label={`Xem ${r.latest.code}`}><Eye className="h-4 w-4" aria-hidden /></button>
+                      <RowMenu label={`Thao tác ${r.latest.code}`} items={[
+                        { label: 'Tạo hợp đồng từ báo giá', icon: FileText, disabled: !(canDo('project.update') || canDo('customer.edit')), onClick: () => openComposer({ quoteId: r.latest.id, mode: 'CONTRACT' }) },
+                        { label: r.versions.length > 1 ? (open === r.key ? 'Ẩn phiên bản cũ' : `Xem ${r.versions.length - 1} phiên bản cũ`) : 'Chỉ có 1 phiên bản', icon: History, disabled: r.versions.length < 2, onClick: () => setOpen(open === r.key ? null : r.key) },
+                      ]} />
+                    </div></td>
                   </tr>
                   {open === r.key && r.versions.slice(1).map((v) => (
-                    <tr key={v.id} data-sub className="bg-[rgb(var(--sunken))] text-xs text-[rgb(var(--muted))]">
-                      <td className={tdFirst} />
-                      <td className={tdCls}>{v.code} v{v.version}</td>
-                      <td className={cn(tdCls, 'tabular-nums')}>{fmtDate(v.date)}</td>
-                      <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{compact(v.amount)}</td>
+                    <tr key={v.id} data-sub className="bg-[rgb(var(--sunken))] text-[13px] text-[rgb(var(--muted))]">
+                      <td className={tdFirst}><Code>{v.code}</Code></td>
+                      <td className={cn(tdCls, 'font-mono text-xs')}>v{v.version}</td>
+                      <td className={tdCls} />
+                      <td className={cn(tdCls, 'font-mono text-xs')}>{fmtDate(v.date)}</td>
+                      <td className={cn(tdCls, 'font-mono text-xs')}>{v.validUntil ? fmtDate(v.validUntil) : '—'}</td>
+                      <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(v.amount)}</td>
+                      <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(Math.round(v.amount * (1 + (v.vatPct ?? 0) / 100)))}</td>
                       <td className={tdCls}><Chip tone={QUOTE_STATUS[v.status].tone}>{QUOTE_STATUS[v.status].label}</Chip></td>
-                      <td className={cn(tdLast, 'text-right')}><button className="text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => openComposer({ quoteId: v.id, mode: 'QUOTE' })}>Xem</button></td>
+                      <td className={cn(tdLast, 'text-right')}><button className="text-[rgb(var(--fg2))] hover:underline" onClick={() => openComposer({ quoteId: v.id, mode: 'QUOTE' })}>Xem</button></td>
                     </tr>
                   ))}
                 </Fragment>
@@ -559,35 +588,43 @@ export function SalesDocsPanel() {
           </>
         ) : (
           <>
-            <Table stt={Math.max(0, cPaged.from - 1)} head={['Số hợp đồng', 'Bên mua', 'Căn cứ báo giá', 'Giá trị', 'Trạng thái', '']} minW={820}>
+            <Table stt={Math.max(0, cPaged.from - 1)} head={['Số hợp đồng', 'Bên mua', 'MST', 'Báo giá', 'Ngày lập', <span key="v" className="block text-right">Giá trị</span>, <span key="t" className="block text-right">Tạm ứng</span>, 'Công nợ', 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>]} minW={1000}>
               {cPaged.slice.map((d) => {
                 const versions = contractVersions(genDocs, docGroupOf(d));
+                const f = d.form;
                 return (
                   <Fragment key={d.id}>
                     <tr className={rowCls}>
-                      <td className={tdFirst}><b>{d.contractCode}</b> <span className="text-xs text-[rgb(var(--muted))]">v{d.version ?? 1}</span>{versions.length > 1 && <button className="ml-2 text-xs text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => setOpen(open === d.id ? null : d.id)}>{open === d.id ? 'ẩn' : `${versions.length} phiên bản`}</button>}<p className="text-xs text-[rgb(var(--muted))]">{fmtDate(d.createdAt)}</p></td>
-                      <td className={tdCls}><p className="max-w-[240px] truncate">{d.partyName}</p></td>
-                      <td className={cn(tdCls, 'text-xs')}>{d.quoteCode || '—'}</td>
-                      <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{compact(d.total)}</td>
-                      <td className={tdCls}><Chip tone={GENDOC_STATUS[d.status].tone}>{GENDOC_STATUS[d.status].label}</Chip>{d.status === 'PENDING_APPROVAL' && <p className="mt-1 max-w-[220px] truncate text-[11px] text-[rgb(var(--accent-fg))]">{d.special[0]}</p>}</td>
-                      <td className={cn(tdLast, 'whitespace-nowrap text-right')}>
-                        <button className={cn(btnGhost, btnSm, 'mr-1')} onClick={() => openComposer({ docId: d.id, view: true })}><Eye className="h-3.5 w-3.5" aria-hidden />Xem</button>
-                        {d.status === 'PENDING_APPROVAL' && canApprove(d) && (
-                          <>
-                            <button className={cn(btnBase, btnSm, 'mr-1 bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')} onClick={() => decide(d, true)}>Duyệt</button>
-                            <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--danger)/0.15)] text-[rgb(var(--danger-fg))]')} onClick={() => decide(d, false)}>Từ chối</button>
-                          </>
-                        )}
-                      </td>
+                      <td className={cn(tdFirst, d.status === 'REJECTED' && 'shadow-[inset_3px_0_0_rgb(var(--danger))]')}><button className="hover:underline" onClick={() => openComposer({ docId: d.id, view: true })} title={`Phiên bản ${d.version ?? 1}`}><Code>{d.contractCode}</Code></button>{versions.length > 1 && <button className="ml-1.5 font-mono text-xs text-[rgb(var(--muted))] hover:underline" onClick={() => setOpen(open === d.id ? null : d.id)} aria-expanded={open === d.id} title="Phiên bản cũ">v{d.version ?? 1}</button>}</td>
+                      <td className={tdCls}><span className="block max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap font-medium" title={d.partyName}>{d.partyName}</span></td>
+                      <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{f?.party?.taxCode || '—'}</td>
+                      <td className={tdCls}>{d.quoteCode ? <Code>{d.quoteCode}</Code> : <span className="text-[rgb(var(--faint))]">—</span>}</td>
+                      <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(d.createdAt)}</td>
+                      <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(d.total)}</td>
+                      <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{f?.advancePct ? `${f.advancePct}%` : '—'}</td>
+                      <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{f?.creditDays ? `${f.creditDays} ngày` : 'Thanh toán ngay'}</td>
+                      <td className={tdCls} title={[d.status === 'REJECTED' ? `Lý do: ${d.rejectNote || 'không ghi'}` : d.special.length ? `Điều khoản đặc biệt: ${d.special.join('; ')}` : '', f?.warrantyMonths ? `Bảo hành ${f.warrantyMonths} tháng` : ''].filter(Boolean).join('\n') || undefined}><Chip tone={GENDOC_STATUS[d.status].tone}>{GENDOC_STATUS[d.status].label}</Chip></td>
+                      <td className={cn(tdLast, 'whitespace-nowrap text-right')}><div className="flex items-center justify-end gap-1">
+                        {d.status === 'PENDING_APPROVAL' && canApprove(d) && <button className={cn(btnGhost, btnSm)} onClick={() => decide(d, true)}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Duyệt</button>}
+                        <RowMenu label={`Thao tác ${d.contractCode}`} items={[
+                          { label: 'Xem, in, xuất Word / PDF', icon: Eye, onClick: () => openComposer({ docId: d.id, view: true }) },
+                          { label: versions.length > 1 ? (open === d.id ? 'Ẩn phiên bản cũ' : `Xem ${versions.length - 1} phiên bản cũ`) : 'Chỉ có 1 phiên bản', icon: History, disabled: versions.length < 2, onClick: () => setOpen(open === d.id ? null : d.id) },
+                          ...(d.status === 'PENDING_APPROVAL' && canApprove(d) ? [{ label: 'Từ chối', icon: XCircle, danger: true, onClick: () => decide(d, false) }] : []),
+                        ]} />
+                      </div></td>
                     </tr>
                     {open === d.id && versions.slice(1).map((v) => (
-                      <tr key={v.id} className="bg-[rgb(var(--sunken))] text-xs text-[rgb(var(--muted))]">
-                        <td className={tdFirst}>v{v.version ?? 1}, {fmtDate(v.createdAt)}</td>
+                      <tr key={v.id} data-sub className="bg-[rgb(var(--sunken))] text-[13px] text-[rgb(var(--muted))]">
+                        <td className={tdFirst}><Code>{v.contractCode}</Code></td>
+                        <td className={cn(tdCls, 'font-mono text-xs')}>v{v.version ?? 1}</td>
                         <td className={tdCls} />
-                        <td className={tdCls}>{v.quoteCode}</td>
-                        <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{compact(v.total)}</td>
+                        <td className={tdCls}>{v.quoteCode ? <Code>{v.quoteCode}</Code> : '—'}</td>
+                        <td className={cn(tdCls, 'font-mono text-xs')}>{fmtDate(v.createdAt)}</td>
+                        <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(v.total)}</td>
+                        <td className={tdCls} />
+                        <td className={tdCls} />
                         <td className={tdCls}><Chip tone={GENDOC_STATUS[v.status].tone}>{GENDOC_STATUS[v.status].label}</Chip></td>
-                        <td className={cn(tdLast, 'text-right')}><button className="text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => openComposer({ docId: v.id, view: true })}>Xem</button></td>
+                        <td className={cn(tdLast, 'text-right')}><button className="text-[rgb(var(--fg2))] hover:underline" onClick={() => openComposer({ docId: v.id, view: true })}>Xem</button></td>
                       </tr>
                     ))}
                   </Fragment>

@@ -212,14 +212,14 @@ export function MessengerInner({ me }: { me: User }) {
       <button key={k} className={cn('flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors', on ? 'bg-[rgb(var(--ink)/0.07)]' : 'hover:bg-[rgb(var(--ink)/0.04)]')} onClick={() => open(th)} aria-current={on || undefined}>
         {icon}
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2"><span className={cn('truncate text-[15px]', n ? 'font-bold text-[rgb(var(--fg))]' : 'font-semibold text-[rgb(var(--fg2))]')}>{th.title}</span>{last && <span className="ml-auto shrink-0 text-[11px] text-[rgb(var(--faint))]">{new Date(last.at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}</span>
+          <span className="flex items-center gap-2"><span className={cn('truncate text-[15px]', n ? 'font-semibold text-[rgb(var(--fg))]' : 'font-semibold text-[rgb(var(--fg2))]')}>{th.title}</span>{last && <span className="ml-auto shrink-0 text-[11px] text-[rgb(var(--faint))]">{new Date(last.at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>}</span>
           <span className={cn('mt-0.5 block truncate text-[13px]', n ? 'text-[rgb(var(--fg2))]' : 'text-[rgb(var(--faint))]')}>{last ? `${last.authorId === me.id ? 'Bạn' : userName(last.authorId).split(' ').slice(-1)[0]}: ${last.text || (last.files?.length ? `[${last.files.length} file]` : '')}` : th.sub}</span>
         </span>
-        {n > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[rgb(var(--accent))] px-1.5 text-[11px] font-bold text-[rgb(var(--on-accent))]">{n}</span>}
+        {n > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[rgb(var(--accent))] px-1.5 text-[11px] font-semibold text-[rgb(var(--on-accent))]">{n}</span>}
       </button>
     );
   };
-  const sec = (title: string, action?: ReactNode) => <div className="flex items-center justify-between px-3 pb-2 pt-5"><p className="text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">{title}</p>{action}</div>;
+  const sec = (title: string, action?: ReactNode) => <div className="flex items-center justify-between px-3 pb-2 pt-5"><p className="text-[11px] font-semibold text-[rgb(var(--faint))]">{title}</p>{action}</div>;
   const plus = (label: string, onClick: () => void) => <button className="flex h-7 w-7 items-center justify-center rounded-md text-[rgb(var(--faint))] hover:bg-[rgb(var(--ink)/0.1)] hover:text-[rgb(var(--fg))]" onClick={onClick} aria-label={label} title={label}><Plus className="h-4 w-4" /></button>;
 
   /** Một tin nhắn: thanh thao tác khi rê chuột (thả cảm xúc, trả lời theo chủ đề, ghim), cảm xúc, số trả lời */
@@ -281,7 +281,7 @@ export function MessengerInner({ me }: { me: User }) {
           </div>
         )}
         <div className="px-4 pb-2 pt-4">
-          <h2 className="font-display text-lg font-bold">Tin nhắn</h2>
+          <h2 className="font-display text-lg font-semibold">Tin nhắn</h2>
           <div className="mt-3 grid grid-cols-3 gap-1 rounded-md bg-[rgb(var(--ink)/0.04)] p-1" role="tablist" aria-label="Loại hội thoại">
             {([['all', 'Hội thoại', MessageSquare], ['fav', 'Ưa thích', Star], ['ai', 'Trợ lý AI', Sparkles]] as const).map(([id, label, Ic]) => (
               <button key={id} role="tab" aria-selected={ltab === id} className={cn('flex flex-col items-center gap-0.5 rounded py-1.5 text-[11px] font-medium transition-colors', ltab === id ? 'bg-[rgb(var(--surface))] text-[rgb(var(--secondary-fg))] shadow-[var(--shadow-sm)]' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')} onClick={() => setLtab(id)}><Ic className="h-4 w-4" aria-hidden />{label}</button>
@@ -338,7 +338,7 @@ export function MessengerInner({ me }: { me: User }) {
         onDrop={(e) => { e.preventDefault(); setDragging(0); if (e.dataTransfer.files.length) readFiles(Array.from(e.dataTransfer.files), (f) => (threadOf ? setReplyPending((p) => [...p, f]) : setPending((p) => [...p, f]))); }}>
         {!cur && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center overflow-y-auto bg-[rgb(var(--surface))] p-6 text-center">
-            <p className="font-display text-xl font-bold">Xin chào {me.name} 👋</p>
+            <p className="font-display text-xl font-semibold">Xin chào {me.name} 👋</p>
             <p className="mt-1 text-sm text-[rgb(var(--muted))]">Trao đổi nhanh với đồng nghiệp, theo từng dự án, đơn hàng, ngay trong {company.shortName}.</p>
             <div className="mt-6 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
               {[
@@ -366,7 +366,7 @@ export function MessengerInner({ me }: { me: User }) {
           <button className="rounded p-1 text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.1)] md:hidden" onClick={() => setCur(null)} aria-label="Danh sách kênh"><ArrowLeft className="h-4 w-4" /></button>
           {isDm && dmOther ? <PAvatar user={dmOther} size={40} meId={me.id} /> : tile(sel.entity === 'channel' ? (group ? <Users2 className="h-[18px] w-[18px]" /> : <Hash className="h-[18px] w-[18px]" />) : <MessageSquare className="h-[18px] w-[18px]" />)}
           <div className="min-w-0 flex-1">
-            <h2 className="font-display truncate text-[17px] font-bold">{sel.title}</h2>
+            <h2 className="font-display truncate text-[17px] font-semibold">{sel.title}</h2>
             <p className="truncate text-[13px] text-[rgb(var(--muted))]">{isDm && dmOther ? `${PRESENCE_META[presenceOf(dmOther, me.id)].label} · ${ROLE_LABEL[dmOther.role]}` : group ? `${group.desc ? `${group.desc} · ` : ''}${group.members.length} thành viên` : `${sel.sub} · ${members.length} người`}</p>
           </div>
           <div className="relative hidden sm:block"><Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[rgb(var(--faint))]" aria-hidden /><input className={cn(inputBase, 'w-44 rounded-lg border-[rgb(var(--ink)/0.08)] py-1.5 pl-8 text-[13px]')} value={inThread} onChange={(e) => setInThread(e.target.value)} placeholder="Tìm trong kênh" aria-label="Tìm trong kênh" /></div>
@@ -429,7 +429,7 @@ export function MessengerInner({ me }: { me: User }) {
       {/* ---------- Cột phải: chủ đề (thread) hoặc thông tin kênh dạng accordion ---------- */}
       {parent ? (
         <aside className="hidden w-[340px] shrink-0 flex-col border-l border-[rgb(var(--ink)/0.06)] lg:flex">
-          <div className="flex items-center gap-2 border-b border-[rgb(var(--ink)/0.06)] px-4 py-3.5"><Reply className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><div className="min-w-0 flex-1"><p className="font-display text-[15px] font-bold">Chủ đề</p><p className="truncate text-xs text-[rgb(var(--faint))]">{sel.title}</p></div><button className="rounded p-1.5 text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.1)] hover:text-[rgb(var(--fg))]" onClick={() => setThreadOf(null)} aria-label="Đóng chủ đề"><X className="h-4 w-4" /></button></div>
+          <div className="flex items-center gap-2 border-b border-[rgb(var(--ink)/0.06)] px-4 py-3.5"><Reply className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><div className="min-w-0 flex-1"><p className="font-display text-[15px] font-semibold">Chủ đề</p><p className="truncate text-xs text-[rgb(var(--faint))]">{sel.title}</p></div><button className="rounded p-1.5 text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.1)] hover:text-[rgb(var(--fg))]" onClick={() => setThreadOf(null)} aria-label="Đóng chủ đề"><X className="h-4 w-4" /></button></div>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
             {renderMsg(parent, false, true)}
             <div className="my-3 flex items-center gap-3 text-xs text-[rgb(var(--faint))]"><span className="h-px flex-1 bg-[rgb(var(--ink)/0.06)]" />{repliesOf(parent.id).length} trả lời<span className="h-px flex-1 bg-[rgb(var(--ink)/0.06)]" /></div>
@@ -718,7 +718,7 @@ export function BudgetStrip() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm text-[rgb(var(--muted))]">Quỹ MDF + CS năm {budget.fiscalYear} của {budget.vendor}</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight text-[rgb(var(--fg))] sm:text-4xl">
+          <p className="mt-1 text-3xl font-semibold tabular-nums tracking-normal text-[rgb(var(--fg))] sm:text-4xl">
             {vnd(available)}<span className="ml-2 text-base font-normal text-[rgb(var(--muted))]">còn khả dụng</span>
           </p>
         </div>

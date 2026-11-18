@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { AlertTriangle, BadgePercent, CheckCircle2, Download, Eye, FileSpreadsheet, FileText, History, Link2, Paperclip, Pencil, Plus, RefreshCw, Send, Trash2, Upload, XCircle } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { CommentButton } from '../../components/comments';
-import { Avatar, BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
+import { BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
 import { FilterBar, useInRange } from '../../components/filters';
 import { QuoteTimer } from '../../components/sla';
-import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, Tabs, useSort, useSticky, ViewSwitch } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, Tabs, useSort, useSticky, ViewSwitch } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
 import { boqIsEstimate, boqTotal, btnBase, btnDanger, btnGhost, btnPrimary, btnSm, compact, fmtDate, inputBase, inputCls, iso, isoMs, isQuoteOverdue, lastQuoteOf, LEAD_STATUS, leadAt, leadDate, LOST_REASON, median, PP_STATUS, QUOTE_STATUS, quotesOfCustomer, REGION_LABEL, rowCls, segName, SOURCE_LABEL, stageLabel, STAGES, tdCls, tdFirst, tdLast, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
@@ -129,9 +129,9 @@ export function ProjectDrawer({ id, onClose, onBoq, onLost, onPP, onEdit }: { id
     >
       <ProjectFlow lead={l} />
       <div className="grid grid-cols-3 gap-2 text-sm">
-        <div className="rounded bg-[rgb(var(--raised))] p-2.5"><p className="text-[11px] text-[rgb(var(--muted))]">Giá trị dự án</p><p className="font-semibold tabular-nums">{compact(pv.value)}</p><p className="truncate text-[10px] text-[rgb(var(--muted))]">{pv.source}</p></div>
+        <div className="rounded bg-[rgb(var(--raised))] p-2.5"><p className="text-[11px] text-[rgb(var(--muted))]">Giá trị dự án</p><p className="font-semibold tabular-nums">{compact(pv.value)}</p><p className="truncate text-[11px] text-[rgb(var(--muted))]">{pv.source}</p></div>
         <div className="rounded bg-[rgb(var(--raised))] p-2.5"><p className="text-[11px] text-[rgb(var(--muted))]">Hạn báo giá</p><div className="mt-0.5">{l.status === 'ACCEPTED' ? <QuoteTimer deadline={l.quoteDeadline} now={now} /> : <span className="text-xs">{qs[0] ? `Đã gửi ${fmtDate(qs[0].date)}` : '—'}</span>}</div></div>
-        <div className="rounded bg-[rgb(var(--raised))] p-2.5"><p className="text-[11px] text-[rgb(var(--muted))]">Liên hệ</p><p className="truncate text-xs">{l.contact}</p><p className="truncate text-[10px] text-[rgb(var(--muted))]">{l.phone}</p></div>
+        <div className="rounded bg-[rgb(var(--raised))] p-2.5"><p className="text-[11px] text-[rgb(var(--muted))]">Liên hệ</p><p className="truncate text-xs">{l.contact}</p><p className="truncate text-[11px] text-[rgb(var(--muted))]">{l.phone}</p></div>
       </div>
 
       <Tabs tabs={[{ id: 'quote', label: 'Báo giá & BOQ' }, { id: 'contract', label: 'Hợp đồng & Doanh số' }, { id: 'progress', label: 'Tiến độ & Công tác' }]} value={tab} onChange={setTab} />
@@ -315,14 +315,14 @@ export function ProjectGantt({ list, onOpen }: { list: Lead[]; onOpen: (id: stri
   return (
     <section className="rounded-md border border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--surface)/0.8)]">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[rgb(var(--ink)/0.06)] px-5 py-4">
-        <h2 className="font-display mr-auto text-[15px] font-bold">Tiến độ dự án (Gantt) · {rows.length}{list.length > rows.length ? ` / ${list.length}` : ''}</h2>
+        <h2 className="font-display mr-auto text-[15px] font-semibold">Tiến độ dự án (Gantt) · {rows.length}{list.length > rows.length ? ` / ${list.length}` : ''}</h2>
         {[['bg-[rgb(var(--secondary))]', 'Đang bóc BOQ / khảo sát'], ['g-brand', 'Đã gửi báo giá'], ['bg-[rgb(var(--success))]', 'Chốt đơn'], ['bg-[rgb(var(--danger)/0.7)]', 'Trượt']].map(([c, l]) => <span key={l} className="flex items-center gap-1.5 text-[11px] text-[rgb(var(--muted))]"><i className={cn('h-2.5 w-4 rounded-sm', c)} />{l}</span>)}
         <span className="flex items-center gap-1.5 text-[11px] text-[rgb(var(--muted))]"><i className="h-2.5 w-2.5 rotate-45 bg-[rgb(var(--warn))]" />Gửi báo giá</span>
         <span className="flex items-center gap-1.5 text-[11px] text-[rgb(var(--muted))]"><i className="h-2.5 w-4 rounded-sm border border-dashed border-[rgb(var(--muted))]" />Dự kiến (chu kỳ {Math.round(cycle)} ngày)</span>
       </header>
       <div className="flex">
         <div className="w-[220px] shrink-0 border-r border-[rgb(var(--ink)/0.06)]">
-          <div className="h-9 border-b border-[rgb(var(--ink)/0.06)] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--muted)/0.8)]">Dự án</div>
+          <div className="h-9 border-b border-[rgb(var(--ink)/0.06)] px-4 py-2.5 text-[11px] font-semibold text-[rgb(var(--muted)/0.8)]">Dự án</div>
           {rows.map(({ l }) => (
             <button key={l.id} className="flex h-12 w-full flex-col justify-center border-b border-[rgb(var(--ink)/0.04)] px-4 text-left hover:bg-[rgb(var(--secondary)/0.1)]" onClick={() => onOpen(l.id)}>
               <span className="truncate text-sm font-medium">{l.company}</span>
@@ -336,7 +336,7 @@ export function ProjectGantt({ list, onOpen }: { list: Lead[]; onOpen: (id: stri
               {months.map((m) => <span key={m.label} className="absolute top-0 h-full border-l border-[rgb(var(--ink)/0.06)] pl-2 pt-2.5 text-[11px] font-semibold text-[rgb(var(--muted))]" style={{ left: m.left }}>{m.label}</span>)}
             </div>
             {months.map((m) => <span key={`g${m.label}`} className="pointer-events-none absolute bottom-0 top-9 border-l border-[rgb(var(--ink)/0.04)]" style={{ left: m.left }} aria-hidden />)}
-            <span className="pointer-events-none absolute bottom-0 top-0 z-10 w-px bg-[rgb(var(--secondary-fg))]" style={{ left: x(t) }} aria-hidden><span className="absolute -top-0 left-1 whitespace-nowrap rounded-sm bg-[rgb(var(--secondary))] px-1 text-[10px] font-semibold text-white">Hôm nay</span></span>
+            <span className="pointer-events-none absolute bottom-0 top-0 z-10 w-px bg-[rgb(var(--secondary-fg))]" style={{ left: x(t) }} aria-hidden><span className="absolute -top-0 left-1 whitespace-nowrap rounded-sm bg-[rgb(var(--secondary))] px-1 text-[11px] font-semibold text-white">Hôm nay</span></span>
             {rows.map(({ l, start, end, qs, planned }) => {
               const realEnd = planned ? Math.min(end, t) : end;
               return (
@@ -344,7 +344,7 @@ export function ProjectGantt({ list, onOpen }: { list: Lead[]; onOpen: (id: stri
                   <button className={cn('absolute top-3.5 h-5 rounded-sm opacity-90 hover:opacity-100', bar(l))} style={{ left: x(start), width: Math.max(6, x(realEnd) - x(start)) }} onClick={() => onOpen(l.id)}
                     title={`${l.company}: nhận ${fmtDate(iso(new Date(start)))}${l.wonAt ? `, chốt ${fmtDate(l.wonAt)}` : planned ? `, dự kiến chốt ${fmtDate(iso(new Date(end)))}` : ''} · ${compact(boqTotal(l))}`}
                     aria-label={`${l.company}, ${LEAD_STATUS[l.status].label}`}>
-                    <span className="block truncate px-1.5 text-[10px] font-semibold leading-5 text-[rgb(var(--on-accent))] mix-blend-normal">{x(realEnd) - x(start) > 60 ? compact(boqTotal(l)) : ''}</span>
+                    <span className="block truncate px-1.5 text-[11px] font-semibold leading-5 text-[rgb(var(--on-accent))] mix-blend-normal">{x(realEnd) - x(start) > 60 ? compact(boqTotal(l)) : ''}</span>
                   </button>
                   {planned && end > realEnd && <span className="absolute top-3.5 h-5 rounded-sm border border-dashed border-[rgb(var(--muted)/0.6)]" style={{ left: x(realEnd), width: Math.max(4, x(end) - x(realEnd)) }} aria-hidden />}
                   {qs.map((q, i) => <i key={i} className="absolute top-[22px] h-2.5 w-2.5 -translate-x-1/2 rotate-45 border border-[rgb(var(--bg))] bg-[rgb(var(--warn))]" style={{ left: x(q) }} title={`Gửi báo giá ${new Date(q).toLocaleDateString('vi-VN')}`} />)}
@@ -387,7 +387,7 @@ export function ProjectsPage() {
       && (!adv.min || v >= adv.min) && (!adv.max || v <= adv.max) && (adv.boq === 'ALL' || (l.boqStatus ?? 'NOT_STARTED') === adv.boq) && (!adv.pp || !!l.priceProtection);
   });
   const list = (stage === 'ALL' ? opp : opp.filter((l) => l.status === stage)).sort((a, b) => Number(isQuoteOverdue(b, now)) - Number(isQuoteOverdue(a, now)) || a.receivedDaysAgo - b.receivedDaysAgo);
-  const srt = useSort('ProjectsPage', list, { 1: (l) => l.company, 3: (l) => l.boqValue, 4: (l) => l.quoteDeadline });
+  const srt = useSort('Projects40b', list, { 1: (l) => l.code, 2: (l) => l.company, 6: (l) => l.boqValue, 7: (l) => l.quoteDeadline });
   const paged = usePaged(srt.rows, 10);
   const sel = useSelection(list.map((l) => l.id));
   const overdue = opp.filter((l) => isQuoteOverdue(l, now));
@@ -428,7 +428,7 @@ export function ProjectsPage() {
   return (
     <div className="space-y-4">
       <FilterBar
-        q={q} onQ={setQ} placeholder="Tìm dự án, khách hàng, mã dự án, mã đơn Getfly..."
+        q={q} onQ={setQ} placeholder="Tìm dự án, khách hàng, mã dự án, mã đơn Getfly…"
         dept={dp} onDept={setDp} status={stage} onStatus={(v) => setStage(v as 'ALL' | Stage)}
         statusOptions={STAGES.map((s) => ({ value: s, label: stageLabel(s) }))}
         onAdvanced={() => setAdvOpen(true)} advancedCount={advCount} extraActive={owner !== 'ALL' ? 1 : 0}
@@ -441,10 +441,10 @@ export function ProjectsPage() {
       </FilterBar>
 
       {(overdue.length > 0 || ppPending > 0) && (
-        <div className="flex flex-col gap-2 rounded-md border border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--accent)/0.1)] px-4 py-3 sm:flex-row sm:items-center">
-          <AlertTriangle className="hidden h-5 w-5 shrink-0 text-[rgb(var(--accent-fg))] sm:block" aria-hidden />
-          <p className="flex-1 text-sm text-[rgb(var(--accent-fg))]">
-            {overdue.length > 0 && <span className="text-[rgb(var(--danger-fg))]">{overdue.length} dự án quá hạn nộp báo giá 24 giờ, đã leo thang tới Trưởng phòng. </span>}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <AlertTriangle className="hidden h-4 w-4 shrink-0 text-[rgb(var(--danger-fg))] sm:block" aria-hidden />
+          <p className="flex-1 text-sm text-[rgb(var(--fg2))]">
+            {overdue.length > 0 && <span>{overdue.length} dự án quá hạn nộp báo giá 24 giờ, đã báo Trưởng phòng. </span>}
             {ppPending > 0 && <span>{ppPending} đề xuất bảo vệ giá đang chờ 3M phản hồi.</span>}
           </p>
           <div className="flex gap-2">
@@ -456,7 +456,7 @@ export function ProjectsPage() {
       <BulkBar count={sel.ids.length} onClear={sel.clear}>
         <button className={cn(btnGhost, btnSm)} onClick={() => exportRows(allLeads.filter((l) => sel.has(l.id)))}><Download className="h-3.5 w-3.5" aria-hidden />Xuất CSV</button>
         <select className={cn(inputBase, 'w-auto py-1 text-xs')} disabled={!canDo('lead.assign') && !canEdit} value="" onChange={(e) => { const u = users.find((x) => x.id === e.target.value); if (!u) return; setLeads((p) => p.map((l) => (sel.has(l.id) ? { ...l, assignee: u.id, dept: u.dept ?? l.dept } : l))); notify(`Đã giao ${sel.ids.length} dự án cho ${u.name}`, 'teal'); sel.clear(); }} aria-label="Giao phụ trách">
-          <option value="">Giao phụ trách...</option>
+          <option value="">Giao phụ trách…</option>
           {users.filter((u) => u.active && (u.role === 'SALES_REP' || u.role === 'DEPT_HEAD')).map((u) => <option key={u.id} value={u.id}>{u.name} ({dept(u.dept)?.short})</option>)}
         </select>
       </BulkBar>
@@ -480,31 +480,26 @@ export function ProjectsPage() {
           })}
         </div>
         <div className="hidden md:block">
-          <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Khách hàng / Dự án', 'Phòng ban / Phụ trách', 'Giá trị dự án', 'Hạn báo giá', 'Báo giá', 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>]} minW={1000} sort={srt.th}>
+          <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Mã', 'Khách hàng', 'Hạng mục', 'Phòng', 'Phụ trách', <span key="v" className="block text-right">Giá trị</span>, 'Hạn báo giá', 'Báo giá', 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>]} minW={1000} sort={srt.th}>
             {paged.slice.map((l) => {
               const late = isQuoteOverdue(l, now);
               const st = projectStatus(l, now, quotes);
+              const pv = projectValue(l, quotes);
               return (
-                <tr key={l.id} className={cn(rowCls, 'cursor-pointer', late && 'bg-[rgb(var(--danger)/0.05)]', sel.has(l.id) && 'bg-[rgb(var(--accent)/0.05)]')} onClick={() => setViewId(l.id)}>
-                  <td className={cn(tdFirst, 'w-10', late && 'border-l-2 border-l-[rgb(var(--danger))] motion-safe:animate-[blinkBorder_1.2s_ease-in-out_infinite]')} onClick={(e) => e.stopPropagation()}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.has(l.id)} onChange={() => sel.toggle(l.id)} aria-label={`Chọn ${l.company}`} /></td>
-                  <td className={tdCls}>
-                    <div className="flex items-center gap-2">
-                      <Avatar name={l.company} size={28} />
-                      <div className="min-w-0">
-                        <p className="max-w-[190px] truncate font-medium text-[rgb(var(--fg))]" title={l.boqNote}>{l.company}</p>
-                        <p className="max-w-[190px] truncate text-xs text-[rgb(var(--muted))]"><span className="font-mono text-[rgb(var(--accent-fg))]">{l.code}</span> · {l.boqNote || (l.province ?? REGION_LABEL[l.region])}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className={tdCls}><p>{dept(l.dept)?.short}</p><p className="text-xs text-[rgb(var(--muted))]">{userName(l.assignee)}</p></td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{(() => { const pv = projectValue(l, quotes); return <><p className="text-[rgb(var(--fg))]">{compact(pv.value)}</p><p className={cn('text-[11px]', pv.source === 'Ước tính MKT' ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]')}>{pv.source}</p></>; })()}</td>
-                  <td className={tdCls}>{l.status === 'ACCEPTED' ? <QuoteTimer deadline={l.quoteDeadline} now={now} /> : <span className="text-xs text-[rgb(var(--muted))]">{l.quoteDeadline ? fmtDate(iso(new Date(l.quoteDeadline))) : '—'}</span>}</td>
+                <tr key={l.id} className={cn(rowCls, 'cursor-pointer', sel.has(l.id) && 'bg-[rgb(var(--accent)/0.05)]')} onClick={() => setViewId(l.id)}>
+                  <td className={cn(tdFirst, 'w-10', late && 'shadow-[inset_3px_0_0_rgb(var(--danger))]')} onClick={(e) => e.stopPropagation()}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.has(l.id)} onChange={() => sel.toggle(l.id)} aria-label={`Chọn ${l.company}`} /></td>
+                  <td className={tdCls}><Code>{l.code}</Code></td>
+                  <td className={tdCls}><button className="block max-w-[240px] truncate text-left font-medium hover:underline" title={l.company} onClick={(e) => { e.stopPropagation(); setViewId(l.id); }}>{l.company}</button></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[200px] truncate" title={l.boqNote}>{l.boqNote || (l.province ?? REGION_LABEL[l.region])}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{dept(l.dept)?.short}</td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[150px] truncate">{userName(l.assignee)}</span></td>
+                  <td className={cn(tdCls, 'text-right tabular-nums', pv.source === 'Ước tính MKT' && 'text-[rgb(var(--accent-fg))]')} title={pv.source}>{compact(pv.value)}</td>
+                  <td className={tdCls}>{l.status === 'ACCEPTED' ? <QuoteTimer deadline={l.quoteDeadline} now={now} /> : <span className="font-mono text-xs text-[rgb(var(--muted))]">{l.quoteDeadline ? fmtDate(iso(new Date(l.quoteDeadline))) : '—'}</span>}</td>
                   <td className={tdCls}>{quoteCell(l)}</td>
                   <td className={tdCls}><Chip tone={st.tone}>{st.label}</Chip></td>
                   <td className={cn(tdLast, 'whitespace-nowrap text-right')} onClick={(e) => e.stopPropagation()}>
                     <span className="mr-1 inline-block align-middle"><CommentButton entity="lead" entityId={l.id} title={`${l.code} · ${l.company}`} module="projects" /></span>
-                    <button className={cn(btnGhost, 'mr-1 p-1.5')} disabled={!canEdit} onClick={() => openLeadForm(false, l.id)} aria-label={`Sửa ${l.company}`}><Pencil className="h-4 w-4" /></button>
-                    <RowMenu items={menuFor(l)} />
+                    <RowMenu items={[{ label: 'Sửa', icon: Pencil, disabled: !canEdit, onClick: () => openLeadForm(false, l.id) }, ...menuFor(l)]} />
                   </td>
                 </tr>
               );

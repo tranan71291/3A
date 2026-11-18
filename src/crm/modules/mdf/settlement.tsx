@@ -39,7 +39,7 @@ export function MdfSettlementPanel({ claim }: { claim: Claim }) {
       <ol className="grid grid-cols-1 gap-2 sm:grid-cols-4">
         {steps.map((s, i) => (
           <li key={s.label} className={cn('rounded border p-2.5', s.done ? 'border-[rgb(var(--success)/0.4)] bg-[rgb(var(--success)/0.05)]' : 'border-[rgb(var(--line))] bg-[rgb(var(--raised))]')}>
-            <p className="flex items-center gap-1.5 text-[11px] text-[rgb(var(--muted))]"><span className={cn('flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold', s.done ? 'bg-[rgb(var(--success))] text-[rgb(var(--on-accent))]' : 'bg-[rgb(var(--line))] text-[rgb(var(--muted))]')}>{i + 1}</span>{s.label}</p>
+            <p className="flex items-center gap-1.5 text-[11px] text-[rgb(var(--muted))]"><span className={cn('flex h-4 w-4 items-center justify-center rounded-full text-[11px] font-semibold', s.done ? 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] text-[rgb(var(--fg))]' : 'bg-[rgb(var(--line))] text-[rgb(var(--muted))]')}>{i + 1}</span>{s.label}</p>
             <p className="mt-1 text-sm font-semibold tabular-nums">{s.value}</p>
             {s.note && <p className="mt-0.5 text-[11px] text-[rgb(var(--muted))]">{s.note}</p>}
           </li>
@@ -48,7 +48,7 @@ export function MdfSettlementPanel({ claim }: { claim: Claim }) {
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Credit Note cấn trừ vào PO">
           <select className={inputCls} disabled={!can || !claim.creditNote} value={claim.offsetPoId ?? ''} onChange={(e) => { update({ offsetPoId: e.target.value || undefined, offset: !!e.target.value || claim.offset }); if (e.target.value) audit('MDF_OFFSET_PO', `${claim.code}: cấn trừ vào PO ${pos.find((p) => p.id === e.target.value)?.code}`); }}>
-            <option value="">{claim.creditNote ? 'Chọn PO nhập khẩu...' : 'Chờ nhận Credit Note'}</option>
+            <option value="">{claim.creditNote ? 'Chọn PO nhập khẩu…' : 'Chờ nhận Credit Note'}</option>
             {pos.filter((p) => !p.cancelled).map((p) => <option key={p.id} value={p.id}>{p.code}: {p.vendor}, {fmtDate(p.orderDate)}</option>)}
           </select>
         </Field>
@@ -88,7 +88,7 @@ export function MdfSettlementReport() {
           const surplus = surplusOf(c);
           return (
             <tr key={c.id} className={cn(rowCls, 'cursor-pointer')} onClick={() => openClaim(c.id)}>
-              <td className={tdFirst}><p className="font-mono text-xs text-[rgb(var(--accent-fg))]">{c.code}</p><p className="max-w-[240px] truncate text-xs text-[rgb(var(--muted))]">{c.programTitle}</p></td>
+              <td className={tdFirst}><p className="code-chip">{c.code}</p><p className="max-w-[240px] truncate text-xs text-[rgb(var(--muted))]">{c.programTitle}</p></td>
               <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{approved ? approved.toLocaleString('vi-VN') : '—'}<span className="block text-[11px] text-[rgb(var(--muted))]">{f.settlement === 'LUMP_SUM' ? 'Khoán trọn gói' : 'Theo thực chi'}</span></td>
               <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{f.hasActual ? f.actualExecutionCost.toLocaleString('vi-VN') : '—'}{c.invoice && <span className={cn('block text-[11px]', c.vatCheck === 'MISMATCH' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')}>HĐ VAT {c.invoice.amount.toLocaleString('vi-VN')}{c.vatCheck === 'MISMATCH' ? ' · lệch' : ''}</span>}</td>
               {seeMargin && <td className={cn(tdCls, 'whitespace-nowrap text-right font-semibold tabular-nums', surplus > 0 ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--muted))]')}>{surplus > 0 ? surplus.toLocaleString('vi-VN') : '—'}{surplus > 0 && approved > 0 && <span className="block text-[11px] font-normal">{((surplus / approved) * 100).toFixed(1)}%</span>}</td>}
