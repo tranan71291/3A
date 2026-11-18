@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Columns3, Copy, Download, ExternalLink, Gauge, GripVertical, History, ImagePlus, Inbox, List, Lock, Package, Plus, RefreshCw, Sparkles, Trash2, TrendingUp, Upload, Wallet, X } from 'lucide-react';
 import { Chip, EmptyState, Field, MoneyInput, Panel, SideSheet, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { AI_NAME, aiErrText, AUD_FIELDS, AUD_OPS, AUTO_CH, AUTO_TRIGGER, BANNER_PRESETS, BANNER_SIZE, bizMode, blocksToHtml, blocksToMarkdown, boqTotal, btnAccent, btnGhost, btnPrimary, btnSm, C, CAMP_STATUS, compact, CONTENT_STATUS, dayMs, downloadBlob, fillVars, fmtDate, fold, inputBase, inputCls, isoDay, JOB_LABEL, kpiGrid, LEAD_STATUS, leadAt, MKT_CH, rowCls, shrinkImage, SOURCE_LABEL, stickyStore, STUDIO_STEPS, studioSupports, subjectOf, TASK_STATUS, tdCls, tdFirst, tdLast, todayISO, uid, useApp, WRITER, WRITER_TONES } from '../../lib/core';
+import { AI_NAME, aiErrText, AUD_FIELDS, AUD_OPS, AUTO_CH, AUTO_TRIGGER, BANNER_PRESETS, BANNER_SIZE, bizMode, blocksToHtml, blocksToMarkdown, boqTotal, btnAccent, btnGhost, btnPrimary, btnSm, C, CAMP_STATUS, compact, CONTENT_STATUS, dayMs, downloadBlob, fillVars, fmtDate, fold, inputBase, inputCls, isoDay, JOB_LABEL, kpiGrid, LEAD_STATUS, leadAt, MKT_CH, MKT_OPEN_EVT, openContentReview, rowCls, shrinkImage, slugify, SOURCE_LABEL, ST_BRIEF_FIELDS, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stHas, stickyStore, stOutlinePrompt, stSectionPrompt, stStr, STUDIO_STEPS, studioSupports, subjectOf, TASK_STATUS, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vAspect, vCfgOf, vImg, vKey, WRITER, WRITER_TONES } from '../../lib/core';
 import { downloadCsv, xlsxBlob } from '../../lib/csv';
-import type { AiJob, AppCtx, AudBase, Audience, AudOp, AudRule, AutoChannel, Automation, AutoRun, AutoStep, AutoSubject, AutoTrigger, BannerSize, BannerSpec, CalView, Campaign, CampaignStatus, CompanyInfo, ContentBlock, ContentStatus, Customer, ImgAspect, Job, Lead, MktChannel, MktContent, MktContentType, MktTab, MktTask, TaskStatus, TitleReport, WriterPreset } from '../../lib/types';
+import type { AiJob, AppCtx, AudBase, Audience, AudOp, AudRule, AutoChannel, Automation, AutoRun, AutoStep, AutoSubject, AutoTrigger, BannerSize, BannerSpec, CalView, Campaign, CampaignStatus, CompanyInfo, ContentBlock, ContentStatus, Customer, ImgAspect, Job, Lead, MktChannel, MktContent, MktContentType, MktTab, MktTask, StArticle, StSettings, StSettingValue, TaskStatus, TitleReport, WriterPreset } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { apiPost, parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
 import { useWriter } from '../ai/copilot-plus';
 import { loadImg } from '../ai/visual-search';
-import { StudioWorkspace } from './content-studio';
+import { applyWatermark, getPlatform, stClip, StFieldControl, StudioWorkspace } from './content-studio';
+import { KwConflictNote, openMktContent, VariantPicker, vText } from './content-workspace';
 import { Switch } from '../platform/console';
 
 /** Kết quả chiến dịch: lead theo kênh nguồn trong thời gian chạy (+30 ngày), doanh thu từ lead đã chốt / đơn đã ký */
@@ -187,6 +188,7 @@ export function MarketingHubPage() {
   const app = useApp();
   const { campaigns, myLeads, jobs, now, canDo } = app;
   const [tab, setTab] = useSticky<MktTab>('Mkt.tab', 'calendar');
+  useEffect(() => { const f = () => setTab('content'); window.addEventListener(MKT_OPEN_EVT, f); return () => window.removeEventListener(MKT_OPEN_EVT, f); }, [setTab]);
   const t = now ?? Date.now();
   const year = new Date(t).getFullYear();
   const yc = campaigns.filter((c) => c.start.startsWith(String(year)) || c.end.startsWith(String(year)));
@@ -371,10 +373,10 @@ export function useStudioAi() {
     }
     return { text: localBlockText(b, title, company), by: 'Mẫu soạn sẵn' };
   };
-  const image = async (b: ContentBlock, title: string, imgPrompt: string, aspect: ImgAspect = 'landscape'): Promise<{ url: string; prompt: string; by: string; error?: string }> => {
+  const image = async (b: ContentBlock, title: string, imgPrompt: string, aspect: ImgAspect = 'landscape', reference?: string): Promise<{ url: string; prompt: string; by: string; error?: string }> => {
     const prompt = `${b.imagePrompt || `${b.heading}. ${b.points}`}. Bối cảnh bài viết: ${title}. Lĩnh vực: ${sector}. ${imgPrompt ? `Yêu cầu hình ảnh: ${imgPrompt}.` : ''} Phong cách: ảnh chụp thương mại chân thực, ánh sáng tự nhiên, bố cục sạch, phù hợp thị trường Việt Nam, không có chữ, không có logo.`;
     if (imgOn) {
-      const r = await apiPost<{ b64: string; mediaType: string; model: string }>('/api/ai/image', { tenant: org.id, prompt, aspect });
+      const r = await apiPost<{ b64: string; mediaType: string; model: string }>('/api/ai/image', { tenant: org.id, prompt, aspect, ...(reference ? { reference: { mediaType: reference.slice(5, reference.indexOf(';')) || 'image/jpeg', data: reference.split(',')[1] ?? '' }, strength: 0.35 } : {}) });
       if (r.ok) return { url: await compactImage(`data:${r.mediaType};base64,${r.b64}`), prompt, by: `OpenAI · ${r.model}` };
       return { url: placeholderImage(b.heading, brand, aspect), prompt, by: 'Ảnh mẫu', error: aiErrText(r.error) };
     }
@@ -386,8 +388,11 @@ export function useStudioAi() {
 /** Bộ xử lý nền: nhận việc "Giao cho AI" từ Lịch chiến dịch, lần lượt lập dàn ý → viết → tạo ảnh → chờ duyệt */
 export function AiContentWorker() {
   const app = useApp();
-  const { contents, setContents, me, notify } = app;
+  const { contents, setContents, me, notify, company, skus } = app;
+  ST_VARIANT_CACHE.cfg = vCfgOf(app.hubCfg.content);
   const st = useStudioAi();
+  const skuRef = useRef(skus); skuRef.current = skus;
+  const coRef = useRef(stCompanyOf(company)); coRef.current = stCompanyOf(company);
   const ref = useRef(st); ref.current = st;
   const running = useRef<string | null>(null);
   const job = me ? contents.find((c) => c.aiJob && c.aiJob.by === me.id && c.aiJob.status === 'QUEUED') : undefined;
@@ -399,30 +404,61 @@ export function AiContentWorker() {
     void (async () => {
       try {
         const s = ref.current;
+        const co = coRef.current;
+        // v38: nội dung có kênh Studio (Website / Facebook / Zalo / Maps) => soạn theo prompt của kênh + brief, giống Content Studio
+        const p = job.platform ? getPlatform(job.platform) : null;
+        const settings: StSettings = p ? { ...p.defaults(co), ...(job.settings ?? {}) } : {};
+        let sapo = job.sapo ?? '';
+        const extra = job.textPrompt ? `\nGhi chú thêm: ${job.textPrompt}` : '';
+        const art = (bl: ContentBlock[]): StArticle => ({ id: job.id, platform: p?.id ?? 'website', title: job.title, sapo, settings, updatedAt: Date.now(), sections: bl.map((b) => ({ id: b.id, level: b.level, title: b.heading, body: b.body })) });
         step('Đang lập dàn ý');
-        let blocks = job.blocks?.length ? job.blocks : (await s.outline(job.title, job.type, job.textPrompt ?? '')).blocks;
-        patch((c) => ({ ...c, blocks, step: 2 }));
+        let blocks: ContentBlock[] = job.blocks?.length ? job.blocks : [];
         let by = '';
+        if (!blocks.length && p && s.ai.available) {
+          const r = await s.ai.ask({ maxTokens: 1400, system: 'Chỉ trả JSON hợp lệ, không giải thích.', prompt: stOutlinePrompt(p, art([]), co) + extra });
+          const j = r.ok ? parseAiJson<{ sapo?: string; sections?: { level?: number; title?: string }[] }>(r.text) : null;
+          if (j?.sections?.length) {
+            sapo = j.sapo ?? sapo;
+            blocks = j.sections.filter((x) => x.title).slice(0, p.structure.maxSections).map((x) => ({ id: uid('bk'), level: x.level === 3 ? 3 : 2, heading: String(x.title), points: '', body: '' }));
+            if (r.ok) by = `${AI_NAME[r.provider]} · ${r.model}`;
+          }
+        }
+        if (!blocks.length) blocks = (await s.outline(job.title, job.type, job.textPrompt ?? '')).blocks;
+        patch((c) => ({ ...c, blocks, sapo, step: 2 }));
         for (let i = 0; i < blocks.length; i++) {
           step(`Đang viết ${i + 1}/${blocks.length}: ${blocks[i].heading}`);
           if (blocks[i].body) continue;
-          const r = await s.write(blocks[i], blocks, job.title, job.type, job.tone ?? WRITER_TONES[0], job.textPrompt ?? '');
-          by = r.by;
-          blocks = blocks.map((x, k) => (k === i ? { ...x, body: r.text } : x));
+          let text = '';
+          if (p && s.ai.available) {
+            const r = await s.ai.ask({ maxTokens: 1400, system: `Bạn là biên tập viên nội dung B2B của ${co.name}${co.sector ? `, lĩnh vực ${co.sector}` : ''}. Chỉ trả nội dung mục, không lặp tiêu đề. Đoạn văn cách nhau 1 dòng trống, danh sách dùng "- ", chữ đậm dùng **…**.`, prompt: stSectionPrompt(p, art(blocks), blocks[i].id, co) + extra });
+            if (r.ok) { text = r.text.trim(); by = `${AI_NAME[r.provider]} · ${r.model}`; }
+          }
+          if (!text) { const r = await s.write(blocks[i], blocks, job.title, job.type, job.tone ?? WRITER_TONES[0], job.textPrompt ?? ''); text = r.text; by = r.by; }
+          blocks = blocks.map((x, k) => (k === i ? { ...x, body: text } : x));
           patch((c) => ({ ...c, blocks, by }));
         }
-        if (job.aiJob?.images !== false) {
-          const targets = blocks.filter((b) => b.level === 2 && !b.image).slice(0, 4);
+        // Điền meta title / description / slug… còn trống bằng gợi ý tự động của kênh
+        if (p) for (const fd of p.fields) if (fd.suggest && !stStr(settings[fd.key]).trim()) settings[fd.key] = fd.suggest(art(blocks), settings);
+        const cnt = vImg(settings, 'imgCount', p?.id);
+        if (job.aiJob?.images !== false && cnt !== 'none') {
+          const targets = blocks.filter((b) => b.level === 2 && !b.image).slice(0, cnt === 'hero' ? 1 : cnt === 'max3' ? 3 : 6);
+          const imgExtra = [job.imagePrompt ?? '', vText(settings, p?.id, 'image')].filter(Boolean).join('. ');
+          const stamp = vImg(settings, 'imgStamp', p?.id);
+          const ref = stArr(settings[vKey('imgRef')]).map((id) => skuRef.current.find((x) => x.sku === id)?.image).find((u) => u?.startsWith('data:'));
           for (const [i, t] of targets.entries()) {
             step(`Đang tạo ảnh ${i + 1}/${targets.length}: ${t.heading}`);
-            const im = await s.image(t, job.title, job.imagePrompt ?? '');
-            const img = { url: im.url, prompt: im.prompt, by: im.by, at: Date.now() };
+            const im0 = await s.image(t, job.title, imgExtra, vAspect(settings, p?.id, p?.image.aspect ?? 'landscape'), ref);
+            const im = stamp !== 'nostamp' && im0.url.startsWith('data:') && !im0.by.startsWith('Ảnh mẫu') ? { ...im0, url: await applyWatermark(im0.url, co.name, stamp === 'logo' ? company.logo : undefined).catch(() => im0.url) } : im0;
+            const kw = stStr(settings.focusKeyword).trim();
+            const img = { url: im.url, prompt: im.prompt, by: im.by, at: Date.now(), alt: stClip([t.heading, kw && !stHas(t.heading, kw) ? kw : ''].filter(Boolean).join(' – '), 125) };
             blocks = blocks.map((x) => (x.id === t.id ? { ...x, image: img, imageHistory: [img] } : x));
             patch((c) => ({ ...c, blocks }));
           }
         }
-        patch((c) => ({ ...c, blocks, body: blocksToMarkdown(c.title, blocks), status: c.status === 'DRAFT' ? 'REVIEW' : c.status, step: 4, updatedAt: Date.now(), aiJob: { ...(c.aiJob as AiJob), status: 'DONE', step: undefined, at: Date.now() } }));
-        notify(`AI đã soạn xong “${job.title}”, chờ duyệt ở Content Studio`, 'teal');
+        patch((c) => ({ ...c, blocks, ...(p ? { platform: p.id, sapo, settings, doc: undefined } : {}), body: blocksToMarkdown(c.title, blocks), status: c.status === 'DRAFT' ? 'REVIEW' : c.status, step: 3, updatedAt: Date.now(), aiJob: { ...(c.aiJob as AiJob), status: 'DONE', step: undefined, at: Date.now() } }));
+        patch((c) => ({ ...c, submittedBy: c.submittedBy ?? job.aiJob?.by, submittedAt: Date.now(), reviewNote: undefined }));
+        app.dispatch('PROGRAM_APPROVAL', { toAll: app.users.filter((u) => u.active && (u.role === 'BOD' || u.role === 'MKT_LEAD') && u.id !== job.aiJob?.by), title: `AI soạn xong, chờ duyệt: ${job.title}`, body: 'Duyệt ở Công việc › Trung tâm phê duyệt hoặc Content Studio', module: 'tasks' });
+        notify(`AI đã soạn xong “${job.title}”, chờ duyệt (Công việc › Trung tâm phê duyệt, hoặc mở bài trong Content Studio)`, 'teal');
       } catch (e) {
         patch((c) => ({ ...c, aiJob: { ...(c.aiJob as AiJob), status: 'FAILED', error: e instanceof Error ? e.message : 'Lỗi', step: undefined } }));
         notify(`AI chưa soạn được “${job.title}”`, 'red');
@@ -439,6 +475,12 @@ export function ContentStudio() {
   const [openId, setOpenId] = useSticky<string | null>('Mkt.openContent', null);
   const [st, setSt] = useSticky<'ALL' | ContentStatus>('Mkt.cst', 'ALL');
   useEffect(() => { if (openId) { const c = contents.find((x) => x.id === openId); if (c) setEdit(c); setOpenId(null); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [openId]);
+  const contentsRef = useRef(contents); contentsRef.current = contents;
+  useEffect(() => {
+    const f = (e: Event) => { const c = contentsRef.current.find((x) => x.id === (e as CustomEvent<string>).detail); if (c) { setEdit(c); stickyStore.delete('Mkt.openContent'); } };
+    window.addEventListener(MKT_OPEN_EVT, f);
+    return () => window.removeEventListener(MKT_OPEN_EVT, f);
+  }, []);
   const list = contents.filter((c) => st === 'ALL' || c.status === st).sort((a, b) => b.updatedAt - a.updatedAt);
   const live = edit && edit !== 'new' ? contents.find((x) => x.id === edit.id) ?? edit : edit;
   // v37: soạn mới và bài quảng cáo / PR / Zalo OA mở Studio đa kênh toàn khung; ZNS, email, tin chăm sóc giữ trình soạn cũ
@@ -707,8 +749,9 @@ export function taskStatusOf(t: MktTask, contents: MktContent[]): TaskStatus {
   const c = contents.find((x) => x.id === t.contentId);
   if (!c) return t.status === 'PUBLISHED' ? 'PUBLISHED' : 'PLAN';
   if (c.status === 'PUBLISHED') return 'PUBLISHED';
+  if (c.status === 'APPROVED') return 'APPROVED';
   if (c.aiJob && (c.aiJob.status === 'QUEUED' || c.aiJob.status === 'RUNNING')) return 'AI_QUEUED';
-  if (['REVIEW', 'APPROVED'].includes(c.status) || c.aiJob?.status === 'DONE') return 'AI_DONE';
+  if (c.status === 'REVIEW' || c.aiJob?.status === 'DONE') return 'AI_DONE';
   return c.aiJob?.status === 'FAILED' ? 'AI_QUEUED' : 'PLAN';
 }
 
@@ -719,33 +762,79 @@ export function useAssignToAi() {
     const ex = contents.find((c) => c.id === t.contentId);
     const id = ex?.id ?? uid('ct');
     const job: AiJob = { status: 'QUEUED', by: me?.id ?? '', at: Date.now(), images: true };
-    if (ex) setContents((p) => p.map((c) => (c.id === id ? { ...c, title: t.title, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, aiJob: job } : c)));
-    else setContents((p) => [{ id, title: t.title, type: t.contentType, channel: t.channel, campaignId: t.campaignId, taskId: t.id, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, body: '', status: 'DRAFT', ownerId: t.ownerId ?? me?.id, updatedAt: Date.now(), aiJob: job }, ...p]);
+    const pid = t.platform ?? ST_OF_CHANNEL[t.channel];
+    const seo = pid ? { platform: pid, settings: t.settings ?? {} } : {};
+    // Giao lại: bỏ dàn ý / nội dung cũ để AI soạn theo thông số mới (bản cũ vẫn còn trong Lịch sử phiên bản nếu đã lưu mốc)
+    if (ex) setContents((p) => p.map((c) => (c.id === id ? { ...c, ...seo, title: t.title, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, blocks: [], doc: undefined, sapo: '', status: c.status === 'PUBLISHED' ? c.status : 'DRAFT', reviewNote: undefined, aiJob: job } : c)));
+    else setContents((p) => [{ id, title: t.title, type: t.contentType, channel: t.channel, campaignId: t.campaignId, taskId: t.id, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, body: '', status: 'DRAFT', ownerId: t.ownerId ?? me?.id, updatedAt: Date.now(), aiJob: job, ...seo }, ...p]);
     setMktTasks((p) => p.map((x) => (x.id === t.id ? { ...x, contentId: id } : x)));
     notify(`Đã giao “${t.title}” cho AI. Theo dõi trạng thái trên lịch, kết quả ở Content Studio.`, 'teal');
   };
 }
 
 export function TaskSheet({ t, onClose }: { t: MktTask; onClose: () => void }) {
-  const { mktTasks, setMktTasks, campaigns, contents, users, canDo, notify, go } = useApp();
+  const { mktTasks, setMktTasks, campaigns, contents, users, canDo, notify, go, company } = useApp();
   const assign = useAssignToAi();
-  const [f, setF] = useState<MktTask>(t);
+  const ai = useAi('writer');
+  const stCo = useMemo(() => stCompanyOf(company), [company]);
+  const [f, setF] = useState<MktTask>(() => {
+    const pid = t.platform ?? ST_OF_CHANNEL[t.channel];
+    return pid ? { ...t, platform: pid, settings: { ...getPlatform(pid).defaults(stCompanyOf(company)), ...(t.settings ?? {}) } } : t;
+  });
   const set = <K extends keyof MktTask>(k: K, v: MktTask[K]) => setF((p) => ({ ...p, [k]: v }));
+  const pid = f.platform && ST_OF_CHANNEL[f.channel] ? f.platform : undefined;
+  const plat = pid ? getPlatform(pid) : null;
+  const sv = f.settings ?? {};
+  const setS = (k: string, v: StSettingValue) => setF((p) => ({ ...p, settings: { ...(p.settings ?? {}), [k]: v } }));
+  const fakeArticle = (): StArticle => ({ id: f.id, platform: pid ?? 'website', title: f.title, sapo: '', sections: [], settings: sv, updatedAt: Date.now() });
+  const setChannel = (ch: MktChannel) => setF((p) => {
+    const np = ST_OF_CHANNEL[ch];
+    if (!np) return { ...p, channel: ch, platform: undefined };
+    const keep = Object.fromEntries(Object.entries(p.settings ?? {}).filter(([k]) => getPlatform(np).fields.some((x) => x.key === k) || ST_BRIEF_FIELDS.some((x) => x.key === k)));
+    return { ...p, channel: ch, platform: np, settings: { ...getPlatform(np).defaults(stCo), ...keep } };
+  });
+  const errs = plat ? plat.validate(sv) : [];
+  const [filling, setFilling] = useState(false);
+  const [briefOpen, setBriefOpen] = useState(() => ST_BRIEF_FIELDS.some((x) => { const v = t.settings?.[x.key]; return Array.isArray(v) ? v.length > 0 : !!v; }));
+  /** AI điền thông số SEO từ tiêu đề: chỉ điền ô đang trống, không ghi đè ô đã nhập */
+  const aiFill = async () => {
+    if (!f.title.trim() || !plat) return;
+    setFilling(true);
+    const r = await ai.ask({ maxTokens: 700, system: 'Bạn là chuyên gia SEO tiếng Việt cho doanh nghiệp B2B. Chỉ trả JSON hợp lệ.', prompt: `Đề xuất thông số cho bài ${plat.label} có chủ đề "${f.title}" của ${stCo.name} (lĩnh vực ${stCo.sector}). ${f.textPrompt ? `Ghi chú: ${f.textPrompt}. ` : ''}Trả JSON {"focusKeyword":"cụm 2–5 từ người Việt hay tìm","lsiKeywords":["5–8 cụm liên quan"],"metaTitle":"≤ 60 ký tự, có từ khóa","metaDescription":"120–155 ký tự, có từ khóa và lợi ích","slug":"khong-dau-gach-noi","searchIntent":"info|compare|buy|local","audience":"mep|designer|owner|dealer|homeowner","keyMessage":"1 câu thông điệp chính","localKeyword":"từ khóa + địa phương nếu hợp","ctaText":"lời kêu gọi ngắn"}` });
+    setFilling(false);
+    const j = r.ok ? parseAiJson<Record<string, unknown>>(r.text) : null;
+    if (!j) { notify(r.ok ? 'AI trả sai định dạng, thử lại' : `AI chưa trả lời được: ${r.error}`, 'orange'); return; }
+    const keys = new Set([...plat.fields.map((x) => x.key), ...ST_BRIEF_FIELDS.map((x) => x.key)]);
+    setF((p) => {
+      const cur = { ...(p.settings ?? {}) };
+      for (const [k, v] of Object.entries(j)) {
+        if (k === 'audience') { const ok = ['mep', 'designer', 'owner', 'dealer', 'homeowner'].includes(String(v)); if (ok && !Array.isArray(cur[vKey('audience')])) cur[vKey('audience')] = [String(v)]; continue; }
+        if (!keys.has(k)) continue;
+        const old = cur[k];
+        const empty = old == null || (Array.isArray(old) ? old.length === 0 : String(old).trim() === '' || (k === 'searchIntent' && old === 'info'));
+        if (!empty) continue;
+        if (Array.isArray(v)) cur[k] = v.map(String).filter(Boolean).slice(0, 10);
+        else if (typeof v === 'string' && v.trim()) cur[k] = k === 'metaTitle' ? stClip(v, 60) : k === 'metaDescription' ? stClip(v, 155) : k === 'slug' ? slugify(v) : v.trim();
+      }
+      return { ...p, settings: cur };
+    });
+    notify('AI đã điền các ô còn trống, kiểm tra lại trước khi giao', 'teal');
+  };
   const ro = !canDo('mkt.manage');
   const exists = mktTasks.some((x) => x.id === f.id);
   const live = mktTasks.find((x) => x.id === f.id) ?? f;
   const st = taskStatusOf(live, contents);
   const content = contents.find((c) => c.id === live.contentId);
   const save = (x = f) => setMktTasks((p) => (p.some((y) => y.id === x.id) ? p.map((y) => (y.id === x.id ? { ...x, contentId: y.contentId ?? x.contentId } : y)) : [x, ...p]));
-  const openStudio = () => { if (!live.contentId) return; stickyStore.set('Mkt.tab', 'content'); stickyStore.set('Mkt.openContent', live.contentId); onClose(); go('marketing'); };
+  const openStudio = () => { if (!live.contentId) return; onClose(); openMktContent(live.contentId, go); };
   return (
     <SideSheet title={exists ? 'Nhiệm vụ nội dung' : 'Nhiệm vụ mới'} sub={<span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: TASK_STATUS[st].color }} aria-hidden />{TASK_STATUS[st].label}{content?.aiJob?.step ? ` · ${content.aiJob.step}` : ''}</span>} onClose={onClose} width="sm:w-[560px]"
       footer={ro ? <button className={btnGhost} onClick={onClose}>Đóng</button> : <>
         {exists && <button className={cn(btnGhost, 'mr-auto text-[rgb(var(--danger-fg))]')} onClick={() => { setMktTasks((p) => p.filter((x) => x.id !== f.id)); onClose(); }}>Xóa</button>}
         <button className={btnGhost} disabled={!f.title.trim()} onClick={() => { save(); notify('Đã lưu nhiệm vụ', 'teal'); onClose(); }}>Lưu</button>
-        <button className={btnAccent} disabled={!f.title.trim() || st === 'AI_QUEUED' || st === 'PUBLISHED'} onClick={() => { save(); assign(f); onClose(); }}><Sparkles className="h-4 w-4" aria-hidden />{content ? 'Giao AI làm lại' : 'Giao cho AI xử lý'}</button>
+        <button className={btnAccent} disabled={!f.title.trim() || st === 'AI_QUEUED' || st === 'PUBLISHED' || errs.length > 0} title={errs.length ? `Cần nhập: ${errs.join(', ')}` : undefined} onClick={() => { save(); assign(f); onClose(); }}><Sparkles className="h-4 w-4" aria-hidden />{content ? 'Giao AI làm lại' : 'Giao cho AI xử lý'}</button>
       </>}>
-      <fieldset disabled={ro} className="space-y-4">
+      <fieldset disabled={ro} className="min-w-0 space-y-4">
         <ol className="flex items-center gap-1 text-[11px]" aria-label="Tiến trình">
           {(Object.keys(TASK_STATUS) as TaskStatus[]).map((s, i) => { const idx = (Object.keys(TASK_STATUS) as TaskStatus[]).indexOf(st); return (
             <li key={s} className="flex flex-1 items-center gap-1"><span className="h-1.5 flex-1 rounded-full" style={{ background: i <= idx ? TASK_STATUS[s].color : 'rgb(var(--line))' }} /><span className={cn('whitespace-nowrap', i === idx ? 'font-semibold' : 'text-[rgb(var(--muted))]')}>{TASK_STATUS[s].label}</span></li>
@@ -755,11 +844,28 @@ export function TaskSheet({ t, onClose }: { t: MktTask; onClose: () => void }) {
         <div className="grid grid-cols-2 gap-3">
           <Field label="Ngày đăng"><input type="date" className={inputCls} value={f.date} onChange={(e) => set('date', e.target.value)} /></Field>
           <Field label="Chiến dịch"><select className={inputCls} value={f.campaignId ?? ''} onChange={(e) => set('campaignId', e.target.value || undefined)}><option value="">Không gắn</option>{campaigns.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
-          <Field label="Kênh phân phối"><select className={inputCls} value={f.channel} onChange={(e) => set('channel', e.target.value as MktChannel)}>{(Object.keys(MKT_CH) as MktChannel[]).map((k) => <option key={k} value={k}>{MKT_CH[k].label}</option>)}</select></Field>
+          <Field label="Kênh phân phối"><select className={inputCls} value={f.channel} onChange={(e) => setChannel(e.target.value as MktChannel)}>{(Object.keys(MKT_CH) as MktChannel[]).map((k) => <option key={k} value={k}>{MKT_CH[k].label}</option>)}</select></Field>
           <Field label="Loại nội dung"><select className={inputCls} value={f.contentType} onChange={(e) => set('contentType', e.target.value as MktContentType)}>{(Object.keys(WRITER) as WriterPreset[]).map((k) => <option key={k} value={k}>{WRITER[k].label}</option>)}</select></Field>
         </div>
-        <Field label="Yêu cầu nội dung bài viết (prompt)"><textarea className={cn(inputCls, 'min-h-[96px]')} value={f.textPrompt} onChange={(e) => set('textPrompt', e.target.value)} placeholder="Đối tượng, thông điệp, ưu đãi, từ khóa SEO, độ dài…" /></Field>
-        <Field label="Yêu cầu hình ảnh / video (prompt)" hint="Ảnh được tạo theo từng tiểu mục; với video, AI soạn kịch bản trong nội dung"><textarea className={cn(inputCls, 'min-h-[72px]')} value={f.imagePrompt} onChange={(e) => set('imagePrompt', e.target.value)} placeholder="Phong cách, bối cảnh, màu sắc, nhân vật…" /></Field>
+        {plat && (
+          <section className="space-y-3 rounded-md border border-[rgb(var(--line))] p-3" aria-label={`Thông số ${plat.label}`}>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold">Thông số {plat.label}</p>
+              {ai.available && <button type="button" className={cn(btnGhost, btnSm)} disabled={!f.title.trim() || filling} onClick={() => void aiFill()}><Sparkles className="h-3.5 w-3.5 text-[rgb(var(--accent))]" aria-hidden />{filling ? 'AI đang đề xuất…' : 'AI điền ô trống'}</button>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {plat.fields.filter((x) => !x.showIf || x.showIf(sv)).map((x) => <StFieldControl key={x.key} f={x} value={sv[x.key]} company={stCo} onChange={(v) => setS(x.key, v)} onSuggest={x.suggest ? () => setS(x.key, x.suggest!(fakeArticle(), sv)) : undefined} />)}
+            </div>
+            <button type="button" className="text-xs font-medium text-[rgb(var(--secondary-fg))] hover:underline" aria-expanded={briefOpen} onClick={() => setBriefOpen((o) => !o)}>{briefOpen ? '▾' : '▸'} Brief nội dung (thông điệp, sản phẩm, ưu đãi, ý bắt buộc, nguồn)</button>
+            {briefOpen && <div className="grid grid-cols-2 gap-3">{ST_BRIEF_FIELDS.map((x) => <StFieldControl key={x.key} f={x} value={sv[x.key]} company={stCo} onChange={(v) => setS(x.key, v)} />)}</div>}
+            {stStr(sv.focusKeyword).trim() && <KwConflictNote kw={stStr(sv.focusKeyword)} self={{ taskId: f.id, contentId: live.contentId }} />}
+            {errs.length > 0 && <p className="text-xs text-[rgb(var(--danger-fg))]" role="alert">Cần nhập trước khi giao AI: {errs.join(', ')}</p>}
+          </section>
+        )}
+        {plat && <VariantPicker kind="text" platform={pid} values={sv} title={f.title} context={f.textPrompt} ro={ro} onChange={(next) => setF((p) => ({ ...p, settings: next }))} />}
+        {plat && <VariantPicker kind="image" platform={pid} values={sv} title={f.title} context={f.imagePrompt} ro={ro} onChange={(next) => setF((p) => ({ ...p, settings: next }))} />}
+        <Field label={plat ? 'Ghi chú thêm cho AI' : 'Yêu cầu nội dung bài viết (prompt)'}><textarea className={cn(inputCls, 'min-h-[72px]')} value={f.textPrompt} onChange={(e) => set('textPrompt', e.target.value)} placeholder={plat ? 'Góc nhìn, ví dụ thực tế, công trình đã làm…' : 'Đối tượng, thông điệp, ưu đãi, độ dài…'} /></Field>
+        <Field label={plat ? 'Ghi chú thêm cho ảnh' : 'Yêu cầu hình ảnh / video (prompt)'} hint="Ảnh được tạo theo từng tiểu mục; với video, AI soạn kịch bản trong nội dung"><textarea className={cn(inputCls, 'min-h-[72px]')} value={f.imagePrompt} onChange={(e) => set('imagePrompt', e.target.value)} placeholder="Phong cách, bối cảnh, màu sắc, nhân vật…" /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Phụ trách"><select className={inputCls} value={f.ownerId ?? ''} onChange={(e) => set('ownerId', e.target.value || undefined)}><option value="">—</option>{users.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
           <Field label="Trạng thái thủ công" hint={content ? 'Đang theo nội dung AI' : undefined}><select className={inputCls} value={f.status} disabled={!!content} onChange={(e) => set('status', e.target.value as TaskStatus)}><option value="PLAN">Kế hoạch</option><option value="PUBLISHED">Đã đăng (làm ngoài hệ thống)</option></select></Field>
@@ -770,7 +876,10 @@ export function TaskSheet({ t, onClose }: { t: MktTask; onClose: () => void }) {
           <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">Nội dung AI</p>
           <p className="mt-1 font-medium">{content.title}</p>
           <p className="text-xs text-[rgb(var(--muted))]">{content.blocks?.length ?? 0} mục · {content.blocks?.filter((b) => b.image).length ?? 0} ảnh · {CONTENT_STATUS[content.status].label}{content.aiJob?.status === 'FAILED' ? ` · lỗi: ${content.aiJob.error}` : ''}</p>
-          <button className={cn(btnGhost, btnSm, 'mt-2')} onClick={openStudio}><ExternalLink className="h-3.5 w-3.5" aria-hidden />Mở trong Content Studio</button>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {content.status !== 'DRAFT' && <button className={cn(btnPrimary, btnSm)} onClick={() => { onClose(); openContentReview(content.id); }}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />{content.status === 'REVIEW' && canDo('mkt.manage') ? 'Xem & duyệt' : 'Xem bài'}</button>}
+            <button className={cn(btnGhost, btnSm)} onClick={openStudio}><ExternalLink className="h-3.5 w-3.5" aria-hidden />Mở Workspace</button>
+          </div>
         </div>
       )}
     </SideSheet>

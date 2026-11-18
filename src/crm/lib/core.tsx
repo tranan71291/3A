@@ -8,11 +8,11 @@ import { PluginKey } from '@tiptap/pm/state';
 import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
-import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
-import { CounterInput, getPlatform, scoreArticle, socialStrategy, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
-import { wsDocHtml, wsDocToSections, wsInline } from '../modules/marketing/content-workspace';
+import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
+import { vGroups, vPicked, vWords, wsDocHtml, wsDocToSections, wsInline } from '../modules/marketing/content-workspace';
 
 // =====================================================================
 //  DESIGN TOKENS & HELPERS
@@ -1259,6 +1259,7 @@ export const TASK_STATUS: Record<TaskStatus, { label: string; color: string; bg:
   PLAN: { label: 'Kế hoạch', color: '#94A3B8', bg: '#F1F5F9', fg: '#334155' },
   AI_QUEUED: { label: 'Chờ AI xử lý', color: '#EAB308', bg: '#FEF9C3', fg: '#713F12' },
   AI_DONE: { label: 'AI xong / chờ duyệt', color: '#2563EB', bg: '#DBEAFE', fg: '#1E3A8A' },
+  APPROVED: { label: 'Đã duyệt', color: '#0D9488', bg: '#CCFBF1', fg: '#134E4A' },
   PUBLISHED: { label: 'Đã đăng', color: '#16A34A', bg: '#DCFCE7', fg: '#14532D' },
 };
 
@@ -1320,6 +1321,17 @@ export const stRules = {
   totalChars(max: number, weight = 8): SeoRule {
     return { id: 'total', label: `Toàn bài ≤ ${max} ký tự`, weight, check: ({ plain }) => (plain.length <= max ? { status: 'pass', detail: `${plain.length} ký tự` } : { status: 'fail', detail: `${plain.length} ký tự, quá ${plain.length - max}` }) };
   },
+  /** v38.4: độ dài theo nhóm biến thể "Độ dài" của bài (mặc định 1.200–1.500 từ) */
+  wordsByTarget(platform: string, weight = 10): SeoRule {
+    return {
+      id: 'words', label: 'Độ dài đúng mục tiêu đã chọn', weight,
+      check: ({ article, words }) => {
+        const t = vWords(article.settings, platform) || 1350;
+        const min = Math.round(t * 0.8), max = Math.round(t * 1.35);
+        return words >= min && words <= max ? { status: 'pass', detail: `${words} từ (mục tiêu ${min}–${max})` } : words >= min * 0.7 && words <= max * 1.2 ? { status: 'warn', detail: `${words} từ (mục tiêu ${min}–${max})` } : { status: 'fail', detail: `${words} từ (mục tiêu ${min}–${max})` };
+      },
+    };
+  },
   /** v38: ảnh có alt, alt không trùng, ảnh đầu có từ khóa chính */
   imageAlt(weight = 6): SeoRule {
     return {
@@ -1370,6 +1382,33 @@ export const stMdToHtml = (md: string) => md.split(/\n{2,}/).map((p) => (/^[-*]\
 
 export const stInline = (s: string) => stEsc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
+/** v38: brief chung cho mọi kênh (thông điệp, sản phẩm, ưu đãi, ý bắt buộc, nguồn tham khảo) — nối vào prompt dàn ý / viết mục */
+export const ST_BRIEF_FIELDS: readonly FieldDef[] = [
+  { key: 'keyMessage', label: 'Thông điệp chính / USP', kind: 'textarea', maxLength: 400, placeholder: 'VD: Băng keo VHB thay vít, thi công nhanh hơn, không khoan khung nhôm' },
+  { key: 'products', label: 'Sản phẩm / mã hàng cần nhắc tới', kind: 'tags', placeholder: 'VD: 3M VHB 4910 (Enter để thêm)' },
+  { key: 'offer', label: 'Ưu đãi / khuyến mãi (nếu có)', kind: 'text', wide: true, placeholder: 'VD: Giảm 5% đơn từ 20 cuộn đến 31/12' },
+  { key: 'mustInclude', label: 'Ý bắt buộc phải có', kind: 'tags', placeholder: 'VD: tiêu chuẩn IEC 60502 (Enter để thêm)' },
+  { key: 'avoid', label: 'Không nhắc tới', kind: 'tags', placeholder: 'VD: tên đối thủ, giá cụ thể' },
+  { key: 'references', label: 'Nguồn tham khảo (URL, tài liệu)', kind: 'tags', placeholder: 'https://… (Enter để thêm)' },
+];
+
+export const ST_INTENTS = [{ value: 'info', label: 'Thông tin', hint: 'hướng dẫn, giải thích' }, { value: 'compare', label: 'Cân nhắc', hint: 'so sánh, đánh giá, chọn mua' }, { value: 'buy', label: 'Giao dịch', hint: 'mua, báo giá, đặt hàng' }, { value: 'local', label: 'Địa phương', hint: 'nơi bán, đại lý gần' }] as const;
+
+export const ST_LENGTHS = [{ value: '800', label: '800–1.200 từ' }, { value: '1200', label: '1.200–1.800 từ' }, { value: '1800', label: '1.800–2.500 từ' }] as const;
+
+export const stOutlinePrompt = (p: PlatformStrategy, a: StArticle, c: StCompany) => p.outlinePrompt(a, c) + stBriefText(a.settings, p.id, 'outline');
+
+export const stSectionPrompt = (p: PlatformStrategy, a: StArticle, id: string, c: StCompany) => p.sectionPrompt(a, id, c) + stBriefText(a.settings, p.id, 'section');
+
+/** Số từ mỗi mục theo độ dài mục tiêu */
+export const stPerSection = (a: StArticle) => { const t = vWords(a.settings, a.platform) || Number(stStr(a.settings.wordTarget)) || 0; if (!t) return '120–220 từ'; const per = Math.round((t * 1.25) / Math.max(1, a.sections.length)); return `khoảng ${Math.max(80, per - 40)}–${per + 40} từ`; };
+
+/** Thông tin doanh nghiệp đưa vào prompt Studio */
+export const stCompanyOf = (c: CompanyInfo): StCompany => ({ name: c.shortName || c.appName, address: c.address ?? '', phone: c.phone ?? '', website: c.website, sector: bizMode(c) === 'MFG' ? 'nội thất, cửa nhôm kính, lắp đặt công trình' : 'vật tư điện, phụ kiện cáp, băng keo và vật liệu 3M cho công trình' });
+
+/** Kênh của nhiệm vụ / nội dung -> kênh Studio (PlatformStrategy) */
+export const ST_OF_CHANNEL: Partial<Record<MktChannel, string>> = { WEBSITE: 'website', FACEBOOK: 'facebook', ZALO_OA: 'zalo', GOOGLE: 'google_maps' };
+
 /** Website / Blog chuẩn SEO */
 export const ST_P_WEBSITE: PlatformStrategy = {
   id: 'website',
@@ -1383,9 +1422,10 @@ export const ST_P_WEBSITE: PlatformStrategy = {
     { key: 'metaTitle', label: 'Meta Title', kind: 'counter', maxLength: 60, wide: true, suggest: (a, s) => stClip(a.title.toLowerCase().includes(stStr(s.focusKeyword).toLowerCase()) ? a.title : `${stStr(s.focusKeyword)}: ${a.title}`, 60) },
     { key: 'metaDescription', label: 'Meta Description', kind: 'counter', maxLength: 155, wide: true, suggest: (a) => stClip(a.sapo || a.sections.map((x) => x.body).join(' '), 155) },
     { key: 'slug', label: 'Đường dẫn (slug)', kind: 'text', suggest: (a) => slugify(a.title) },
-    { key: 'audience', label: 'Đối tượng đọc', kind: 'select', options: [{ value: 'b2b', label: 'Nhà thầu, kỹ sư M&E' }, { value: 'dealer', label: 'Đại lý, nhà phân phối' }, { value: 'owner', label: 'Chủ đầu tư' }] },
+    { key: 'searchIntent', label: 'Ý định tìm kiếm', kind: 'select', options: ST_INTENTS, help: 'Quyết định cách mở bài và lời kêu gọi' },
+    { key: 'internalLinks', label: 'Liên kết nội bộ cần đặt', kind: 'tags', placeholder: '/san-pham/bang-keo-vhb (Enter để thêm)', help: 'Trang sản phẩm / bài liên quan trên website' },
   ],
-  defaults: () => ({ focusKeyword: '', lsiKeywords: [], metaTitle: '', metaDescription: '', slug: '', audience: 'b2b' }),
+  defaults: () => ({ focusKeyword: '', lsiKeywords: [], metaTitle: '', metaDescription: '', slug: '', searchIntent: 'info', internalLinks: [] }),
   validate: (s) => (stStr(s.focusKeyword).trim() ? [] : ['Nhập Focus Keyword']),
   outlinePrompt: (a) => [
     `Lập dàn ý bài blog chuẩn SEO tiếng Việt cho tiêu đề: "${a.title}".`,
@@ -1393,7 +1433,7 @@ export const ST_P_WEBSITE: PlatformStrategy = {
     `Từ khóa LSI (rải vào các H2/H3 phù hợp, tự nhiên): ${stArr(a.settings.lsiKeywords).join(', ') || 'không có'}.`,
     'Trả JSON: {"sapo":"...","sections":[{"level":2,"title":"..."},{"level":3,"title":"..."}]}. 5–8 mục H2, mỗi H2 tối đa 3 H3.',
   ].join('\n'),
-  sectionPrompt: (a, id) => { const s = a.sections.find((x) => x.id === id); return `Viết nội dung cho mục ${s?.level === 3 ? 'H3' : 'H2'} "${s?.title}" của bài "${a.title}". 120–220 từ, đoạn ngắn, có số liệu nếu được cung cấp, tự nhiên chứa từ khóa "${stStr(a.settings.focusKeyword)}" hoặc 1 từ LSI. Không lặp tiêu đề.`; },
+  sectionPrompt: (a, id) => { const s = a.sections.find((x) => x.id === id); return `Viết nội dung cho mục ${s?.level === 3 ? 'H3' : 'H2'} "${s?.title}" của bài "${a.title}". ${stPerSection(a)}, đoạn ngắn, có số liệu nếu được cung cấp, tự nhiên chứa từ khóa "${stStr(a.settings.focusKeyword)}" hoặc 1 từ LSI. Không lặp tiêu đề.`; },
   render: (a) => ({
     format: 'html',
     meta: { title: stStr(a.settings.metaTitle), description: stStr(a.settings.metaDescription) },
@@ -1401,7 +1441,7 @@ export const ST_P_WEBSITE: PlatformStrategy = {
   }),
   seoRules: [
     stRules.keywordIn('title', 'focusKeyword', 12), stRules.keywordIn('sapo', 'focusKeyword', 10), stRules.keywordIn('heading', 'focusKeyword', 10),
-    stRules.wordsBetween(800, 2000, 10), stRules.charLimit('metaTitle', 'Meta Title', 30, 60, 8), stRules.charLimit('metaDescription', 'Meta Description', 120, 155, 8),
+    stRules.wordsByTarget('website', 10), stRules.charLimit('metaTitle', 'Meta Title', 30, 60, 8), stRules.charLimit('metaDescription', 'Meta Description', 120, 155, 8),
     stRules.lsiCoverage(6), stRules.textImageRatio(350, 6), stRules.imageAlt(6),
   ],
   image: { aspect: 'landscape', hint: 'Ảnh ngang 3:2 cho bài blog, có thể chèn chữ ngắn' },
@@ -1484,12 +1524,12 @@ export const stNewArticle = (platform = 'website', company: StCompany): StArticl
   id: stUid(), platform, title: '', sapo: '', sections: [], settings: getPlatform(platform).defaults(company), updatedAt: Date.now(),
 });
 
-export const createStudioStore = (company: StCompany, initial?: StArticle) => stCreate<StudioState>()((set, get) => {
+export const createStudioStore = (company: StCompany, initial?: StArticle, step0: StStepId = 1) => stCreate<StudioState>()((set, get) => {
   /** Ghi lịch sử cho các thao tác cấu trúc (không ghi từng phím gõ) */
   const snap = () => ({ history: [...get().history.slice(-29), get().article] });
   const mapSection = (id: string, f: (s: StSection) => StSection) => set((st) => ({ article: stTouch({ ...st.article, sections: st.article.sections.map((s) => (s.id === id ? f(s) : s)) }) }));
   return {
-    step: 1,
+    step: step0,
     article: initial ?? stNewArticle('website', company),
     company,
     activeSectionId: null,
@@ -1702,12 +1742,13 @@ export const ST_TO_MKT: Record<string, { type: MktContentType; channel: MktChann
   facebook: { type: 'AD_POST', channel: 'FACEBOOK' },
   zalo: { type: 'ZALO_OA', channel: 'ZALO_OA' },
   'google-maps': { type: 'AD_POST', channel: 'GOOGLE' },
+  google_maps: { type: 'AD_POST', channel: 'GOOGLE' },
 };
 
 /** Loại nội dung soạn bằng Studio mới; ZNS, email báo giá, tin chăm sóc vẫn dùng trình soạn cũ */
 export const studioSupports = (c: MktContent) => c.type === 'AD_POST' || c.type === 'PRESS' || c.type === 'ZALO_OA';
 
-export const platformOfContent = (c: MktContent) => c.platform ?? (c.channel === 'FACEBOOK' ? 'facebook' : c.channel === 'ZALO_OA' || c.type === 'ZALO_OA' ? 'zalo' : c.channel === 'GOOGLE' ? 'google-maps' : 'website');
+export const platformOfContent = (c: MktContent) => c.platform ?? (c.channel === 'FACEBOOK' ? 'facebook' : c.channel === 'ZALO_OA' || c.type === 'ZALO_OA' ? 'zalo' : c.channel === 'GOOGLE' ? 'google_maps' : 'website');
 
 /** v38: Bước 3 (Viết & ảnh) + Bước 4 (Hoàn thiện) gộp thành Workspace */
 export const ST_STEPS: { id: StStepId; label: string }[] = [{ id: 1, label: 'Cài đặt' }, { id: 2, label: 'Dàn ý' }, { id: 3, label: 'Workspace' }];
@@ -1779,6 +1820,8 @@ export const wsCleanAi = (s: string) => s.replace(/^```[a-z]*\n?|```$/g, '').rep
 
 export const WS_CSS = `
 .ws-prose{outline:none;font-size:16.5px;line-height:1.75;color:rgb(var(--fg));padding-bottom:40vh}
+.ws-prose h1{font-size:1.75em;font-weight:700;line-height:1.25;margin:.2em 0 .6em}
+.ws-prose p.sapo{font-size:1.05em;color:rgb(var(--fg2))}
 .ws-prose h2{font-size:1.45em;font-weight:700;line-height:1.3;margin:1.6em 0 .5em}
 .ws-prose h3{font-size:1.18em;font-weight:650;line-height:1.35;margin:1.3em 0 .4em}
 .ws-prose p{margin:.65em 0}
@@ -1797,6 +1840,155 @@ export const WS_CSS = `
 .ws-diff del{background:rgb(var(--danger)/.14);color:rgb(var(--danger-fg));text-decoration:line-through}
 .ws-diff ins{background:rgb(var(--success)/.16);color:rgb(var(--success-fg));text-decoration:none}
 `;
+
+export const CONTENT_CFG0: ContentVariantCfg = { hidden: [], custom: [], defaults: {}, presets: [] };
+
+export const VARIANT_GROUPS: VariantGroup[] = [
+  { id: 'type', kind: 'text', label: 'Dạng bài', multi: false, hint: 'Chọn dạng bài sẽ tích sẵn các nhóm phù hợp', options: [
+    { id: 'howto', label: 'Hướng dẫn từng bước', prompt: 'Dạng bài hướng dẫn từng bước: mỗi bước một mục, nói rõ dụng cụ, thao tác và lỗi hay gặp.', implies: { sections: ['s57'], extras: ['bullets', 'tldr'], proof: ['standard', 'specs'], cta: ['survey'], imgScene: ['crew', 'closeup'] } },
+    { id: 'compare', label: 'So sánh / chọn mua', prompt: 'Dạng bài so sánh giúp người đọc chọn mua: tiêu chí rõ ràng, ưu nhược điểm khách quan, kết luận nên chọn loại nào cho trường hợp nào.', implies: { extras: ['table', 'faq'], proof: ['specs'], cta: ['quote'], imgScene: ['closeup'], imgStyle: ['studio'] } },
+    { id: 'case', label: 'Case study công trình', prompt: 'Dạng case study: bối cảnh công trình, vấn đề, giải pháp đã dùng, kết quả đo được, lời khách hàng.', implies: { proof: ['project', 'beforeafter', 'testimonial'], cta: ['survey'], imgScene: ['site', 'crew'] } },
+    { id: 'product', label: 'Giới thiệu sản phẩm', prompt: 'Dạng bài giới thiệu sản phẩm: vấn đề khách gặp, sản phẩm giải quyết thế nào, thông số chính, ứng dụng, cách đặt hàng.', implies: { proof: ['specs'], extras: ['table'], cta: ['quote', 'download'], imgScene: ['closeup'], imgStyle: ['studio'] } },
+    { id: 'mistakes', label: 'Sai lầm thường gặp', prompt: 'Dạng bài chỉ ra các sai lầm thường gặp: mỗi sai lầm nêu hậu quả và cách làm đúng.', implies: { extras: ['bullets', 'faq'], depth: ['basic'], cta: ['zalo'] } },
+    { id: 'news', label: 'Tin tức / chính sách', prompt: 'Dạng tin tức / thông báo chính sách: thông tin chính ở đoạn đầu, ngày hiệu lực, ai được áp dụng, liên hệ ở đâu.', implies: { length: ['w_short', 'fb_short', 'za_short'], sections: ['s34'], cta: ['zalo', 'hotline'] } },
+    { id: 'promo', label: 'Khuyến mãi', prompt: 'Dạng bài khuyến mãi: ưu đãi cụ thể, điều kiện, thời hạn, cách nhận; tạo cảm giác cần hành động sớm nhưng không phóng đại.', implies: { tone: ['sales'], cta: ['zalo', 'hotline'], length: ['w_short', 'fb_short', 'za_short'], imgStyle: ['copyspace'] } },
+  ] },
+  { id: 'length', kind: 'text', label: 'Độ dài', multi: false, options: [
+    { id: 'w_short', label: 'Ngắn 600–800 từ', prompt: 'Độ dài toàn bài 600–800 từ.', words: 700, channels: ['website'] },
+    { id: 'w_mid', label: 'Vừa 1.200–1.500 từ', prompt: 'Độ dài toàn bài 1.200–1.500 từ.', words: 1350, channels: ['website'], def: true },
+    { id: 'w_long', label: 'Dài 1.800–2.500 từ', prompt: 'Độ dài toàn bài 1.800–2.500 từ, phân tích chuyên sâu.', words: 2100, channels: ['website'] },
+    { id: 'fb_short', label: 'Ngắn ≤ 80 từ', prompt: 'Toàn bài tối đa 80 từ: 1 câu hook và lời kêu gọi.', words: 70, channels: ['facebook'] },
+    { id: 'fb_mid', label: 'Vừa 120–200 từ', prompt: 'Toàn bài 120–200 từ.', words: 160, channels: ['facebook'], def: true },
+    { id: 'fb_long', label: 'Dài 300–500 từ', prompt: 'Toàn bài 300–500 từ, kể chuyện có mở – thân – kết.', words: 400, channels: ['facebook'] },
+    { id: 'za_short', label: '≤ 150 từ', prompt: 'Toàn bài tối đa 150 từ.', words: 130, channels: ['zalo'], def: true },
+    { id: 'za_mid', label: '150–300 từ', prompt: 'Toàn bài 150–300 từ.', words: 220, channels: ['zalo'] },
+    { id: 'gm_short', label: '≤ 750 ký tự', prompt: 'Toàn bài tối đa 750 ký tự.', words: 120, channels: ['google_maps'], def: true },
+    { id: 'gm_long', label: '≤ 1.500 ký tự', prompt: 'Toàn bài tối đa 1.500 ký tự.', words: 240, channels: ['google_maps'] },
+  ] },
+  { id: 'tone', kind: 'text', label: 'Giọng văn', multi: false, options: [
+    { id: 'engineer', label: 'Kỹ sư nói với kỹ sư', prompt: 'Giọng kỹ sư nói với kỹ sư: chính xác, dùng thuật ngữ đúng, không quảng cáo lộ liễu.', def: true },
+    { id: 'investor', label: 'Tư vấn chủ đầu tư', prompt: 'Giọng tư vấn cho chủ đầu tư: tập trung chi phí vòng đời, rủi ro, độ bền, tiến độ.' },
+    { id: 'dealer', label: 'Thân thiện với đại lý', prompt: 'Giọng thân thiện với đại lý: lợi ích kinh doanh, biên lợi nhuận, hỗ trợ bán hàng.' },
+    { id: 'sales', label: 'Bán hàng, nhấn ưu đãi', prompt: 'Giọng bán hàng: nêu lợi ích cụ thể, nhấn ưu đãi, câu ngắn, có lời kêu gọi rõ.' },
+  ] },
+  { id: 'audience', kind: 'text', label: 'Đối tượng đọc', multi: false, options: [
+    { id: 'mep', label: 'Nhà thầu M&E', prompt: 'Người đọc là nhà thầu cơ điện (M&E), quan tâm thi công nhanh, đúng tiêu chuẩn, dễ nghiệm thu.', def: true },
+    { id: 'designer', label: 'Kỹ sư thiết kế', prompt: 'Người đọc là kỹ sư thiết kế, cần thông số và tiêu chuẩn để đưa vào hồ sơ thiết kế.' },
+    { id: 'owner', label: 'Chủ đầu tư', prompt: 'Người đọc là chủ đầu tư, quan tâm hiệu quả đầu tư, độ bền, bảo hành.' },
+    { id: 'dealer', label: 'Đại lý / nhà phân phối', prompt: 'Người đọc là đại lý, nhà phân phối vật tư.' },
+    { id: 'homeowner', label: 'Chủ nhà / khách lẻ', prompt: 'Người đọc là chủ nhà, khách lẻ không chuyên kỹ thuật: giải thích dễ hiểu, gần gũi.' },
+  ] },
+  { id: 'proof', kind: 'text', label: 'Chứng cứ cần có', multi: true, options: [
+    { id: 'standard', label: 'Dẫn tiêu chuẩn IEC / TCVN', prompt: 'Dẫn tiêu chuẩn liên quan (IEC, TCVN, ASTM…) đúng tên, không bịa số hiệu.' },
+    { id: 'specs', label: 'Số liệu kỹ thuật', prompt: 'Có số liệu kỹ thuật cụ thể của sản phẩm (chỉ dùng số liệu được cung cấp hoặc ghi "theo datasheet").' },
+    { id: 'table', label: 'Bảng thông số', prompt: 'Có một bảng thông số / so sánh dạng danh sách gạch đầu dòng rõ ràng.' },
+    { id: 'project', label: 'Ví dụ công trình', prompt: 'Có ví dụ công trình thực tế (loại công trình, quy mô, khu vực), không nêu tên khách nếu chưa được phép.' },
+    { id: 'testimonial', label: 'Ý kiến khách hàng', prompt: 'Có một trích dẫn ngắn ý kiến khách hàng (để trống tên, ghi "[Tên khách]" để biên tập viên điền).' },
+    { id: 'beforeafter', label: 'Trước / sau', prompt: 'Mô tả hiện trạng trước và kết quả sau khi dùng giải pháp.' },
+  ] },
+  { id: 'sections', kind: 'text', label: 'Số mục H2', multi: false, options: [
+    { id: 'sauto', label: 'Tự động', prompt: '', def: true },
+    { id: 's34', label: '3–4 mục', prompt: 'Dàn ý 3–4 mục H2.' },
+    { id: 's57', label: '5–7 mục', prompt: 'Dàn ý 5–7 mục H2.' },
+    { id: 's810', label: '8–10 mục', prompt: 'Dàn ý 8–10 mục H2.' },
+  ] },
+  { id: 'extras', kind: 'text', label: 'Cấu trúc thêm', multi: true, options: [
+    { id: 'faq', label: 'Mục FAQ', prompt: 'Mục cuối là "Câu hỏi thường gặp" gồm 3–5 câu hỏi ngắn người mua hay hỏi.', channels: ['website'], def: true },
+    { id: 'table', label: 'Có bảng', prompt: 'Có ít nhất một bảng / danh sách so sánh.' },
+    { id: 'bullets', label: 'Gạch đầu dòng', prompt: 'Dùng gạch đầu dòng cho các ý liệt kê.' },
+    { id: 'tldr', label: 'Tóm tắt đầu bài', prompt: 'Mở bài bằng 2–3 câu tóm tắt ý chính cho người đọc vội.' },
+  ] },
+  { id: 'depth', kind: 'text', label: 'Mức độ kỹ thuật', multi: false, options: [
+    { id: 'basic', label: 'Phổ thông', prompt: 'Mức phổ thông: giải thích thuật ngữ khi dùng lần đầu.' },
+    { id: 'pro', label: 'Chuyên ngành', prompt: 'Mức chuyên ngành: dùng thuật ngữ ngành, không giải thích khái niệm cơ bản.', def: true },
+    { id: 'deep', label: 'Chuyên sâu', prompt: 'Mức chuyên sâu cho kỹ sư: cơ chế, tính toán, điều kiện áp dụng.' },
+  ] },
+  { id: 'cta', kind: 'text', label: 'Kết bài / CTA', multi: true, options: [
+    { id: 'quote', label: 'Mời báo giá', prompt: 'Kết bài mời gửi yêu cầu báo giá.', def: true },
+    { id: 'survey', label: 'Khảo sát miễn phí', prompt: 'Kết bài mời đặt lịch khảo sát công trình miễn phí.' },
+    { id: 'zalo', label: 'Nhắn Zalo', prompt: 'Kết bài mời nhắn Zalo OA để được tư vấn.' },
+    { id: 'hotline', label: 'Gọi hotline', prompt: 'Kết bài mời gọi hotline.' },
+    { id: 'download', label: 'Tải catalogue', prompt: 'Kết bài mời tải catalogue / datasheet.' },
+    { id: 'showroom', label: 'Đến showroom', prompt: 'Kết bài mời ghé showroom / kho xem hàng.' },
+  ] },
+  { id: 'address', kind: 'text', label: 'Xưng hô', multi: false, options: [
+    { id: 'ban', label: 'Bạn', prompt: 'Xưng hô với người đọc là "bạn".' },
+    { id: 'anhchi', label: 'Anh/chị', prompt: 'Xưng hô với người đọc là "anh/chị".', def: true },
+    { id: 'quykhach', label: 'Quý khách', prompt: 'Xưng hô với người đọc là "quý khách".' },
+    { id: 'quycty', label: 'Quý công ty', prompt: 'Xưng hô với người đọc là "quý công ty".' },
+  ] },
+  { id: 'kwDensity', kind: 'text', label: 'Mật độ từ khóa', multi: false, channels: ['website'], options: [
+    { id: 'natural', label: 'Tự nhiên 0,5–1,5%', prompt: 'Từ khóa chính xuất hiện tự nhiên, mật độ 0,5–1,5%.', def: true },
+    { id: 'strong', label: 'Nhấn 1,5–2%', prompt: 'Từ khóa chính mật độ 1,5–2%, không nhồi nhét.' },
+  ] },
+  { id: 'kwPlace', kind: 'text', label: 'Vị trí từ khóa', multi: true, channels: ['website'], options: [
+    { id: 'first', label: 'Ở câu đầu bài', prompt: 'Từ khóa chính có trong câu đầu tiên của bài.', def: true },
+    { id: 'bold', label: 'In đậm lần đầu', prompt: 'In đậm từ khóa chính ở lần xuất hiện đầu tiên.' },
+  ] },
+  // ---- hình ảnh ----
+  { id: 'imgCount', kind: 'image', label: 'Số lượng ảnh', multi: false, options: [
+    { id: 'hero', label: '1 ảnh đại diện', prompt: '' },
+    { id: 'perh2', label: '1 ảnh mỗi mục H2', prompt: '', def: true },
+    { id: 'max3', label: 'Tối đa 3 ảnh', prompt: '' },
+    { id: 'none', label: 'Không tạo ảnh', prompt: '' },
+  ] },
+  { id: 'imgAspect', kind: 'image', label: 'Khung hình', multi: false, options: [
+    { id: 'auto', label: 'Theo kênh', prompt: '', def: true },
+    { id: 'landscape', label: 'Ngang 16:9', prompt: '' },
+    { id: 'square', label: 'Vuông 1:1', prompt: '' },
+    { id: 'p45', label: 'Dọc 4:5', prompt: '' },
+    { id: 'story', label: 'Dọc 9:16', prompt: '' },
+  ] },
+  { id: 'imgScene', kind: 'image', label: 'Bối cảnh', multi: true, options: [
+    { id: 'site', label: 'Tại công trình', prompt: 'bối cảnh công trình thực tế tại Việt Nam' },
+    { id: 'warehouse', label: 'Kho / showroom', prompt: 'trong kho hàng / showroom gọn gàng' },
+    { id: 'closeup', label: 'Cận cảnh sản phẩm', prompt: 'cận cảnh sản phẩm, thấy rõ chi tiết' },
+    { id: 'crew', label: 'Đội thi công', prompt: 'đội thi công mặc đồ bảo hộ đang thao tác' },
+    { id: 'diagram', label: 'Sơ đồ kỹ thuật', prompt: 'sơ đồ / bản vẽ kỹ thuật đơn giản, nền sáng' },
+    { id: 'home', label: 'Nhà ở hoàn thiện', prompt: 'không gian nhà ở hoàn thiện, ánh sáng ấm' },
+  ] },
+  { id: 'imgStyle', kind: 'image', label: 'Phong cách', multi: false, options: [
+    { id: 'real', label: 'Ảnh chụp chân thực', prompt: 'ảnh chụp thương mại chân thực, ánh sáng tự nhiên', def: true },
+    { id: 'studio', label: 'Studio nền trắng', prompt: 'ảnh studio nền trắng, đổ bóng nhẹ' },
+    { id: 'copyspace', label: 'Chừa chỗ chèn chữ', prompt: 'bố cục chừa khoảng trống lớn một bên để chèn chữ làm banner' },
+    { id: 'flat', label: 'Minh họa phẳng', prompt: 'minh họa phẳng dạng infographic, nét gọn' },
+  ] },
+  { id: 'imgColor', kind: 'image', label: 'Màu sắc', multi: false, options: [
+    { id: 'brand', label: 'Màu thương hiệu', prompt: 'tông màu xanh navy và cam thương hiệu', def: true },
+    { id: 'natural', label: 'Màu tự nhiên', prompt: 'màu sắc tự nhiên' },
+    { id: 'light', label: 'Tông sáng', prompt: 'tông sáng, sạch' },
+    { id: 'dark', label: 'Tông tối', prompt: 'tông tối sang trọng' },
+  ] },
+  { id: 'imgStamp', kind: 'image', label: 'Đóng dấu', multi: false, options: [
+    { id: 'logo', label: 'Logo doanh nghiệp', prompt: '', def: true },
+    { id: 'name', label: 'Tên doanh nghiệp', prompt: '' },
+    { id: 'nostamp', label: 'Không đóng', prompt: '' },
+  ] },
+];
+
+/** Biến thể cấu hình sẵn đọc lúc dựng prompt (cập nhật mỗi lần app render Marketing Hub / bộ xử lý nền) */
+export const ST_VARIANT_CACHE: { cfg: ContentVariantCfg } = { cfg: CONTENT_CFG0 };
+
+export const vKey = (g: string) => `v_${g}`;
+
+export const vCfgOf = (c?: Partial<ContentVariantCfg> | null): ContentVariantCfg => ({ ...CONTENT_CFG0, ...(c ?? {}) });
+
+/** Lựa chọn hình ảnh hiệu lực (1 giá trị) */
+export const vImg = (s: StSettings, group: string, platform?: string, cfg = ST_VARIANT_CACHE.cfg) => { const g = vGroups(cfg, platform, 'image').find((x) => x.id === group); return g ? vPicked(g, s, cfg)[0] : undefined; };
+
+export const vAspect = (s: StSettings, platform: string | undefined, fallback: 'landscape' | 'square' | 'portrait'): 'landscape' | 'square' | 'portrait' => {
+  const a = vImg(s, 'imgAspect', platform);
+  return a === 'landscape' ? 'landscape' : a === 'square' ? 'square' : a === 'p45' || a === 'story' ? 'portrait' : fallback;
+};
+
+// ---- workspace/review.tsx (v38.4): xem & duyệt nội dung ngay tại chỗ, không phải đi qua 3 bước Studio ----
+
+export const MKT_OPEN_EVT = '3a:mkt-open';
+
+export const MKT_REVIEW_EVT = '3a:content-review';
+
+/** Mở khung "Xem & duyệt" (đặt ở khung app, dùng được từ Trung tâm phê duyệt, Lịch tổng, danh sách nội dung) */
+export const openContentReview = (id: string) => window.dispatchEvent(new CustomEvent(MKT_REVIEW_EVT, { detail: id }));
 
 /**
  * v36 — Copilot giao tiếp tự nhiên.
@@ -2322,6 +2514,7 @@ export const HUB_GROUP: Record<HubGroup, { label: string; color: string; kinds: 
   LEAD: { label: 'Phân lead', color: '#00B894', kinds: ['LEAD_ASSIGN'] },
   CASH: { label: 'Thu tiền & nộp quỹ', color: '#EC4899', kinds: ['RECEIPT', 'CASH'] },
   STOCK: { label: 'Hàng giữ chỗ', color: '#F6B533', kinds: ['STOCK'] },
+  MKT: { label: 'Nội dung marketing', color: '#0EA5E9', kinds: ['CONTENT'] },
 };
 
 export const groupOf = (k: ApprovalKind) => (Object.keys(HUB_GROUP) as HubGroup[]).find((g) => HUB_GROUP[g].kinds.includes(k)) ?? 'STOCK';
@@ -2329,17 +2522,17 @@ export const groupOf = (k: ApprovalKind) => (Object.keys(HUB_GROUP) as HubGroup[
 export const HUB_KIND: Record<ApprovalKind, string> = {
   QUOTE: 'Duyệt giá báo giá', CONTRACT: 'Duyệt hợp đồng', ACTIVITY: 'Duyệt công tác / công', EXPENSE: 'Duyệt chi phí công tác',
   PROGRAM: 'Duyệt đề xuất chi quỹ', CLAIM: 'Nghiệm thu POP / hóa đơn', LEAD_ASSIGN: 'Chỉ định Sales', STOCK: 'Giải phóng hàng giữ chỗ',
-  RECEIPT: 'Xác nhận tiền thu', CASH: 'Nộp tiền về kế toán',
+  RECEIPT: 'Xác nhận tiền thu', CASH: 'Nộp tiền về kế toán', CONTENT: 'Duyệt nội dung marketing',
 };
 
 /** Nhãn ngắn cho cột "Phân loại" của bảng hợp nhất */
 export const HUB_SHORT: Record<ApprovalKind, string> = {
   QUOTE: 'Duyệt báo giá', CONTRACT: 'Duyệt hợp đồng', ACTIVITY: 'Công tác / công', EXPENSE: 'Chi phí công tác', PROGRAM: 'Đề xuất quỹ',
-  CLAIM: 'Claim / POP', LEAD_ASSIGN: 'Chỉ định Sales', STOCK: 'Hàng giữ chỗ', RECEIPT: 'Xác nhận thu', CASH: 'Nộp quỹ',
+  CLAIM: 'Claim / POP', LEAD_ASSIGN: 'Chỉ định Sales', STOCK: 'Hàng giữ chỗ', RECEIPT: 'Xác nhận thu', CASH: 'Nộp quỹ', CONTENT: 'Nội dung MKT',
 };
 
 /** SLA xử lý (phút) theo loại yêu cầu */
-export const HUB_SLA: Record<ApprovalKind, number> = { QUOTE: 120, CONTRACT: 480, ACTIVITY: 240, EXPENSE: 2880, PROGRAM: 1440, CLAIM: 2880, LEAD_ASSIGN: 60, STOCK: 1440, RECEIPT: 240, CASH: 1440 };
+export const HUB_SLA: Record<ApprovalKind, number> = { QUOTE: 120, CONTRACT: 480, ACTIVITY: 240, EXPENSE: 2880, PROGRAM: 1440, CLAIM: 2880, LEAD_ASSIGN: 60, STOCK: 1440, RECEIPT: 240, CASH: 1440, CONTENT: 1440 };
 
 export const DECISION_LABEL: Record<ApprovalDecision, { label: string; tone: Tone }> = {
   APPROVED: { label: 'Đã duyệt', tone: 'teal' }, REJECTED: { label: 'Từ chối', tone: 'red' }, NEED_INFO: { label: 'Yêu cầu bổ sung', tone: 'orange' },

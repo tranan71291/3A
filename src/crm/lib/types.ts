@@ -489,7 +489,7 @@ export type BusinessProfile = 'TRADING' | 'MANUFACTURING' | 'ALL' | 'CUSTOM';
 export type CompanyInfo = { appName: string; legalName: string; shortName: string; taxCode: string; address: string; phone: string; email: string; website: string; logo?: string; representative: string; representativeTitle: string; bankAccount: string; bankName: string; stamp?: string; profile?: BusinessProfile; enabledModules?: Partial<Record<Module, boolean>> };
 
 // ---------------- Trung tâm phê duyệt ----------------
-export type ApprovalKind = 'QUOTE' | 'CONTRACT' | 'ACTIVITY' | 'EXPENSE' | 'PROGRAM' | 'CLAIM' | 'LEAD_ASSIGN' | 'STOCK' | 'RECEIPT' | 'CASH';
+export type ApprovalKind = 'QUOTE' | 'CONTRACT' | 'ACTIVITY' | 'EXPENSE' | 'PROGRAM' | 'CLAIM' | 'LEAD_ASSIGN' | 'STOCK' | 'RECEIPT' | 'CASH' | 'CONTENT';
 
 export type ApprovalDecision = 'APPROVED' | 'REJECTED' | 'NEED_INFO';
 
@@ -1153,6 +1153,8 @@ export type HubCfg = {
   ai: { enabled: boolean; provider: AiProviderPref; anthropicModel: string; openaiModel: string; maskPii: boolean; features: { copilot: boolean; chat: boolean; visual: boolean; writer: boolean; brief: boolean; image: boolean; extract: boolean };
     /** v38: cụm sáo dùng để chấm Human Score (trống = danh sách mặc định) */
     cliches?: string[] };
+  /** v38.2: biến thể nội dung / hình ảnh (ẩn, thêm, mặc định, bộ cài sẵn) */
+  content?: Partial<ContentVariantCfg>;
   zalo: { oaName: string; oaId: string; autoLink: boolean; salesSeeAll: boolean; replyMinutes: number; quickReplies: string[]; znsTemplates: ZnsTpl[] };
   brief: { enabled: boolean; hour: number };
   /** v35: kênh truyền thông hiển thị ở Bàn làm việc */
@@ -1250,6 +1252,8 @@ export type MktContent = {
   platform?: string; sapo?: string; settings?: Record<string, StSettingValue>;
   /** v38: tài liệu TipTap của Workspace (blocks vẫn được ghi song song để bản cũ đọc được) */
   doc?: JSONContent;
+  /** v38.3: người / lúc gửi duyệt, ghi chú trả về sửa, lúc duyệt */
+  submittedBy?: string; submittedAt?: number; reviewNote?: string; approvedAt?: number;
 };
 
 export type BannerSize = 'FB' | 'SQUARE' | 'STORY' | 'ZALO' | 'WEB';
@@ -1301,9 +1305,11 @@ export type ImgAspect = 'landscape' | 'square' | 'portrait';
 // ---------------------------------------------------------------------
 //  v33: LỊCH CHIẾN DỊCH = BẢNG KẾ HOẠCH THỰC THI: nhiệm vụ nội dung theo ngày, giao cho AI, trạng thái màu
 // ---------------------------------------------------------------------
-export type TaskStatus = 'PLAN' | 'AI_QUEUED' | 'AI_DONE' | 'PUBLISHED';
+export type TaskStatus = 'PLAN' | 'AI_QUEUED' | 'AI_DONE' | 'APPROVED' | 'PUBLISHED';
 
-export type MktTask = { id: string; date: string; title: string; campaignId?: string; channel: MktChannel; contentType: MktContentType; textPrompt: string; imagePrompt: string; status: TaskStatus; ownerId?: string; contentId?: string; createdAt: number };
+export type MktTask = { id: string; date: string; title: string; campaignId?: string; channel: MktChannel; contentType: MktContentType; textPrompt: string; imagePrompt: string; status: TaskStatus; ownerId?: string; contentId?: string; createdAt: number;
+  /** v38: kênh Studio + thông số SEO / kênh + brief (giống Bước 1 của Content Studio), AI dùng khi soạn */
+  platform?: string; settings?: StSettings };
 
 export type CalView = 'calendar' | 'list' | 'board';
 
@@ -1541,6 +1547,30 @@ export type WsImagePanel = { from: number; to: number; top: number; heading: str
 
 export type WsSlashItem = { id: string; label: string; hint: string; keys: string; run: (e: Editor, r: { from: number; to: number }) => void };
 
+// ---- workspace/variants.ts (v38.2): biến thể nội dung & hình ảnh bấm chọn, mẫu brief, bộ cài sẵn, AI gợi ý ----
+
+/**
+ * Mỗi nhóm biến thể = một hàng ô bấm chọn; mỗi lựa chọn là 1 câu chỉ dẫn ngắn cho AI.
+ * Lưu trong settings của nhiệm vụ / bài viết với khóa `v_<nhóm>` (mảng id). Chưa chọn = dùng mặc định (★).
+ */
+export type VariantKind = 'text' | 'image';
+
+export type VariantOption = {
+  id: string; label: string; prompt: string; def?: boolean;
+  /** Chỉ hiện ở các kênh này (website | facebook | zalo | google_maps) */
+  channels?: string[];
+  /** Độ dài mục tiêu (nhóm Độ dài) để chia số từ mỗi mục */
+  words?: number;
+  /** Mẫu brief: chọn dạng bài thì tích sẵn các nhóm khác */
+  implies?: Record<string, string[]>;
+  custom?: boolean;
+};
+
+export type VariantGroup = { id: string; kind: VariantKind; label: string; multi: boolean; options: VariantOption[]; channels?: string[]; hint?: string };
+
+/** Cấu hình biến thể của doanh nghiệp (hubCfg.content): ẩn / thêm lựa chọn, đổi mặc định, bộ cài sẵn */
+export type ContentVariantCfg = { hidden: string[]; custom: (VariantOption & { group: string })[]; defaults: Record<string, string[]>; presets: { id: string; name: string; values: Record<string, string[]> }[] };
+
 // =====================================================================
 //  COMMUNICATION & AI HUB (cột phải): Chat nội bộ theo ngữ cảnh + AI Copilot
 //  AI Copilot = bộ phân tích thống kê chạy ngay trong app; v32: khi bật AI (Claude / OpenAI qua /api/ai) thì AI diễn giải trên số liệu đã tính.
@@ -1707,7 +1737,7 @@ export type CommissionRow = {
 //  chi & claim quỹ MDF, phân lead; duyệt nhanh ngay trên thẻ, đếm ngược SLA
 // =====================================================================
 
-export type HubGroup = 'PRICE' | 'WORK' | 'MDF' | 'LEAD' | 'CASH' | 'STOCK';
+export type HubGroup = 'PRICE' | 'WORK' | 'MDF' | 'LEAD' | 'CASH' | 'STOCK' | 'MKT';
 
 export type HubItem = {
   key: string; kind: ApprovalKind; refId: string; title: string; sub: string; reason?: string;
