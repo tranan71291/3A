@@ -1,23 +1,24 @@
+import { fold } from '../../core/records';
 import type { SkillTool, ToolRuntime } from '../../core/types';
+import { TOOL_SCHEMAS } from '../../tools/schema';
 import { loadBudgets, loadClaims, loadPrograms, myDept, type Claim, type Program } from './data';
 
 const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : 0);
 const PROGRAM_STATUS = ['PENDING_INTERNAL', 'PENDING_VENDOR', 'APPROVED', 'CLAIMING', 'CLOSED', 'REJECTED', 'CANCELLED'] as const;
 
-/** Tool 1: ngân sách MDF / CS của một năm — chỉ BOD, Trưởng MKT, Kế toán */
-export const getMdfBudget: SkillTool<{ fiscal_year?: number }> = {
-  name: 'get_mdf_budget',
-  description: 'Lấy ngân sách quỹ Hãng (MDF + CS) của một năm: tổng, đã chi, đã cam kết, còn khả dụng, % đã dùng so với % thời gian đã qua, phân bổ theo hạng mục.',
+/** Tool 1 (check_mdf_budget): ngân sách quỹ Hãng của một năm — chỉ BOD, Trưởng MKT, Kế toán */
+export const getMdfBudget: SkillTool<{ brand_name?: string; year?: number }> = {
+  name: 'check_mdf_budget',
+  ...TOOL_SCHEMAS.check_mdf_budget,
   roles: ['BOD', 'MKT_LEAD', 'ACCOUNTANT'],
-  input: {
-    type: 'object',
-    properties: { fiscal_year: { type: 'integer', minimum: 2020, maximum: 2100, description: 'Năm quỹ, bỏ trống = năm hiện tại' } },
-  },
-  async handler({ fiscal_year }, rt) {
-    const year = fiscal_year ?? rt.ctx.now.getFullYear();
+  async handler({ brand_name, year: y }, rt) {
+    const year = y ?? rt.ctx.now.getFullYear();
     const budgets = await loadBudgets(rt.db, rt.ctx.tenant, rt.signal);
-    const b = budgets.find((x) => x.fiscalYear === year && x.declared !== false);
-    if (!b) return { found: false, fiscal_year: year, message: 'Chưa khai báo ngân sách cho năm này', years_available: budgets.map((x) => x.fiscalYear) };
+    const brand = brand_name ? fold(brand_name) : '';
+    const ofBrand = budgets.filter((x) => !brand || fold(`${x.vendor} ${x.vendorCode}`).includes(brand));
+    if (brand && !ofBrand.length) return { found: false, message: `Chưa có quỹ của Hãng "${brand_name}"`, brands_available: [...new Set(budgets.map((x) => x.vendorCode || x.vendor))] };
+    const b = ofBrand.find((x) => x.fiscalYear === year && x.declared !== false);
+    if (!b) return { found: false, fiscal_year: year, message: 'Chưa khai báo ngân sách cho năm này', years_available: ofBrand.map((x) => x.fiscalYear) };
     const start = Date.parse(b.periodStart), end = Date.parse(b.periodEnd), now = rt.ctx.now.getTime();
     const timePct = end > start ? Math.min(100, Math.max(0, pct(now - start, end - start))) : 0;
     const used = b.spent + b.committed;

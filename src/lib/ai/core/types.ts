@@ -26,7 +26,7 @@ export interface AiContext {
 /** JSON Schema rút gọn: đủ cho Claude input_schema, Gemini parameters và bộ kiểm tra đầu vào */
 export type JsonSchema =
   | { type: 'object'; properties: Record<string, JsonSchema>; required?: string[]; description?: string }
-  | { type: 'string'; description?: string; enum?: readonly string[]; maxLength?: number; format?: 'date' }
+  | { type: 'string'; description?: string; enum?: readonly string[]; maxLength?: number; format?: 'date' | 'date-time' }
   | { type: 'integer' | 'number'; description?: string; minimum?: number; maximum?: number }
   | { type: 'boolean'; description?: string }
   | { type: 'array'; items: JsonSchema; description?: string; maxItems?: number };
@@ -56,6 +56,8 @@ export interface SkillTool<I = Record<string, unknown>, O = unknown> {
   /** true = có ghi dữ liệu: lõi yêu cầu người dùng xác nhận trước khi chạy */
   readonly mutates?: boolean;
   readonly timeoutMs?: number;
+  /** true = khung chưa viết xong logic: lõi không đưa cho LLM, không cho gọi (bỏ cờ khi đã điền truy vấn) */
+  readonly draft?: boolean;
   readonly handler: (input: I, rt: ToolRuntime) => Promise<O>;
 }
 
@@ -98,6 +100,8 @@ export interface CopilotAnswer {
   provider: string;
   model: string;
   usage?: { input?: number; output?: number };
+  /** Thao tác ghi dữ liệu đang chờ người dùng bấm xác nhận (gửi lại lượt hỏi kèm confirmed = [tool]) */
+  confirm?: { tool: string; input: Record<string, unknown> }[];
 }
 
 export class AiError extends Error {

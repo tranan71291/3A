@@ -194,7 +194,7 @@ export function MarketingHubPage() {
   const spent = yc.reduce((s, c) => s + c.spent, 0);
   const rev = stats.reduce((s, x) => s + x.revenue, 0);
   const tabs: { id: MktTab; label: string }[] = [
-    { id: 'calendar', label: 'Lịch chiến dịch' }, { id: 'roi', label: 'Ngân sách & ROI' }, { id: 'content', label: 'Content Studio' },
+    { id: 'calendar', label: 'Lịch tổng' }, { id: 'roi', label: 'Ngân sách & ROI' }, { id: 'content', label: 'Content Studio' },
     { id: 'banner', label: 'Thiết kế banner' }, { id: 'audience', label: 'Phân khúc' }, { id: 'automation', label: 'Tự động hóa' },
   ];
   return (

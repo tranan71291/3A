@@ -1,12 +1,13 @@
 'use client';
 
 import { type ReactNode, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowLeft, Copy, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import { Chip } from '../../components/ui';
-import { aiErrText, bizMode, btnGhost, btnPrimary, btnSm, CONTENT_STATUS, createStudioStore, FieldRow, idsKey, input, inputCls, load, OutlinePanel, plainOf, platformOfContent, SectionPane, SeoSidebar, socialFields, ST_BRAND, ST_HOOKS, ST_P_FACEBOOK, ST_P_GMAPS, ST_P_WEBSITE, ST_P_ZALO, ST_PLATFORM_CACHE, ST_STEPS, ST_TO_MKT, stArr, StCtx, stripMd, stRules, stStr, titleLine, toHashtag, uid, useApp, wordCount } from '../../lib/core';
+import { aiErrText, bizMode, btnGhost, btnPrimary, btnSm, CONTENT_STATUS, createStudioStore, FieldRow, HS_CLICHES_DEFAULT, input, inputCls, load, OutlinePanel, plainOf, platformOfContent, socialFields, ST_BRAND, ST_HOOKS, ST_P_FACEBOOK, ST_P_GMAPS, ST_P_WEBSITE, ST_P_ZALO, ST_PLATFORM_CACHE, ST_STEPS, ST_TO_MKT, stArr, StCtx, stripMd, stRules, stStr, titleLine, toHashtag, uid, useApp, wordCount, wsImages, wsPushVersion } from '../../lib/core';
 import type { ContentBlock, ContentStatus, FieldDef, MktContent, PlatformStrategy, SeoItem, SeoReport, SeoRule, StArticle, StCompany, StStepId, StStore, StudioActions, StudioApi, StudioState, StudioStore } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { apiPost, useAi, useServerStatus } from '../ai/ai-core';
+import { ContentWorkspace, wsMakeVersion } from './content-workspace';
 import { compactImage, localBlockText, localOutline, placeholderImage } from './marketing-hub';
 
 export function stCreate<T>() {
@@ -50,7 +51,8 @@ export function stClip(s: string, max: number): string {
 /** Hàm thuần: cùng đầu vào => cùng kết quả, dễ test, dễ memo hóa. pass = 100% trọng số, warn = 50%. */
 export function scoreArticle(a: StArticle, p: PlatformStrategy, company: StCompany): SeoReport {
   const plain = plainOf(a);
-  const input = { article: a, plain, words: wordCount(plain), headings: p.structure.headings ? a.sections.map((s) => s.title) : [], images: a.sections.filter((s) => s.image).length, company };
+  const imgs = a.doc ? wsImages(a.doc).map((x) => ({ alt: x.alt, caption: x.caption })) : a.sections.filter((s) => s.image).map((s) => ({ alt: s.image?.alt ?? '', caption: '' }));
+  const input = { article: a, plain, words: wordCount(plain), headings: p.structure.headings ? a.sections.filter((s) => s.title).map((s) => s.title) : [], images: imgs.length, company, imgs };
   const items: SeoItem[] = p.seoRules.map((r: SeoRule) => ({ id: r.id, label: r.label, weight: r.weight, ...safe(r, input) }));
   const total = items.reduce((s, i) => s + i.weight, 0) || 1;
   const got = items.reduce((s, i) => s + (i.status === 'pass' ? i.weight : i.status === 'warn' ? i.weight / 2 : 0), 0);
@@ -265,58 +267,10 @@ export function TagInput({ id, value, onChange, placeholder }: { id: string; val
   );
 }
 
-/**
- * Bước 3 — Split-view: Dàn ý (trái, kéo thả) | Nội dung + tạo ảnh từng mục (giữa) | Điểm SEO (phải, ghim).
- * Cuộn cột giữa => mục đang đọc tự sáng ở cột trái (scroll-spy bằng IntersectionObserver).
- */
-export function ComposeSplitView({ api }: { api: StudioApi }) {
-  const ids = useStudio(idsKey);
-  const platformId = useStudio((s) => s.article.platform);
-  const sapo = useStudio((s) => s.article.sapo);
-  const { setSapo, setActive } = useStudioActions();
-  const api0 = useStudioApi();
-  const p = getPlatform(platformId);
-  const scroller = useRef<HTMLDivElement>(null);
-  const list = ids ? ids.split(',') : [];
-
-  useEffect(() => {
-    const root = scroller.current;
-    if (!root || typeof IntersectionObserver === 'undefined') return;
-    const io = new IntersectionObserver((entries) => {
-      const top = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-      const id = (top?.target as HTMLElement | undefined)?.dataset.sectionId;
-      if (id && Date.now() - api0.getState().navAt > 900) setActive(id);
-    }, { root, rootMargin: '0px 0px -65% 0px' });
-    root.querySelectorAll('[data-section-id]').forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, [ids, setActive, api0]);
-
-  return (
-    <div className="grid h-[calc(100vh-11rem)] min-h-[560px] grid-cols-1 overflow-hidden rounded-xl border border-[rgb(var(--line))] lg:grid-cols-[260px_1fr] xl:grid-cols-[260px_1fr_300px]">
-      <div className="hidden min-h-0 border-r border-[rgb(var(--line))] bg-[rgb(var(--surface))] lg:block">
-        <OutlinePanel headings={p.structure.headings} />
-      </div>
-      <div ref={scroller} className="min-h-0 space-y-4 overflow-y-auto bg-[rgb(var(--bg))] p-4 pb-[50vh]">
-        <label className="block rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4">
-          <span className="mb-1 flex items-baseline justify-between text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">
-            {p.structure.sapoLabel}{p.structure.sapoMax && <span className={`tabular-nums ${sapo.length > p.structure.sapoMax ? 'text-[rgb(var(--danger-fg))]' : ''}`}>{sapo.length}/{p.structure.sapoMax}</span>}
-          </span>
-          <textarea rows={2} value={sapo} onChange={(e) => setSapo(e.target.value)} className="w-full resize-y bg-transparent text-[15px] font-medium leading-relaxed outline-none" />
-        </label>
-        {list.map((id, i) => <SectionPane key={id} id={id} index={i} api={api} />)}
-        {!list.length && <p className="rounded-xl border border-dashed border-[rgb(var(--line))] p-8 text-center text-sm text-[rgb(var(--muted))]">Chưa có dàn ý. Quay lại Bước 2 để AI lập dàn ý, hoặc bấm "+ Thêm mục".</p>}
-      </div>
-      <div className="hidden min-h-0 overflow-y-auto border-l border-[rgb(var(--line))] bg-[rgb(var(--bg))] p-3 xl:block">
-        <SeoSidebar />
-      </div>
-    </div>
-  );
-}
-
 export function contentToArticle(c: MktContent, company: StCompany): StArticle {
   const platform = platformOfContent(c);
   return {
-    id: c.id, platform, title: c.title, sapo: c.sapo ?? '', updatedAt: c.updatedAt,
+    id: c.id, platform, title: c.title, sapo: c.sapo ?? '', updatedAt: c.updatedAt, doc: c.doc,
     settings: { ...getPlatform(platform).defaults(company), ...(c.settings ?? {}) },
     sections: (c.blocks ?? []).map((b) => ({
       id: b.id, level: b.level, title: b.heading, body: b.body,
@@ -335,7 +289,7 @@ export function articleToContent(a: StArticle, base: MktContent, by: string): Mk
     return { id: s.id, level: s.level, heading: s.title, points: old?.points ?? '', body: s.body, imagePrompt: old?.imagePrompt, image: img, imageHistory: changed ? [img!, ...(old?.imageHistory ?? [])].slice(0, 6) : old?.imageHistory };
   });
   const body = [a.sapo, ...blocks.flatMap((b) => [`${b.level === 2 ? '##' : '###'} ${b.heading}`, b.body])].filter(Boolean).join('\n\n');
-  return { ...base, title: a.title, type: base.type === 'PRESS' && a.platform === 'website' ? 'PRESS' : map.type, channel: map.channel, platform: a.platform, sapo: a.sapo, settings: a.settings, blocks, body: `# ${a.title}\n\n${body}`, updatedAt: Date.now() };
+  return { ...base, title: a.title, type: base.type === 'PRESS' && a.platform === 'website' ? 'PRESS' : map.type, channel: map.channel, platform: a.platform, sapo: a.sapo, settings: a.settings, blocks, body: `# ${a.title}\n\n${body}`, doc: a.doc, updatedAt: Date.now() };
 }
 
 /** Cổng AI cho Studio: dùng cấu hình AI của doanh nghiệp; chưa kết nối thì dùng mẫu soạn sẵn / ảnh mẫu */
@@ -394,12 +348,11 @@ export function StudioWorkspace({ c, onClose }: { c: MktContent | null; onClose:
 }
 
 export function StudioShell({ base, onClose }: { base: MktContent; onClose: () => void }) {
-  const { setContents, contents, canDo, me, notify, campaigns } = useApp();
+  const { setContents, contents, canDo, me, notify, campaigns, setContentVersions, hubCfg } = useApp();
   const api = useStudioPort();
   const store = useStudioApi();
   const step = useStudio((s) => s.step);
   const title = useStudio((s) => s.article.title);
-  const platformId = useStudio((s) => s.article.platform);
   const canUndo = useStudio((s) => s.history.length > 0);
   const canNext = useStudio((s) => (s.step === 1 ? s.article.title.trim().length >= 8 && getPlatform(s.article.platform).validate(s.article.settings).length === 0 : s.step === 2 ? s.article.sections.length > 0 : true));
   const { setStep, undo } = useStudioActions();
@@ -437,11 +390,15 @@ export function StudioShell({ base, onClose }: { base: MktContent; onClose: () =
     return () => { off(); if (t) { clearTimeout(t); persistRef.current(); } };
   }, [store, ro]);
 
-  const act = (s: ContentStatus, msg: string) => { if (persist(s)) { notify(msg, 'teal'); if (s !== 'DRAFT') onClose(); } };
-  const out = step === 4 ? getPlatform(platformId).render(store.getState().article, store.getState().company) : null;
-  const copyOut = async () => {
-    if (!out) return;
-    try { await navigator.clipboard.writeText(out.format === 'html' ? out.body : out.body); notify(out.format === 'html' ? 'Đã sao chép HTML' : 'Đã sao chép nội dung', 'teal'); } catch { notify('Trình duyệt chặn sao chép', 'orange'); }
+  const act = (s: ContentStatus, msg: string) => {
+    if (!persist(s)) return;
+    // v38: chụp mốc lịch sử khi gửi duyệt / duyệt
+    if (s === 'REVIEW' || s === 'APPROVED') {
+      const st = store.getState();
+      const v = wsMakeVersion(st.article, st.company, base.id, s, me?.name ?? '', hubCfg.ai.cliches?.length ? hubCfg.ai.cliches : HS_CLICHES_DEFAULT);
+      if (v) setContentVersions((p) => wsPushVersion(p, v));
+    }
+    notify(msg, 'teal'); if (s !== 'DRAFT') onClose();
   };
 
   return (
@@ -451,7 +408,7 @@ export function StudioShell({ base, onClose }: { base: MktContent; onClose: () =
         <p className="min-w-0 flex-1 truncate font-display text-[15px] font-bold">{title || 'Nội dung mới'}</p>
         <Chip tone={CONTENT_STATUS[status].tone}>{CONTENT_STATUS[status].label}</Chip>
         <span className="text-xs text-[rgb(var(--muted))]">{ro ? 'Chế độ xem' : saved ? `Đã lưu ${new Date(saved).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` : 'Chưa lưu'}</span>
-        {!ro && <button className={cn(btnGhost, btnSm)} disabled={!canUndo} onClick={undo} title="Hoàn tác thao tác cấu trúc gần nhất">Hoàn tác</button>}
+        {!ro && step < 3 && <button className={cn(btnGhost, btnSm)} disabled={!canUndo} onClick={undo} title="Hoàn tác thao tác cấu trúc gần nhất">Hoàn tác</button>}
       </div>
 
       <ol className="flex flex-wrap items-center gap-2" aria-label="Các bước">
@@ -475,28 +432,13 @@ export function StudioShell({ base, onClose }: { base: MktContent; onClose: () =
       <fieldset disabled={ro} className="min-w-0">
         {step === 1 && <div className="max-w-4xl rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-5"><DynamicSettingsForm /></div>}
         {step === 2 && <StudioOutlineStep api={api} />}
-        {step === 3 && <ComposeSplitView api={api} />}
       </fieldset>
-      {step === 4 && out && (
-        <div className="grid gap-4 xl:grid-cols-[1fr_300px]">
-          <article className="min-w-0 rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-6">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <p className="min-w-0 flex-1 text-xs text-[rgb(var(--muted))]">{out.meta?.title ? <>Meta: <b>{out.meta.title}</b> · {out.meta.description}</> : `Bản xuất bản cho ${getPlatform(platformId).label}`}</p>
-              <button className={cn(btnGhost, btnSm)} onClick={() => void copyOut()}><Copy className="h-3.5 w-3.5" aria-hidden />{out.format === 'html' ? 'Sao chép HTML' : 'Sao chép bài'}</button>
-            </div>
-            {out.format === 'html'
-              ? <div className="max-w-3xl break-words text-[15px] leading-relaxed [&_h1]:mb-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-semibold [&_img]:my-3 [&_img]:rounded-md [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: out.body }} />
-              : <pre className="whitespace-pre-wrap break-words font-sans text-[15px] leading-relaxed">{out.body}</pre>}
-          </article>
-          <SeoSidebar />
-        </div>
-      )}
-
+      {step >= 3 && <ContentWorkspace api={api} ro={ro} contentId={base.id} />}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button className={btnGhost} disabled={step === 1} onClick={() => setStep((step - 1) as StStepId)}>Quay lại</button>
         <div className="flex flex-wrap gap-2">
           {!ro && <button className={btnGhost} disabled={!title.trim()} onClick={() => { if (persist()) notify('Đã lưu nháp', 'teal'); }}>Lưu nháp</button>}
-          {step < 4
+          {step < 3
             ? <button className={btnPrimary} disabled={!canNext} onClick={() => setStep((step + 1) as StStepId)}>Tiếp tục</button>
             : !ro && (
               <>
