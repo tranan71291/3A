@@ -7,7 +7,7 @@ import { aiErrText, btnGhost, btnPrimary, btnSm, CONTENT_STATUS, createStudioSto
 import type { ContentBlock, ContentStatus, FieldDef, MktContent, PlatformStrategy, SeoItem, SeoReport, SeoRule, StArticle, StCompany, StSection, StSettings, StSettingValue, StStepId, StStore, StudioActions, StudioApi, StudioState, StudioStore } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { apiPost, useAi, useServerStatus } from '../ai/ai-core';
-import { ContentWorkspace, KwConflictNote, VariantPicker, vText, wsMakeVersion } from './content-workspace';
+import { AiSpark, ContentWorkspace, KwConflictNote, VariantPicker, vText, wsMakeVersion } from './content-workspace';
 import { compactImage, localBlockText, localOutline, placeholderImage } from './marketing-hub';
 
 export function stCreate<T>() {
@@ -267,9 +267,10 @@ export function DynamicSettingsForm() {
   );
 }
 
-/** v38: một trường cài đặt không gắn store (form Nhiệm vụ nội dung ở Lịch tổng) */
-export function StFieldControl({ f, value, onChange, onSuggest, company }: { f: FieldDef; value: StSettingValue | undefined; onChange: (v: string | boolean | string[]) => void; onSuggest?: () => void; company: StCompany }) {
+/** v38: một trường cài đặt không gắn store (form Nhiệm vụ nội dung ở Plan) */
+export function StFieldControl({ f, value, onChange, onSuggest, company, onAi, aiBusy }: { f: FieldDef; value: StSettingValue | undefined; onChange: (v: string | boolean | string[]) => void; onSuggest?: () => void; company: StCompany; onAi?: () => void; aiBusy?: boolean }) {
   const id = `tf-${f.key}`;
+  const spark = onAi ? <AiSpark title="AI điền các ô còn trống từ tiêu đề" busy={aiBusy} onClick={onAi} className="absolute right-1 top-1" /> : null;
   return (
     <div className={f.wide || f.kind === 'textarea' || f.kind === 'tags' || f.kind === 'nap' ? 'col-span-2' : ''}>
       <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -281,13 +282,13 @@ export function StFieldControl({ f, value, onChange, onSuggest, company }: { f: 
       ) : f.kind === 'tags' ? (
         <TagInput id={id} value={stArr(value)} onChange={onChange} placeholder={f.placeholder} />
       ) : f.kind === 'counter' ? (
-        <CounterInput id={id} value={stStr(value)} max={f.maxLength ?? 60} onChange={onChange} />
+        <div className="relative"><CounterInput id={id} value={stStr(value)} max={f.maxLength ?? 60} onChange={onChange} />{spark}</div>
       ) : f.kind === 'textarea' ? (
         <textarea id={id} rows={2} className={input} value={stStr(value)} maxLength={f.maxLength} placeholder={f.placeholder} onChange={(e) => onChange(e.target.value)} />
       ) : f.kind === 'toggle' || f.kind === 'nap' ? (
         <label className="flex items-center gap-2 text-sm"><input id={id} type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={!!value} onChange={(e) => onChange(e.target.checked)} />{f.kind === 'nap' ? `${company.name} · ${company.address || 'chưa có địa chỉ'} · ${company.phone || 'chưa có SĐT'}` : 'Có'}</label>
       ) : (
-        <input id={id} type={f.kind === 'date' ? 'date' : 'text'} className={input} value={stStr(value)} maxLength={f.maxLength} placeholder={f.placeholder} onChange={(e) => onChange(e.target.value)} />
+        <div className="relative"><input id={id} type={f.kind === 'date' ? 'date' : 'text'} className={cn(input, spark && 'pr-10')} value={stStr(value)} maxLength={f.maxLength} placeholder={f.placeholder} onChange={(e) => onChange(e.target.value)} />{spark}</div>
       )}
       {f.help && <p className="mt-1 text-[11px] text-[rgb(var(--muted))]">{f.help}</p>}
     </div>
