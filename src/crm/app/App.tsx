@@ -29,6 +29,7 @@ import { CashbookModule } from '../modules/finance/cashbook';
 import { HomePage } from '../modules/home/home';
 import { LeadsModule } from '../modules/leads/inbox';
 import { LeadFormModal } from '../modules/leads/lead-form';
+import { ContentReviewHost } from '../modules/marketing/content-workspace';
 import { AiContentWorker, AutomationEngine, MarketingHubPage } from '../modules/marketing/marketing-hub';
 import { ClaimDrawer, ClaimsModule } from '../modules/mdf/claims';
 import { ProgramFormModal } from '../modules/mdf/programs';
@@ -1837,6 +1838,7 @@ export default function DashboardApp() {
         <AiChatBot />
         <AutomationEngine />
         <AiContentWorker />
+        <ContentReviewHost />
         {paletteOpen && <CommandPalette image={paletteImg} onClose={() => { setPaletteOpen(false); setPaletteImg(null); }} onAsk={(q) => { setHub('ai'); setHubAsk(q); }} extra={[
           { id: 'x-side', group: 'Giao diện', label: sideMini ? 'Ghim menu trái luôn mở' : 'Thu gọn menu trái', icon: sideMini ? PanelLeftOpen : PanelLeftClose, run: toggleSide, keys: 'sidebar menu' },
           { id: 'x-fund', group: 'Giao diện', label: fundOpen ? 'Thu nhỏ widget theo dõi quỹ' : 'Mở widget theo dõi quỹ', icon: Wallet, run: () => setFundOpen((v) => !v), keys: 'quy 3m widget' },

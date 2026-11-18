@@ -6,10 +6,12 @@ import { Avatar, Pagination, RowMenu, usePaged, useSelection } from '../../compo
 import { ChipFilter, FilterBar } from '../../components/filters';
 import { Chip, EmptyState, Field, Modal, Panel, StatCard, Table, Tabs, useSticky, ViewSwitch } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
-import { ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, C, compact, dayStart, DECISION_LABEL, EXPENSE_STATUS, fmtDate, fmtDT, groupOf, HUB_GROUP, HUB_KIND, HUB_SHORT, HUB_SLA, inputBase, inputCls, kpiGrid, LEAVE_KIND, needsApproval, POP_LABEL, progName, PROGRAM_STATUS, rowCls, SOURCE_LABEL, tdCls, tdFirst, tdLast, todayISO, useApp, vnd } from '../../lib/core';
-import type { Activity, ApprovalDecision, ApprovalKind, DeptCode, GeneratedDoc, HubGroup, HubItem, Lead, MineItem, Module, Receipt, StockReservation, User, Verification } from '../../lib/types';
+import { ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, C, compact, CONTENT_STATUS, dayStart, DECISION_LABEL, EXPENSE_STATUS, fmtDate, fmtDT, groupOf, HS_CLICHES_DEFAULT, HUB_GROUP, HUB_KIND, HUB_SHORT, HUB_SLA, inputBase, inputCls, kpiGrid, LEAVE_KIND, needsApproval, openContentReview, platformOfContent, POP_LABEL, progName, PROGRAM_STATUS, rowCls, SOURCE_LABEL, stCompanyOf, tdCls, tdFirst, tdLast, todayISO, useApp, vnd, wsPushVersion } from '../../lib/core';
+import type { Activity, ApprovalDecision, ApprovalKind, DeptCode, GeneratedDoc, HubGroup, HubItem, Lead, MineItem, MktContent, Module, Receipt, StockReservation, User, Verification } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { advanceCash, expenseCash, receiptCash } from '../../lib/workshop';
+import { contentToArticle, getPlatform } from '../marketing/content-studio';
+import { wsMakeVersion } from '../marketing/content-workspace';
 import { useContractApprover } from '../sales/contract';
 import { useActivityApprover } from '../staff/staff';
 import { DecideReleaseModal } from '../supply/inventory';
@@ -186,6 +188,28 @@ export function useApprovalQueue() {
     });
   }
 
+  // ---- v38.3: Nội dung marketing chờ duyệt (Content Studio, AI soạn từ Lịch tổng) — Giám đốc / Trưởng Marketing duyệt ----
+  if (canDo('mkt.manage')) for (const c of app.contents) {
+    if (c.status !== 'REVIEW' || c.aiJob?.status === 'QUEUED' || c.aiJob?.status === 'RUNNING') continue;
+    const title = `Nội dung: ${c.title}`;
+    const requester = c.submittedBy ?? c.aiJob?.by ?? c.ownerId;
+    const setC = (p: Partial<MktContent>) => app.setContents((all) => all.map((x) => (x.id === c.id ? { ...x, ...p, updatedAt: Date.now() } : x)));
+    const plat = getPlatform(c.platform ?? platformOfContent(c));
+    todo.push({
+      key: `ct-${c.id}`, kind: 'CONTENT', refId: c.id, title, sub: `${plat.label} · ${c.blocks?.length ?? 0} mục${c.aiJob?.status === 'DONE' ? ' · AI soạn' : ''}${c.settings?.focusKeyword ? ` · từ khóa "${String(c.settings.focusKeyword)}"` : ''}`,
+      requesterId: requester, requestedAt: c.submittedAt ?? c.aiJob?.at ?? c.updatedAt, slaMin: HUB_SLA.CONTENT, nextStep: 'Lên lịch / đăng bài',
+      approve: () => {
+        setC({ status: 'APPROVED', approvedBy: me.id, approvedAt: Date.now(), reviewNote: undefined });
+        const co = stCompanyOf(app.company);
+        const v = wsMakeVersion(contentToArticle(c, co), co, c.id, 'APPROVED', me.name, app.hubCfg.ai.cliches?.length ? app.hubCfg.ai.cliches : HS_CLICHES_DEFAULT);
+        if (v) app.setContentVersions((p) => wsPushVersion(p, v));
+        done('CONTENT', c.id, title, requester, 'APPROVED', undefined, undefined, `Đã duyệt "${c.title}"`);
+      },
+      reject: (n) => { setC({ status: 'DRAFT', reviewNote: n }); done('CONTENT', c.id, title, requester, 'REJECTED', n, undefined, `Đã trả về "${c.title}"`); },
+      needInfo: (n) => { setC({ status: 'DRAFT', reviewNote: n }); done('CONTENT', c.id, title, requester, 'NEED_INFO', n, undefined, `Đã yêu cầu sửa "${c.title}"`); },
+      view: () => openContentReview(c.id),
+    });
+  }
   // ---- Phiếu thu: kế toán xác nhận tiền về (ghi nhận doanh số); người thu nộp tiền mặt ----
   for (const r of receipts) {
     const job = jobs.find((j) => j.id === r.jobId);
@@ -243,6 +267,12 @@ export function useApprovalQueue() {
       key: `rc-${r.id}`, kind: 'RECEIPT', title: `${r.code}: ${vnd(r.amount)}`, sub: `${jobs.find((j) => j.id === r.jobId)?.title ?? ''}, ${r.method === 'CASH' ? 'tiền mặt' : 'chuyển khoản'}`,
       status: r.status === 'SUBMITTED' ? 'PENDING' : r.status === 'REJECTED' ? 'REJECTED' : 'APPROVED', requestedAt: r.submittedAt ?? r.collectedAt, slaMin: HUB_SLA.RECEIPT,
       deciderId: r.confirmedBy ?? lastLog(r.id)?.deciderId, note: r.rejectNote, view: () => openJob(r.jobId),
+    })),
+    ...app.contents.filter((c) => c.submittedBy === me.id && (c.status !== 'DRAFT' || !!c.reviewNote)).map((c): MineItem => ({
+      key: `ct-${c.id}`, kind: 'CONTENT', title: c.title, sub: `${getPlatform(c.platform ?? platformOfContent(c)).label} · ${CONTENT_STATUS[c.status].label}`,
+      status: c.status === 'REVIEW' ? 'PENDING' : c.status === 'DRAFT' ? 'NEED_INFO' : 'APPROVED', requestedAt: c.submittedAt ?? c.updatedAt, slaMin: HUB_SLA.CONTENT,
+      deciderId: c.approvedBy ?? lastLog(c.id)?.deciderId, note: c.reviewNote,
+      view: () => openContentReview(c.id),
     })),
   ];
   void departments;

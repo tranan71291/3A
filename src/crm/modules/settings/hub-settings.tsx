@@ -7,7 +7,7 @@ import { AI_NAME, btnGhost, btnSm, DEALER_BONUS_TEMPLATE, inputBase, inputCls, S
 import type { AiProviderPref, HubCfg, KbItem, KbRule, SocialCfg, ZnsTpl } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { useAi, useServerStatus } from '../ai/ai-core';
-import { GhostSettingsPanel } from '../marketing/content-workspace';
+import { GhostSettingsPanel, VariantSettingsPanel } from '../marketing/content-workspace';
 import { Switch } from '../platform/console';
 
 // =====================================================================
@@ -75,6 +75,8 @@ export function HubSettings() {
         </Panel>
 
         <GhostSettingsPanel />
+
+        <VariantSettingsPanel />
 
         <Panel title="Bản tin điều hành mỗi sáng">
           <div className="flex flex-wrap items-center gap-4 text-sm">

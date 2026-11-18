@@ -1,13 +1,13 @@
 'use client';
 
 import { type ReactNode, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Sparkles } from 'lucide-react';
 import { Chip } from '../../components/ui';
-import { aiErrText, bizMode, btnGhost, btnPrimary, btnSm, CONTENT_STATUS, createStudioStore, FieldRow, HS_CLICHES_DEFAULT, input, inputCls, load, OutlinePanel, plainOf, platformOfContent, socialFields, ST_BRAND, ST_HOOKS, ST_P_FACEBOOK, ST_P_GMAPS, ST_P_WEBSITE, ST_P_ZALO, ST_PLATFORM_CACHE, ST_STEPS, ST_TO_MKT, stArr, StCtx, stripMd, stRules, stStr, titleLine, toHashtag, uid, useApp, wordCount, wsImages, wsPushVersion } from '../../lib/core';
-import type { ContentBlock, ContentStatus, FieldDef, MktContent, PlatformStrategy, SeoItem, SeoReport, SeoRule, StArticle, StCompany, StStepId, StStore, StudioActions, StudioApi, StudioState, StudioStore } from '../../lib/types';
+import { aiErrText, btnGhost, btnPrimary, btnSm, CONTENT_STATUS, createStudioStore, FieldRow, HS_CLICHES_DEFAULT, input, inputBase, inputCls, load, OutlinePanel, plainOf, platformOfContent, socialFields, ST_BRAND, ST_BRIEF_FIELDS, ST_HOOKS, ST_INTENTS, ST_P_FACEBOOK, ST_P_GMAPS, ST_P_WEBSITE, ST_P_ZALO, ST_PLATFORM_CACHE, ST_STEPS, ST_TO_MKT, ST_VARIANT_CACHE, stArr, stCompanyOf, StCtx, stOutlinePrompt, stripMd, stRules, stStr, stUid, titleLine, toHashtag, uid, useApp, vCfgOf, vKey, wordCount, wsImages, wsPushVersion } from '../../lib/core';
+import type { ContentBlock, ContentStatus, FieldDef, MktContent, PlatformStrategy, SeoItem, SeoReport, SeoRule, StArticle, StCompany, StSection, StSettings, StSettingValue, StStepId, StStore, StudioActions, StudioApi, StudioState, StudioStore } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { apiPost, useAi, useServerStatus } from '../ai/ai-core';
-import { ContentWorkspace, wsMakeVersion } from './content-workspace';
+import { ContentWorkspace, KwConflictNote, VariantPicker, vText, wsMakeVersion } from './content-workspace';
 import { compactImage, localBlockText, localOutline, placeholderImage } from './marketing-hub';
 
 export function stCreate<T>() {
@@ -98,6 +98,24 @@ export function socialStrategy(cfg: { id: string; label: string; description: st
   };
 }
 
+/** Brief dạng chữ nối vào prompt (chỉ các mục đã nhập) */
+export function stBriefText(s: StSettings, pid?: string, mode: 'outline' | 'section' = 'outline'): string {
+  const L: string[] = [];
+  const intent = ST_INTENTS.find((x) => x.value === s.searchIntent);
+  if (intent) L.push(`Ý định tìm kiếm của người đọc: ${intent.label} (${intent.hint}).`);
+  if (stStr(s.keyMessage).trim()) L.push(`Thông điệp chính: ${stStr(s.keyMessage).trim()}`);
+  if (stArr(s.products).length) L.push(`Nhắc đúng tên sản phẩm / mã hàng: ${stArr(s.products).join(', ')}.`);
+  if (stStr(s.offer).trim()) L.push(`Ưu đãi: ${stStr(s.offer).trim()}.`);
+  if (stArr(s.mustInclude).length) L.push(`Bắt buộc có các ý: ${stArr(s.mustInclude).join('; ')}.`);
+  if (stArr(s.avoid).length) L.push(`Không nhắc tới: ${stArr(s.avoid).join(', ')}.`);
+  if (stArr(s.internalLinks).length) L.push(`Có chỗ phù hợp để đặt liên kết nội bộ tới: ${stArr(s.internalLinks).join(', ')}.`);
+  if (stArr(s.references).length) L.push(`Tham khảo (không chép nguyên văn): ${stArr(s.references).join(', ')}.`);
+  // v38.2: biến thể bấm chọn (dạng bài, độ dài, giọng, đối tượng, chứng cứ, cấu trúc, CTA…); khi viết từng mục bỏ các nhóm chỉ dành cho cả bài
+  const omit = mode === 'section' ? { ...s, [vKey('length')]: [], [vKey('sections')]: [], [vKey('extras')]: [], [vKey('cta')]: [], [vKey('kwPlace')]: [] } : s;
+  const v = vText(omit, pid, 'text');
+  return (L.length ? `\n\nBrief nội dung:\n- ${L.join('\n- ')}` : '') + (v ? `\n\nYêu cầu soạn bài:\n- ${v}` : '');
+}
+
 /** Mô tả mức bám ảnh gốc để hiển thị dưới thanh trượt */
 export function strengthLabel(v: number): string {
   if (v <= 0.25) return 'Giữ nguyên sản phẩm và bố cục, chỉ chỉnh ánh sáng, nền';
@@ -162,9 +180,9 @@ export function applyWatermark(dataUrl: string, text: string = ST_BRAND.name, lo
   });
 }
 
-export function StudioProvider({ company, initial, children }: { company: StCompany; initial?: StArticle; children: ReactNode }) {
+export function StudioProvider({ company, initial, step, children }: { company: StCompany; initial?: StArticle; step?: StStepId; children: ReactNode }) {
   const ref = useRef<StudioStore | null>(null);
-  if (!ref.current) ref.current = createStudioStore(company, initial);
+  if (!ref.current) ref.current = createStudioStore(company, initial, step);
   return <StCtx.Provider value={ref.current}>{children}</StCtx.Provider>;
 }
 
@@ -199,7 +217,8 @@ export function DynamicSettingsForm() {
   const platformId = useStudio((s) => s.article.platform);
   const title = useStudio((s) => s.article.title);
   const settings = useStudio((s) => s.article.settings);
-  const { setPlatform, setTitle } = useStudioActions();
+  const articleId = useStudio((s) => s.article.id);
+  const { setPlatform, setTitle, setSetting } = useStudioActions();
   const p = getPlatform(platformId);
   const visible = p.fields.filter((f) => !f.showIf || f.showIf(settings));
   const errors = p.validate(settings);
@@ -231,7 +250,46 @@ export function DynamicSettingsForm() {
         </div>
       </section>
 
+      {stStr(settings.focusKeyword).trim() && <KwConflictNote kw={stStr(settings.focusKeyword)} self={{ contentId: articleId }} />}
+      <div className="space-y-2">
+        <VariantPicker kind="text" platform={platformId} values={settings} title={title} onChange={(next) => Object.keys(next).forEach((k) => { if (next[k] !== settings[k]) setSetting(k, next[k]); })} />
+        <VariantPicker kind="image" platform={platformId} values={settings} title={title} onChange={(next) => Object.keys(next).forEach((k) => { if (next[k] !== settings[k]) setSetting(k, next[k]); })} />
+      </div>
+
+      <section aria-label="Brief nội dung">
+        <h3 className="mb-1 text-sm font-semibold">Brief nội dung</h3>
+        <p className="mb-3 text-xs text-[rgb(var(--muted))]">Dùng cho mọi kênh; AI đưa vào dàn ý và từng mục. Bỏ trống mục không cần.</p>
+        <div className="grid gap-4 md:grid-cols-2">{ST_BRIEF_FIELDS.map((f) => <FieldRow key={`brief:${f.key}`} field={f} />)}</div>
+      </section>
+
       {errors.length > 0 && <ul className="space-y-1 text-sm text-[rgb(var(--danger-fg))]" role="alert">{errors.map((e) => <li key={e}>• {e}</li>)}</ul>}
+    </div>
+  );
+}
+
+/** v38: một trường cài đặt không gắn store (form Nhiệm vụ nội dung ở Lịch tổng) */
+export function StFieldControl({ f, value, onChange, onSuggest, company }: { f: FieldDef; value: StSettingValue | undefined; onChange: (v: string | boolean | string[]) => void; onSuggest?: () => void; company: StCompany }) {
+  const id = `tf-${f.key}`;
+  return (
+    <div className={f.wide || f.kind === 'textarea' || f.kind === 'tags' || f.kind === 'nap' ? 'col-span-2' : ''}>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <label htmlFor={id} className="text-xs font-medium text-[rgb(var(--muted))]">{f.label}{f.required && <span className="text-[rgb(var(--danger-fg))]"> *</span>}</label>
+        {onSuggest && f.suggest && <button type="button" onClick={onSuggest} className="text-xs font-medium text-[rgb(var(--secondary-fg))] hover:underline">Gợi ý tự động</button>}
+      </div>
+      {f.kind === 'select' ? (
+        <select id={id} className={input} value={stStr(value)} onChange={(e) => onChange(e.target.value)}>{f.options?.map((o) => <option key={o.value} value={o.value}>{o.label}{o.hint ? ` — ${o.hint}` : ''}</option>)}</select>
+      ) : f.kind === 'tags' ? (
+        <TagInput id={id} value={stArr(value)} onChange={onChange} placeholder={f.placeholder} />
+      ) : f.kind === 'counter' ? (
+        <CounterInput id={id} value={stStr(value)} max={f.maxLength ?? 60} onChange={onChange} />
+      ) : f.kind === 'textarea' ? (
+        <textarea id={id} rows={2} className={input} value={stStr(value)} maxLength={f.maxLength} placeholder={f.placeholder} onChange={(e) => onChange(e.target.value)} />
+      ) : f.kind === 'toggle' || f.kind === 'nap' ? (
+        <label className="flex items-center gap-2 text-sm"><input id={id} type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={!!value} onChange={(e) => onChange(e.target.checked)} />{f.kind === 'nap' ? `${company.name} · ${company.address || 'chưa có địa chỉ'} · ${company.phone || 'chưa có SĐT'}` : 'Có'}</label>
+      ) : (
+        <input id={id} type={f.kind === 'date' ? 'date' : 'text'} className={input} value={stStr(value)} maxLength={f.maxLength} placeholder={f.placeholder} onChange={(e) => onChange(e.target.value)} />
+      )}
+      {f.help && <p className="mt-1 text-[11px] text-[rgb(var(--muted))]">{f.help}</p>}
     </div>
   );
 }
@@ -267,12 +325,28 @@ export function TagInput({ id, value, onChange, placeholder }: { id: string; val
   );
 }
 
+/** v38.4: nội dung markdown của bản cũ -> các mục (## H2, ### H3); đoạn trước tiêu đề đầu tiên thành mục mở đầu */
+export function stSectionsFromBody(body: string): StSection[] {
+  const out: StSection[] = [];
+  let cur: StSection | null = null;
+  const lead: string[] = [];
+  for (const line of body.replace(/\r/g, '').split('\n')) {
+    const m = line.match(/^(#{2,3})\s+(.*)$/);
+    if (m) { cur = { id: stUid(), level: m[1].length === 3 ? 3 : 2, title: m[2].trim(), body: '' }; out.push(cur); continue; }
+    if (/^#\s/.test(line)) continue;
+    if (cur) cur.body += `${line}\n`; else lead.push(line);
+  }
+  const intro = lead.join('\n').trim();
+  if (intro) out.unshift({ id: stUid(), level: 2, title: out.length ? 'Giới thiệu' : '', body: intro });
+  return out.map((s0) => ({ ...s0, body: s0.body.trim() }));
+}
+
 export function contentToArticle(c: MktContent, company: StCompany): StArticle {
   const platform = platformOfContent(c);
   return {
     id: c.id, platform, title: c.title, sapo: c.sapo ?? '', updatedAt: c.updatedAt, doc: c.doc,
     settings: { ...getPlatform(platform).defaults(company), ...(c.settings ?? {}) },
-    sections: (c.blocks ?? []).map((b) => ({
+    sections: !(c.blocks?.length) && c.body?.trim() ? stSectionsFromBody(c.body) : (c.blocks ?? []).map((b) => ({
       id: b.id, level: b.level, title: b.heading, body: b.body,
       image: b.image ? { url: b.image.url, prompt: b.image.prompt, alt: b.image.alt ?? b.heading, referenceUrl: b.image.referenceUrl, strength: b.image.strength, brandPalette: b.image.brandPalette ?? false, watermarked: b.image.watermarked ?? false, model: b.image.model ?? b.image.by, createdAt: b.image.at } : undefined,
     })),
@@ -337,18 +411,21 @@ export function useStudioPort(): StudioApi {
  */
 export function StudioWorkspace({ c, onClose }: { c: MktContent | null; onClose: () => void }) {
   const { company, me } = useApp();
-  const stCompany = useMemo<StCompany>(() => ({ name: company.shortName || company.appName, address: company.address ?? '', phone: company.phone ?? '', website: company.website, sector: bizMode(company) === 'MFG' ? 'nội thất, cửa nhôm kính, lắp đặt công trình' : 'vật tư điện, phụ kiện cáp, băng keo và vật liệu 3M cho công trình' }), [company]);
+  const stCompany = useMemo<StCompany>(() => stCompanyOf(company), [company]);
   const base = useMemo<MktContent>(() => c ?? { id: uid('ct'), title: '', type: 'AD_POST', channel: 'WEBSITE', platform: 'website', body: '', status: 'DRAFT', ownerId: me?.id, updatedAt: Date.now() }, [c, me?.id]);
   const initial = useMemo(() => contentToArticle(base, stCompany), [base, stCompany]);
+  // v38: bài đã có nội dung (AI soạn xong, đang duyệt…) mở thẳng Workspace, không bắt cài đặt lại
+  const step0: StStepId = base.doc || (base.blocks?.length ?? 0) > 0 || !!base.body?.trim() || (!!c && base.status !== 'DRAFT') ? 3 : 1;
   return (
-    <StudioProvider company={stCompany} initial={initial}>
+    <StudioProvider company={stCompany} initial={initial} step={step0}>
       <StudioShell base={base} onClose={onClose} />
     </StudioProvider>
   );
 }
 
 export function StudioShell({ base, onClose }: { base: MktContent; onClose: () => void }) {
-  const { setContents, contents, canDo, me, notify, campaigns, setContentVersions, hubCfg } = useApp();
+  const { setContents, contents, canDo, me, notify, campaigns, setContentVersions, hubCfg, users, dispatch, logDecision } = useApp();
+  ST_VARIANT_CACHE.cfg = vCfgOf(hubCfg.content);
   const api = useStudioPort();
   const store = useStudioApi();
   const step = useStudio((s) => s.step);
@@ -390,8 +467,23 @@ export function StudioShell({ base, onClose }: { base: MktContent; onClose: () =
     return () => { off(); if (t) { clearTimeout(t); persistRef.current(); } };
   }, [store, ro]);
 
-  const act = (s: ContentStatus, msg: string) => {
+  const [returning, setReturning] = useState<string | null>(null);
+  // v38.4: bài nháp mới hiện thanh 3 bước; bài đã có nội dung / đã duyệt chỉ hiện Workspace (bấm "Sửa cài đặt / dàn ý" khi cần)
+  const [showSteps, setShowSteps] = useState(() => store.getState().step < 3);
+  const hasBody = useStudio((s) => s.article.sections.length > 0);
+  const act = (s: ContentStatus, msg: string, note?: string) => {
     if (!persist(s)) return;
+    const now = Date.now();
+    const t = store.getState().article.title;
+    const requester = live?.submittedBy ?? live?.aiJob?.by ?? live?.ownerId;
+    // v38.3: ai gửi, lúc nào, ghi chú trả về; báo Giám đốc / Trưởng Marketing; ghi nhật ký duyệt
+    setContents((p) => p.map((x) => (x.id !== base.id ? x : s === 'REVIEW' ? { ...x, submittedBy: me?.id, submittedAt: now, reviewNote: undefined } : s === 'APPROVED' ? { ...x, approvedAt: now, reviewNote: undefined } : s === 'DRAFT' && note ? { ...x, reviewNote: note } : x)));
+    if (s === 'REVIEW') dispatch('PROGRAM_APPROVAL', { toAll: users.filter((u) => u.active && (u.role === 'BOD' || u.role === 'MKT_LEAD') && u.id !== me?.id), title: `Nội dung chờ duyệt: ${t}`, body: 'Duyệt ở Công việc › Trung tâm phê duyệt hoặc mở bài trong Content Studio', module: 'tasks' });
+    if (s === 'APPROVED' || (s === 'DRAFT' && note)) {
+      logDecision({ kind: 'CONTENT', refId: base.id, title: `Nội dung: ${t}`, requesterId: requester, decision: s === 'APPROVED' ? 'APPROVED' : 'NEED_INFO', note });
+      const to = users.find((u) => u.id === requester);
+      if (to && to.id !== me?.id) dispatch('APPROVAL_RESULT', { to, title: `${s === 'APPROVED' ? 'Đã duyệt' : 'Cần sửa'}: ${t}`, body: note ?? 'Nội dung đã được duyệt', module: 'marketing' });
+    }
     // v38: chụp mốc lịch sử khi gửi duyệt / duyệt
     if (s === 'REVIEW' || s === 'APPROVED') {
       const st = store.getState();
@@ -407,14 +499,32 @@ export function StudioShell({ base, onClose }: { base: MktContent; onClose: () =
         <button className={cn(btnGhost, btnSm)} onClick={onClose}><ArrowLeft className="h-4 w-4" aria-hidden />Danh sách</button>
         <p className="min-w-0 flex-1 truncate font-display text-[15px] font-bold">{title || 'Nội dung mới'}</p>
         <Chip tone={CONTENT_STATUS[status].tone}>{CONTENT_STATUS[status].label}</Chip>
+        {!ro && step >= 3 && status === 'DRAFT' && <button className={cn(btnPrimary, btnSm)} onClick={() => act('REVIEW', 'Đã gửi duyệt')}>Gửi duyệt</button>}
+        {!ro && status === 'REVIEW' && returning === null && <>
+          <button className={cn(btnPrimary, btnSm)} onClick={() => act('APPROVED', 'Đã duyệt nội dung')}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Duyệt</button>
+          <button className={cn(btnGhost, btnSm)} onClick={() => setReturning('')}>Trả về sửa</button>
+        </>}
+        {!ro && status === 'REVIEW' && returning !== null && (
+          <form className="flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); if (!returning.trim()) return; act('DRAFT', 'Đã trả về để sửa', returning.trim()); setReturning(null); }}>
+            <input autoFocus className={cn(inputBase, 'h-8 w-64 py-0 text-xs')} value={returning} onChange={(e) => setReturning(e.target.value)} placeholder="Cần sửa gì? (bắt buộc)" aria-label="Lý do trả về" />
+            <button className={cn(btnPrimary, btnSm)} disabled={!returning.trim()}>Trả về</button>
+            <button type="button" className={cn(btnGhost, btnSm)} onClick={() => setReturning(null)}>Hủy</button>
+          </form>
+        )}
+        {!ro && status === 'APPROVED' && <button className={cn(btnGhost, btnSm)} onClick={() => act('PUBLISHED', 'Đã đánh dấu đã đăng')}>Đánh dấu đã đăng</button>}
         <span className="text-xs text-[rgb(var(--muted))]">{ro ? 'Chế độ xem' : saved ? `Đã lưu ${new Date(saved).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` : 'Chưa lưu'}</span>
         {!ro && step < 3 && <button className={cn(btnGhost, btnSm)} disabled={!canUndo} onClick={undo} title="Hoàn tác thao tác cấu trúc gần nhất">Hoàn tác</button>}
       </div>
 
+      {status === 'DRAFT' && live?.reviewNote && (
+        <p className="rounded-md bg-[rgb(var(--accent)/0.12)] px-3 py-2 text-sm" role="status"><b>Cần sửa trước khi gửi duyệt lại:</b> {live.reviewNote}</p>
+      )}
+      {status === 'REVIEW' && ro && <p className="rounded-md bg-[rgb(var(--sunken))] px-3 py-2 text-xs text-[rgb(var(--muted))]">Đang chờ Giám đốc / Trưởng Marketing duyệt.</p>}
       <ol className="flex flex-wrap items-center gap-2" aria-label="Các bước">
-        {ST_STEPS.map((s, i) => (
+        {!showSteps && <li><button type="button" className={cn(btnGhost, btnSm)} onClick={() => setShowSteps(true)}>Sửa cài đặt / dàn ý</button></li>}
+        {showSteps && ST_STEPS.map((s, i) => (
           <li key={s.id} className="flex items-center gap-2">
-            <button type="button" onClick={() => (s.id < step || canNext || s.id === step) && s.id <= step + (canNext ? 1 : 0) && setStep(s.id)} aria-current={s.id === step ? 'step' : undefined}
+            <button type="button" onClick={() => (s.id <= step || (s.id === 3 && hasBody) || (s.id === step + 1 && canNext)) && setStep(s.id)} aria-current={s.id === step ? 'step' : undefined}
               className={cn('flex items-center gap-2 rounded-full px-3 py-1.5 text-sm', s.id === step ? 'bg-[rgb(var(--accent))] font-semibold text-[rgb(var(--on-accent))]' : s.id < step ? 'bg-[rgb(var(--accent)/0.12)] text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]')}>
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/10 text-xs">{s.id < step ? '✓' : s.id}</span>{s.label}
             </button>
@@ -438,6 +548,7 @@ export function StudioShell({ base, onClose }: { base: MktContent; onClose: () =
         <button className={btnGhost} disabled={step === 1} onClick={() => setStep((step - 1) as StStepId)}>Quay lại</button>
         <div className="flex flex-wrap gap-2">
           {!ro && <button className={btnGhost} disabled={!title.trim()} onClick={() => { if (persist()) notify('Đã lưu nháp', 'teal'); }}>Lưu nháp</button>}
+          {step < 3 && hasBody && <button className={btnGhost} onClick={() => setStep(3)}>Về Workspace</button>}
           {step < 3
             ? <button className={btnPrimary} disabled={!canNext} onClick={() => setStep((step + 1) as StStepId)}>Tiếp tục</button>
             : !ro && (
@@ -466,7 +577,7 @@ export function StudioOutlineStep({ api }: { api: StudioApi }) {
     const st = store.getState();
     setBusy(true); setErr('');
     try {
-      const raw = await api.text({ system: 'Chỉ trả JSON hợp lệ, không giải thích.', prompt: getPlatform(st.article.platform).outlinePrompt(st.article, st.company), kind: 'outline', article: st.article });
+      const raw = await api.text({ system: 'Chỉ trả JSON hợp lệ, không giải thích.', prompt: stOutlinePrompt(getPlatform(st.article.platform), st.article, st.company), kind: 'outline', article: st.article });
       const j = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)) as { sapo?: string; sections?: { level?: number; title?: string }[] };
       if (j.sapo) setSapo(j.sapo);
       setOutline((j.sections ?? []).filter((s) => s.title).map((s) => ({ level: s.level === 3 ? 3 : 2, title: String(s.title) })));
