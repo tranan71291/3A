@@ -9,13 +9,13 @@ import { periodRange } from '../components/filters';
 import { Skeleton } from '../components/ui';
 import { fundUsage, scoreLead, shipmentAllocation } from '../lib/business';
 import { canon, cloudMessage, statsOf } from '../lib/cloud';
-import { AVATARS, bizMode, blockersOf, btnAccent, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, oldDataKey, ORG_DEFAULTS, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, znsPhone } from '../lib/core';
+import { AVATARS, bizMode, blockersOf, btnAccent, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, znsPhone } from '../lib/core';
 import { buildGetflyPayload, financialsFromOrders } from '../lib/getfly';
-import { LoginScreen } from '../lib/modules';
+import { LoginScreen, orgDefaults, pathOrgOf, registerOrgs, regsFromStored, setPathOrg } from '../lib/modules';
 import { initialNotices } from '../lib/notify';
 import { encryptBackup, hashPassword, verifyPassword } from '../lib/security';
 import { listSnapshots, migrateData, takeSnapshot, withDefaults } from '../lib/storage';
-import type { Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, Job, KbItem, KpiTarget, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, Receipt, RemoteBatch, Role, RowComment, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
+import type { Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, Job, KbItem, KpiTarget, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, Receipt, RemoteBatch, Role, RowComment, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
 import { cn, initialLeads, initialMoves, initialPOs, initialQuotes, initialReservations, syncCatalog } from '../lib/utils';
 import { AiChatBot } from '../modules/ai/copilot-plus';
 import { InstallModule } from '../modules/alux/install';
@@ -79,6 +79,11 @@ export default function DashboardApp() {
   const [consoleView, setConsoleView] = useState(false);
   const [consoleTab, setConsoleTab] = useState<ConsoleTab>('overview');
   const [platformId, setPlatformId] = useState<string | null>(null);
+  /** v39: mã doanh nghiệp trong đường dẫn (crm.3agroup.vn/<mã>), nhận diện tải từ máy chủ khi chưa đăng nhập, danh sách chọn doanh nghiệp sau đăng nhập */
+  const [pathOrgId, setPathOrgId] = useState<string | null>(null);
+  const [remoteBrand, setRemoteBrand] = useState<Org | null>(null);
+  const [orgChoices, setOrgChoices] = useState<OrgChoices | null>(null);
+  const pendingLogin = useRef<{ remember: boolean; password?: string }>({ remember: false });
   const rememberRef = useRef(false);
   const [loginAt, setLoginAt] = useState<number | null>(null);
   const [page, setPage] = useState<Module>('home');
@@ -233,7 +238,7 @@ export default function DashboardApp() {
    * (nâng cấp nếu cần), phần chưa có lấy cấu hình khởi tạo riêng. Trả về danh sách tài khoản.
    */
   const loadOrg = (org: string, regs: TenantReg[] = platformTenants, cloudData?: { data: AnyRec; version: number }): User[] => {
-    const defaults: AnyRec = { ...Object.fromEntries(Object.entries(persisted).map(([k, x]) => [k, x[2]])), docTemplates: initialDocTemplates(), ...(ORG_DEFAULTS[org] ?? {}) };
+    const defaults: AnyRec = { ...Object.fromEntries(Object.entries(persisted).map(([k, x]) => [k, x[2]])), docTemplates: initialDocTemplates(), ...orgDefaults(org, Object.fromEntries(Object.entries(persisted).map(([k, x]) => [k, x[2]]))) };
     let raw = cloudData ? null : storage.get(dataKey(org));
     if (!raw && !cloudData) {
       raw = storage.get(v18DataKey(org)) ?? storage.get(oldDataKey(org)) ?? (org === ORGS[0].id ? storage.get(LEGACY_STORE_KEY) : null);
@@ -278,11 +283,12 @@ export default function DashboardApp() {
     return Array.isArray(data.users) ? (data.users as User[]) : ((defaults.users as User[]) ?? INITIAL_USERS);
   };
   /** Chọn doanh nghiệp ở màn đăng nhập */
-  const chooseOrg = (org: string) => {
-    if (org === orgId || !ORGS.some((o) => o.id === org)) return;
+  const chooseOrg = (org: string): User[] => {
+    if (org === orgId || !ORGS.some((o) => o.id === org)) return users;
     stickyReset();
-    loadOrg(org, platformTenants, CLOUD_ON ? { data: {}, version: DATA_VERSION } : undefined);
+    const list = loadOrg(org, platformTenants, CLOUD_ON ? { data: {}, version: DATA_VERSION } : undefined);
     storage.set(LAST_ORG_KEY, org);
+    return list;
   };
 
   // ---- Lần đầu mở: nạp dữ liệu doanh nghiệp gần nhất (nâng cấp nếu cần), khôi phục phiên đăng nhập ----
@@ -299,13 +305,15 @@ export default function DashboardApp() {
         const pl = JSON.parse(p) as { admins?: User[]; tenants?: TenantReg[]; logs?: PlatformLog[] };
         if (Array.isArray(pl.admins) && pl.admins.length) admins = [...pl.admins, ...INITIAL_PLATFORM_ADMINS.filter((d) => !pl.admins!.some((a) => a.email === d.email))];
         // Hồ sơ doanh nghiệp: bổ sung doanh nghiệp / module / tính năng mới với giá trị mặc định, không xóa cấu hình cũ
-        if (Array.isArray(pl.tenants)) regs = ORGS.map((o) => { const d = defaultTenantReg(o); const r = pl.tenants!.find((x) => x.id === o.id); return r ? { ...d, ...r, modules: { ...d.modules, ...r.modules }, features: { ...d.features, ...(r.features ?? {}) } } : d; });
+        if (Array.isArray(pl.tenants)) regs = regsFromStored(pl.tenants);
         if (Array.isArray(pl.logs)) setPlatformLogs(pl.logs);
       }
     } catch { /* dùng mặc định */ }
     setPlatformAdmins(admins);
     setPlatformTenants(regs);
-    let org = sess?.org ?? storage.get(LAST_ORG_KEY) ?? ORGS[0].id;
+    const po = pathOrgOf();
+    setPathOrgId(po);
+    let org = (po && ORGS.some((o) => o.id === po) ? po : null) ?? sess?.org ?? storage.get(LAST_ORG_KEY) ?? ORGS[0].id;
     if (!ORGS.some((o) => o.id === org)) org = ORGS[0].id;
     if (CLOUD_ON) {
       // Chế độ đám mây: không đọc dữ liệu nghiệp vụ trên máy; khôi phục phiên Supabase nếu còn
@@ -315,7 +323,7 @@ export default function DashboardApp() {
       const t = setInterval(() => setNow(Date.now()), 1000);
       void (async () => {
         if (cloud.loadSession()) {
-          const err = await cloudEnter(cloud.remember);
+          const err = await cloudGate(cloud.remember, undefined, true);
           if (err) setToast({ msg: err, tone: 'red' });
         }
         setCloudBoot(false);
@@ -930,10 +938,12 @@ export default function DashboardApp() {
   const login = async (email: string, password: string, remember: boolean): Promise<string | null> => {
     if (CLOUD_ON) return cloudLogin(email, password, remember);
     if (isPlatformEmail(email)) return platformLogin(email, password, remember);
-    const reg = platformTenants.find((r) => r.id === orgId);
-    if (reg?.status === 'SUSPENDED') return `${orgOf(orgId).shortName} đang tạm dừng trên nền tảng 3A Group. Liên hệ 3A Group để kích hoạt lại.`;
+    const target = (pathOrgId && ORGS.some((o) => o.id === pathOrgId) ? pathOrgId : null) ?? orgByEmail(email)?.id ?? orgId;
+    const reg = platformTenants.find((r) => r.id === target);
+    if (reg?.status === 'SUSPENDED') return `${orgOf(target).shortName} đang tạm dừng trên nền tảng 3A Group. Liên hệ 3A Group để kích hoạt lại.`;
+    const pool = target === orgId ? users : chooseOrg(target);
     const at = Date.now();
-    const u = users.find((x) => x.email.toLowerCase() === email.trim().toLowerCase());
+    const u = pool.find((x) => x.email.toLowerCase() === email.trim().toLowerCase());
     const generic = 'Email hoặc mật khẩu không đúng';
     if (!u) {
       writeAudit('LOGIN_FAIL', `Email không tồn tại: ${email.trim().slice(0, 60)}`, 'SECURITY');
@@ -965,6 +975,7 @@ export default function DashboardApp() {
     setPage('home');
     setIdleOut(false);
     saveSession(u.id, at, remember);
+    setPathOrg(target);
     writeAudit('LOGIN', `${u.email} đăng nhập`, 'INFO', u.id);
     if (mustChangeNow) setMustChange(true);
     else notify(`Xin chào ${u.name}`, 'teal');
@@ -1030,6 +1041,7 @@ export default function DashboardApp() {
     if (platSyncRef.current !== ps) return;
     const t = b.keyed.tenants;
     if (t) {
+      registerOrgs(t.filter((c) => !c.deleted && c.value).map((c) => c.value as TenantReg));
       setPlatformTenants((prev) => ps.mergeList(prev as AnyRec[], 'tenants', t) as TenantReg[]);
       const mine = t.find((c) => c.id === orgRef.current && !c.deleted);
       if (mine?.value) setCompany((c) => ({ ...c, enabledModules: (mine.value as TenantReg).modules }));
@@ -1049,7 +1061,7 @@ export default function DashboardApp() {
     }
   };
   /** Sau khi có phiên Supabase: xác định doanh nghiệp được vào, tải dữ liệu, mở phiên làm việc */
-  const cloudEnter = async (remember: boolean, password?: string, preferOrg?: string): Promise<string | null> => {
+  const cloudEnter = async (remember: boolean, password?: string, preferOrg?: string, toConsole = true): Promise<string | null> => {
     const sess = cloud.session;
     if (!sess) return 'Phiên đăng nhập đã hết, vui lòng đăng nhập lại';
     cloud.remember = remember;
@@ -1057,12 +1069,13 @@ export default function DashboardApp() {
     try {
       const access = await cloud.access();
       const isPlat = access.some((a) => a.platform);
-      const tenants = access.filter((a) => !a.platform).map((a) => a.tenant_id).filter((t) => ORGS.some((o) => o.id === t));
+      const tenants0 = access.filter((a) => !a.platform).map((a) => a.tenant_id);
       const ps = new TenantSync(PLATFORM_TENANT);
       const pl = await ps.load();
       ps.readOnly = !isPlat;
       const stored = Array.isArray(pl.data.tenants) ? (pl.data.tenants as TenantReg[]) : [];
-      const regs = ORGS.map((o) => { const d = defaultTenantReg(o); const r = stored.find((x) => x.id === o.id); return r ? { ...d, ...r, modules: { ...d.modules, ...r.modules }, features: { ...d.features, ...(r.features ?? {}) } } : d; });
+      const regs = regsFromStored(stored);
+      const tenants = tenants0.filter((t) => ORGS.some((o) => o.id === t));
       const last = storage.get(LAST_ORG_KEY);
       const pick = (list: string[]) => [preferOrg, last].find((x): x is string => !!x && list.includes(x)) ?? list[0];
       const org = isPlat ? pick(ORGS.map((o) => o.id)) : pick(tenants);
@@ -1083,8 +1096,9 @@ export default function DashboardApp() {
         const admin: User = known ?? { id: `pa-${email}`, name: email.split('@')[0], email, role: 'BOD', active: true, approvalLimit: 1e13 };
         setPlatformAdmins((p) => (p.some((a) => a.id === admin.id) ? p : [...p, admin]));
         attachSync(ts, ps);
-        setPlatformId(admin.id); setSessionId(admin.id); setRealUserId(admin.id); setLoginAt(at); setIdleOut(false); setConsoleView(true); setConsoleTab('overview');
+        setPlatformId(admin.id); setSessionId(admin.id); setRealUserId(admin.id); setLoginAt(at); setIdleOut(false); setConsoleView(toConsole); if (toConsole) setConsoleTab('overview'); else setPage('home');
         storage.set(LAST_ORG_KEY, org);
+        setOrgChoices(null); setPathOrg(toConsole ? null : org);
         writeAudit('PLATFORM_LOGIN', `${email} (3A Platform) vào ${orgOf(org).shortName}`, 'SECURITY', admin.id);
         if (password === DEMO_PASSWORD) setMustChange(true);
         return null;
@@ -1100,6 +1114,7 @@ export default function DashboardApp() {
       setPlatformId(null); setConsoleView(false);
       setSessionId(u.id); setRealUserId(u.id); setLoginAt(at); setPage('home'); setIdleOut(false);
       storage.set(LAST_ORG_KEY, org);
+      setOrgChoices(null); setPathOrg(org);
       writeAudit('LOGIN', `${u.email} đăng nhập`, 'INFO', u.id);
       if (u.mustChangePassword || password === DEMO_PASSWORD) setMustChange(true);
       else notify(`Xin chào ${u.name}`, 'teal');
@@ -1114,8 +1129,50 @@ export default function DashboardApp() {
       writeAudit('LOGIN_FAIL', `Đăng nhập thất bại: ${email.trim().slice(0, 60)}`, 'SECURITY');
       return cloudMessage(e);
     }
-    return cloudEnter(remember, password, orgId);
+    return cloudGate(remember, password);
   };
+  /**
+   * v39: sau khi xác thực, quyết định vào thẳng hay cho chọn doanh nghiệp:
+   * - đường dẫn /<mã> và tài khoản có quyền -> vào doanh nghiệp đó;
+   * - chỉ thuộc 1 doanh nghiệp -> vào thẳng; khôi phục phiên -> vào doanh nghiệp dùng lần trước;
+   * - thuộc nhiều doanh nghiệp / quản trị 3A -> màn "Chọn doanh nghiệp" (chỉ các doanh nghiệp được cấp quyền).
+   */
+  const cloudGate = async (remember: boolean, password?: string, restore = false): Promise<string | null> => {
+    const sess = cloud.session;
+    if (!sess) return 'Phiên đăng nhập đã hết, vui lòng đăng nhập lại';
+    try {
+      const access = await cloud.access();
+      const isPlat = access.some((a) => a.platform);
+      const pl = await new TenantSync(PLATFORM_TENANT).load();
+      registerOrgs(Array.isArray(pl.data.tenants) ? (pl.data.tenants as TenantReg[]) : []);
+      const ids = (isPlat ? ORGS.map((o) => o.id) : access.filter((a) => !a.platform).map((a) => a.tenant_id)).filter((t) => ORGS.some((o) => o.id === t));
+      const want = pathOrgId;
+      const last = storage.get(LAST_ORG_KEY);
+      if (want && ids.includes(want)) return cloudEnter(remember, password, want, false);
+      if (!isPlat && !ids.length) { await cloud.signOut(); return 'Tài khoản chưa được cấp quyền vào doanh nghiệp nào. Liên hệ Giám đốc doanh nghiệp hoặc 3A Group.'; }
+      if (!want && !isPlat && ids.length === 1) return cloudEnter(remember, password, ids[0], false);
+      if (!want && restore && last && ids.includes(last)) return cloudEnter(remember, password, last, isPlat);
+      pendingLogin.current = { remember, password };
+      const email = sess.user.email.toLowerCase();
+      setOrgChoices({ ids, platform: isPlat, email, note: want ? `Tài khoản ${email} không có quyền vào ${remoteBrand?.shortName ?? want.toUpperCase()}. Chọn doanh nghiệp bạn được cấp quyền:` : undefined });
+      return null;
+    } catch (e) { return cloudMessage(e); }
+  };
+  const pickOrg = async (id: string): Promise<string | null> => {
+    const pend = pendingLogin.current;
+    const err = id === '_console' ? await cloudEnter(pend.remember, pend.password, storage.get(LAST_ORG_KEY) ?? undefined, true) : await cloudEnter(pend.remember, pend.password, id, false);
+    if (!err) pendingLogin.current = { remember: false };
+    else if (!cloud.session) setOrgChoices(null);
+    return err;
+  };
+  const cancelPick = () => { pendingLogin.current = { remember: false }; setOrgChoices(null); void cloud.signOut(); };
+  // Nhận diện doanh nghiệp theo đường dẫn khi chưa đăng nhập: có sẵn trong danh mục thì dùng, chưa có thì hỏi máy chủ (chỉ tên, màu, logo)
+  useEffect(() => {
+    if (!pathOrgId || ORGS.some((o) => o.id === pathOrgId) || !CLOUD_ON) { setRemoteBrand(null); return; }
+    let live = true;
+    void cloud.brand(pathOrgId).then((b) => { if (live) setRemoteBrand(b); });
+    return () => { live = false; };
+  }, [pathOrgId]);
   // Kiểm tra quyền định kỳ (30 giây): bị khóa / thu hồi quyền / hết phiên thì đăng xuất ngay
   useEffect(() => {
     if (!CLOUD_ON || !sessionId) return;
@@ -1154,6 +1211,22 @@ export default function DashboardApp() {
   /** Chuyển nhanh doanh nghiệp (chỉ tài khoản nền tảng): lưu dữ liệu đang mở, nạp dữ liệu doanh nghiệp kia */
   // ---- 3A Platform Console: nhật ký, cấp phép module, sao lưu & nâng cấp dữ liệu từng doanh nghiệp ----
   const platformLog = (action: string, detail: string, tenant?: string) => setPlatformLogs((p) => [{ id: uid('pl'), at: Date.now(), by: platformUser?.email ?? 'system', tenant, action, detail }, ...p].slice(0, 300));
+  /** v39: tạo doanh nghiệp mới: hồ sơ nhận diện + gói + tài khoản quản trị đầu tiên (máy chủ: tạo tài khoản đăng nhập và cấp quyền quản trị) */
+  const addTenant = async (o: Org, plan: TenantPlan, password: string): Promise<string | null> => {
+    if (!platformId) return 'Chỉ quản trị 3A Group được tạo doanh nghiệp';
+    const issue = orgIdIssue(o.id);
+    if (issue) return issue;
+    const org: Org = { ...o, custom: true };
+    if (CLOUD_ON) {
+      try { await cloud.provision(o.adminEmail ?? '', o.id, password, true, { role: 'BOD', appUserId: 'admin' }); }
+      catch (e) { return cloudMessage(e); }
+    }
+    const reg: TenantReg = { ...defaultTenantReg(org), plan, seats: TENANT_PLAN[plan].seats, contractStart: todayISO(), contractEnd: isoDay(Date.now() + 365 * 864e5), org };
+    registerOrgs([reg]);
+    setPlatformTenants((all) => [...all.filter((r) => r.id !== org.id), reg]);
+    platformLog('TENANT_CREATE', `Tạo doanh nghiệp ${org.shortName} (/${org.id}), quản trị ${o.adminEmail ?? ''}`, org.id);
+    return null;
+  };
   const setTenantReg = (id: string, patch: Partial<TenantReg>, logDetail?: string) => {
     setPlatformTenants((all) => all.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     if (patch.modules && id === loadedOrg) setCompany((c) => ({ ...c, enabledModules: { ...(c.enabledModules ?? {}), ...patch.modules } }));
@@ -1180,7 +1253,7 @@ export default function DashboardApp() {
     if (!storage.get(dataKey(org))) storage.set(dataKey(org), raw);
     takeSnapshot(org, `truoc-nang-cap-v${from}`);
     const { data: migrated, steps } = migrateData((st.data ?? {}) as AnyRec, from);
-    const defaults: AnyRec = { ...Object.fromEntries(Object.entries(persisted).map(([k, x]) => [k, x[2]])), docTemplates: initialDocTemplates(), ...(ORG_DEFAULTS[org] ?? {}) };
+    const defaults: AnyRec = { ...Object.fromEntries(Object.entries(persisted).map(([k, x]) => [k, x[2]])), docTemplates: initialDocTemplates(), ...orgDefaults(org, Object.fromEntries(Object.entries(persisted).map(([k, x]) => [k, x[2]]))) };
     const added: string[] = [];
     const data: AnyRec = { ...migrated };
     for (const k of Object.keys(persisted)) {
@@ -1237,6 +1310,7 @@ export default function DashboardApp() {
           if (td.version > DATA_VERSION) ts.readOnly = true;
           attachSync(ts);
           storage.set(LAST_ORG_KEY, org);
+          setPathOrg(org);
           writeAudit('PLATFORM_SWITCH', `${platformUser?.email ?? ''} chuyển sang ${orgOf(org).shortName}`, 'WARN', platformId);
           notify(`Đã chuyển sang ${orgOf(org).name}`, 'teal');
         } catch (e) { notify(cloudMessage(e), 'red'); }
@@ -1248,6 +1322,7 @@ export default function DashboardApp() {
     if (!dataLocked && loadedOrg === orgId) storage.set(dataKey(orgId), json);
     loadOrg(org);
     storage.set(LAST_ORG_KEY, org);
+    setPathOrg(org);
     setSessionId(platformId);
     saveSession(platformId, loginAt ?? Date.now(), rememberRef.current, true, org);
     setTimeout(() => writeAudit('PLATFORM_SWITCH', `${platformUser?.email ?? ''} chuyển sang ${orgOf(org).shortName}`, 'WARN', platformId), 0);
@@ -1393,14 +1468,14 @@ export default function DashboardApp() {
     return (
       <div className="text-[rgb(var(--fg))] antialiased" style={shellStyle}>
         {fontStyle}
-        <LoginScreen users={users} company={company} onLogin={login} idleOut={idleOut ? security.idleMinutes : 0} dataLocked={dataLocked} orgId={orgId} onOrg={chooseOrg} platformHint={!CLOUD_ON && platformAdmins.some((a) => !a.passwordHash)} />
+        <LoginScreen onLogin={login} idleOut={idleOut ? security.idleMinutes : 0} dataLocked={dataLocked} brand={pathOrgId ? (ORGS.find((o) => o.id === pathOrgId) ?? remoteBrand) : null} choices={orgChoices} onPick={pickOrg} onCancelPick={cancelPick} />
       </div>
     );
   }
 
   const ctx: AppCtx = {
     platform: {
-      userId: platformId, admins: platformAdmins, setAdmins: setPlatformAdmins, switchTenant, tenants: platformTenants, setTenantReg, logs: platformLogs,
+      userId: platformId, admins: platformAdmins, setAdmins: setPlatformAdmins, switchTenant, tenants: platformTenants, setTenantReg, logs: platformLogs, addTenant,
       consoleView, openConsole: (t) => { setConsoleView(true); if (t) setConsoleTab(t); }, consoleTab, setConsoleTab, runMigration: runTenantMigration, backupTenant, restoreTenantSnapshot, log: platformLog,
     }, postCash,
     me, role, loginAt, switchRole, logout, now,

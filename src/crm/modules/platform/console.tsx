@@ -1,13 +1,14 @@
 'use client';
 
-import { Building2, CalendarDays, CheckCircle2, ChevronRight, Copy, Download, Factory, Globe, KeyRound, LogIn, Pencil, Plug, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, Users, XCircle } from 'lucide-react';
+import { Building2, CalendarDays, CheckCircle2, ChevronRight, Copy, Download, Globe, KeyRound, Link2, LogIn, Pencil, Plug, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, Users, XCircle } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { Pagination, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Chip, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { cloudMessage } from '../../lib/cloud';
-import { btnBase, btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, isPlatformEmail, kpiGrid, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { btnAccent, btnBase, btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, isPlatformEmail, kpiGrid, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
+import { AddTenantModal, OrgMark } from '../../lib/modules';
 import { hashPassword } from '../../lib/security';
 import { listSnapshots, tenantStats } from '../../lib/storage';
 import type { AnyRec, ConfirmState, ConsoleTab, Department, DeptCode, MfgConfig, Module, Org, PayStage, PayTrigger, Perms, PriceItem, PriceUnit, Role, SecurityPolicy, StoredData, TenantPlan, TenantReg, Tone, User } from '../../lib/types';
@@ -209,11 +210,17 @@ export function ConsoleUsers() {
 }
 
 export function ConsoleTenants() {
-  const { platform, org } = useApp();
+  const { platform, org, notify } = useApp();
   const [edit, setEdit] = useState<TenantReg | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [adding, setAdding] = useState(false);
+  const linkOf = (id: string) => (typeof window !== 'undefined' ? `${window.location.origin}/${id}` : `/${id}`);
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-[rgb(var(--muted))]"><b className="text-[rgb(var(--fg))]">{ORGS.length}</b> doanh nghiệp trên nền tảng. Mỗi doanh nghiệp có đường dẫn đăng nhập riêng, dữ liệu tách biệt hoàn toàn.</p>
+        <button className={cn(btnAccent, 'ml-auto')} onClick={() => setAdding(true)}><Plus className="h-4 w-4" aria-hidden />Thêm doanh nghiệp</button>
+      </div>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {ORGS.map((o) => {
           const r = platform.tenants.find((x) => x.id === o.id) ?? defaultTenantReg(o);
@@ -223,7 +230,7 @@ export function ConsoleTenants() {
           return (
             <section key={o.id} className={cn('rounded-md border bg-[rgb(var(--surface))] p-5', r.status === 'SUSPENDED' ? 'border-[rgb(var(--danger)/0.5)]' : 'border-[rgb(var(--line))]')}>
               <div className="flex items-start gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[rgb(var(--on-accent))]" style={{ background: o.color }}>{o.profile === 'MANUFACTURING' ? <Factory className="h-6 w-6" aria-hidden /> : <Building2 className="h-6 w-6" aria-hidden />}</span>
+                <OrgMark o={o} size={44} />
                 <div className="min-w-0 flex-1">
                   <p className="text-lg font-semibold">{o.name}</p>
                   <p className="text-xs text-[rgb(var(--muted))]">{o.profile === 'MANUFACTURING' ? 'Xưởng nội thất, nhôm kính: báo giá m² / md, lệnh sản xuất, lắp đặt, thu tiền' : 'Thương mại B2B, đối tác Hãng 3M: quỹ MDF, PO Hãng, BOQ, Getfly'} · @{o.domain}</p>
@@ -236,7 +243,8 @@ export function ConsoleTenants() {
                 <div className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Hết hạn hợp đồng</dt><dd className={cn('font-semibold tabular-nums', left < 0 ? 'text-[rgb(var(--danger-fg))]' : left <= 30 ? 'text-[rgb(var(--accent-fg))]' : '')}>{fmtDate(r.contractEnd)}</dd><dd className="text-[11px] text-[rgb(var(--muted))]">{left < 0 ? `Quá hạn ${-left} ngày` : `Còn ${left} ngày`}</dd></div>
                 <div className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Module cấp phép</dt><dd className="font-semibold tabular-nums">{on} / {PROVISION_MODULES.length}</dd></div>
               </dl>
-              <p className="mt-3 text-xs text-[rgb(var(--muted))]">{st.customers} khách hàng, {st.records} {o.profile === 'MANUFACTURING' ? 'đơn hàng' : 'lead / dự án'}, {(st.size / 1024).toFixed(0)} KB, dữ liệu v{st.version || '—'}{st.savedAt ? `, lưu ${new Date(st.savedAt).toLocaleString('vi-VN')}` : ''}</p>
+              <p className="mt-3 flex items-center gap-2 text-xs"><Link2 className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden /><a className="font-mono text-[rgb(var(--secondary-fg))] hover:underline" href={linkOf(o.id)} target="_blank" rel="noreferrer">{linkOf(o.id).replace(/^https?:\/\//, '')}</a><button className="text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => { void navigator.clipboard?.writeText(linkOf(o.id)).then(() => notify('Đã chép đường dẫn đăng nhập', 'teal')); }} aria-label={`Chép đường dẫn ${o.shortName}`}><Copy className="h-3.5 w-3.5" /></button>{o.adminEmail && <span className="text-[rgb(var(--muted))]">· quản trị {o.adminEmail}</span>}</p>
+              <p className="mt-1 text-xs text-[rgb(var(--muted))]">{st.customers} khách hàng, {st.records} {o.profile === 'MANUFACTURING' ? 'đơn hàng' : 'lead / dự án'}, {(st.size / 1024).toFixed(0)} KB, dữ liệu v{st.version || '—'}{st.savedAt ? `, lưu ${new Date(st.savedAt).toLocaleString('vi-VN')}` : ''}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button className={cn(btnPrimary, btnSm)} onClick={() => platform.switchTenant(o.id)}><LogIn className="h-3.5 w-3.5" aria-hidden />Truy cập hệ thống{org.id === o.id ? ' (đang mở)' : ''}</button>
                 <button className={cn(btnGhost, btnSm)} onClick={() => setEdit(r)}><Pencil className="h-3.5 w-3.5" aria-hidden />Hợp đồng & gói</button>
@@ -261,6 +269,7 @@ export function ConsoleTenants() {
           </div>
         </Modal>
       )}
+      {adding && <AddTenantModal onClose={() => setAdding(false)} />}
       {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
     </div>
   );

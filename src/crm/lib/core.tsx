@@ -2874,9 +2874,10 @@ export const holdingOverdue = (r: Receipt, now: number, hours: number) => r.stat
 // ---------------- Doanh nghiệp dùng chung hệ thống ----------------
 export const ORGS: Org[] = [
   { id: 'vassh', name: 'VASSH – Phân phối & thương mại', shortName: 'VASSH', domain: 'vassh.vn', profile: 'TRADING', color: '#F28C33' },
-  { id: 'alux', name: 'ALUX – Sản xuất & lắp đặt', shortName: 'ALUX', domain: 'alux.vn', profile: 'MANUFACTURING', color: '#00B894' },
+  { id: 'alux', name: 'ALUX – Sản xuất & lắp đặt', shortName: 'ALUX', domain: 'alux.vn', profile: 'MANUFACTURING', color: '#2563EB' },
 ];
 
+/* v39: ORGS là danh mục đang dùng — 2 doanh nghiệp có sẵn + các doanh nghiệp 3A Platform tạo thêm (registerOrgs nạp từ hồ sơ nền tảng) */
 export const orgOf = (id: string) => ORGS.find((o) => o.id === id) ?? ORGS[0];
 
 export const orgByEmail = (email: string) => ORGS.find((o) => email.trim().toLowerCase().endsWith(`@${o.domain}`));
@@ -3115,6 +3116,21 @@ export const LOGIN_SLIDES: { kind: 'lead' | 'mdf' | 'mfg' | 'center'; tag: strin
 ];
 
 // =====================================================================
+//  v39: NHIỀU DOANH NGHIỆP TRÊN NỀN TẢNG 3A — danh mục doanh nghiệp lưu trong hồ sơ nền tảng (không ghi cứng),
+//  đường dẫn riêng crm.3agroup.vn/<mã>, đăng nhập một ô, chọn doanh nghiệp sau khi đăng nhập
+// =====================================================================
+
+/** Mã đường dẫn không dùng được (trùng thư mục hệ thống / route máy chủ) */
+export const RESERVED_ORG_IDS = ['api', 'platform', 'admin', 'login', 'logout', 'console', 'static', 'public', 'assets', 'app', 'auth', 'www', 'crm', 'next', 'favicon'];
+
+export const ORG_ID_RE = /^[a-z0-9][a-z0-9-]{1,29}$/;
+
+export const orgIdIssue = (id: string): string | null => (!ORG_ID_RE.test(id) ? '2–30 ký tự: chữ thường không dấu, số, dấu gạch ngang' : RESERVED_ORG_IDS.includes(id) ? 'Mã này trùng đường dẫn hệ thống' : ORGS.some((o) => o.id === id) ? 'Mã đã có doanh nghiệp dùng' : null);
+
+/** Nhóm dữ liệu cấu hình (giữ mẫu khởi tạo); mọi nhóm dữ liệu nghiệp vụ khác của doanh nghiệp mới để trống, không mang dữ liệu demo */
+export const TENANT_KEEP_CONFIG = new Set(['departments', 'segments', 'categories', 'sources', 'popDocs', 'mktItems', 'warehouses', 'tierRules', 'docTemplates']);
+
+// =====================================================================
 //  ĐỒNG BỘ ĐÁM MÂY (SUPABASE) — dùng chung dữ liệu cho nhiều người
 //  Bật khi khai báo NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY (Vercel > Settings > Environment Variables).
 //  Không khai báo: app chạy như cũ, dữ liệu lưu trong trình duyệt.
@@ -3235,6 +3251,15 @@ export const cloud = {
     return this.json<T>(await this.authed(`/rest/v1/rpc/${fn}`, { method: 'POST', body: JSON.stringify(args) }));
   },
   async access(): Promise<CloudAccess[]> { return this.rpc<CloudAccess[]>('my_access'); },
+  /** v39: nhận diện công khai của doanh nghiệp theo mã đường dẫn (chưa cần đăng nhập; cần SQL v39) */
+  async brand(id: string): Promise<Org | null> {
+    try {
+      const res = await this.raw('/rest/v1/rpc/tenant_brand', { method: 'POST', body: JSON.stringify({ p_id: id }), token: null });
+      if (!res.ok) return null;
+      const j = (await res.json()) as Partial<Org> | null;
+      return j && j.shortName ? { id, name: j.name ?? j.shortName, shortName: j.shortName, domain: j.domain ?? '', profile: (j.profile as BusinessProfile) ?? 'TRADING', color: j.color ?? BRAND.o2, logo: j.logo ?? undefined } : null;
+    } catch { return null; }
+  },
   /**
    * Tạo / cấp lại tài khoản đăng nhập cho nhân sự: đăng ký email + mật khẩu tạm (không đổi phiên của người đang thao tác),
    * rồi gắn vào doanh nghiệp. Tài khoản đã tồn tại thì chỉ đặt lại mật khẩu tạm.

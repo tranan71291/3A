@@ -606,7 +606,9 @@ export type CashEntry = {
 export type JobCommission = { paidAt: number; by: string; base: number; lines: { userId: string; role: 'SALES' | 'INSTALL'; amount: number }[] };
 
 /** Doanh nghiệp dùng chung hệ thống, dữ liệu tách riêng */
-export type Org = { id: string; name: string; shortName: string; domain: string; profile: BusinessProfile; color: string };
+export type Org = { id: string; name: string; shortName: string; domain: string; profile: BusinessProfile; color: string;
+  /** v39: logo (data URL), quản trị viên đầu tiên, doanh nghiệp do 3A Platform tạo thêm */
+  logo?: string; adminEmail?: string; adminName?: string; custom?: boolean };
 
 // ---------------- Lắp đặt & nghiệm thu ----------------
 export type InstallStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'ACCEPTED';
@@ -729,6 +731,7 @@ export type AppCtx = {
   platform: {
     userId: string | null; admins: User[]; setAdmins: Dispatch<SetStateAction<User[]>>; switchTenant: (org: string) => void;
     tenants: TenantReg[]; setTenantReg: (id: string, patch: Partial<TenantReg>, logDetail?: string) => void; logs: PlatformLog[];
+    addTenant: (o: Org, plan: TenantPlan, password: string) => Promise<string | null>;
     consoleView: boolean; openConsole: (tab?: ConsoleTab) => void; consoleTab: ConsoleTab; setConsoleTab: (t: ConsoleTab) => void;
     runMigration: (org: string) => void; backupTenant: (org: string, pass: string) => Promise<void>; restoreTenantSnapshot: (org: string, key: string) => void;
     log: (action: string, detail: string, tenant?: string) => void;
@@ -1851,6 +1854,8 @@ export type TenantReg = {
   /** Tính năng tích hợp ngoài module */
   features: { getfly: boolean; zns: boolean; smtp: boolean };
   lastBackupAt?: number; lastMigrationAt?: number; note?: string;
+  /** v39: hồ sơ nhận diện doanh nghiệp (tên, mã đường dẫn, tên miền, loại hình, màu, logo) — danh mục doanh nghiệp không ghi cứng trong code */
+  org?: Org;
 };
 
 export type PlatformLog = { id: string; at: number; by: string; tenant?: string; action: string; detail: string };
@@ -1860,6 +1865,8 @@ export type StoredData = { v: number; savedAt: number; data: Record<string, unkn
 export type AnyRec = Record<string, any>;
 
 export type EncryptedBackup = { format: 'vassh-backup'; v: number; enc: 'AES-GCM'; kdf: 'PBKDF2-SHA256'; iter: number; salt: string; iv: string; data: string; exportedAt: number };
+
+export type OrgChoices = { ids: string[]; platform: boolean; email: string; note?: string };
 
 export type CloudSession = { access_token: string; refresh_token: string; expires_at: number; user: { id: string; email: string } };
 
