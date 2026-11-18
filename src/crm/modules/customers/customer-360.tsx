@@ -1,19 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { Coins, Copy, Download, Eye, FileSpreadsheet, Pencil, Phone, Plus, Receipt as ReceiptIcon, Target, Trash2, TrendingUp, Upload, UserPlus, Users } from 'lucide-react';
+import { Coins, Copy, Download, Eye, FileSpreadsheet, Pencil, Phone, Plus, Trash2, Upload } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { CommentButton } from '../../components/comments';
 import { Avatar, BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
-import { FilterBar, prevRange, useInRange } from '../../components/filters';
+import { FilterBar } from '../../components/filters';
 import { ImportModal } from '../../components/import-csv';
-import { Chip, EmptyState, Field, Modal, MoneyInput, monthly, Panel, ProgressBar, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
+import { Chip, EmptyState, Field, Modal, MoneyInput, Panel, ProgressBar, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { claimState, roiRating } from '../../lib/business';
-import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, C, compact, CUSTOMER_SOURCE, CUSTOMER_STATUS, digits, EMAIL_RE, EMPTY_CUSTOMER, inputBase, inputCls, inRangeOf, iso, kpiGrid, LEAD_STATUS, leadDate, mdfOfCustomer, MST_RE, nextCode, pctDelta, progName, PROGRAM_STATUS, quotesOfCustomer, REGION_LABEL, REVENUE_BAND, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, tierFor, tierInfo, TIERS, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, compact, CUSTOMER_SOURCE, CUSTOMER_STATUS, digits, EMAIL_RE, EMPTY_CUSTOMER, inputBase, inputCls, LEAD_STATUS, mdfOfCustomer, MST_RE, nextCode, progName, PROGRAM_STATUS, quotesOfCustomer, REGION_LABEL, REVENUE_BAND, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, tierFor, tierInfo, TIERS, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv, matchEnum } from '../../lib/csv';
-import type { ConfirmState, Customer, CustomerForm, CustomerStatus, DeptCode, ImportSpec, Lead, MenuItem, Region, RevenueBand, Segment, Tier } from '../../lib/types';
+import type { ConfirmState, Customer, CustomerForm, CustomerStatus, DeptCode, ImportSpec, MenuItem, Region, RevenueBand, Segment, Tier } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { GetflyOrdersPanel } from './getfly-history';
 import { SourceManagerModal } from './sources';
@@ -139,9 +139,7 @@ export function CustomersPage() {
 }
 
 export function TradingCustomersList() {
-  const { customers: allCustomers, myCustomers: customers, setCustomers, claims, programs, departments, notify, canDo, userName, dept, openCustomer, openCustomerForm, openProgramForm, presetQuery, getflyOrders, range, leads, sources, quotes, users } = useApp();
-  const inR = useInRange();
-  const inPrev = inRangeOf(prevRange(range));
+  const { customers: allCustomers, myCustomers: customers, setCustomers, claims, programs, departments, notify, canDo, userName, dept, openCustomer, openCustomerForm, openProgramForm, presetQuery, getflyOrders, leads, sources, users } = useApp();
   const [q, setQ] = useSticky('TradingCustomersList.q', presetQuery, !!presetQuery);
   const [dp, setDp] = useState<'ALL' | DeptCode>('ALL');
   const [region, setRegion] = useState<'ALL' | Region>('ALL');
@@ -169,20 +167,7 @@ export function TradingCustomersList() {
   const sel = useSelection(list.map((c) => c.id));
 
   // ---- KPI có so sánh kỳ trước ----
-  const newCur = customers.filter((c) => inR(c.createdAt)).length;
-  const newPrev = customers.filter((c) => inPrev(c.createdAt)).length;
-  const now = Date.now();
-  const sixAgo = iso(new Date(now - 182 * 864e5));
-  const twelveAgo = iso(new Date(now - 365 * 864e5));
   // Doanh số ghi nhận khi chốt đơn (trước VAT)
-  const wonIn = (from: string, to?: string) => leads.filter((l) => l.status === 'WON' && l.wonAt && l.wonAt >= from && (!to || l.wonAt < to)).reduce((s, l) => s + (l.wonAmount ?? 0), 0);
-  const rev6 = wonIn(sixAgo);
-  const rev6Prev = wonIn(twelveAgo, sixAgo);
-  const quoteCur = quotes.filter((x) => inR(x.date)).reduce((s, x) => s + x.amount, 0);
-  const quotePrev = quotes.filter((x) => inPrev(x.date)).reduce((s, x) => s + x.amount, 0);
-  const rate = (pred: (l: Lead) => boolean) => { const w = leads.filter((l) => l.status === 'WON' && pred(l)).length; const lo = leads.filter((l) => l.status === 'LOST' && pred(l)).length; return w + lo ? (w / (w + lo)) * 100 : 0; };
-  const convCur = rate((l) => inR(leadDate(l)));
-  const convPrev = rate((l) => inPrev(leadDate(l)));
 
   const deptShort = Object.fromEntries(departments.map((d) => [d.code, d.short])) as Record<DeptCode, string>;
   const deptNames = Object.fromEntries(departments.map((d) => [d.code, d.name])) as Record<DeptCode, string>;
@@ -266,14 +251,6 @@ export function TradingCustomersList() {
 
   return (
     <div className="space-y-4">
-      <div className={kpiGrid('lg:grid-cols-5')}>
-        <StatCard label="Tổng khách hàng" value={String(customers.length)} icon={Users} color={C.orange} highlight spark={monthly(customers, (c) => c.createdAt, undefined, 6, true)} delta={pctDelta(newCur, newPrev)} deltaLabel="khách mới so với kỳ trước" />
-        <StatCard label="Khách hàng mới" value={String(newCur)} icon={UserPlus} color={C.teal} spark={monthly(customers, (c) => c.createdAt)} delta={pctDelta(newCur, newPrev)} sub="Trong khoảng thời gian đang lọc" />
-        <StatCard label="Doanh số 6 tháng" value={compact(rev6)} icon={TrendingUp} color={C.blue} delta={pctDelta(rev6, rev6Prev)} sub="Ghi nhận khi chốt đơn" />
-        <StatCard label="Giá trị báo giá" value={compact(quoteCur)} icon={ReceiptIcon} color="#8B5CF6" spark={monthly(quotes, (q) => q.date, (q) => q.amount)} delta={pctDelta(quoteCur, quotePrev)} sub={`${quotes.filter((x) => inR(x.date)).length} báo giá trong kỳ`} />
-        <StatCard label="Chuyển đổi" value={`${convCur.toFixed(0)}%`} icon={Target} color={C.red} delta={pctDelta(convCur, convPrev)} sub="Chốt đơn / (chốt + trượt)" />
-      </div>
-
       <FilterBar
         q={q} onQ={setQ} placeholder="Tìm MST, tên khách hàng, mã đơn, SĐT..."
         dept={dp} onDept={setDp} status={status} onStatus={setStatus}

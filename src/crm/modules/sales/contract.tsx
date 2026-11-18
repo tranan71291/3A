@@ -1,13 +1,13 @@
 'use client';
 
 import { Fragment, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, Copy, Download, Eye, FileText, Pencil, Plus, Search, Sparkles, Target, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, Copy, Download, Eye, FileText, Pencil, Plus, Search, Sparkles, Trash2, Upload } from 'lucide-react';
 import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { Collapse, ConfirmDialog } from '../../components/crud';
 import { FilterBar, useInRange } from '../../components/filters';
-import { Chip, EmptyState, Field, FilePicker, Modal, Panel, StatCard, Table, Tabs, useOverlay, useSticky } from '../../components/ui';
+import { Chip, EmptyState, Field, FilePicker, Modal, Panel, Table, Tabs, useOverlay, useSticky } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
-import { btnBase, btnGhost, btnPrimary, btnSm, C, compact, contractVersions, docGroupOf, esc, findByTax, fmtDate, fmtN, GENDOC_STATUS, guessTx, inputBase, inputCls, kpiGrid, latestQuote, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, rowCls, SAMPLE_FORM, secHead, tdCls, tdFirst, tdLast, TEMPLATE_FLAGS, TEMPLATE_VARS, todayISO, TX_TYPE, uid, useApp } from '../../lib/core';
+import { btnBase, btnGhost, btnPrimary, btnSm, compact, contractVersions, docGroupOf, esc, findByTax, fmtDate, fmtN, GENDOC_STATUS, guessTx, inputBase, inputCls, latestQuote, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, rowCls, SAMPLE_FORM, secHead, tdCls, tdFirst, tdLast, TEMPLATE_FLAGS, TEMPLATE_VARS, todayISO, TX_TYPE, uid, useApp } from '../../lib/core';
 import type { ComposerForm, ComposerMode, ConfirmState, DocTemplate, GenDocStatus, GeneratedDoc, PriceTier, Quote, QuoteStatus, TxType } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { AiWriterSheet } from '../ai/copilot-plus';
@@ -496,15 +496,11 @@ export function SalesDocsPanel() {
   });
   const qFiltered = quoteRows.filter((r) => inR(r.latest.date) && (st === 'ALL' || r.latest.status === st) && (!t || [r.latest.code, nameOfQuote(r.latest), r.lead?.code ?? ''].some((v) => v.toLowerCase().includes(t))))
     .sort((a, b) => b.latest.date.localeCompare(a.latest.date));
-  const acc = quoteRows.filter((r) => r.latest.status === 'ACCEPTED');
-  const rej = quoteRows.filter((r) => r.latest.status === 'REJECTED');
-  const waiting = quoteRows.filter((r) => r.latest.status === 'SENT');
 
   // ---- Hợp đồng: phiên bản mới nhất mỗi hợp đồng ----
   const contracts = latestContracts(genDocs);
   const cFiltered = contracts.filter((d) => inR(d.createdAt) && (st === 'ALL' || d.status === st) && (!t || [d.contractCode, d.partyName, d.quoteCode].some((v) => v.toLowerCase().includes(t))))
     .sort((a, b) => Number(b.status === 'PENDING_APPROVAL') - Number(a.status === 'PENDING_APPROVAL') || b.createdAt.localeCompare(a.createdAt));
-  const valid = contracts.filter((d) => d.status === 'ISSUED' || d.status === 'APPROVED');
 
   const qPaged = usePaged(qFiltered, 12);
   const cPaged = usePaged(cFiltered, 12);
@@ -528,22 +524,6 @@ export function SalesDocsPanel() {
         {view === 'QUOTE' && <button className={cn(btnPrimary, btnSm, 'ml-auto')} disabled={!(canDo('project.update') || canDo('customer.edit'))} onClick={() => openComposer({ mode: 'QUOTE' })}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo báo giá</button>}
         {view === 'CONTRACT' && <button className={cn(btnPrimary, btnSm, 'ml-auto')} disabled={!(canDo('project.update') || canDo('customer.edit'))} onClick={() => openComposer({ mode: 'CONTRACT' })}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo hợp đồng</button>}
       </div>
-
-      {view === 'QUOTE' ? (
-        <div className={kpiGrid('lg:grid-cols-4')}>
-          <StatCard label="Bộ báo giá" value={String(quoteRows.length)} icon={FileText} sub={`${quotes.length} phiên bản`} />
-          <StatCard label="Chờ khách" value={compact(waiting.reduce((a, r) => a + r.latest.amount, 0))} icon={Clock} color={C.orange} sub={`${waiting.length} bộ`} />
-          <StatCard label="Khách chấp nhận" value={compact(acc.reduce((a, r) => a + r.latest.amount, 0))} icon={CheckCircle2} color={C.teal} sub={`${acc.length} bộ`} />
-          <StatCard label="Tỷ lệ chấp nhận" value={acc.length + rej.length ? `${Math.round((acc.length / (acc.length + rej.length)) * 100)}%` : '—'} icon={Target} color={C.blue} sub={`${rej.length} bị từ chối`} />
-        </div>
-      ) : (
-        <div className={kpiGrid('lg:grid-cols-4')}>
-          <StatCard label="Hợp đồng" value={String(contracts.length)} icon={FileText} sub={`${genDocs.length} phiên bản`} />
-          <StatCard label="Hiệu lực" value={compact(valid.reduce((a, d) => a + d.total, 0))} icon={CheckCircle2} color={C.teal} sub={`${valid.length} hợp đồng`} />
-          <StatCard label="Chờ duyệt" value={String(contracts.filter((d) => d.status === 'PENDING_APPROVAL').length)} icon={Clock} color={C.orange} sub="Điều khoản đặc biệt" />
-          <StatCard label="Bị từ chối" value={String(contracts.filter((d) => d.status === 'REJECTED').length)} icon={AlertTriangle} color={C.red} sub="Cần tạo phiên bản mới" />
-        </div>
-      )}
 
       <FilterBar q={q} onQ={setQ} placeholder={view === 'QUOTE' ? 'Tìm mã báo giá, khách hàng, mã dự án...' : 'Tìm số hợp đồng, bên mua, báo giá căn cứ...'} status={st} onStatus={setSt} statusOptions={statusOpts} />
 

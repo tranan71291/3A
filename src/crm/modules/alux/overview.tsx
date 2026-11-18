@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, BadgePercent, Banknote, Clock, Download, FileCheck2, Search, TrendingUp, UserPlus, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, BadgePercent, Banknote, Clock, Download, FileCheck2, Search, TrendingUp, Wallet } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useState } from 'react';
 import { DateRangePicker, Fab, Pagination, usePaged } from '../../components/controls';
@@ -202,15 +202,8 @@ export function MfgCustomersList() {
   const paged = usePaged(srt.rows, 15);
   const segs = Array.from(new Set(customers.map((c) => c.segment)));
   const srcName = (id: string) => sources.find((s) => s.id === id)?.name ?? '—';
-  const referral = customers.filter((c) => /giới thiệu|referral|cũ/i.test(srcName(c.sourceId))).length;
   return (
     <div className="space-y-4">
-      <div className={kpiGrid('lg:grid-cols-4')}>
-        <StatCard label="Khách hàng" value={String(customers.length)} icon={Users} sub={`${rows.filter((r) => r.active).length} đang có đơn chạy`} />
-        <StatCard label="Giá trị hợp đồng" value={compact(rows.reduce((s, r) => s + r.value, 0))} icon={FileCheck2} color={C.orange} />
-        <StatCard label="Còn phải thu" value={compact(rows.reduce((s, r) => s + r.receivable, 0))} icon={Wallet} color={C.red} />
-        <StatCard label="Khách giới thiệu / quay lại" value={pct(referral, customers.length)} icon={UserPlus} color={C.teal} sub={`${referral} khách`} />
-      </div>
       <Panel>
         <div className="mb-3 flex flex-wrap gap-2">
           <div className="relative min-w-[200px] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden /><input className={cn(inputCls, 'pl-9')} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm tên, số điện thoại, địa chỉ" /></div>

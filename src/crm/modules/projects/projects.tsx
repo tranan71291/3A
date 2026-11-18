@@ -1,17 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, BadgePercent, CheckCircle2, Download, Eye, FileSpreadsheet, FileText, FolderKanban, History, Link2, Paperclip, Pencil, Plus, RefreshCw, Send, Target, Trash2, TrendingUp, Upload, Users, XCircle } from 'lucide-react';
+import { AlertTriangle, BadgePercent, CheckCircle2, Download, Eye, FileSpreadsheet, FileText, History, Link2, Paperclip, Pencil, Plus, RefreshCw, Send, Trash2, Upload, XCircle } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { CommentButton } from '../../components/comments';
 import { Avatar, BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
-import { FilterBar, prevRange, useInRange } from '../../components/filters';
+import { FilterBar, useInRange } from '../../components/filters';
 import { QuoteTimer } from '../../components/sla';
-import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, monthly, Panel, StatCard, Table, Tabs, useSort, useSticky, ViewSwitch } from '../../components/ui';
+import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, Tabs, useSort, useSticky, ViewSwitch } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
-import { boqIsEstimate, boqTotal, btnBase, btnDanger, btnGhost, btnPrimary, btnSm, C, compact, fmtDate, inputBase, inputCls, inRangeOf, iso, isoMs, isQuoteOverdue, kpiGrid, lastQuoteOf, LEAD_STATUS, leadAt, leadDate, LOST_REASON, median, pctDelta, PP_STATUS, QUOTE_STATUS, quotesOfCustomer, REGION_LABEL, rowCls, segName, SOURCE_LABEL, stageLabel, STAGES, tdCls, tdFirst, tdLast, useApp, vnd } from '../../lib/core';
+import { boqIsEstimate, boqTotal, btnBase, btnDanger, btnGhost, btnPrimary, btnSm, compact, fmtDate, inputBase, inputCls, iso, isoMs, isQuoteOverdue, lastQuoteOf, LEAD_STATUS, leadAt, leadDate, LOST_REASON, median, PP_STATUS, QUOTE_STATUS, quotesOfCustomer, REGION_LABEL, rowCls, segName, SOURCE_LABEL, stageLabel, STAGES, tdCls, tdFirst, tdLast, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { projectValue, quoteTotals } from '../../lib/getfly';
 import type { ConfirmState, Customer, Lead, LeadStatus, LostReason, MenuItem, Quote, Stage, Tone } from '../../lib/types';
@@ -360,9 +360,8 @@ export function ProjectGantt({ list, onOpen }: { list: Lead[]; onOpen: (id: stri
 }
 
 export function ProjectsPage() {
-  const { leads: allLeads, myLeads: leads, setLeads, notify, canDo, userName, dept, openWin, now, range, quotes, setQuotes, users, openLeadForm, reopenLead, reservations, openComposer, genDocs } = useApp();
+  const { leads: allLeads, myLeads: leads, setLeads, notify, canDo, userName, dept, openWin, now, quotes, setQuotes, users, openLeadForm, reopenLead, reservations, openComposer, genDocs } = useApp();
   const inR = useInRange();
-  const inPrev = inRangeOf(prevRange(range));
   const [stage, setStage] = useSticky<'ALL' | Stage>('ProjectsPage.stage', 'ALL');
   const [q, setQ] = useSticky('ProjectsPage.q', '');
   const [dp, setDp] = useState('ALL');
@@ -395,12 +394,6 @@ export function ProjectsPage() {
   const ppPending = opp.filter((l) => l.priceProtection?.status === 'REQUESTED').length;
 
   // ---- KPI ----
-  const prevOpp = leads.filter((l) => isOpp(l) && inPrev(leadDate(l)));
-  const open = opp.filter((l) => l.status === 'ACCEPTED' || l.status === 'QUOTED');
-  const openPrev = prevOpp.filter((l) => l.status === 'ACCEPTED' || l.status === 'QUOTED');
-  const boqSum = open.reduce((s, l) => s + boqTotal(l), 0);
-  const expected = open.reduce((s, l) => s + (quotes.filter((x) => x.leadId === l.id && x.status === 'SENT')[0]?.amount ?? 0), 0);
-  const conv = (arr: Lead[]) => { const w = arr.filter((l) => l.status === 'WON').length; const lo = arr.filter((l) => l.status === 'LOST').length; return w + lo ? (w / (w + lo)) * 100 : 0; };
   const owners = users.filter((u) => u.active && leads.some((l) => l.assignee === u.id && isOpp(l)));
 
   const askDelete = (l: Lead) => setConfirm({
@@ -434,14 +427,6 @@ export function ProjectsPage() {
 
   return (
     <div className="space-y-4">
-      <div className={kpiGrid('lg:grid-cols-5')}>
-        <StatCard label="Khách dự án" value={String(new Set(opp.map((l) => l.taxCode || l.company)).size)} icon={Users} color={C.blue} spark={monthly(opp, leadAt)} delta={pctDelta(opp.length, prevOpp.length)} deltaLabel="dự án so với kỳ trước" />
-        <StatCard label="Đang triển khai" value={String(open.length)} icon={FolderKanban} color={C.teal} delta={pctDelta(open.length, openPrev.length)} />
-        <StatCard label="Giá trị BOQ" value={compact(boqSum)} icon={FileSpreadsheet} color={C.orange} highlight spark={monthly(opp, leadAt, (l) => boqTotal(l))} delta={pctDelta(boqSum, openPrev.reduce((s, l) => s + boqTotal(l), 0))} />
-        <StatCard label="Doanh số dự kiến" value={compact(expected)} icon={TrendingUp} color="#8B5CF6" sub="Báo giá đang chờ khách phản hồi" />
-        <StatCard label="Chuyển đổi" value={`${conv(opp).toFixed(0)}%`} icon={Target} color={C.red} delta={pctDelta(conv(opp), conv(prevOpp))} />
-      </div>
-
       <FilterBar
         q={q} onQ={setQ} placeholder="Tìm dự án, khách hàng, mã dự án, mã đơn Getfly..."
         dept={dp} onDept={setDp} status={stage} onStatus={(v) => setStage(v as 'ALL' | Stage)}

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, Eye, Inbox, Pencil, Send, UserPlus, XCircle, Zap } from 'lucide-react';
+import { CheckCircle2, Clock, Eye, Pencil, UserPlus, XCircle, Zap } from 'lucide-react';
 import { Avatar, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ChipFilter, FilterBar } from '../../components/filters';
-import { Chip, EmptyState, Field, Modal, Panel, StatCard, Table, Tabs, useSticky, ViewSwitch } from '../../components/ui';
+import { Chip, EmptyState, Field, Modal, Panel, Table, Tabs, useSticky, ViewSwitch } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
-import { ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, C, compact, CONTENT_STATUS, dayStart, DECISION_LABEL, EXPENSE_STATUS, fmtDate, fmtDT, groupOf, HS_CLICHES_DEFAULT, HUB_GROUP, HUB_KIND, HUB_SHORT, HUB_SLA, inputBase, inputCls, kpiGrid, LEAVE_KIND, needsApproval, openContentReview, platformOfContent, POP_LABEL, progName, PROGRAM_STATUS, rowCls, SOURCE_LABEL, stCompanyOf, tdCls, tdFirst, tdLast, todayISO, useApp, vnd, wsPushVersion } from '../../lib/core';
+import { ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, compact, CONTENT_STATUS, dayStart, DECISION_LABEL, EXPENSE_STATUS, fmtDate, fmtDT, groupOf, HS_CLICHES_DEFAULT, HUB_GROUP, HUB_KIND, HUB_SHORT, HUB_SLA, inputBase, inputCls, LEAVE_KIND, needsApproval, openContentReview, platformOfContent, POP_LABEL, progName, PROGRAM_STATUS, rowCls, SOURCE_LABEL, stCompanyOf, tdCls, tdFirst, tdLast, todayISO, useApp, vnd, wsPushVersion } from '../../lib/core';
 import type { Activity, ApprovalDecision, ApprovalKind, DeptCode, GeneratedDoc, HubGroup, HubItem, Lead, MineItem, MktContent, Module, Receipt, StockReservation, User, Verification } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { advanceCash, expenseCash, receiptCash } from '../../lib/workshop';
@@ -350,8 +350,6 @@ export function TasksModule() {
   const kindCell = (k: ApprovalKind) => <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs" title={HUB_KIND[k]}><i className="h-2 w-2 shrink-0 rounded-full" style={{ background: HUB_GROUP[groupOf(k)].color }} />{HUB_SHORT[k]}</span>;
   const sentAt = (t0: number) => new Date(t0).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
   const selCls = 'h-4 w-4 accent-[rgb(var(--accent))]';
-  const overdue = todo.filter((x) => slaInfo(x.requestedAt, x.slaMin, now).overdue).length;
-  const todayDone = approvalLogs.filter((x) => x.deciderId === me.id && x.at >= Date.parse(`${todayISO()}T00:00:00`)).length;
   const counts = (Object.keys(HUB_GROUP) as HubGroup[]).map((g) => [g, todo.filter((x) => groupOf(x.kind) === g).length] as const);
   const people = users.filter((u) => u.active);
 
@@ -368,14 +366,6 @@ export function TasksModule() {
 
   return (
     <div className="space-y-4">
-      {/* Hàng chỉ số */}
-      <div className={kpiGrid('lg:grid-cols-4')}>
-        <StatCard label="Chờ tôi duyệt" value={String(todo.length)} icon={Inbox} color={C.orange} sub={`${todo.filter(urgentOf).length} việc khẩn`} />
-        <StatCard label="Quá hạn SLA" value={String(overdue)} icon={AlertTriangle} color={overdue ? C.red : C.teal} sub={overdue ? 'Xử lý ngay' : 'Không có'} />
-        <StatCard label="Tôi đã yêu cầu" value={String(mine.filter((x) => x.status === 'PENDING').length)} icon={Send} color={C.orange} sub={`${mine.filter((x) => x.status === 'REJECTED' || x.status === 'NEED_INFO').length} bị trả lại`} />
-        <StatCard label="Đã xử lý hôm nay" value={String(todayDone)} icon={CheckCircle2} color={C.teal} sub={`${approvalLogs.filter((x) => x.deciderId === me.id).length} tổng cộng`} />
-      </div>
-
       {/* Thanh tab */}
       <Tabs tabs={[
         { id: 'todo', label: `Chờ tôi duyệt (${todo.length})` },
@@ -458,7 +448,7 @@ export function TasksModule() {
         <Panel>
           <Table stt={Math.max(0, todoPaged.from - 1)} minW={1000} head={[
             <input key="all" type="checkbox" className={selCls} checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" disabled={!todoList.some((x) => x.approve)} />,
-            'Mã & nội dung', 'Phân loại', 'Người đề nghị', 'SLA / thời hạn', 'Trạng thái', <span key="act" className="block text-right">Thao tác</span>,
+            'Nội dung', 'Phân loại', 'Người đề nghị', 'SLA / thời hạn', 'Trạng thái', <span key="act" className="block text-right">Thao tác</span>,
           ]}>
             {todoPaged.slice.map((x) => {
               const urgent = urgentOf(x);
@@ -466,10 +456,9 @@ export function TasksModule() {
               return (
                 <tr key={x.key} className={cn(rowCls, sel.has(x.key) && 'bg-[rgb(var(--accent)/0.05)]')}>
                   <td className={cn(tdFirst, 'w-10')}><input type="checkbox" className={selCls} checked={sel.has(x.key)} onChange={() => sel.toggle(x.key)} disabled={!x.approve} aria-label={`Chọn ${x.title}`} /></td>
-                  <td className={cn(tdCls, 'max-w-[320px]')}>
+                  <td className={cn(tdCls, 'max-w-[340px]')}>
                     <button className="block max-w-full text-left" onClick={x.view} disabled={!x.view} title={[x.sub, x.reason].filter(Boolean).join('\n')}>
                       <p className="flex min-w-0 items-baseline gap-2"><span className="truncate font-medium text-[rgb(var(--fg))] hover:text-[rgb(var(--accent-fg))]">{x.title}</span>{x.amount ? <span className="shrink-0 text-xs font-semibold tabular-nums text-[rgb(var(--fg)/0.8)]">{compact(x.amount)}</span> : null}</p>
-                      <p className={cn('truncate text-xs', x.reason ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]')}>{x.reason ?? x.sub}</p>
                     </button>
                   </td>
                   <td className={tdCls}>{kindCell(x.kind)}</td>
@@ -498,7 +487,7 @@ export function TasksModule() {
 
       {tab === 'mine' && (
         <Panel>
-          <Table stt={Math.max(0, minePaged.from - 1)} minW={1000} head={['Mã & nội dung', 'Phân loại', 'Gửi lúc', 'SLA / thời hạn', 'Người xử lý', 'Trạng thái', <span key="act" className="block text-right">Thao tác</span>]}>
+          <Table stt={Math.max(0, minePaged.from - 1)} minW={1000} head={['Nội dung', 'Phân loại', 'Gửi lúc', 'SLA / thời hạn', 'Người xử lý', 'Trạng thái', <span key="act" className="block text-right">Thao tác</span>]}>
             {minePaged.slice.map((x) => (
               <tr key={x.key} className={rowCls}>
                 <td className={cn(tdFirst, 'max-w-[360px]')}><p className="truncate font-medium">{x.title}</p><p className="truncate text-xs text-[rgb(var(--muted))]">{x.sub}</p>{x.note && x.status !== 'PENDING' && <p className={cn('truncate text-[11px]', x.status === 'APPROVED' ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')}>{x.note}</p>}</td>

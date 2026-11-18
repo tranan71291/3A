@@ -8,7 +8,7 @@ import { PluginKey } from '@tiptap/pm/state';
 import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
-import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
@@ -2116,6 +2116,44 @@ export const summarizeText = (t: string) => {
 };
 
 export const agoText = (at: number) => { const m = Math.round((Date.now() - at) / 60000); return m < 1 ? 'vừa xong' : m < 60 ? `${m} phút trước` : m < 1440 ? `${Math.round(m / 60)} giờ trước` : new Date(at).toLocaleDateString('vi-VN'); };
+
+export const FEELINGS: PostFeeling[] = [
+  { emoji: '😊', label: 'vui vẻ', verb: 'feel' }, { emoji: '😄', label: 'hạnh phúc', verb: 'feel' }, { emoji: '😎', label: 'tuyệt', verb: 'feel' },
+  { emoji: '🤩', label: 'hào hứng', verb: 'feel' }, { emoji: '🙏', label: 'biết ơn', verb: 'feel' }, { emoji: '💪', label: 'tự hào', verb: 'feel' },
+  { emoji: '🥰', label: 'được yêu thương', verb: 'feel' }, { emoji: '😌', label: 'thư giãn', verb: 'feel' }, { emoji: '🔥', label: 'quyết tâm', verb: 'feel' },
+  { emoji: '😴', label: 'mệt mỏi', verb: 'feel' }, { emoji: '🤔', label: 'suy tư', verb: 'feel' }, { emoji: '😢', label: 'buồn', verb: 'feel' },
+  { emoji: '🎉', label: 'ăn mừng', verb: 'act' }, { emoji: '💼', label: 'làm việc', verb: 'act' }, { emoji: '🏗️', label: 'đi công trình', verb: 'act' },
+  { emoji: '🤝', label: 'gặp khách hàng', verb: 'act' }, { emoji: '📋', label: 'họp', verb: 'act' }, { emoji: '✈️', label: 'đi công tác', verb: 'act' },
+  { emoji: '🎓', label: 'học hỏi', verb: 'act' }, { emoji: '🍽️', label: 'ăn trưa cùng team', verb: 'act' }, { emoji: '🏆', label: 'nhận giải', verb: 'act' },
+];
+
+export const REACTS = [
+  { id: 'like', emoji: '👍', label: 'Thích', color: '#1877F2' }, { id: 'love', emoji: '❤️', label: 'Yêu thích', color: '#F33E58' },
+  { id: 'care', emoji: '🥰', label: 'Thương thương', color: '#F7B125' }, { id: 'haha', emoji: '😆', label: 'Haha', color: '#F7B125' },
+  { id: 'wow', emoji: '😮', label: 'Wow', color: '#F7B125' }, { id: 'sad', emoji: '😢', label: 'Buồn', color: '#F7B125' },
+] as const;
+
+export const HOME_FOCUS_EVT = '3a:home-focus-post';
+
+export const FB_ICON = { photo: '#45BD62', feel: '#F7B928', tag: '#1877F2', place: '#F5533D', poll: '#F57C1F', file: '#8A8D91' };
+
+export const isMedia = (f: ChatFile) => f.type.startsWith('image/') || f.type.startsWith('video/');
+
+export const reactOf = (p: Post, uid: string): ReactId | null => (p.likes.includes(uid) ? 'like' : ((Object.entries(p.reacts ?? {}).find(([, ids]) => ids.includes(uid))?.[0] as ReactId | undefined) ?? null));
+
+export const reactTotal = (p: Post) => p.likes.length + Object.values(p.reacts ?? {}).reduce((a, ids) => a + ids.length, 0);
+
+export const withReact = (p: Post, uid: string, r: ReactId | null): Post => {
+  const reacts = Object.fromEntries(Object.entries(p.reacts ?? {}).map(([k, ids]) => [k, ids.filter((x) => x !== uid)]).filter(([, ids]) => ids.length));
+  const likes = p.likes.filter((x) => x !== uid);
+  if (r === 'like') likes.push(uid); else if (r) reacts[r] = [...(reacts[r] ?? []), uid];
+  return { ...p, likes, reacts: Object.keys(reacts).length ? reacts : undefined };
+};
+
+export const firstName = (n: string) => n.trim().split(/\s+/).pop() ?? n;
+
+/** Ghi nhận lượt xem khi bài hiện ≥ 50% trên màn hình 1 giây (mỗi người tính 1 lần, không tính tác giả) */
+export const seenThisSession = new Set<string>();
 
 export const SOCIAL0: SocialCfg = { title: '', facebookUrl: '', facebookPageId: '', zaloOaUrl: '', youtubeUrl: '', youtubeChannelId: '' };
 

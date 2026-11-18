@@ -6,7 +6,7 @@ import { removeWithUndo } from '../../app/context';
 import { useOutsideClose } from '../../app/header';
 import { RowMenu } from '../../components/controls';
 import { FilePicker, useSticky } from '../../components/ui';
-import { agoText, btnGhost, btnPrimary, btnSm, cloud, CLOUD_ON, compact, dmId, fmtDate, fold, inputCls, ROLE_LABEL, safeUrl, shrinkImage, SOCIAL_ERR, SOCIAL_TAB, SOCIAL0, socialCache, uid, useApp, ytIdOf, ytThumb } from '../../lib/core';
+import { agoText, btnGhost, btnPrimary, btnSm, cloud, CLOUD_ON, compact, dmId, fmtDate, fold, HOME_FOCUS_EVT, inputCls, ROLE_LABEL, safeUrl, shrinkImage, SOCIAL_ERR, SOCIAL_TAB, SOCIAL0, socialCache, uid, useApp, ytIdOf, ytThumb } from '../../lib/core';
 import type { SocialCfg, SocialChannel, SocialItem } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { useServerStatus } from '../ai/ai-core';
@@ -188,7 +188,7 @@ export function SocialHubWidget() {
 }
 
 /** Thanh lệnh Trợ lý số: tìm nhanh bài viết, khách hàng, dự án, báo giá, đồng nghiệp; hỏi AI về số liệu */
-export function AssistantCommandBar({ onPost }: { onPost: (id: string) => void }) {
+export function AssistantCommandBar({ onPost = (id) => window.dispatchEvent(new CustomEvent(HOME_FOCUS_EVT, { detail: id })), variant = 'card' }: { onPost?: (id: string) => void; variant?: 'card' | 'header' }) {
   const { posts, myLeads, myCustomers, quotes, users, me, askAi, go, canSee, openCustomer, openComposer, comments, userName } = useApp();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
@@ -229,9 +229,9 @@ export function AssistantCommandBar({ onPost }: { onPost: (id: string) => void }
   const list = q.trim() ? hits : quick;
   const run = (h?: Hit) => { if (!h) return; setOpen(false); setQ(''); h.run(); };
   return (
-    <section className="relative rounded-md border border-[rgb(var(--accent)/0.45)] bg-[rgb(var(--surface))] p-3 shadow-[0_0_0_3px_rgb(var(--accent)/0.08)]" ref={boxRef} aria-label="Trợ lý số">
+    <section className={cn('relative', variant === 'header' ? 'w-full max-w-[620px]' : 'rounded-md border border-[rgb(var(--accent)/0.45)] bg-[rgb(var(--surface))] p-3 shadow-[0_0_0_3px_rgb(var(--accent)/0.08)]')} ref={boxRef} aria-label="Trợ lý số">
       <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[rgb(var(--accent)/0.14)]"><Sparkles className="h-[18px] w-[18px] text-[rgb(var(--accent))]" aria-hidden /></span>
+        <span className={cn('flex shrink-0 items-center justify-center rounded-md bg-[rgb(var(--accent)/0.14)]', variant === 'header' ? 'h-10 w-10' : 'h-9 w-9')}><Sparkles className="h-[18px] w-[18px] text-[rgb(var(--accent))]" aria-hidden /></span>
         <input ref={inputRef} className="h-10 min-w-0 flex-1 rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--bg))] px-3 text-sm text-[rgb(var(--fg))] placeholder:text-[rgb(var(--faint))] focus:border-[rgb(var(--accent))] focus:outline-none"
           placeholder="Hỏi trợ lý hoặc tìm nhanh: bài viết, khách hàng, báo giá, số liệu…" value={q} onFocus={() => setOpen(true)}
           onChange={(e) => { setQ(e.target.value); setOpen(true); setHi(0); }}
@@ -244,9 +244,9 @@ export function AssistantCommandBar({ onPost }: { onPost: (id: string) => void }
           role="combobox" aria-expanded={open} aria-controls="assist-results" aria-label="Hỏi trợ lý số" />
         <button className={cn(btnPrimary, 'h-10 shrink-0')} onClick={() => (q.trim() ? run(list[hi] ?? hits[hits.length - 1]) : askAi())}><Bot className="h-4 w-4" aria-hidden /><span className="hidden sm:inline">Hỏi trợ lý</span></button>
       </div>
-      <p className="mt-2 px-0.5 text-xs text-[rgb(var(--muted))]">Chào {me.name}! Hôm nay có <b className="text-[rgb(var(--fg))]">{todayPosts}</b> bài mới, <b className="text-[rgb(var(--fg))]">{myMentions}</b> lượt nhắc tên bạn và <b className="text-[rgb(var(--fg))]">{taskN}</b> việc chờ xử lý. <span className="hidden md:inline">Nhấn <kbd className="rounded border border-[rgb(var(--line))] px-1">/</kbd> để gõ nhanh.</span></p>
+      {variant === 'card' && <p className="mt-2 px-0.5 text-xs text-[rgb(var(--muted))]">Chào {me.name}! Hôm nay có <b className="text-[rgb(var(--fg))]">{todayPosts}</b> bài mới, <b className="text-[rgb(var(--fg))]">{myMentions}</b> lượt nhắc tên bạn và <b className="text-[rgb(var(--fg))]">{taskN}</b> việc chờ xử lý. <span className="hidden md:inline">Nhấn <kbd className="rounded border border-[rgb(var(--line))] px-1">/</kbd> để gõ nhanh.</span></p>}
       {open && list.length > 0 && (
-        <ul id="assist-results" role="listbox" className="absolute left-3 right-3 top-[3.6rem] z-40 max-h-96 overflow-y-auto rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-[var(--shadow-lg)]">
+        <ul id="assist-results" role="listbox" className={cn('absolute z-50 max-h-96 overflow-y-auto rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-[var(--shadow-lg)]', variant === 'header' ? 'left-12 right-0 top-12' : 'left-3 right-3 top-[3.6rem]')}>
           {list.map((h, i) => (
             <li key={h.key} role="option" aria-selected={hi === i}>
               {(i === 0 || list[i - 1].group !== h.group) && <p className="px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">{h.group}</p>}

@@ -223,10 +223,8 @@ export function UserMenu({ theme, onTheme, roleSwitch }: { theme?: 'dark' | 'lig
   const row = 'flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm text-[rgb(var(--fg2))] transition-colors hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--fg))]';
   return (
     <div className="relative" ref={ref}>
-      <button className="flex items-center gap-2.5 rounded-md py-1 pl-1 pr-2 transition-colors hover:bg-[rgb(var(--ink)/0.05)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--secondary-fg))]" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="true" aria-label={`Tài khoản ${me.name}`}>
-        <PAvatar user={me} size={32} meId={me.id} />
-        <span className="hidden max-w-[180px] text-left lg:block"><span className="block truncate text-sm font-semibold leading-tight text-[rgb(var(--fg))]">{me.name}</span><span className="block truncate text-xs text-[rgb(var(--muted))]">{ROLE_LABEL[role]}</span></span>
-        <ChevronDown className={cn('hidden h-4 w-4 text-[rgb(var(--muted))] transition-transform lg:block', open && 'rotate-180')} aria-hidden />
+      <button className="flex items-center rounded-full p-0.5 transition-shadow hover:ring-2 hover:ring-[rgb(var(--ink)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--secondary-fg))]" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="true" aria-label={`Tài khoản ${me.name} · ${ROLE_LABEL[role]}`} title={`${me.name} · ${ROLE_LABEL[role]}`}>
+        <PAvatar user={me} size={34} meId={me.id} />
       </button>
       {open && (
         <div className="glass absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-[rgb(var(--ink)/0.1)] p-2 shadow-2xl motion-safe:animate-[popIn_.15s_ease-out]" role="menu">

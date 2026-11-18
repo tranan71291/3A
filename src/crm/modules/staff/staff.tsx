@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { CalendarDays, CheckCircle2, ChevronRight, Clock, FileSpreadsheet, MapPin, Pencil, Plane, Plus, Receipt as ReceiptIcon, Send, Trash2, Upload, Users } from 'lucide-react';
+import { CalendarDays, CheckCircle2, ChevronRight, FileSpreadsheet, MapPin, Pencil, Plus, Receipt as ReceiptIcon, Send, Trash2, Upload } from 'lucide-react';
 import { useIntent } from '../../components/command-palette';
 import { Fab } from '../../components/controls';
 import { Drawer } from '../../components/drawer';
 import { FilterBar, useInRange } from '../../components/filters';
-import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { actDays, ACTIVITY_STATUS, ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, C, compact, DECISION_LABEL, digits, EXPENSE_STATUS, fmtDate, fmtDT, inputCls, kpiGrid, LEAVE_KIND, needsApproval, pad2, rowCls, tdCls, tdFirst, tdLast, todayISO, toLocal, TRANSPORTS, uid, useApp, vnd, WEEKDAY } from '../../lib/core';
+import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, Tabs, useSticky } from '../../components/ui';
+import { actDays, ACTIVITY_STATUS, ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, compact, DECISION_LABEL, digits, EXPENSE_STATUS, fmtDate, fmtDT, inputCls, LEAVE_KIND, needsApproval, pad2, rowCls, tdCls, tdFirst, tdLast, todayISO, toLocal, TRANSPORTS, uid, useApp, vnd, WEEKDAY } from '../../lib/core';
 import type { Activity, ActivityStatus, ActivityType, ApprovalDecision, LeaveKind } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { advanceCash, expenseCash } from '../../lib/workshop';
@@ -441,20 +441,10 @@ export function StaffModule() {
   const people = users.filter((u) => scope.includes(u.id) && u.active);
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
   const dayKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-  const meetings = live.filter((a) => a.type === 'MEETING' || a.type === 'SURVEY');
-  const trips = live.filter((a) => a.type === 'TRIP' && ['APPROVED', 'DONE'].includes(a.status));
-  const leaves = live.filter((a) => a.type === 'LEAVE' && a.status === 'APPROVED');
   const waiting = pending.length + pendingExp.length;
 
   return (
     <div className="space-y-4">
-      <div className={kpiGrid('lg:grid-cols-4')}>
-        <StatCard label="Gặp khách hàng" value={String(meetings.length)} icon={Users} color={C.teal} sub={`${meetings.filter((a) => a.status === 'DONE').length} cuộc đã hoàn thành`} />
-        <StatCard label="Ngày công tác" value={String(trips.reduce((s, a) => s + actDays(a), 0))} icon={Plane} color={C.blue} sub={`Chi phí ${compact(trips.reduce((s, a) => s + a.cost, 0))}`} />
-        <StatCard label="Nghỉ & việc riêng" value={String(leaves.filter((a) => (a.leaveKind ?? 'LEAVE') === 'LEAVE').reduce((s, a) => s + actDays(a), 0))} icon={CalendarDays} color={C.red} sub={`${leaves.filter((a) => a.leaveKind && a.leaveKind !== 'LEAVE').length} lần đi muộn / giải trình`} />
-        <StatCard label="Chờ duyệt" value={String(mine.filter((a) => a.status === 'PENDING_APPROVAL').length + pendingExp.length)} icon={Clock} color={C.orange} sub={waiting ? `${waiting} cần bạn duyệt` : 'Không có việc chờ bạn'} />
-      </div>
-
       <Tabs tabs={[{ id: 'list', label: 'Lịch' }, { id: 'approval', label: waiting ? `Chờ duyệt (${waiting})` : 'Chờ duyệt' }, { id: 'summary', label: 'Tổng hợp' }]} value={tab} onChange={setTab} />
 
       <FilterBar q={q} onQ={setQ} placeholder="Tìm tiêu đề, khách hàng, địa điểm..." status={type} onStatus={setType} statusLabel="Mọi loại" statusOptions={(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => ({ value: t, label: ACTIVITY_TYPE[t].label }))} extraActive={who !== 'ALL' ? 1 : 0}>

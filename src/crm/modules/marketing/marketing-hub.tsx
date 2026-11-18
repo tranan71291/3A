@@ -205,7 +205,7 @@ export function MarketingHubPage() {
   return (
     <div className="space-y-4">
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
-      {(tab === 'calendar' || tab === 'roi') && (
+      {tab === 'roi' && (
         <div className={kpiGrid('lg:grid-cols-4')}>
           <StatCard label={`Ngân sách ${year}`} value={compact(yc.reduce((s, c) => s + c.budget, 0))} sub={`${yc.length} chiến dịch, ${yc.filter((c) => c.status === 'RUNNING').length} đang chạy`} icon={Wallet} color={C.blue} />
           <StatCard label="Đã chi" value={compact(spent)} sub={yc.reduce((s, c) => s + c.budget, 0) ? `${Math.round((spent / yc.reduce((s, c) => s + c.budget, 0)) * 100)}% ngân sách` : 'Chưa có ngân sách'} icon={Banknote} color={C.orange} />

@@ -27,6 +27,7 @@ import { ContactsPage } from '../modules/contacts/contacts';
 import { CustomerDrawer, CustomerFormModal, CustomersPage } from '../modules/customers/customer-360';
 import { CashbookModule } from '../modules/finance/cashbook';
 import { HomePage } from '../modules/home/home';
+import { AssistantCommandBar } from '../modules/home/social-hub';
 import { LeadsModule } from '../modules/leads/inbox';
 import { LeadFormModal } from '../modules/leads/lead-form';
 import { ContentReviewHost } from '../modules/marketing/content-workspace';
@@ -1657,6 +1658,7 @@ export default function DashboardApp() {
               <h1 className="truncate text-base font-bold leading-tight tracking-tight lg:text-lg">{consoleMode ? '3A Platform Console' : MODULE_LABEL[page]}</h1>
             </nav>
             <div className="hidden min-w-0 flex-1 justify-center px-2 lg:flex">
+{page === 'home' && !consoleMode ? <AssistantCommandBar variant="header" /> : <>
 <div className="relative w-full max-w-[520px]" onDragOver={(e) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }} onDrop={(e) => { const f = e.dataTransfer.files?.[0]; if (f) { e.preventDefault(); setPaletteImg(f); setPaletteOpen(true); } }}>
               <button className="glass flex h-10 w-full items-center gap-3 pr-2 rounded-md border border-[rgb(var(--ink)/0.08)] px-3.5 text-left text-sm text-[rgb(var(--muted))] shadow-[0_8px_30px_rgba(0,0,0,.25)] transition-colors hover:border-[rgb(var(--secondary)/0.7)] hover:text-[rgb(var(--fg2))]" onClick={() => setPaletteOpen(true)} title="Spotlight: tìm nhanh, gõ > để chạy lệnh (Ctrl / ⌘ + K), kéo thả ảnh để tìm sản phẩm tương tự">
                 <Search className="h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 flex-1 truncate">Tìm khách hàng, MST, mã đơn… hoặc gõ <b className="font-mono text-[rgb(var(--accent-fg))]">&gt;</b> để ra lệnh</span>
@@ -1664,6 +1666,7 @@ export default function DashboardApp() {
               </button>
                 <button className="absolute right-[3.25rem] top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--accent-fg))]" onClick={() => { setPaletteImg('pick'); setPaletteOpen(true); }} title="Tìm bằng hình ảnh: ảnh mẫu, bản vẽ, phụ kiện" aria-label="Tìm bằng hình ảnh"><Camera className="h-4 w-4" /></button>
               </div>
+            </>}
             </div>
             <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:ml-0">
               {showDate && <div className={hub ? '' : 'lg:hidden'}><DateRangePicker compact /></div>}
