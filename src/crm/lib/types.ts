@@ -825,6 +825,9 @@ export type AppCtx = {
   /** v38: lịch sử phiên bản nội dung (tối đa 20 mốc / bài) và hạn mức AI theo người */
   contentVersions: ContentVersion[];
   setContentVersions: Dispatch<SetStateAction<ContentVersion[]>>;
+  /** v38.6: thư viện ảnh marketing (tab Image), tối đa 200 ảnh / doanh nghiệp */
+  mktImages: MktImage[];
+  setMktImages: Dispatch<SetStateAction<MktImage[]>>;
   aiQuota: AiQuotaCfg;
   setAiQuota: Dispatch<SetStateAction<AiQuotaCfg>>;
   setSocialPosts: Dispatch<SetStateAction<SocialPost[]>>;
@@ -1238,6 +1241,8 @@ export type Campaign = {
   ownerId?: string; goal?: string; targetLeads?: number; audienceId?: string; manualLeads?: number; manualRevenue?: number; note?: string; createdAt: number;
   /** v33: yêu cầu nội dung / hình ảnh để giao AI ngay khi tạo chiến dịch */
   textPrompt?: string; imagePrompt?: string;
+  /** v38.6: kênh AI soạn bài đầu tiên + thông số kênh / biến thể (giống Nhiệm vụ nội dung) */
+  aiChannel?: MktChannel; settings?: Record<string, StSettingValue>;
 };
 
 export type MktContentType = 'AD_POST' | 'PRESS' | 'ZALO_OA' | 'ZNS' | 'QUOTE_EMAIL' | 'CARE_MSG';
@@ -1273,7 +1278,7 @@ export type Audience = { id: string; name: string; base: AudBase; match: 'ALL' |
 
 export type AutoTrigger = 'LEAD_NEW' | 'QUOTE_NO_REPLY' | 'JOB_WON' | 'ZALO_FOLLOW' | 'INACTIVE_CUSTOMER' | 'AUDIENCE';
 
-export type AutoChannel = 'ZNS' | 'ZALO_OA' | 'SMS' | 'EMAIL';
+export type AutoChannel = 'ZNS' | 'ZALO_OA' | 'SMS' | 'MESSENGER' | 'EMAIL';
 
 export type AutoStep = { id: string; wait: number; channel: AutoChannel; znsId?: string; text: string };
 
@@ -1287,7 +1292,7 @@ export type AutoRun = { id: string; wfId: string; subject: AutoSubject; step: nu
 export type AudField = { key: string; label: string; type: 'select' | 'number' | 'text' | 'bool'; options?: (app: AppCtx) => [string, string][]; get: (r: Customer | Lead, app: AppCtx) => string | number | boolean };
 
 // ---------------- Trang Marketing Hub ----------------
-export type MktTab = 'calendar' | 'roi' | 'content' | 'banner' | 'audience' | 'automation';
+export type MktTab = 'calendar' | 'content' | 'image' | 'roi' | 'automation';
 
 // ---------------------------------------------------------------------
 //  v33: AI CONTENT & VISUAL STUDIO — phân tích tiêu đề, dàn ý dạng khối kéo thả, viết từng phần, ảnh minh họa theo tiểu mục
@@ -1551,7 +1556,7 @@ export type WsSlashItem = { id: string; label: string; hint: string; keys: strin
 
 /**
  * Mỗi nhóm biến thể = một hàng ô bấm chọn; mỗi lựa chọn là 1 câu chỉ dẫn ngắn cho AI.
- * Lưu trong settings của nhiệm vụ / bài viết với khóa `v_<nhóm>` (mảng id). Chưa chọn = dùng mặc định (★).
+ * Lưu trong settings của nhiệm vụ / bài viết với khóa `v_<nhóm>` (mảng id). Chưa chọn = dùng mặc định.
  */
 export type VariantKind = 'text' | 'image';
 
@@ -1566,10 +1571,20 @@ export type VariantOption = {
   custom?: boolean;
 };
 
-export type VariantGroup = { id: string; kind: VariantKind; label: string; multi: boolean; options: VariantOption[]; channels?: string[]; hint?: string };
+export type VariantGroup = { id: string; kind: VariantKind; label: string; multi: boolean; options: VariantOption[]; channels?: string[]; hint?: string; /** Ẩn sau "+ Hiện cài đặt nâng cao" */ adv?: boolean };
 
 /** Cấu hình biến thể của doanh nghiệp (hubCfg.content): ẩn / thêm lựa chọn, đổi mặc định, bộ cài sẵn */
 export type ContentVariantCfg = { hidden: string[]; custom: (VariantOption & { group: string })[]; defaults: Record<string, string[]>; presets: { id: string; name: string; values: Record<string, string[]> }[] };
+
+export type MenuOption = { id: string; label: string; hint?: string; img?: string };
+
+// ---------- Mẫu nhanh (template) ----------
+
+export type ContentTemplate = { id: string; name: string; desc: string; channels?: string[]; values: Record<string, string[]> };
+
+// ---------- Image: tạo ảnh AI theo ảnh tham chiếu, đúng kích thước, chuẩn SEO; thư viện ảnh; thiết kế banner ----------
+
+export type MktImage = { id: string; url: string; w: number; h: number; kb: number; fileName: string; alt: string; caption: string; title: string; keyword: string; prompt: string; size: string; refSku?: string; createdAt: number; by?: string };
 
 // =====================================================================
 //  COMMUNICATION & AI HUB (cột phải): Chat nội bộ theo ngữ cảnh + AI Copilot

@@ -62,11 +62,43 @@ export function useAi(feature: keyof HubCfg['ai']['features']) {
   return { available, label, provider: prov, ask, srv };
 }
 
-/** Tách JSON đầu tiên trong câu trả lời của AI */
+/**
+ * Tách JSON trong câu trả lời của AI, chịu được: khối ```json, chữ giải thích trước / sau, dấu ngoặc kép cong,
+ * dấu phẩy thừa, và câu trả lời bị cắt giữa chừng (hết max token) — khi đó giữ phần đã trọn vẹn và đóng ngoặc lại.
+ */
 export function parseAiJson<T>(s: string): T | null {
-  const m = s.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const body = m ? m[1] : s.slice(Math.max(0, s.indexOf('{')), s.lastIndexOf('}') + 1);
-  try { return JSON.parse(body) as T; } catch { return null; }
+  if (!s) return null;
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)(```|$)/);
+  const src = fence && fence[1].includes('{') ? fence[1] : s;
+  const start = src.indexOf('{');
+  if (start < 0) return null;
+  const tryParse = (t: string): T | null => {
+    for (const v of [t, t.replace(/[“”]/g, '"').replace(/[‘’]/g, "'"), t.replace(/,\s*([}\]])/g, '$1'), t.replace(/[“”]/g, '"').replace(/,\s*([}\]])/g, '$1')]) {
+      try { return JSON.parse(v) as T; } catch { /* thử cách khác */ }
+    }
+    return null;
+  };
+  // Quét theo ngoặc, bỏ qua ký tự trong chuỗi; ghi lại vị trí kết thúc trọn vẹn gần nhất để cắt khi bị đứt
+  const stack: string[] = [];
+  let inStr = false, esc = false, lastSafe = -1;
+  for (let i = start; i < src.length; i++) {
+    const ch = src[i];
+    if (inStr) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') { inStr = false; } continue; }
+    if (ch === '"') { inStr = true; continue; }
+    if (ch === '{' || ch === '[') stack.push(ch === '{' ? '}' : ']');
+    else if (ch === '}' || ch === ']') { stack.pop(); if (!stack.length) return tryParse(src.slice(start, i + 1)); lastSafe = i; }
+    else if (ch === ',') lastSafe = i - 1;
+  }
+  // Bị cắt: lấy tới phần trọn vẹn cuối cùng rồi đóng các ngoặc còn mở
+  if (lastSafe < start) return null;
+  let cut = src.slice(start, lastSafe + 1);
+  const st2: string[] = []; let s2 = false, e2 = false;
+  for (const ch of cut) {
+    if (s2) { if (e2) e2 = false; else if (ch === '\\') e2 = true; else if (ch === '"') s2 = false; continue; }
+    if (ch === '"') s2 = true; else if (ch === '{' || ch === '[') st2.push(ch === '{' ? '}' : ']'); else if (ch === '}' || ch === ']') st2.pop();
+  }
+  cut = cut.replace(/[,:]\s*$/, '');
+  return tryParse(cut + st2.reverse().join(''));
 }
 
 /** Thưởng tăng trưởng: đạt ngưỡng % thì thưởng theo từng bậc doanh thu tăng thêm */

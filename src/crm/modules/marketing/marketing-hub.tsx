@@ -1,17 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Columns3, Copy, Download, ExternalLink, Gauge, GripVertical, History, ImagePlus, Inbox, List, Lock, Package, Plus, RefreshCw, Sparkles, Trash2, TrendingUp, Upload, Wallet, X } from 'lucide-react';
-import { Chip, EmptyState, Field, MoneyInput, Panel, SideSheet, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { AI_NAME, aiErrText, AUD_FIELDS, AUD_OPS, AUTO_CH, AUTO_TRIGGER, BANNER_PRESETS, BANNER_SIZE, bizMode, blocksToHtml, blocksToMarkdown, boqTotal, btnAccent, btnGhost, btnPrimary, btnSm, C, CAMP_STATUS, compact, CONTENT_STATUS, dayMs, downloadBlob, fillVars, fmtDate, fold, inputBase, inputCls, isoDay, JOB_LABEL, kpiGrid, LEAD_STATUS, leadAt, MKT_CH, MKT_OPEN_EVT, openContentReview, rowCls, shrinkImage, slugify, SOURCE_LABEL, ST_BRIEF_FIELDS, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stHas, stickyStore, stOutlinePrompt, stSectionPrompt, stStr, STUDIO_STEPS, studioSupports, subjectOf, TASK_STATUS, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vAspect, vCfgOf, vImg, vKey, WRITER, WRITER_TONES } from '../../lib/core';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Columns3, Copy, Download, Gauge, GripVertical, History, ImagePlus, Inbox, List, Lock, Package, Plus, RefreshCw, Sparkles, Trash2, TrendingUp, Upload, Wallet, X } from 'lucide-react';
+import { Chip, EmptyState, Field, Panel, SideSheet, StatCard, Table, Tabs, useSticky } from '../../components/ui';
+import { AI_NAME, aiErrText, AUD_FIELDS, AUD_OPS, AUTO_CH, AUTO_TRIGGER, BANNER_PRESETS, BANNER_SIZE, bizMode, blocksToHtml, blocksToMarkdown, boqTotal, btnAccent, btnGhost, btnPrimary, btnSm, C, compact, CONTENT_STATUS, dayMs, downloadBlob, fillVars, fmtDate, fold, inputBase, inputCls, isoDay, JOB_LABEL, kpiGrid, LEAD_STATUS, leadAt, MKT_CH, MKT_OPEN_EVT, MKT_TABS, rowCls, shrinkImage, SOURCE_LABEL, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stHas, stickyStore, stOutlinePrompt, stSectionPrompt, stStr, STUDIO_STEPS, studioSupports, subjectOf, TASK_STATUS, tdCls, tdFirst, tdLast, uid, useApp, vAspect, vCfgOf, vImg, vKey, WRITER, WRITER_TONES } from '../../lib/core';
 import { downloadCsv, xlsxBlob } from '../../lib/csv';
-import type { AiJob, AppCtx, AudBase, Audience, AudOp, AudRule, AutoChannel, Automation, AutoRun, AutoStep, AutoSubject, AutoTrigger, BannerSize, BannerSpec, CalView, Campaign, CampaignStatus, CompanyInfo, ContentBlock, ContentStatus, Customer, ImgAspect, Job, Lead, MktChannel, MktContent, MktContentType, MktTab, MktTask, StArticle, StSettings, StSettingValue, TaskStatus, TitleReport, WriterPreset } from '../../lib/types';
+import type { AiJob, AppCtx, AudBase, Audience, AudOp, AudRule, AutoChannel, Automation, AutoRun, AutoStep, AutoSubject, AutoTrigger, BannerSize, BannerSpec, CalView, Campaign, CompanyInfo, ContentBlock, ContentStatus, Customer, ImgAspect, Job, Lead, MktChannel, MktContent, MktContentType, MktTab, MktTask, StArticle, StSettings, TaskStatus, TitleReport, WriterPreset } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { apiPost, parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
 import { useWriter } from '../ai/copilot-plus';
 import { loadImg } from '../ai/visual-search';
-import { applyWatermark, getPlatform, stClip, StFieldControl, StudioWorkspace } from './content-studio';
-import { KwConflictNote, openMktContent, VariantPicker, vText } from './content-workspace';
+import { applyWatermark, getPlatform, stClip, StudioWorkspace } from './content-studio';
+import { AutomationHub, CampaignSheet, ImageStudioTab, TaskSheet, vText } from './content-workspace';
 import { Switch } from '../platform/console';
 
 /** Kết quả chiến dịch: lead theo kênh nguồn trong thời gian chạy (+30 ngày), doanh thu từ lead đã chốt / đơn đã ký */
@@ -187,7 +187,9 @@ export async function drawBanner(cv: HTMLCanvasElement, b: BannerSpec, brand: st
 export function MarketingHubPage() {
   const app = useApp();
   const { campaigns, myLeads, jobs, now, canDo } = app;
-  const [tab, setTab] = useSticky<MktTab>('Mkt.tab', 'calendar');
+  const [tab0, setTab] = useSticky<MktTab>('Mkt.tab', 'calendar');
+  // tab cũ đã gộp: Thiết kế banner → Image, Phân khúc → Automation
+  const tab: MktTab = MKT_TABS.includes(tab0) ? tab0 : (tab0 as string) === 'banner' ? 'image' : (tab0 as string) === 'audience' ? 'automation' : 'calendar';
   useEffect(() => { const f = () => setTab('content'); window.addEventListener(MKT_OPEN_EVT, f); return () => window.removeEventListener(MKT_OPEN_EVT, f); }, [setTab]);
   const t = now ?? Date.now();
   const year = new Date(t).getFullYear();
@@ -196,8 +198,8 @@ export function MarketingHubPage() {
   const spent = yc.reduce((s, c) => s + c.spent, 0);
   const rev = stats.reduce((s, x) => s + x.revenue, 0);
   const tabs: { id: MktTab; label: string }[] = [
-    { id: 'calendar', label: 'Lịch tổng' }, { id: 'roi', label: 'Ngân sách & ROI' }, { id: 'content', label: 'Content Studio' },
-    { id: 'banner', label: 'Thiết kế banner' }, { id: 'audience', label: 'Phân khúc' }, { id: 'automation', label: 'Tự động hóa' },
+    { id: 'calendar', label: 'Plan' }, { id: 'content', label: 'Content' }, { id: 'image', label: 'Image' },
+    { id: 'roi', label: 'Budget' }, { id: 'automation', label: 'Automation' },
   ];
   return (
     <div className="space-y-4">
@@ -213,61 +215,10 @@ export function MarketingHubPage() {
       {tab === 'calendar' && <CampaignCalendar />}
       {tab === 'roi' && <CampaignRoi />}
       {tab === 'content' && <ContentStudio />}
-      {tab === 'banner' && <BannerStudio />}
-      {tab === 'audience' && <AudienceBuilder />}
-      {tab === 'automation' && <AutomationList />}
+      {tab === 'image' && <ImageStudioTab />}
+      {tab === 'automation' && <AutomationHub />}
       {!canDo('mkt.manage') && <p className="flex items-center gap-2 text-xs text-[rgb(var(--muted))]"><Lock className="h-3.5 w-3.5" aria-hidden />Chế độ xem. Trưởng Marketing hoặc Giám đốc được tạo / sửa chiến dịch, nội dung và kịch bản tự động.</p>}
     </div>
-  );
-}
-
-export function CampaignSheet({ c, onClose }: { c: Campaign | null; onClose: () => void }) {
-  const { campaigns, setCampaigns, audiences, users, canDo, notify, me } = useApp();
-  const [f, setF] = useState<Campaign>(() => c ?? { id: uid('cp'), code: `CD-${new Date().getFullYear()}-${String(campaigns.length + 1).padStart(3, '0')}`, name: '', channels: ['ZALO_OA'], start: todayISO(), end: isoDay(Date.now() + 30 * dayMs), budget: 0, spent: 0, status: 'PLANNED', ownerId: me?.id, createdAt: Date.now() });
-  const set = <K extends keyof Campaign>(k: K, v: Campaign[K]) => setF((p) => ({ ...p, [k]: v }));
-  const ro = !canDo('mkt.manage');
-  const save = () => { setCampaigns((p) => (p.some((x) => x.id === f.id) ? p.map((x) => (x.id === f.id ? f : x)) : [f, ...p])); notify(`Đã lưu chiến dịch ${f.name}`, 'teal'); onClose(); };
-  const { setMktTasks } = useApp();
-  const assign = useAssignToAi();
-  const toAi = () => {
-    setCampaigns((p) => (p.some((x) => x.id === f.id) ? p.map((x) => (x.id === f.id ? f : x)) : [f, ...p]));
-    const ch = f.channels[0] ?? 'FACEBOOK';
-    const t: MktTask = { id: uid('tk'), date: f.start, title: f.name, campaignId: f.id, channel: ch, contentType: ch === 'ZNS' || ch === 'SMS' ? 'ZNS' : ch === 'ZALO_OA' ? 'ZALO_OA' : f.channels.includes('EVENT') ? 'PRESS' : 'AD_POST', textPrompt: [f.goal, f.textPrompt].filter(Boolean).join('\n'), imagePrompt: f.imagePrompt ?? '', status: 'PLAN', ownerId: f.ownerId, createdAt: Date.now() };
-    setMktTasks((p) => [t, ...p]);
-    assign(t);
-    onClose();
-  };
-  return (
-    <SideSheet title={c ? 'Sửa chiến dịch' : 'Chiến dịch mới'} sub={f.code} onClose={onClose} width="sm:w-[520px]"
-      footer={<>{c && !ro && <button className={cn(btnGhost, 'mr-auto text-[rgb(var(--danger-fg))]')} onClick={() => { setCampaigns((p) => p.filter((x) => x.id !== f.id)); notify('Đã xóa chiến dịch', 'orange'); onClose(); }}>Xóa</button>}<button className={btnGhost} onClick={onClose}>Đóng</button>{!ro && <button className={btnGhost} disabled={!f.name.trim() || f.end < f.start} onClick={save}>Lưu</button>}{!ro && <button className={btnAccent} disabled={!f.name.trim() || f.end < f.start || !(f.textPrompt || f.goal)} onClick={toAi}><Sparkles className="h-4 w-4" aria-hidden />Giao cho AI xử lý</button>}</>}>
-      <fieldset disabled={ro} className="space-y-4">
-        <Field label="Tên chiến dịch"><input className={inputCls} value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="VD: Tri ân đại lý quý 4" /></Field>
-        <Field label="Kênh">
-          <div className="flex flex-wrap gap-1.5">{(Object.keys(MKT_CH) as MktChannel[]).map((ch) => { const on = f.channels.includes(ch); return <button type="button" key={ch} onClick={() => set('channels', on ? f.channels.filter((x) => x !== ch) : [...f.channels, ch])} className={cn('rounded-full border px-2.5 py-1 text-xs', on ? 'border-transparent text-white' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))]')} style={on ? { background: MKT_CH[ch].color } : undefined} aria-pressed={on}>{MKT_CH[ch].label}</button>; })}</div>
-        </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Bắt đầu"><input type="date" className={inputCls} value={f.start} onChange={(e) => set('start', e.target.value)} /></Field>
-          <Field label="Kết thúc" error={f.end < f.start ? 'Trước ngày bắt đầu' : undefined}><input type="date" className={inputCls} value={f.end} onChange={(e) => set('end', e.target.value)} /></Field>
-          <Field label="Ngân sách (đ)"><MoneyInput value={f.budget} onChange={(v) => set('budget', v)} /></Field>
-          <Field label="Đã chi (đ)"><MoneyInput value={f.spent} onChange={(v) => set('spent', v)} /></Field>
-          <Field label="Trạng thái"><select className={inputCls} value={f.status} onChange={(e) => set('status', e.target.value as CampaignStatus)}>{(Object.keys(CAMP_STATUS) as CampaignStatus[]).map((s) => <option key={s} value={s}>{CAMP_STATUS[s].label}</option>)}</select></Field>
-          <Field label="Phụ trách"><select className={inputCls} value={f.ownerId ?? ''} onChange={(e) => set('ownerId', e.target.value || undefined)}><option value="">—</option>{users.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
-          <Field label="Mục tiêu lead"><input type="number" min={0} className={inputCls} value={f.targetLeads ?? ''} onChange={(e) => set('targetLeads', Number(e.target.value) || undefined)} /></Field>
-          <Field label="Phân khúc mục tiêu"><select className={inputCls} value={f.audienceId ?? ''} onChange={(e) => set('audienceId', e.target.value || undefined)}><option value="">Không chọn</option>{audiences.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></Field>
-        </div>
-        <Field label="Mục tiêu / thông điệp"><textarea className={cn(inputCls, 'min-h-[64px]')} value={f.goal ?? ''} onChange={(e) => set('goal', e.target.value)} /></Field>
-        <div className="space-y-3 rounded-md border border-[rgb(var(--accent)/0.35)] bg-[rgb(var(--accent)/0.04)] p-3">
-          <p className="flex items-center gap-1.5 text-xs font-semibold"><Sparkles className="h-3.5 w-3.5 text-[rgb(var(--accent))]" aria-hidden />Giao nội dung cho AI</p>
-          <Field label="Yêu cầu nội dung bài viết (prompt)"><textarea className={cn(inputCls, 'min-h-[64px]')} value={f.textPrompt ?? ''} onChange={(e) => set('textPrompt', e.target.value)} placeholder="Thông điệp, ưu đãi, đối tượng, từ khóa…" /></Field>
-          <Field label="Yêu cầu hình ảnh / video (prompt)"><textarea className={cn(inputCls, 'min-h-[52px]')} value={f.imagePrompt ?? ''} onChange={(e) => set('imagePrompt', e.target.value)} placeholder="Phong cách, bối cảnh, màu sắc…" /></Field>
-          <p className="text-[11px] text-[rgb(var(--muted))]">“Giao cho AI xử lý” tạo nhiệm vụ nội dung vào ngày bắt đầu chiến dịch trên lịch, AI tự soạn bài và ảnh minh họa, xong chuyển sang Chờ duyệt.</p>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Lead ngoài hệ thống" hint="Sự kiện, phiếu đăng ký giấy…"><input type="number" min={0} className={inputCls} value={f.manualLeads ?? ''} onChange={(e) => set('manualLeads', Number(e.target.value) || undefined)} /></Field>
-          <Field label="Doanh thu ngoài hệ thống (đ)"><MoneyInput value={f.manualRevenue ?? 0} onChange={(v) => set('manualRevenue', v || undefined)} /></Field>
-        </div>
-      </fieldset>
-    </SideSheet>
   );
 }
 
@@ -503,7 +454,7 @@ export function ContentStudio() {
             <td className={tdLast}><div className="flex flex-col items-end gap-1">{c.aiJob && c.aiJob.status !== 'DONE' && <Chip tone={JOB_LABEL[c.aiJob.status].tone}>{JOB_LABEL[c.aiJob.status].label}</Chip>}<Chip tone={CONTENT_STATUS[c.status].tone}>{CONTENT_STATUS[c.status].label}</Chip></div></td>
           </tr>
         ))}
-        {!list.length && <tr><td colSpan={7} className="py-8 text-center text-sm text-[rgb(var(--muted))]">Chưa có nội dung. Bấm “Nội dung mới” hoặc giao việc cho AI từ Lịch chiến dịch.</td></tr>}
+        {!list.length && <tr><td colSpan={7} className="py-8 text-center text-sm text-[rgb(var(--muted))]">Chưa có nội dung. Bấm “Nội dung mới” hoặc giao việc cho AI từ tab Plan.</td></tr>}
       </Table>
       {live && <ContentStudioSheet c={live as MktContent} onClose={() => setEdit(null)} />}
     </section>
@@ -597,7 +548,7 @@ export function ContentStudioSheet({ c, onClose }: { c: MktContent | null; onClo
           </button></li>
         ); })}
       </ol>
-      {jobRunning && <p className="mb-4 flex items-center gap-2 rounded-md bg-[#FEF9C3] px-3 py-2 text-sm text-[#713F12]"><RefreshCw className="h-4 w-4 motion-safe:animate-spin" aria-hidden />{f.aiJob?.step ?? 'Chờ AI xử lý'}… (được giao từ Lịch chiến dịch, có thể đóng cửa sổ, AI vẫn chạy tiếp)</p>}
+      {jobRunning && <p className="mb-4 flex items-center gap-2 rounded-md bg-[#FEF9C3] px-3 py-2 text-sm text-[#713F12]"><RefreshCw className="h-4 w-4 motion-safe:animate-spin" aria-hidden />{f.aiJob?.step ?? 'Chờ AI xử lý'}… (được giao từ Plan, có thể đóng cửa sổ, AI vẫn chạy tiếp)</p>}
       {f.aiJob?.status === 'FAILED' && <p className="mb-4 rounded-md bg-[rgb(var(--danger)/0.1)] px-3 py-2 text-sm text-[rgb(var(--danger-fg))]">AI lỗi: {f.aiJob.error}. Có thể làm tiếp thủ công từng bước.</p>}
       <fieldset disabled={ro || jobRunning} className="min-w-0">
         {step === 1 && (
@@ -772,120 +723,6 @@ export function useAssignToAi() {
   };
 }
 
-export function TaskSheet({ t, onClose }: { t: MktTask; onClose: () => void }) {
-  const { mktTasks, setMktTasks, campaigns, contents, users, canDo, notify, go, company } = useApp();
-  const assign = useAssignToAi();
-  const ai = useAi('writer');
-  const stCo = useMemo(() => stCompanyOf(company), [company]);
-  const [f, setF] = useState<MktTask>(() => {
-    const pid = t.platform ?? ST_OF_CHANNEL[t.channel];
-    return pid ? { ...t, platform: pid, settings: { ...getPlatform(pid).defaults(stCompanyOf(company)), ...(t.settings ?? {}) } } : t;
-  });
-  const set = <K extends keyof MktTask>(k: K, v: MktTask[K]) => setF((p) => ({ ...p, [k]: v }));
-  const pid = f.platform && ST_OF_CHANNEL[f.channel] ? f.platform : undefined;
-  const plat = pid ? getPlatform(pid) : null;
-  const sv = f.settings ?? {};
-  const setS = (k: string, v: StSettingValue) => setF((p) => ({ ...p, settings: { ...(p.settings ?? {}), [k]: v } }));
-  const fakeArticle = (): StArticle => ({ id: f.id, platform: pid ?? 'website', title: f.title, sapo: '', sections: [], settings: sv, updatedAt: Date.now() });
-  const setChannel = (ch: MktChannel) => setF((p) => {
-    const np = ST_OF_CHANNEL[ch];
-    if (!np) return { ...p, channel: ch, platform: undefined };
-    const keep = Object.fromEntries(Object.entries(p.settings ?? {}).filter(([k]) => getPlatform(np).fields.some((x) => x.key === k) || ST_BRIEF_FIELDS.some((x) => x.key === k)));
-    return { ...p, channel: ch, platform: np, settings: { ...getPlatform(np).defaults(stCo), ...keep } };
-  });
-  const errs = plat ? plat.validate(sv) : [];
-  const [filling, setFilling] = useState(false);
-  const [briefOpen, setBriefOpen] = useState(() => ST_BRIEF_FIELDS.some((x) => { const v = t.settings?.[x.key]; return Array.isArray(v) ? v.length > 0 : !!v; }));
-  /** AI điền thông số SEO từ tiêu đề: chỉ điền ô đang trống, không ghi đè ô đã nhập */
-  const aiFill = async () => {
-    if (!f.title.trim() || !plat) return;
-    setFilling(true);
-    const r = await ai.ask({ maxTokens: 700, system: 'Bạn là chuyên gia SEO tiếng Việt cho doanh nghiệp B2B. Chỉ trả JSON hợp lệ.', prompt: `Đề xuất thông số cho bài ${plat.label} có chủ đề "${f.title}" của ${stCo.name} (lĩnh vực ${stCo.sector}). ${f.textPrompt ? `Ghi chú: ${f.textPrompt}. ` : ''}Trả JSON {"focusKeyword":"cụm 2–5 từ người Việt hay tìm","lsiKeywords":["5–8 cụm liên quan"],"metaTitle":"≤ 60 ký tự, có từ khóa","metaDescription":"120–155 ký tự, có từ khóa và lợi ích","slug":"khong-dau-gach-noi","searchIntent":"info|compare|buy|local","audience":"mep|designer|owner|dealer|homeowner","keyMessage":"1 câu thông điệp chính","localKeyword":"từ khóa + địa phương nếu hợp","ctaText":"lời kêu gọi ngắn"}` });
-    setFilling(false);
-    const j = r.ok ? parseAiJson<Record<string, unknown>>(r.text) : null;
-    if (!j) { notify(r.ok ? 'AI trả sai định dạng, thử lại' : `AI chưa trả lời được: ${r.error}`, 'orange'); return; }
-    const keys = new Set([...plat.fields.map((x) => x.key), ...ST_BRIEF_FIELDS.map((x) => x.key)]);
-    setF((p) => {
-      const cur = { ...(p.settings ?? {}) };
-      for (const [k, v] of Object.entries(j)) {
-        if (k === 'audience') { const ok = ['mep', 'designer', 'owner', 'dealer', 'homeowner'].includes(String(v)); if (ok && !Array.isArray(cur[vKey('audience')])) cur[vKey('audience')] = [String(v)]; continue; }
-        if (!keys.has(k)) continue;
-        const old = cur[k];
-        const empty = old == null || (Array.isArray(old) ? old.length === 0 : String(old).trim() === '' || (k === 'searchIntent' && old === 'info'));
-        if (!empty) continue;
-        if (Array.isArray(v)) cur[k] = v.map(String).filter(Boolean).slice(0, 10);
-        else if (typeof v === 'string' && v.trim()) cur[k] = k === 'metaTitle' ? stClip(v, 60) : k === 'metaDescription' ? stClip(v, 155) : k === 'slug' ? slugify(v) : v.trim();
-      }
-      return { ...p, settings: cur };
-    });
-    notify('AI đã điền các ô còn trống, kiểm tra lại trước khi giao', 'teal');
-  };
-  const ro = !canDo('mkt.manage');
-  const exists = mktTasks.some((x) => x.id === f.id);
-  const live = mktTasks.find((x) => x.id === f.id) ?? f;
-  const st = taskStatusOf(live, contents);
-  const content = contents.find((c) => c.id === live.contentId);
-  const save = (x = f) => setMktTasks((p) => (p.some((y) => y.id === x.id) ? p.map((y) => (y.id === x.id ? { ...x, contentId: y.contentId ?? x.contentId } : y)) : [x, ...p]));
-  const openStudio = () => { if (!live.contentId) return; onClose(); openMktContent(live.contentId, go); };
-  return (
-    <SideSheet title={exists ? 'Nhiệm vụ nội dung' : 'Nhiệm vụ mới'} sub={<span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: TASK_STATUS[st].color }} aria-hidden />{TASK_STATUS[st].label}{content?.aiJob?.step ? ` · ${content.aiJob.step}` : ''}</span>} onClose={onClose} width="sm:w-[560px]"
-      footer={ro ? <button className={btnGhost} onClick={onClose}>Đóng</button> : <>
-        {exists && <button className={cn(btnGhost, 'mr-auto text-[rgb(var(--danger-fg))]')} onClick={() => { setMktTasks((p) => p.filter((x) => x.id !== f.id)); onClose(); }}>Xóa</button>}
-        <button className={btnGhost} disabled={!f.title.trim()} onClick={() => { save(); notify('Đã lưu nhiệm vụ', 'teal'); onClose(); }}>Lưu</button>
-        <button className={btnAccent} disabled={!f.title.trim() || st === 'AI_QUEUED' || st === 'PUBLISHED' || errs.length > 0} title={errs.length ? `Cần nhập: ${errs.join(', ')}` : undefined} onClick={() => { save(); assign(f); onClose(); }}><Sparkles className="h-4 w-4" aria-hidden />{content ? 'Giao AI làm lại' : 'Giao cho AI xử lý'}</button>
-      </>}>
-      <fieldset disabled={ro} className="min-w-0 space-y-4">
-        <ol className="flex items-center gap-1 text-[11px]" aria-label="Tiến trình">
-          {(Object.keys(TASK_STATUS) as TaskStatus[]).map((s, i) => { const idx = (Object.keys(TASK_STATUS) as TaskStatus[]).indexOf(st); return (
-            <li key={s} className="flex flex-1 items-center gap-1"><span className="h-1.5 flex-1 rounded-full" style={{ background: i <= idx ? TASK_STATUS[s].color : 'rgb(var(--line))' }} /><span className={cn('whitespace-nowrap', i === idx ? 'font-semibold' : 'text-[rgb(var(--muted))]')}>{TASK_STATUS[s].label}</span></li>
-          ); })}
-        </ol>
-        <Field label="Tiêu đề / chủ đề bài"><input className={inputCls} value={f.title} onChange={(e) => set('title', e.target.value)} placeholder="VD: 5 lưu ý chọn đầu cáp co nguội cho trạm 24kV" /></Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Ngày đăng"><input type="date" className={inputCls} value={f.date} onChange={(e) => set('date', e.target.value)} /></Field>
-          <Field label="Chiến dịch"><select className={inputCls} value={f.campaignId ?? ''} onChange={(e) => set('campaignId', e.target.value || undefined)}><option value="">Không gắn</option>{campaigns.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
-          <Field label="Kênh phân phối"><select className={inputCls} value={f.channel} onChange={(e) => setChannel(e.target.value as MktChannel)}>{(Object.keys(MKT_CH) as MktChannel[]).map((k) => <option key={k} value={k}>{MKT_CH[k].label}</option>)}</select></Field>
-          <Field label="Loại nội dung"><select className={inputCls} value={f.contentType} onChange={(e) => set('contentType', e.target.value as MktContentType)}>{(Object.keys(WRITER) as WriterPreset[]).map((k) => <option key={k} value={k}>{WRITER[k].label}</option>)}</select></Field>
-        </div>
-        {plat && (
-          <section className="space-y-3 rounded-md border border-[rgb(var(--line))] p-3" aria-label={`Thông số ${plat.label}`}>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold">Thông số {plat.label}</p>
-              {ai.available && <button type="button" className={cn(btnGhost, btnSm)} disabled={!f.title.trim() || filling} onClick={() => void aiFill()}><Sparkles className="h-3.5 w-3.5 text-[rgb(var(--accent))]" aria-hidden />{filling ? 'AI đang đề xuất…' : 'AI điền ô trống'}</button>}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {plat.fields.filter((x) => !x.showIf || x.showIf(sv)).map((x) => <StFieldControl key={x.key} f={x} value={sv[x.key]} company={stCo} onChange={(v) => setS(x.key, v)} onSuggest={x.suggest ? () => setS(x.key, x.suggest!(fakeArticle(), sv)) : undefined} />)}
-            </div>
-            <button type="button" className="text-xs font-medium text-[rgb(var(--secondary-fg))] hover:underline" aria-expanded={briefOpen} onClick={() => setBriefOpen((o) => !o)}>{briefOpen ? '▾' : '▸'} Brief nội dung (thông điệp, sản phẩm, ưu đãi, ý bắt buộc, nguồn)</button>
-            {briefOpen && <div className="grid grid-cols-2 gap-3">{ST_BRIEF_FIELDS.map((x) => <StFieldControl key={x.key} f={x} value={sv[x.key]} company={stCo} onChange={(v) => setS(x.key, v)} />)}</div>}
-            {stStr(sv.focusKeyword).trim() && <KwConflictNote kw={stStr(sv.focusKeyword)} self={{ taskId: f.id, contentId: live.contentId }} />}
-            {errs.length > 0 && <p className="text-xs text-[rgb(var(--danger-fg))]" role="alert">Cần nhập trước khi giao AI: {errs.join(', ')}</p>}
-          </section>
-        )}
-        {plat && <VariantPicker kind="text" platform={pid} values={sv} title={f.title} context={f.textPrompt} ro={ro} onChange={(next) => setF((p) => ({ ...p, settings: next }))} />}
-        {plat && <VariantPicker kind="image" platform={pid} values={sv} title={f.title} context={f.imagePrompt} ro={ro} onChange={(next) => setF((p) => ({ ...p, settings: next }))} />}
-        <Field label={plat ? 'Ghi chú thêm cho AI' : 'Yêu cầu nội dung bài viết (prompt)'}><textarea className={cn(inputCls, 'min-h-[72px]')} value={f.textPrompt} onChange={(e) => set('textPrompt', e.target.value)} placeholder={plat ? 'Góc nhìn, ví dụ thực tế, công trình đã làm…' : 'Đối tượng, thông điệp, ưu đãi, độ dài…'} /></Field>
-        <Field label={plat ? 'Ghi chú thêm cho ảnh' : 'Yêu cầu hình ảnh / video (prompt)'} hint="Ảnh được tạo theo từng tiểu mục; với video, AI soạn kịch bản trong nội dung"><textarea className={cn(inputCls, 'min-h-[72px]')} value={f.imagePrompt} onChange={(e) => set('imagePrompt', e.target.value)} placeholder="Phong cách, bối cảnh, màu sắc, nhân vật…" /></Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Phụ trách"><select className={inputCls} value={f.ownerId ?? ''} onChange={(e) => set('ownerId', e.target.value || undefined)}><option value="">—</option>{users.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
-          <Field label="Trạng thái thủ công" hint={content ? 'Đang theo nội dung AI' : undefined}><select className={inputCls} value={f.status} disabled={!!content} onChange={(e) => set('status', e.target.value as TaskStatus)}><option value="PLAN">Kế hoạch</option><option value="PUBLISHED">Đã đăng (làm ngoài hệ thống)</option></select></Field>
-        </div>
-      </fieldset>
-      {content && (
-        <div className="mt-5 rounded-md border border-[rgb(var(--line))] p-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">Nội dung AI</p>
-          <p className="mt-1 font-medium">{content.title}</p>
-          <p className="text-xs text-[rgb(var(--muted))]">{content.blocks?.length ?? 0} mục · {content.blocks?.filter((b) => b.image).length ?? 0} ảnh · {CONTENT_STATUS[content.status].label}{content.aiJob?.status === 'FAILED' ? ` · lỗi: ${content.aiJob.error}` : ''}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {content.status !== 'DRAFT' && <button className={cn(btnPrimary, btnSm)} onClick={() => { onClose(); openContentReview(content.id); }}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />{content.status === 'REVIEW' && canDo('mkt.manage') ? 'Xem & duyệt' : 'Xem bài'}</button>}
-            <button className={cn(btnGhost, btnSm)} onClick={openStudio}><ExternalLink className="h-3.5 w-3.5" aria-hidden />Mở Workspace</button>
-          </div>
-        </div>
-      )}
-    </SideSheet>
-  );
-}
-
 export function CampaignCalendar() {
   const { campaigns, mktTasks, contents, canDo, now, userName, me } = useApp();
   const assign = useAssignToAi();
@@ -1033,7 +870,7 @@ export function CampaignRoi() {
               <td className={cn(tdLast, 'text-right font-semibold tabular-nums', c.spent ? (s.roi >= 0 ? 'text-[rgb(var(--success))]' : 'text-[rgb(var(--danger-fg))]') : '')}>{c.spent ? `${Math.round(s.roi * 100)}%` : '—'}</td>
             </tr>
           ))}
-          {!rows.length && <tr><td colSpan={8} className="py-8 text-center text-sm text-[rgb(var(--muted))]">Chưa có chiến dịch. Tạo ở tab Lịch chiến dịch.</td></tr>}
+          {!rows.length && <tr><td colSpan={8} className="py-8 text-center text-sm text-[rgb(var(--muted))]">Chưa có chiến dịch. Tạo ở tab Plan.</td></tr>}
         </Table>
         <p className="mt-3 text-[11px] text-[rgb(var(--muted))]">Lead gắn chiến dịch theo kênh nguồn và thời gian chạy (cộng 30 ngày theo dõi); doanh thu = lead đã chốt + đơn công trình ký từ lead đó + số liệu ngoài hệ thống nhập tay.</p>
       </Panel>
@@ -1208,7 +1045,7 @@ export function AutomationList() {
   return (
     <section className="glass-card rounded-md p-5">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <p className="text-sm text-[rgb(var(--muted))]">Tự động gửi Zalo ZNS / Zalo OA / SMS theo hành vi và phân khúc, lấy dữ liệu trực tiếp từ CRM. Kịch bản mới mặc định <b>chạy thử</b> (không gửi thật).</p>
+        <p className="text-sm text-[rgb(var(--muted))]">Tự động gửi Zalo ZNS / Zalo OA / SMS / Messenger Fanpage theo hành vi và phân khúc, lấy dữ liệu trực tiếp từ CRM. Kịch bản mới mặc định <b>chạy thử</b> (không gửi thật). SMS và Messenger ghi nhận ở chế độ mô phỏng cho đến khi kết nối nhà cung cấp.</p>
         <button className={cn(btnGhost, 'ml-auto')} onClick={() => setLog(true)}><History className="h-4 w-4" aria-hidden />Nhật ký gửi</button>
         {!ro && <button className={btnAccent} onClick={() => setEdit(neu())}><Plus className="h-4 w-4" aria-hidden />Kịch bản mới</button>}
       </div>

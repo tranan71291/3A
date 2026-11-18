@@ -8,7 +8,7 @@ import { PluginKey } from '@tiptap/pm/state';
 import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
-import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
@@ -210,7 +210,7 @@ export const MODULE_DESC: Record<Module, string> = {
   projects: 'Cơ hội, bóc tách BOQ, báo giá và kết quả Chốt đơn / Trượt',
   messages: 'Chat nhóm dự án, tin nhắn trực tiếp, gửi file và tra cứu lịch sử trao đổi',
   zalo: 'Chat với khách qua Zalo OA và ZNS ngay trong CRM, tự liên kết hội thoại với khách hàng, đơn hàng, dự án',
-  marketing: 'Lịch tổng (chiến dịch & nội dung), ngân sách & ROI theo kênh, Content Studio AI, thiết kế banner, phân khúc và tự động hóa ZNS / Zalo',
+  marketing: 'Plan (lịch chiến dịch & nội dung cho AI viết), Content Studio AI, Image (ảnh AI chuẩn SEO, banner), Budget (ngân sách & ROI), Automation (ZNS / Zalo / SMS / Messenger theo phân khúc)',
   products: 'Danh mục SKU dùng chung cho bóc tách BOQ, báo giá và đặt hàng Hãng',
   supply: 'PO đặt Hãng trước 3–4 tháng, các đợt hàng về, phân bổ giữ chỗ cho dự án',
   jobs: 'Đơn chờ khảo sát, tạo báo giá m² / md, nhận cọc chuyển sản xuất, theo dõi đến khi thu đủ tiền',
@@ -1198,7 +1198,7 @@ export const AUTO_TRIGGER: Record<AutoTrigger, { label: string; days?: string; m
   INACTIVE_CUSTOMER: { label: 'Khách năm nay chưa mua lại' }, AUDIENCE: { label: 'Toàn bộ phân khúc (gửi 1 lần)' },
 };
 
-export const AUTO_CH: Record<AutoChannel, string> = { ZNS: 'Zalo ZNS', ZALO_OA: 'Tin Zalo OA', SMS: 'SMS', EMAIL: 'Email' };
+export const AUTO_CH: Record<AutoChannel, string> = { ZNS: 'Zalo ZNS', ZALO_OA: 'Tin Zalo OA', SMS: 'SMS', MESSENGER: 'Messenger (Fanpage)', EMAIL: 'Email' };
 
 export const dayMs = 864e5;
 
@@ -1242,6 +1242,8 @@ export const BANNER_PRESETS: Omit<BannerSpec, 'id' | 'updatedAt' | 'name'>[] = [
   { size: 'ZALO', layout: 'SPLIT', bg: '#0068FF', bg2: '#0052CC', accent: '#FFFFFF', ink: '#FFFFFF', headline: 'Hội thảo kỹ thuật miễn phí', sub: 'Giải pháp thi công đúng chuẩn, cập nhật tiêu chuẩn mới.', cta: 'Đăng ký tham dự', showLogo: true },
   { size: 'STORY', layout: 'CENTER', bg: '#111827', bg2: '#374151', accent: '#10B981', ink: '#FFFFFF', headline: 'Tuyển đại lý toàn quốc', sub: 'Chiết khấu hấp dẫn, thưởng tăng trưởng hằng năm, hỗ trợ marketing.', cta: 'Đăng ký làm đại lý', showLogo: true },
 ];
+
+export const MKT_TABS: MktTab[] = ['calendar', 'content', 'image', 'roi', 'automation'];
 
 /** Biên dịch khối thành Markdown (không kèm dữ liệu ảnh) để xem nhanh, sao chép, tìm kiếm */
 export const blocksToMarkdown = (title: string, blocks: ContentBlock[], withImages = false) =>
@@ -1854,12 +1856,12 @@ export const VARIANT_GROUPS: VariantGroup[] = [
     { id: 'promo', label: 'Khuyến mãi', prompt: 'Dạng bài khuyến mãi: ưu đãi cụ thể, điều kiện, thời hạn, cách nhận; tạo cảm giác cần hành động sớm nhưng không phóng đại.', implies: { tone: ['sales'], cta: ['zalo', 'hotline'], length: ['w_short', 'fb_short', 'za_short'], imgStyle: ['copyspace'] } },
   ] },
   { id: 'length', kind: 'text', label: 'Độ dài', multi: false, options: [
-    { id: 'w_short', label: 'Ngắn 600–800 từ', prompt: 'Độ dài toàn bài 600–800 từ.', words: 700, channels: ['website'] },
-    { id: 'w_mid', label: 'Vừa 1.200–1.500 từ', prompt: 'Độ dài toàn bài 1.200–1.500 từ.', words: 1350, channels: ['website'], def: true },
-    { id: 'w_long', label: 'Dài 1.800–2.500 từ', prompt: 'Độ dài toàn bài 1.800–2.500 từ, phân tích chuyên sâu.', words: 2100, channels: ['website'] },
+    { id: 'w_short', label: 'Ngắn 600–800', prompt: 'Độ dài toàn bài 600–800 từ.', words: 700, channels: ['website'] },
+    { id: 'w_mid', label: 'Vừa 1.200–1.500', prompt: 'Độ dài toàn bài 1.200–1.500 từ.', words: 1350, channels: ['website'], def: true },
+    { id: 'w_long', label: 'Dài 1.800–2.500', prompt: 'Độ dài toàn bài 1.800–2.500 từ, phân tích chuyên sâu.', words: 2100, channels: ['website'] },
     { id: 'fb_short', label: 'Ngắn ≤ 80 từ', prompt: 'Toàn bài tối đa 80 từ: 1 câu hook và lời kêu gọi.', words: 70, channels: ['facebook'] },
-    { id: 'fb_mid', label: 'Vừa 120–200 từ', prompt: 'Toàn bài 120–200 từ.', words: 160, channels: ['facebook'], def: true },
-    { id: 'fb_long', label: 'Dài 300–500 từ', prompt: 'Toàn bài 300–500 từ, kể chuyện có mở – thân – kết.', words: 400, channels: ['facebook'] },
+    { id: 'fb_mid', label: 'Vừa 120–200', prompt: 'Toàn bài 120–200 từ.', words: 160, channels: ['facebook'], def: true },
+    { id: 'fb_long', label: 'Dài 300–500', prompt: 'Toàn bài 300–500 từ, kể chuyện có mở – thân – kết.', words: 400, channels: ['facebook'] },
     { id: 'za_short', label: '≤ 150 từ', prompt: 'Toàn bài tối đa 150 từ.', words: 130, channels: ['zalo'], def: true },
     { id: 'za_mid', label: '150–300 từ', prompt: 'Toàn bài 150–300 từ.', words: 220, channels: ['zalo'] },
     { id: 'gm_short', label: '≤ 750 ký tự', prompt: 'Toàn bài tối đa 750 ký tự.', words: 120, channels: ['google_maps'], def: true },
@@ -1886,19 +1888,19 @@ export const VARIANT_GROUPS: VariantGroup[] = [
     { id: 'testimonial', label: 'Ý kiến khách hàng', prompt: 'Có một trích dẫn ngắn ý kiến khách hàng (để trống tên, ghi "[Tên khách]" để biên tập viên điền).' },
     { id: 'beforeafter', label: 'Trước / sau', prompt: 'Mô tả hiện trạng trước và kết quả sau khi dùng giải pháp.' },
   ] },
-  { id: 'sections', kind: 'text', label: 'Số mục H2', multi: false, options: [
+  { id: 'sections', adv: true, kind: 'text', label: 'Số mục H2', multi: false, options: [
     { id: 'sauto', label: 'Tự động', prompt: '', def: true },
     { id: 's34', label: '3–4 mục', prompt: 'Dàn ý 3–4 mục H2.' },
     { id: 's57', label: '5–7 mục', prompt: 'Dàn ý 5–7 mục H2.' },
     { id: 's810', label: '8–10 mục', prompt: 'Dàn ý 8–10 mục H2.' },
   ] },
-  { id: 'extras', kind: 'text', label: 'Cấu trúc thêm', multi: true, options: [
+  { id: 'extras', adv: true, kind: 'text', label: 'Cấu trúc thêm', multi: true, options: [
     { id: 'faq', label: 'Mục FAQ', prompt: 'Mục cuối là "Câu hỏi thường gặp" gồm 3–5 câu hỏi ngắn người mua hay hỏi.', channels: ['website'], def: true },
     { id: 'table', label: 'Có bảng', prompt: 'Có ít nhất một bảng / danh sách so sánh.' },
     { id: 'bullets', label: 'Gạch đầu dòng', prompt: 'Dùng gạch đầu dòng cho các ý liệt kê.' },
     { id: 'tldr', label: 'Tóm tắt đầu bài', prompt: 'Mở bài bằng 2–3 câu tóm tắt ý chính cho người đọc vội.' },
   ] },
-  { id: 'depth', kind: 'text', label: 'Mức độ kỹ thuật', multi: false, options: [
+  { id: 'depth', adv: true, kind: 'text', label: 'Mức độ kỹ thuật', multi: false, options: [
     { id: 'basic', label: 'Phổ thông', prompt: 'Mức phổ thông: giải thích thuật ngữ khi dùng lần đầu.' },
     { id: 'pro', label: 'Chuyên ngành', prompt: 'Mức chuyên ngành: dùng thuật ngữ ngành, không giải thích khái niệm cơ bản.', def: true },
     { id: 'deep', label: 'Chuyên sâu', prompt: 'Mức chuyên sâu cho kỹ sư: cơ chế, tính toán, điều kiện áp dụng.' },
@@ -1911,17 +1913,17 @@ export const VARIANT_GROUPS: VariantGroup[] = [
     { id: 'download', label: 'Tải catalogue', prompt: 'Kết bài mời tải catalogue / datasheet.' },
     { id: 'showroom', label: 'Đến showroom', prompt: 'Kết bài mời ghé showroom / kho xem hàng.' },
   ] },
-  { id: 'address', kind: 'text', label: 'Xưng hô', multi: false, options: [
+  { id: 'address', adv: true, kind: 'text', label: 'Xưng hô', multi: false, options: [
     { id: 'ban', label: 'Bạn', prompt: 'Xưng hô với người đọc là "bạn".' },
     { id: 'anhchi', label: 'Anh/chị', prompt: 'Xưng hô với người đọc là "anh/chị".', def: true },
     { id: 'quykhach', label: 'Quý khách', prompt: 'Xưng hô với người đọc là "quý khách".' },
     { id: 'quycty', label: 'Quý công ty', prompt: 'Xưng hô với người đọc là "quý công ty".' },
   ] },
-  { id: 'kwDensity', kind: 'text', label: 'Mật độ từ khóa', multi: false, channels: ['website'], options: [
+  { id: 'kwDensity', adv: true, kind: 'text', label: 'Mật độ từ khóa', multi: false, channels: ['website'], options: [
     { id: 'natural', label: 'Tự nhiên 0,5–1,5%', prompt: 'Từ khóa chính xuất hiện tự nhiên, mật độ 0,5–1,5%.', def: true },
     { id: 'strong', label: 'Nhấn 1,5–2%', prompt: 'Từ khóa chính mật độ 1,5–2%, không nhồi nhét.' },
   ] },
-  { id: 'kwPlace', kind: 'text', label: 'Vị trí từ khóa', multi: true, channels: ['website'], options: [
+  { id: 'kwPlace', adv: true, kind: 'text', label: 'Vị trí từ khóa', multi: true, channels: ['website'], options: [
     { id: 'first', label: 'Ở câu đầu bài', prompt: 'Từ khóa chính có trong câu đầu tiên của bài.', def: true },
     { id: 'bold', label: 'In đậm lần đầu', prompt: 'In đậm từ khóa chính ở lần xuất hiện đầu tiên.' },
   ] },
@@ -1987,8 +1989,45 @@ export const MKT_OPEN_EVT = '3a:mkt-open';
 
 export const MKT_REVIEW_EVT = '3a:content-review';
 
-/** Mở khung "Xem & duyệt" (đặt ở khung app, dùng được từ Trung tâm phê duyệt, Lịch tổng, danh sách nội dung) */
+/** Mở khung "Xem & duyệt" (đặt ở khung app, dùng được từ Trung tâm phê duyệt, Plan, danh sách nội dung) */
 export const openContentReview = (id: string) => window.dispatchEvent(new CustomEvent(MKT_REVIEW_EVT, { detail: id }));
+
+export const CONTENT_TEMPLATES: ContentTemplate[] = [
+  { id: 'tpl_pr_seo', name: 'Bài PR kỹ thuật chuẩn SEO', desc: 'Chuyên ngành, dẫn tiêu chuẩn, bảng thông số, FAQ, mời báo giá', channels: ['website'],
+    values: { type: ['product'], length: ['w_mid'], tone: ['engineer'], audience: ['mep'], proof: ['standard', 'specs', 'table'], cta: ['quote', 'download'], sections: ['s57'], extras: ['faq', 'table', 'tldr'], depth: ['pro'], kwDensity: ['natural'], kwPlace: ['first', 'bold'], imgCount: ['perh2'], imgScene: ['closeup', 'site'], imgStyle: ['real'], imgColor: ['brand'] } },
+  { id: 'tpl_howto', name: 'Hướng dẫn thi công', desc: 'Từng bước, dụng cụ, lỗi hay gặp, mời khảo sát', channels: ['website'],
+    values: { type: ['howto'], length: ['w_mid'], tone: ['engineer'], audience: ['mep'], proof: ['standard', 'specs'], cta: ['survey', 'zalo'], sections: ['s57'], extras: ['bullets', 'tldr', 'faq'], depth: ['pro'], imgCount: ['perh2'], imgScene: ['crew', 'closeup'], imgStyle: ['real'] } },
+  { id: 'tpl_compare', name: 'So sánh / tư vấn chọn mua', desc: 'Tiêu chí rõ ràng, bảng so sánh, kết luận nên chọn gì', channels: ['website'],
+    values: { type: ['compare'], length: ['w_long'], tone: ['investor'], audience: ['owner'], proof: ['specs', 'table'], cta: ['quote'], extras: ['table', 'faq'], depth: ['pro'], imgCount: ['max3'], imgScene: ['closeup'], imgStyle: ['studio'] } },
+  { id: 'tpl_case_web', name: 'Case study công trình', desc: 'Bối cảnh, vấn đề, giải pháp, kết quả, lời khách', channels: ['website'],
+    values: { type: ['case'], length: ['w_mid'], tone: ['investor'], audience: ['owner'], proof: ['project', 'beforeafter', 'testimonial'], cta: ['survey'], depth: ['pro'], imgCount: ['perh2'], imgScene: ['site', 'crew'], imgStyle: ['real'] } },
+  { id: 'tpl_fb_promo', name: 'Khuyến mãi Fanpage', desc: 'Ngắn, nhấn ưu đãi, CTA nhắn Zalo / gọi', channels: ['facebook'],
+    values: { type: ['promo'], length: ['fb_short'], tone: ['sales'], cta: ['zalo', 'hotline'], address: ['ban'], imgCount: ['hero'], imgAspect: ['square'], imgStyle: ['copyspace'], imgColor: ['brand'] } },
+  { id: 'tpl_fb_story', name: 'Kể chuyện công trình', desc: 'Bài Fanpage dài vừa, có trước / sau và ảnh thi công', channels: ['facebook'],
+    values: { type: ['case'], length: ['fb_long'], tone: ['investor'], proof: ['project', 'beforeafter'], cta: ['survey'], imgCount: ['max3'], imgAspect: ['p45'], imgScene: ['site', 'crew'] } },
+  { id: 'tpl_fb_tip', name: 'Mẹo kỹ thuật nhanh', desc: 'Một mẹo / một sai lầm, dễ chia sẻ', channels: ['facebook'],
+    values: { type: ['mistakes'], length: ['fb_mid'], tone: ['engineer'], depth: ['basic'], cta: ['zalo'], imgCount: ['hero'], imgAspect: ['square'], imgScene: ['closeup'] } },
+  { id: 'tpl_zalo_news', name: 'Bản tin Zalo OA', desc: 'Thông báo ngắn, rõ ngày hiệu lực, nút nhắn tin', channels: ['zalo'],
+    values: { type: ['news'], length: ['za_short'], address: ['anhchi'], cta: ['zalo', 'hotline'], imgCount: ['hero'], imgAspect: ['landscape'] } },
+  { id: 'tpl_zalo_promo', name: 'Ưu đãi đại lý (Zalo)', desc: 'Giọng đại lý, ưu đãi + điều kiện + hạn', channels: ['zalo'],
+    values: { type: ['promo'], length: ['za_mid'], tone: ['dealer'], audience: ['dealer'], cta: ['zalo'], imgCount: ['hero'], imgStyle: ['copyspace'] } },
+  { id: 'tpl_maps', name: 'Bài Google Maps', desc: 'Từ khóa địa phương ở đầu, mời gọi / ghé showroom', channels: ['google_maps'],
+    values: { type: ['news'], length: ['gm_short'], cta: ['hotline', 'showroom'], imgCount: ['hero'], imgAspect: ['landscape'], imgScene: ['warehouse'] } },
+];
+
+export const IMG_SIZES = [
+  { id: 'fb', label: 'Bài Facebook', w: 1200, h: 630 }, { id: 'sq', label: 'Vuông (Facebook, Instagram)', w: 1080, h: 1080 },
+  { id: 'p45', label: 'Dọc 4:5 (Facebook)', w: 1080, h: 1350 }, { id: 'story', label: 'Story / Reels 9:16', w: 1080, h: 1920 },
+  { id: 'zalo', label: 'Ảnh bìa Zalo OA', w: 1280, h: 720 }, { id: 'blog', label: 'Ảnh bài website', w: 1200, h: 800 },
+  { id: 'web', label: 'Banner website', w: 1920, h: 600 }, { id: 'product', label: 'Ảnh sản phẩm', w: 1000, h: 1000 },
+  { id: 'gmaps', label: 'Google Maps', w: 1200, h: 900 }, { id: 'custom', label: 'Tùy chỉnh', w: 0, h: 0 },
+] as const;
+
+export const MKT_IMG_MAX = 200;
+
+export const dataKb = (u: string) => Math.round(((u.length - u.indexOf(',') - 1) * 3) / 4 / 1024);
+
+export const downloadData = (url: string, name: string) => { const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
 
 /**
  * v36 — Copilot giao tiếp tự nhiên.
@@ -2822,7 +2861,7 @@ export const ORG_DEFAULTS: Record<string, Record<string, unknown>> = {
 // =====================================================================
 
 /** Tăng số này mỗi khi cấu trúc dữ liệu đổi, và thêm một bước vào MIGRATIONS */
-export const DATA_VERSION = 29;
+export const DATA_VERSION = 30;
 
 /** Dữ liệu bản trước khi tách doanh nghiệp (chuyển sang VASSH ở lần mở đầu) */
 export const LEGACY_STORE_KEY = 'vassh-crm:data';
@@ -2937,6 +2976,8 @@ export const MIGRATIONS: Record<number, (d: AnyRec) => AnyRec> = {
   28: (d) => ({ ...d, kpiTargets: Array.isArray(d.kpiTargets) ? d.kpiTargets : [] }),
   // v38: lịch sử phiên bản nội dung, hạn mức AI (chỉ thêm nhóm dữ liệu mới; bài cũ chuyển sang doc khi mở lần đầu)
   29: (d) => ({ ...d, contentVersions: Array.isArray(d.contentVersions) ? d.contentVersions : [], aiQuota: d.aiQuota ?? INITIAL_AI_QUOTA }),
+  // v38.6: thư viện ảnh marketing (chỉ thêm nhóm dữ liệu mới)
+  30: (d) => ({ ...d, mktImages: Array.isArray(d.mktImages) ? d.mktImages : [] }),
   23: (d) => ({ ...d, warehouses: Array.isArray(d.warehouses) && d.warehouses.length ? d.warehouses : INITIAL_WAREHOUSES }),
 };
 
@@ -3201,7 +3242,7 @@ export const canonCache = new WeakMap<object, { json: string; files: string[] }>
 /** Nhóm dữ liệu lưu theo từng bản ghi (khóa = trường định danh); nhóm khác lưu nguyên khối */
 export const KEYED_COLLS: Record<string, string> = {
   leads: 'id', customers: 'id', users: 'id', activities: 'id', programs: 'id', claims: 'id', quotes: 'id', pos: 'id', reservations: 'id', moves: 'id',
-  genDocs: 'id', comments: 'id', contentVersions: 'id', channels: 'id', posts: 'id', warehouses: 'id', stockVouchers: 'id', zaloConvs: 'id', zaloMsgs: 'id', campaigns: 'id', contents: 'id', banners: 'id', audiences: 'id', automations: 'id', autoRuns: 'id', kb: 'id', mktTasks: 'id', briefs: 'id', draftProducts: 'id', socialPosts: 'id', kpiTargets: 'id', getflyOrders: 'orderCode', notices: 'id', docs: 'id', approvalLogs: 'id', auditLogs: 'id', workOrders: 'id', installJobs: 'id', jobs: 'id',
+  genDocs: 'id', comments: 'id', contentVersions: 'id', mktImages: 'id', channels: 'id', posts: 'id', warehouses: 'id', stockVouchers: 'id', zaloConvs: 'id', zaloMsgs: 'id', campaigns: 'id', contents: 'id', banners: 'id', audiences: 'id', automations: 'id', autoRuns: 'id', kb: 'id', mktTasks: 'id', briefs: 'id', draftProducts: 'id', socialPosts: 'id', kpiTargets: 'id', getflyOrders: 'orderCode', notices: 'id', docs: 'id', approvalLogs: 'id', auditLogs: 'id', workOrders: 'id', installJobs: 'id', jobs: 'id',
   receipts: 'id', stockItems: 'id', stockMoves: 'id', cashEntries: 'id', priceItems: 'id', docTemplates: 'id', skus: 'sku', mktItems: 'id',
   // nền tảng 3A
   tenants: 'id', logs: 'id',

@@ -188,7 +188,7 @@ export function useApprovalQueue() {
     });
   }
 
-  // ---- v38.3: Nội dung marketing chờ duyệt (Content Studio, AI soạn từ Lịch tổng) — Giám đốc / Trưởng Marketing duyệt ----
+  // ---- v38.3: Nội dung marketing chờ duyệt (Content Studio, AI soạn từ Plan) — Giám đốc / Trưởng Marketing duyệt ----
   if (canDo('mkt.manage')) for (const c of app.contents) {
     if (c.status !== 'REVIEW' || c.aiJob?.status === 'QUEUED' || c.aiJob?.status === 'RUNNING') continue;
     const title = `Nội dung: ${c.title}`;
