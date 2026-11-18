@@ -1,15 +1,18 @@
 'use client';
 
 import { AlertTriangle, ArrowLeftRight, AtSign, Banknote, Bell, BookUser, Boxes, Briefcase, Building2, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Coins, Columns3, Database, Factory, FileCheck2, FileText, FolderOpen, HardHat, House, Inbox, LayoutDashboard, Lightbulb, Megaphone, MessageCircle, MessagesSquare, Newspaper, Package, PackageMinus, PackagePlus, Plane, Receipt as ReceiptIcon, RefreshCw, Rows3, Ruler, Settings, ShieldCheck, Ship, SlidersHorizontal, SquarePlay, Target, ThumbsUp, Truck, Users, Vote, Wallet, Warehouse, XCircle, Zap } from 'lucide-react';
-import { Component, Fragment, createContext, memo, type ReactNode, useContext, useDeferredValue, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Component, Fragment, createContext, memo, type ReactNode, useContext, useDeferredValue, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { type JSONContent } from '@tiptap/core';
+import { PluginKey } from '@tiptap/pm/state';
 import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
-import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StStepId, StudioApi, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
-import { applyWatermark, CounterInput, getPlatform, scoreArticle, socialStrategy, stClip, stCreate, strengthLabel, stShrinkImage, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
+import { CounterInput, getPlatform, scoreArticle, socialStrategy, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
+import { wsDocHtml, wsDocToSections, wsInline } from '../modules/marketing/content-workspace';
 
 // =====================================================================
 //  DESIGN TOKENS & HELPERS
@@ -207,7 +210,7 @@ export const MODULE_DESC: Record<Module, string> = {
   projects: 'Cơ hội, bóc tách BOQ, báo giá và kết quả Chốt đơn / Trượt',
   messages: 'Chat nhóm dự án, tin nhắn trực tiếp, gửi file và tra cứu lịch sử trao đổi',
   zalo: 'Chat với khách qua Zalo OA và ZNS ngay trong CRM, tự liên kết hội thoại với khách hàng, đơn hàng, dự án',
-  marketing: 'Lịch chiến dịch, ngân sách & ROI theo kênh, Content Studio AI, thiết kế banner, phân khúc và tự động hóa ZNS / Zalo',
+  marketing: 'Lịch tổng (chiến dịch & nội dung), ngân sách & ROI theo kênh, Content Studio AI, thiết kế banner, phân khúc và tự động hóa ZNS / Zalo',
   products: 'Danh mục SKU dùng chung cho bóc tách BOQ, báo giá và đặt hàng Hãng',
   supply: 'PO đặt Hãng trước 3–4 tháng, các đợt hàng về, phân bổ giữ chỗ cho dự án',
   jobs: 'Đơn chờ khảo sát, tạo báo giá m² / md, nhận cọc chuyển sản xuất, theo dõi đến khi thu đủ tiền',
@@ -1092,7 +1095,7 @@ export const serverCache = { tenant: '', at: 0, value: SERVER0, inflight: null a
 
 export const AI_ERR: Record<string, string> = {
   ai_not_configured: 'Máy chủ chưa có khóa API cho nhà cung cấp AI đã chọn', rate_limited: 'Gửi quá nhiều yêu cầu, thử lại sau 1 phút', unauthorized: 'Phiên đăng nhập hết hạn, đăng nhập lại',
-  forbidden: 'Tài khoản không thuộc doanh nghiệp này', auth_unavailable: 'Máy chủ chưa cấu hình xác thực (Supabase) cho API', zalo_not_configured: 'Máy chủ chưa cấu hình Zalo OA',
+  forbidden: 'Tài khoản không thuộc doanh nghiệp này', quota_exceeded: 'Đã dùng hết lượt AI hôm nay', not_allowed: 'Tài khoản chưa được bật tính năng này', auth_unavailable: 'Máy chủ chưa cấu hình xác thực (Supabase) cho API', zalo_not_configured: 'Máy chủ chưa cấu hình Zalo OA',
 };
 
 export const aiErrText = (e?: string) => (e && AI_ERR[e]) || e || 'Lỗi không xác định';
@@ -1317,6 +1320,21 @@ export const stRules = {
   totalChars(max: number, weight = 8): SeoRule {
     return { id: 'total', label: `Toàn bài ≤ ${max} ký tự`, weight, check: ({ plain }) => (plain.length <= max ? { status: 'pass', detail: `${plain.length} ký tự` } : { status: 'fail', detail: `${plain.length} ký tự, quá ${plain.length - max}` }) };
   },
+  /** v38: ảnh có alt, alt không trùng, ảnh đầu có từ khóa chính */
+  imageAlt(weight = 6): SeoRule {
+    return {
+      id: 'img-alt', label: 'Ảnh có alt text riêng, ảnh đầu chứa từ khóa', weight,
+      check: ({ imgs, article }) => {
+        if (!imgs.length) return { status: 'warn', detail: 'Chưa có ảnh' };
+        const miss = imgs.filter((i) => !i.alt.trim()).length;
+        if (miss) return { status: 'fail', detail: `${miss} ảnh thiếu alt` };
+        const dup = imgs.length - new Set(imgs.map((i) => stFold(i.alt).trim())).size;
+        if (dup) return { status: 'warn', detail: `${dup} ảnh trùng alt` };
+        const kw = stStr(article.settings.focusKeyword).trim();
+        return kw && !stHas(imgs[0].alt, kw) ? { status: 'warn', detail: 'Alt ảnh đầu chưa có từ khóa' } : { status: 'pass', detail: `${imgs.length} ảnh đủ alt` };
+      },
+    };
+  },
   filled(key: string, label: string, weight = 5): SeoRule {
     return { id: `stHas-${key}`, label, weight, check: ({ article }) => { const v = article.settings[key]; const ok = Array.isArray(v) ? v.length > 0 : !!v && String(v).trim() !== ''; return ok ? { status: 'pass', detail: 'Đã có' } : { status: 'fail', detail: 'Chưa có' }; } };
   },
@@ -1379,12 +1397,12 @@ export const ST_P_WEBSITE: PlatformStrategy = {
   render: (a) => ({
     format: 'html',
     meta: { title: stStr(a.settings.metaTitle), description: stStr(a.settings.metaDescription) },
-    body: [`<h1>${stEsc(a.title)}</h1>`, `<p class="sapo"><strong>${stEsc(a.sapo)}</strong></p>`, ...a.sections.flatMap((s) => [`<h${s.level}>${stEsc(s.title)}</h${s.level}>`, ...(s.image ? [`<figure><img src="${stEsc(s.image.url)}" alt="${stEsc(s.image.alt)}"/></figure>`] : []), stMdToHtml(s.body)])].join('\n'),
+    body: a.doc ? [`<h1>${stEsc(a.title)}</h1>`, `<p class="sapo"><strong>${stEsc(a.sapo)}</strong></p>`, wsDocHtml(a.doc)].join('\n') : [`<h1>${stEsc(a.title)}</h1>`, `<p class="sapo"><strong>${stEsc(a.sapo)}</strong></p>`, ...a.sections.flatMap((s) => [`<h${s.level}>${stEsc(s.title)}</h${s.level}>`, ...(s.image ? [`<figure><img src="${stEsc(s.image.url)}" alt="${stEsc(s.image.alt)}"/></figure>`] : []), stMdToHtml(s.body)])].join('\n'),
   }),
   seoRules: [
     stRules.keywordIn('title', 'focusKeyword', 12), stRules.keywordIn('sapo', 'focusKeyword', 10), stRules.keywordIn('heading', 'focusKeyword', 10),
     stRules.wordsBetween(800, 2000, 10), stRules.charLimit('metaTitle', 'Meta Title', 30, 60, 8), stRules.charLimit('metaDescription', 'Meta Description', 120, 155, 8),
-    stRules.lsiCoverage(6), stRules.textImageRatio(350, 6),
+    stRules.lsiCoverage(6), stRules.textImageRatio(350, 6), stRules.imageAlt(6),
   ],
   image: { aspect: 'landscape', hint: 'Ảnh ngang 3:2 cho bài blog, có thể chèn chữ ngắn' },
 };
@@ -1514,6 +1532,7 @@ export const createStudioStore = (company: StCompany, initial?: StArticle) => st
     }),
     patchSection: (id, p) => mapSection(id, (s) => ({ ...s, ...p })),
     setImage: (id, image) => { set(snap()); mapSection(id, (s) => ({ ...s, image })); },
+    setDoc: (doc) => set((st) => ({ article: stTouch({ ...st.article, doc, sections: wsDocToSections(doc, st.article.sections) }) })),
     setActive: (activeSectionId) => set({ activeSectionId }),
     focusSection: (id) => set({ activeSectionId: id, navAt: Date.now() }),
     setBusy: (id, kind) => set((st) => ({ busy: { ...st.busy, [id]: kind } })),
@@ -1528,99 +1547,6 @@ export const createStudioStore = (company: StCompany, initial?: StArticle) => st
  * Component đọc bằng useStudio(selector): chỉ render lại khi lát cắt chọn thay đổi.
  */
 export const StCtx = createContext<StudioStore | null>(null);
-
-// ---- studio/image/ImageGenerator.tsx ----
-
-/**
- * Trình tạo ảnh cho một mục (Bước 3).
- *  - Prompt gợi ý sẵn từ tiêu đề mục + gợi ý khung hình của kênh.
- *  - Ảnh tham chiếu (img2img) + thanh "Image Strength" 0 → 1.
- *  - Ưu tiên màu thương hiệu (đưa vào prompt) và đóng dấu watermark (vẽ bằng canvas sau khi tạo).
- * memo theo sectionId: gõ ở mục khác không render lại khối này.
- */
-export const ImageGenerator = memo(function ImageGenerator({ sectionId, api }: { sectionId: string; api: StudioApi }) {
-  const title = useStudio((s) => s.article.sections.find((x) => x.id === sectionId)?.title ?? '');
-  const image = useStudio((s) => s.article.sections.find((x) => x.id === sectionId)?.image);
-  const platformId = useStudio((s) => s.article.platform);
-  const busy = useStudio((s) => s.busy[sectionId] === 'image');
-  const brandName = useStudio((s) => s.company.name);
-  const { setImage, setBusy } = useStudioActions();
-  const p = getPlatform(platformId);
-  const uidp = useId();
-
-  const [prompt, setPrompt] = useState(() => `Ảnh minh họa cho "${title}". ${p.image.hint}.`);
-  const [reference, setReference] = useState<string | undefined>(image?.referenceUrl);
-  const [strength, setStrength] = useState(image?.strength ?? 0.35);
-  const [brandPalette, setBrandPalette] = useState(true);
-  const [watermark, setWatermark] = useState(true);
-  const [error, setError] = useState('');
-
-  const pick = async (f?: File) => {
-    if (!f) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(f.type)) return setError('Chọn ảnh JPG, PNG hoặc WebP');
-    if (f.size > 15 * 1024 * 1024) return setError('Ảnh tối đa 15 MB');
-    setError('');
-    setReference(await stShrinkImage(f, 1024));
-  };
-  const generate = async () => {
-    if (prompt.trim().length < 8) return setError('Mô tả ảnh cần rõ hơn');
-    setError(''); setBusy(sectionId, 'image');
-    try {
-      const r = await api.image({ prompt: [prompt.trim(), brandPalette ? ST_BRAND.palettePrompt : ''].filter(Boolean).join('\n'), aspect: p.image.aspect, reference, strength, brandPalette });
-      const url = watermark ? await applyWatermark(r.dataUrl, brandName) : r.dataUrl;
-      setImage(sectionId, { url, prompt, alt: title, referenceUrl: reference, strength: reference ? strength : undefined, brandPalette, watermarked: watermark, model: r.model, createdAt: Date.now() });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không tạo được ảnh');
-    } finally { setBusy(sectionId, undefined); }
-  };
-
-  const pct = Math.round(strength * 100);
-  return (
-    <div className="rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--sunken))] p-3">
-      <div className="grid gap-3 md:grid-cols-[1fr_168px]">
-        <div className="space-y-3">
-          <label className="block text-xs font-medium text-[rgb(var(--muted))]" htmlFor={`${uidp}-p`}>Mô tả ảnh</label>
-          <textarea id={`${uidp}-p`} rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} className="w-full resize-y rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-3 py-2 text-sm focus:border-[rgb(var(--accent))] focus:outline-none" />
-
-          <div className={reference ? '' : 'pointer-events-none opacity-50'} aria-disabled={!reference}>
-            <div className="flex items-baseline justify-between text-xs">
-              <label htmlFor={`${uidp}-s`} className="font-medium text-[rgb(var(--muted))]">Image Strength</label>
-              <span className="font-semibold tabular-nums">{strength.toFixed(2)}</span>
-            </div>
-            <input id={`${uidp}-s`} type="range" min={0} max={1} step={0.05} value={strength} onChange={(e) => setStrength(Number(e.target.value))}
-              className="mt-1 w-full accent-[rgb(var(--accent))]" style={{ background: `linear-gradient(90deg, ${ST_BRAND.navy} ${pct}%, transparent ${pct}%)` }} aria-valuetext={strengthLabel(strength)} />
-            <div className="flex justify-between text-[11px] text-[rgb(var(--faint))]"><span>Bám ảnh gốc</span><span>Sáng tạo tự do</span></div>
-            <p className="mt-1 text-xs text-[rgb(var(--fg2))]">{reference ? strengthLabel(strength) : 'Tải ảnh tham chiếu để dùng thanh này'}</p>
-          </div>
-
-          <div className="flex flex-wrap gap-4 text-sm">
-            <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={brandPalette} onChange={(e) => setBrandPalette(e.target.checked)} />
-              Màu thương hiệu <span className="inline-flex gap-0.5" aria-hidden><i className="h-3 w-3 rounded-sm" style={{ background: ST_BRAND.navy }} /><i className="h-3 w-3 rounded-sm" style={{ background: ST_BRAND.orange }} /></span></label>
-            <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={watermark} onChange={(e) => setWatermark(e.target.checked)} />Đóng dấu {brandName}</label>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-[rgb(var(--muted))]">Ảnh tham chiếu</p>
-          <label onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void pick(e.dataTransfer.files?.[0]); }} className="flex aspect-square cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-dashed border-[rgb(var(--line))] bg-[rgb(var(--surface))] text-center text-xs text-[rgb(var(--muted))] hover:border-[rgb(var(--accent))]">
-            {reference ? <img src={reference} alt="Ảnh tham chiếu" className="h-full w-full object-cover" /> : <span className="px-3">Kéo thả hoặc bấm để tải ảnh sản phẩm</span>}
-            <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => void pick(e.target.files?.[0])} />
-          </label>
-          {reference && <button type="button" className="w-full text-xs text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => setReference(undefined)}>Bỏ ảnh tham chiếu</button>}
-        </div>
-      </div>
-
-      {error && <p className="mt-2 text-xs text-[rgb(var(--danger-fg))]" role="alert">{error}</p>}
-      <div className="mt-3 flex items-center gap-3">
-        <button type="button" onClick={() => void generate()} disabled={busy} className="rounded-md bg-[rgb(var(--accent))] px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-60">
-          {busy ? 'Đang tạo ảnh…' : image ? 'Tạo lại ảnh' : reference ? 'Tạo ảnh từ ảnh tham chiếu' : 'Tạo ảnh'}
-        </button>
-        {image && <span className="text-xs text-[rgb(var(--muted))]">{image.model} · {image.referenceUrl ? `img2img ${image.strength?.toFixed(2)}` : 'text2img'}{image.watermarked ? ' · có watermark' : ''}</span>}
-      </div>
-      {image && <img src={image.url} alt={image.alt} className="mt-3 w-full rounded-md border border-[rgb(var(--line))]" />}
-    </div>
-  );
-});
 
 // ---- studio/steps/DynamicSettingsForm.tsx ----
 
@@ -1717,63 +1643,6 @@ export const OutlinePanel = memo(function OutlinePanel({ headings = true }: { he
   );
 });
 
-// ---- studio/steps/SectionPane.tsx ----
-
-/**
- * Một mục ở cột phải Bước 3: tiêu đề, nội dung, nút AI viết, khối tạo ảnh.
- * Chỉ đăng ký đúng mục của mình (selector theo id) và memo theo props => gõ mục này không render lại mục khác.
- */
-export const SectionPane = memo(function SectionPane({ id, index, api }: { id: string; index: number; api: StudioApi }) {
-  const section = useStudio((s) => s.article.sections.find((x) => x.id === id));
-  const active = useStudio((s) => s.activeSectionId === id);
-  const busy = useStudio((s) => s.busy[id] === 'text');
-  const headings = useStudio((s) => getPlatform(s.article.platform).structure.headings);
-  const { patchSection, setActive, setBusy, removeSection } = useStudioActions();
-  const store = useStudioApi();
-  const [showImg, setShowImg] = useState(!!section?.image);
-  const [err, setErr] = useState('');
-  const ta = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => { const el = ta.current; if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; } }, [section?.body]);
-  if (!section) return null;
-
-  const write = async () => {
-    const st = store.getState();
-    const p = getPlatform(st.article.platform);
-    setBusy(id, 'text');
-    try {
-      const text = await api.text({ system: `Bạn là biên tập viên nội dung B2B của ${st.company.name}${st.company.sector ? `, lĩnh vực ${st.company.sector}` : ''}. Chỉ trả nội dung mục, không lặp tiêu đề.`, prompt: p.sectionPrompt(st.article, id, st.company), kind: 'section', article: st.article, sectionId: id });
-      patchSection(id, { body: text.trim() });
-      setErr('');
-    } catch (e) { setErr(e instanceof Error ? e.message : 'AI chưa viết được mục này'); } finally { setBusy(id, undefined); }
-  };
-
-  return (
-    <section id={`sec-${id}`} data-section-id={id} onFocusCapture={() => !active && setActive(id)}
-      className={`scroll-mt-4 rounded-xl border bg-[rgb(var(--surface))] p-4 transition-colors ${active ? 'border-[rgb(var(--accent)/0.6)] shadow-sm' : 'border-[rgb(var(--line))]'}`}>
-      <header className="mb-2 flex items-center gap-2">
-        <span className="rounded bg-[rgb(var(--sunken))] px-1.5 py-0.5 text-[10px] font-bold text-[rgb(var(--muted))]">{headings ? `H${section.level}` : `Ý ${index + 1}`}</span>
-        <input value={section.title} onChange={(e) => patchSection(id, { title: e.target.value })} aria-label="Tiêu đề mục"
-          className={`min-w-0 flex-1 bg-transparent font-semibold outline-none ${section.level === 2 ? 'text-lg' : 'text-base'}`} />
-        <button type="button" onClick={() => removeSection(id)} aria-label="Xóa mục" className="text-[rgb(var(--faint))] hover:text-[rgb(var(--danger-fg))]">✕</button>
-      </header>
-      <textarea ref={ta} value={section.body} onChange={(e) => patchSection(id, { body: e.target.value })} placeholder="Nội dung mục… (hoặc bấm AI viết)" aria-label={`Nội dung ${section.title}`}
-        className="min-h-24 w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent p-2 text-[15px] leading-relaxed focus:border-[rgb(var(--line))] focus:outline-none" />
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-        <button type="button" onClick={() => void write()} disabled={busy} className="rounded-md border border-[rgb(var(--line))] px-3 py-1.5 font-medium hover:border-[rgb(var(--accent))] disabled:opacity-60">{busy ? 'AI đang viết…' : section.body ? 'AI viết lại' : 'AI viết mục này'}</button>
-        <button type="button" onClick={() => setShowImg((v) => !v)} aria-expanded={showImg} className="rounded-md border border-[rgb(var(--line))] px-3 py-1.5 font-medium hover:border-[rgb(var(--accent))]">{section.image ? 'Ảnh của mục' : 'Thêm ảnh AI'}</button>
-        <span className="ml-auto text-xs tabular-nums text-[rgb(var(--muted))]">{section.body.trim() ? section.body.trim().split(/\s+/).length : 0} từ</span>
-      </div>
-      {err && <p className="mt-2 text-xs text-[rgb(var(--danger-fg))]" role="alert">{err}</p>}
-      {showImg && <div className="mt-3"><ImageGenerator sectionId={id} api={api} /></div>}
-    </section>
-  );
-});
-
-// ---- studio/steps/ComposeSplitView.tsx ----
-
-/** Danh sách id mục dạng chuỗi => chỉ render lại khung khi thêm / bớt / đổi thứ tự mục, không khi gõ */
-export const idsKey = (s: { article: { sections: { id: string }[] } }) => s.article.sections.map((x) => x.id).join(',');
-
 // ---- studio/sidebar/SeoSidebar.tsx ----
 
 export const TONE = { pass: 'text-[rgb(var(--success-fg))]', warn: 'text-[rgb(var(--accent-fg))]', fail: 'text-[rgb(var(--danger-fg))]' } as const;
@@ -1840,7 +1709,94 @@ export const studioSupports = (c: MktContent) => c.type === 'AD_POST' || c.type 
 
 export const platformOfContent = (c: MktContent) => c.platform ?? (c.channel === 'FACEBOOK' ? 'facebook' : c.channel === 'ZALO_OA' || c.type === 'ZALO_OA' ? 'zalo' : c.channel === 'GOOGLE' ? 'google-maps' : 'website');
 
-export const ST_STEPS: { id: StStepId; label: string }[] = [{ id: 1, label: 'Cài đặt' }, { id: 2, label: 'Dàn ý' }, { id: 3, label: 'Viết & ảnh' }, { id: 4, label: 'Hoàn thiện' }];
+/** v38: Bước 3 (Viết & ảnh) + Bước 4 (Hoàn thiện) gộp thành Workspace */
+export const ST_STEPS: { id: StStepId; label: string }[] = [{ id: 1, label: 'Cài đặt' }, { id: 2, label: 'Dàn ý' }, { id: 3, label: 'Workspace' }];
+
+export const INITIAL_AI_QUOTA: AiQuotaCfg = { ghost: { enabled: true, dailyLimit: 50, extraUsers: [], blockedUsers: [] } };
+
+export const CV_MAX = 20;
+
+export const CV_KIND: Record<ContentVersionKind, { label: string; tone: Tone }> = {
+  AI_DRAFT: { label: 'AI viết', tone: 'blue' }, HUMANIZE: { label: 'Humanize', tone: 'teal' }, MANUAL: { label: 'Lưu tay', tone: 'muted' },
+  REVIEW: { label: 'Gửi duyệt', tone: 'orange' }, APPROVED: { label: 'Đã duyệt', tone: 'teal' }, RESTORE: { label: 'Trước khôi phục', tone: 'muted' },
+};
+
+/** Cụm sáo thường gặp trong văn AI (sửa được ở Cài đặt › AI) */
+export const HS_CLICHES_DEFAULT = [
+  'bên cạnh đó', 'không chỉ ... mà còn', 'tóm lại', 'nhìn chung', 'có thể nói', 'đóng vai trò quan trọng', 'trong bối cảnh', 'hơn nữa', 'ngoài ra',
+  'điều này cho thấy', 'một cách hiệu quả', 'đáng chú ý', 'không thể phủ nhận', 'giải pháp tối ưu', 'vô cùng quan trọng', 'hàng đầu', 'nâng tầm',
+  'trải nghiệm tuyệt vời', 'đa dạng', 'tối ưu hóa', 'chính vì vậy', 'nói cách khác', 'cuối cùng nhưng không kém phần quan trọng',
+];
+
+export const WS_TONES = [{ value: 'talk', label: 'Giao tiếp' }, { value: 'expert', label: 'Chuyên gia' }, { value: 'sales', label: 'Bán hàng' }] as const;
+
+// ---- workspace/doc.ts: chuyển đổi giữa dàn ý (sections) và tài liệu TipTap (doc JSON) ----
+
+export const wsId = () => `b${Math.random().toString(36).slice(2, 10)}`;
+
+export const WS_BLOCK_TYPES = ['heading', 'paragraph', 'bulletList', 'orderedList', 'blockquote', 'image', 'horizontalRule'];
+
+export const wsPara = (s: string): JSONContent => { const c = wsInline(s.trim()); return c.length ? { type: 'paragraph', content: c } : { type: 'paragraph' }; };
+
+export const wsText = (n: JSONContent): string => (n.type === 'text' ? n.text ?? '' : (n.content ?? []).map(wsText).join(n.type === 'bulletList' || n.type === 'orderedList' ? '\n' : ''));
+
+export const wsInlineMd = (n: JSONContent): string => (n.type === 'text' ? (n.marks?.some((m) => m.type === 'bold') ? `**${n.text ?? ''}**` : n.text ?? '') : (n.content ?? []).map(wsInlineMd).join(''));
+
+export const wsHeadKey = (d: JSONContent) => (d.content ?? []).filter((n) => n.type === 'heading').map((n) => `${n.attrs?.id}|${n.attrs?.level}|${wsText(n)}`).join('\n');
+
+export const wsSecKey = (a: StArticle) => a.sections.map((s) => `${s.id}|${s.level}|${s.title}`).join('\n');
+
+export const wsImages = (d: JSONContent | undefined): WsImage[] => (d?.content ?? []).filter((n) => n.type === 'image').map((n) => ({ src: String(n.attrs?.src ?? ''), alt: String(n.attrs?.alt ?? ''), caption: String(n.attrs?.caption ?? n.attrs?.title ?? ''), fileName: String(n.attrs?.fileName ?? '') }));
+
+export const wsSafeHref = (h: string) => (/^(https?:|mailto:|tel:|\/)/i.test(h) ? h : '#');
+
+export const wsWords = (t: string) => t.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+
+export const wsSentences = (t: string) => t.split(/(?<=[.!?…])\s+|\n+/).map((s) => s.trim()).filter((s) => wsWords(s).length > 0);
+
+export const wsClamp = (x: number) => Math.max(0, Math.min(1, x));
+
+export const WS_GHOST = new PluginKey<WsGhost>('ws-ghost');
+
+export const WS_MARKS = new PluginKey<WsMarks>('ws-marks');
+
+/** Người dùng có thuộc nhóm được bật gợi ý viết tiếp không (máy chủ kiểm lại y hệt, đây chỉ để ẩn / hiện giao diện) */
+export const ghostEligible = (q: AiQuotaCfg, me: User | null, role: Role) =>
+  !!me && q.ghost.enabled && !q.ghost.blockedUsers.includes(me.id) && (role === 'BOD' || role === 'MKT_LEAD' || me.dept === 'MARKETING' || q.ghost.extraUsers.includes(me.id));
+
+export const GHOST_PREF = (uid0: string) => `3a:ghost-off:${uid0}`;
+
+export const ghostPrefOff = (uid0: string) => { try { return localStorage.getItem(GHOST_PREF(uid0)) === '1'; } catch { return false; } };
+
+/** Thêm mốc, giữ tối đa 20 mốc mỗi bài (bỏ mốc cũ nhất) */
+export const wsPushVersion = (p: ContentVersion[], v: ContentVersion) => {
+  const mine = p.filter((x) => x.contentId === v.contentId).sort((a, b) => b.at - a.at);
+  const drop = new Set(mine.slice(CV_MAX - 1).map((x) => x.id));
+  return [v, ...p.filter((x) => !drop.has(x.id))];
+};
+
+export const wsCleanAi = (s: string) => s.replace(/^```[a-z]*\n?|```$/g, '').replace(/^(đây là|dưới đây là)[^\n]*:\s*\n/i, '').trim().replace(/^"([\s\S]*)"$/, '$1');
+
+export const WS_CSS = `
+.ws-prose{outline:none;font-size:16.5px;line-height:1.75;color:rgb(var(--fg));padding-bottom:40vh}
+.ws-prose h2{font-size:1.45em;font-weight:700;line-height:1.3;margin:1.6em 0 .5em}
+.ws-prose h3{font-size:1.18em;font-weight:650;line-height:1.35;margin:1.3em 0 .4em}
+.ws-prose p{margin:.65em 0}
+.ws-prose ul{list-style:disc;padding-left:1.4em;margin:.6em 0}
+.ws-prose ol{list-style:decimal;padding-left:1.4em;margin:.6em 0}
+.ws-prose li p{margin:.2em 0}
+.ws-prose blockquote{border-left:3px solid rgb(var(--accent));padding-left:1em;color:rgb(var(--fg2));margin:1em 0}
+.ws-prose hr{border:none;border-top:1px solid rgb(var(--line));margin:1.6em 0}
+.ws-prose img{max-width:100%;height:auto;border-radius:8px;margin:1em 0;display:block}
+.ws-prose img.ProseMirror-selectednode{outline:3px solid rgb(var(--accent))}
+.ws-prose a{color:rgb(var(--secondary-fg));text-decoration:underline}
+.ws-prose .ws-ghost{color:rgb(var(--faint));pointer-events:none}
+.ws-prose .ws-weak{box-shadow:-4px 0 0 rgb(var(--accent)/.7);background:rgb(var(--accent)/.06);border-radius:2px}
+.ws-prose .ws-hit{background:rgb(var(--secondary)/.12);border-radius:4px;box-shadow:0 0 0 4px rgb(var(--secondary)/.12)}
+.ws-prose .ws-empty::before{content:attr(data-placeholder);color:rgb(var(--faint));float:left;height:0;pointer-events:none}
+.ws-diff del{background:rgb(var(--danger)/.14);color:rgb(var(--danger-fg));text-decoration:line-through}
+.ws-diff ins{background:rgb(var(--success)/.16);color:rgb(var(--success-fg));text-decoration:none}
+`;
 
 /**
  * v36 — Copilot giao tiếp tự nhiên.
@@ -2673,7 +2629,7 @@ export const ORG_DEFAULTS: Record<string, Record<string, unknown>> = {
 // =====================================================================
 
 /** Tăng số này mỗi khi cấu trúc dữ liệu đổi, và thêm một bước vào MIGRATIONS */
-export const DATA_VERSION = 28;
+export const DATA_VERSION = 29;
 
 /** Dữ liệu bản trước khi tách doanh nghiệp (chuyển sang VASSH ở lần mở đầu) */
 export const LEGACY_STORE_KEY = 'vassh-crm:data';
@@ -2786,6 +2742,8 @@ export const MIGRATIONS: Record<number, (d: AnyRec) => AnyRec> = {
   27: (d) => ({ ...d, draftProducts: d.draftProducts ?? [], socialPosts: d.socialPosts ?? [], hubCfg: d.hubCfg ? { ...(d.hubCfg as AnyRec), social: (d.hubCfg as AnyRec).social ?? { title: '', facebookUrl: '', facebookPageId: '', zaloOaUrl: '', youtubeUrl: '', youtubeChannelId: '' }, ai: { ...((d.hubCfg as AnyRec).ai as AnyRec), features: { extract: true, ...(((d.hubCfg as AnyRec).ai as AnyRec)?.features as AnyRec ?? {}) } } } : d.hubCfg }),
   // v37: chỉ tiêu KPI tháng (chỉ thêm nhóm dữ liệu mới)
   28: (d) => ({ ...d, kpiTargets: Array.isArray(d.kpiTargets) ? d.kpiTargets : [] }),
+  // v38: lịch sử phiên bản nội dung, hạn mức AI (chỉ thêm nhóm dữ liệu mới; bài cũ chuyển sang doc khi mở lần đầu)
+  29: (d) => ({ ...d, contentVersions: Array.isArray(d.contentVersions) ? d.contentVersions : [], aiQuota: d.aiQuota ?? INITIAL_AI_QUOTA }),
   23: (d) => ({ ...d, warehouses: Array.isArray(d.warehouses) && d.warehouses.length ? d.warehouses : INITIAL_WAREHOUSES }),
 };
 
@@ -3050,7 +3008,7 @@ export const canonCache = new WeakMap<object, { json: string; files: string[] }>
 /** Nhóm dữ liệu lưu theo từng bản ghi (khóa = trường định danh); nhóm khác lưu nguyên khối */
 export const KEYED_COLLS: Record<string, string> = {
   leads: 'id', customers: 'id', users: 'id', activities: 'id', programs: 'id', claims: 'id', quotes: 'id', pos: 'id', reservations: 'id', moves: 'id',
-  genDocs: 'id', comments: 'id', channels: 'id', posts: 'id', warehouses: 'id', stockVouchers: 'id', zaloConvs: 'id', zaloMsgs: 'id', campaigns: 'id', contents: 'id', banners: 'id', audiences: 'id', automations: 'id', autoRuns: 'id', kb: 'id', mktTasks: 'id', briefs: 'id', draftProducts: 'id', socialPosts: 'id', kpiTargets: 'id', getflyOrders: 'orderCode', notices: 'id', docs: 'id', approvalLogs: 'id', auditLogs: 'id', workOrders: 'id', installJobs: 'id', jobs: 'id',
+  genDocs: 'id', comments: 'id', contentVersions: 'id', channels: 'id', posts: 'id', warehouses: 'id', stockVouchers: 'id', zaloConvs: 'id', zaloMsgs: 'id', campaigns: 'id', contents: 'id', banners: 'id', audiences: 'id', automations: 'id', autoRuns: 'id', kb: 'id', mktTasks: 'id', briefs: 'id', draftProducts: 'id', socialPosts: 'id', kpiTargets: 'id', getflyOrders: 'orderCode', notices: 'id', docs: 'id', approvalLogs: 'id', auditLogs: 'id', workOrders: 'id', installJobs: 'id', jobs: 'id',
   receipts: 'id', stockItems: 'id', stockMoves: 'id', cashEntries: 'id', priceItems: 'id', docTemplates: 'id', skus: 'sku', mktItems: 'id',
   // nền tảng 3A
   tenants: 'id', logs: 'id',

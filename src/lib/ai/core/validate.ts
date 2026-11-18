@@ -27,6 +27,7 @@ function walk(s: JsonSchema, v: unknown, p: string, errs: string[]): unknown {
       if (s.enum && !s.enum.includes(v)) errs.push(`${p}: phải là một trong ${s.enum.join(', ')}`);
       if (s.maxLength && v.length > s.maxLength) errs.push(`${p}: tối đa ${s.maxLength} ký tự`);
       if (s.format === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) errs.push(`${p}: định dạng YYYY-MM-DD`);
+      if (s.format === 'date-time' && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) errs.push(`${p}: định dạng YYYY-MM-DDTHH:mm`);
       return v;
     }
     case 'integer':

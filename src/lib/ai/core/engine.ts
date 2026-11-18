@@ -45,6 +45,7 @@ export async function runCopilot(deps: EngineDeps, ctx: AiContext, history: read
 
   const messages: LlmMessage[] = history.slice(-20).map((t) => ({ role: t.role, content: t.content.slice(0, 8000) }));
   const trace: ToolCallTrace[] = [];
+  const confirm: { tool: string; input: Record<string, unknown> }[] = [];
   const usage = { input: 0, output: 0 };
   let finalText = '';
 
@@ -58,11 +59,12 @@ export async function runCopilot(deps: EngineDeps, ctx: AiContext, history: read
 
     // Chạy song song các tool trong cùng một lượt, mỗi tool độc lập (lỗi 1 tool không làm hỏng tool khác)
     const results = await Promise.all(calls.map((c) => execTool(deps, ctx, db, c, trace, signal)));
+    calls.forEach((c, i) => { if (results[i].type === 'tool_result' && results[i].content.includes('"needs_confirmation":true')) confirm.push({ tool: c.name, input: c.input }); });
     messages.push({ role: 'user', content: results });
     if (step === (deps.maxSteps ?? 5) - 1) finalText ||= 'Câu hỏi cần quá nhiều bước tra cứu. Hãy hỏi cụ thể hơn (một chỉ số, một kỳ, một phòng ban).';
   }
 
-  return { text: finalText, skills: active.map((s) => s.id), tools: trace, provider: provider.id, model: provider.model, usage };
+  return { text: finalText, skills: active.map((s) => s.id), tools: trace, provider: provider.id, model: provider.model, usage, ...(confirm.length ? { confirm } : {}) };
 }
 
 async function execTool(deps: EngineDeps, ctx: AiContext, db: UserDb, call: { id: string; name: string; input: Record<string, unknown> }, trace: ToolCallTrace[], signal?: AbortSignal): Promise<LlmPart> {

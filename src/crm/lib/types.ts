@@ -2,7 +2,8 @@
 
 import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Wallet } from 'lucide-react';
-import { createStudioStore } from './core';
+import { type Editor, type JSONContent } from '@tiptap/core';
+import { createStudioStore, WS_TONES } from './core';
 import { useDashData } from '../modules/dashboard/exec-dashboard';
 
 // =====================================================================
@@ -821,6 +822,11 @@ export type AppCtx = {
   /** v37: chỉ tiêu KPI tháng (phòng ban, nhân viên) và ngưỡng đánh giá */
   kpiTargets: KpiTarget[];
   setKpiTargets: Dispatch<SetStateAction<KpiTarget[]>>;
+  /** v38: lịch sử phiên bản nội dung (tối đa 20 mốc / bài) và hạn mức AI theo người */
+  contentVersions: ContentVersion[];
+  setContentVersions: Dispatch<SetStateAction<ContentVersion[]>>;
+  aiQuota: AiQuotaCfg;
+  setAiQuota: Dispatch<SetStateAction<AiQuotaCfg>>;
   setSocialPosts: Dispatch<SetStateAction<SocialPost[]>>;
   hubCfg: HubCfg;
   setHubCfg: Dispatch<SetStateAction<HubCfg>>;
@@ -1144,7 +1150,9 @@ export type AiProviderPref = 'AUTO' | 'ANTHROPIC' | 'OPENAI';
 export type ZnsTpl = { id: string; name: string; templateId: string; params: { key: string; source: string }[] };
 
 export type HubCfg = {
-  ai: { enabled: boolean; provider: AiProviderPref; anthropicModel: string; openaiModel: string; maskPii: boolean; features: { copilot: boolean; chat: boolean; visual: boolean; writer: boolean; brief: boolean; image: boolean; extract: boolean } };
+  ai: { enabled: boolean; provider: AiProviderPref; anthropicModel: string; openaiModel: string; maskPii: boolean; features: { copilot: boolean; chat: boolean; visual: boolean; writer: boolean; brief: boolean; image: boolean; extract: boolean };
+    /** v38: cụm sáo dùng để chấm Human Score (trống = danh sách mặc định) */
+    cliches?: string[] };
   zalo: { oaName: string; oaId: string; autoLink: boolean; salesSeeAll: boolean; replyMinutes: number; quickReplies: string[]; znsTemplates: ZnsTpl[] };
   brief: { enabled: boolean; hour: number };
   /** v35: kênh truyền thông hiển thị ở Bàn làm việc */
@@ -1240,6 +1248,8 @@ export type MktContent = {
   channel?: MktChannel; textPrompt?: string; imagePrompt?: string; tone?: string; blocks?: ContentBlock[]; titleReport?: TitleReport; aiJob?: AiJob; step?: number; taskId?: string;
   /** v37: Studio đa kênh — kênh xuất bản (website | facebook | zalo | google-maps), đoạn mở đầu, cài đặt riêng của kênh */
   platform?: string; sapo?: string; settings?: Record<string, StSettingValue>;
+  /** v38: tài liệu TipTap của Workspace (blocks vẫn được ghi song song để bản cũ đọc được) */
+  doc?: JSONContent;
 };
 
 export type BannerSize = 'FB' | 'SQUARE' | 'STORY' | 'ZALO' | 'WEB';
@@ -1339,6 +1349,8 @@ export interface StArticle {
   sections: StSection[];
   settings: StSettings;        // giá trị form động của kênh đang chọn
   updatedAt: number;
+  /** v38: nội dung dạng tài liệu TipTap (nguồn chính ở Workspace); sections được suy ra từ doc */
+  doc?: JSONContent;
 }
 
 export interface StCompany { name: string; address: string; phone: string; website?: string; hotline?: string; /** Lĩnh vực kinh doanh (đưa vào prompt), lấy từ cấu hình doanh nghiệp */ sector?: string }
@@ -1400,7 +1412,7 @@ export interface FieldDef {
   readonly wide?: boolean;
 }
 
-export interface SeoInput { article: StArticle; plain: string; words: number; headings: string[]; images: number; company: StCompany }
+export interface SeoInput { article: StArticle; plain: string; words: number; headings: string[]; images: number; company: StCompany; /** v38: ảnh trong tài liệu (alt, chú thích) */ imgs: { alt: string; caption: string }[] }
 
 export interface SeoRule {
   readonly id: string;
@@ -1467,6 +1479,8 @@ export interface StudioState {
   moveSection(id: string, toIndex: number): void;
   patchSection(id: string, p: Partial<Omit<StSection, 'id'>>): void;
   setImage(id: string, img: StImageAsset | undefined): void;
+  /** v38: Workspace ghi tài liệu; sections suy ra từ doc để kênh xuất bản / chấm SEO dùng tiếp */
+  setDoc(doc: JSONContent): void;
   setActive(id: string | null): void;
   focusSection(id: string): void;
   setBusy(id: string, kind: 'text' | 'image' | undefined): void;
@@ -1475,7 +1489,57 @@ export interface StudioState {
 
 export type StudioStore = ReturnType<typeof createStudioStore>;
 
-export type StudioActions = Pick<StudioState, 'setStep' | 'setPlatform' | 'setSetting' | 'setTitle' | 'setSapo' | 'setOutline' | 'addSection' | 'removeSection' | 'moveSection' | 'patchSection' | 'setImage' | 'setActive' | 'focusSection' | 'setBusy' | 'undo'>;
+export type StudioActions = Pick<StudioState, 'setStep' | 'setPlatform' | 'setSetting' | 'setTitle' | 'setSapo' | 'setOutline' | 'addSection' | 'removeSection' | 'moveSection' | 'patchSection' | 'setImage' | 'setDoc' | 'setActive' | 'focusSection' | 'setBusy' | 'undo'>;
+
+// =====================================================================
+//  CONTENT WORKSPACE v38 — trình soạn khối TipTap thay Bước 3 + 4 của Content Studio:
+//  thanh công cụ nổi, ghost text (Tab để nhận), gõ "/" chèn khối, Zen Mode, sidebar dính 4 tab
+//  (SEO · Tự nhiên · LSI · Lịch sử), Human Score, Humanize / Viết lại / Chèn LSI dạng so sánh, ảnh chuẩn SEO
+// =====================================================================
+
+/** Mốc lịch sử của một nội dung (bản ghi riêng, nhóm contentVersions) */
+export type ContentVersionKind = 'AI_DRAFT' | 'HUMANIZE' | 'MANUAL' | 'REVIEW' | 'APPROVED' | 'RESTORE';
+
+export type ContentVersion = { id: string; contentId: string; kind: ContentVersionKind; title: string; doc: JSONContent; seoScore: number; humanScore: number; by: string; at: number; note?: string };
+
+/** Hạn mức AI theo người (bản ghi nguyên khối '$'/aiQuota; chỉ Giám đốc / quản trị ghi được, máy chủ đọc để chặn) */
+export type AiQuotaCfg = { ghost: { enabled: boolean; dailyLimit: number; extraUsers: string[]; blockedUsers: string[] } };
+
+export type WsTone = (typeof WS_TONES)[number]['value'];
+
+export type WsImage = { src: string; alt: string; caption: string; fileName: string };
+
+/** Các khối cấp 1 kèm tiêu đề mục chứa nó (Human Score, LSI, so sánh phiên bản) */
+export type WsBlock = { id: string; type: string; text: string; heading: string };
+
+// ---- workspace/human.ts: điểm tự nhiên (ước lượng biên tập, KHÔNG phải máy dò AI) ----
+
+export type HumanBlock = { id: string; heading: string; score: number; words: number; reasons: string[] };
+
+export type HumanReport = { score: number; weakPct: number; scored: number; blocks: HumanBlock[]; metrics: { label: string; value: number; hint: string }[] };
+
+// ---- workspace/diff.ts: so sánh theo từ, kiểm số liệu / mã / từ khóa bị mất ----
+
+export type WsDiffPart = { t: 'eq' | 'del' | 'ins'; s: string };
+
+// ---- workspace/extensions.ts: TipTap (mã id khối, ghost text, tô đoạn, chỗ trống) ----
+
+export type WsGhost = { text: string; pos: number } | null;
+
+export type WsMarks = { weak: string[]; hit: string[] };
+
+// ---- workspace/Workspace.tsx ----
+
+export type WsProposal = {
+  kind: 'HUMANIZE' | 'REWRITE' | 'LSI'; label: string; mode: 'inline' | 'block';
+  from: number; to: number; original: string; text: string | null; busy: boolean; error?: string; lost: string[]; top: number;
+};
+
+export type WsSlash = { from: number; to: number; query: string; top: number; left: number; idx: number } | null;
+
+export type WsImagePanel = { from: number; to: number; top: number; heading: string; context: string } | null;
+
+export type WsSlashItem = { id: string; label: string; hint: string; keys: string; run: (e: Editor, r: { from: number; to: number }) => void };
 
 // =====================================================================
 //  COMMUNICATION & AI HUB (cột phải): Chat nội bộ theo ngữ cảnh + AI Copilot

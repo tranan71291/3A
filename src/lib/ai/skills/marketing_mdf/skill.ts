@@ -4,7 +4,7 @@ import { getClaimsDue, getMdfBudget, listMdfPrograms, searchMdfPolicy } from './
 
 /**
  * Skill "Quỹ MDF & Marketing". Toàn bộ nằm trong thư mục này: xóa thư mục = gỡ Skill, không ảnh hưởng Skill khác.
- * Trưởng phòng được xem chương trình / claim của phòng mình nhưng không xem ngân sách tổng (tool get_mdf_budget giới hạn vai trò).
+ * Trưởng phòng được xem chương trình / claim của phòng mình nhưng không xem ngân sách tổng (tool check_mdf_budget giới hạn vai trò).
  */
 const skill: SkillManifest = {
   id: 'marketing_mdf',

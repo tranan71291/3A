@@ -44,7 +44,7 @@ export class SkillRegistry {
 
   /** Tool của các Skill đã chọn mà vai trò này được gọi */
   toolsFor(skills: readonly SkillManifest[], role: Role): ResolvedTool[] {
-    return skills.flatMap((s) => s.tools.filter((t) => allows(t.roles ?? s.roles, role)).map((t) => this.tools.get(`${s.id}${SEP}${t.name}`)!));
+    return skills.flatMap((s) => s.tools.filter((t) => !t.draft && allows(t.roles ?? s.roles, role)).map((t) => this.tools.get(`${s.id}${SEP}${t.name}`)!));
   }
 
   /** Tra tool theo tên đầy đủ LLM gửi về; trả null nếu không tồn tại HOẶC vai trò không được dùng */
@@ -52,7 +52,7 @@ export class SkillRegistry {
     const r = this.tools.get(fullName);
     if (!r) return null;
     const okSkill = r.skill.enabled !== false && allows(r.skill.roles, ctx.role) && (!r.skill.tenants || r.skill.tenants.includes(ctx.tenant));
-    return okSkill && allows(r.tool.roles ?? r.skill.roles, ctx.role) ? r : null;
+    return okSkill && !r.tool.draft && allows(r.tool.roles ?? r.skill.roles, ctx.role) ? r : null;
   }
 
   get(id: string) { return this.skills.get(id); }

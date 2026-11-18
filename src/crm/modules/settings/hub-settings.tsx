@@ -7,6 +7,7 @@ import { AI_NAME, btnGhost, btnSm, DEALER_BONUS_TEMPLATE, inputBase, inputCls, S
 import type { AiProviderPref, HubCfg, KbItem, KbRule, SocialCfg, ZnsTpl } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { useAi, useServerStatus } from '../ai/ai-core';
+import { GhostSettingsPanel } from '../marketing/content-workspace';
 import { Switch } from '../platform/console';
 
 // =====================================================================
@@ -72,6 +73,8 @@ export function HubSettings() {
             <div className="flex flex-wrap items-center gap-2"><button type="button" className={btnGhost} onClick={() => void runTest()} disabled={busy}><Sparkles className="h-4 w-4 text-[rgb(var(--accent))]" aria-hidden />{busy ? 'Đang thử…' : 'Thử kết nối AI'}</button>{test && <span className="text-xs">{test}</span>}</div>
           </div>
         </Panel>
+
+        <GhostSettingsPanel />
 
         <Panel title="Bản tin điều hành mỗi sáng">
           <div className="flex flex-wrap items-center gap-4 text-sm">
