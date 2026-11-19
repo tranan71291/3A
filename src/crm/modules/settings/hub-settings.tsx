@@ -2,20 +2,26 @@
 
 import { useState } from 'react';
 import { Plus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react';
-import { Field, MoneyInput, Panel } from '../../components/ui';
+import { Field, MoneyInput, Panel, Tabs, useSticky } from '../../components/ui';
 import { AI_NAME, btnGhost, btnSm, DEALER_BONUS_TEMPLATE, inputBase, inputCls, SOCIAL0, uid, useApp, ZNS_SOURCES } from '../../lib/core';
 import type { AiProviderPref, HubCfg, KbItem, KbRule, SocialCfg, ZnsTpl } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { useAi, useServerStatus } from '../ai/ai-core';
 import { GhostSettingsPanel, VariantSettingsPanel } from '../marketing/content-workspace';
 import { Switch } from '../platform/console';
+import { ZnsSettings } from './zns';
 
 // =====================================================================
 //  CÀI ĐẶT AI & ZALO (v32): nhà cung cấp AI, Zalo OA, mẫu ZNS, bản tin điều hành, kiến thức cho AI
 // =====================================================================
 
-export function HubSettings() {
+export function HubSettings({ part = 'ai', znsOn = true }: { part?: 'ai' | 'zalo'; znsOn?: boolean } = {}) {
   const app = useApp();
+  const subs: { id: string; label: string }[] = part === 'ai'
+    ? [{ id: 'assist', label: 'Trợ lý AI' }, { id: 'ghost', label: 'Gợi ý viết' }, { id: 'variant', label: 'Biến thể nội dung' }, { id: 'kb', label: 'Kiến thức cho AI' }, { id: 'media', label: 'Bản tin & truyền thông' }]
+    : [{ id: 'oa', label: 'Kết nối OA' }, { id: 'zns', label: 'Mẫu ZNS' }, ...(znsOn ? [{ id: 'notify', label: 'Thông báo & nhật ký' }] : [])];
+  const [sub0, setSub] = useSticky<string>(`HubSettings.${part}`, subs[0].id);
+  const sub = subs.some((x) => x.id === sub0) ? sub0 : subs[0].id;
   const { hubCfg, setHubCfg, kb, setKb, canDo, org, notify, audit, me, company } = app;
   const [srv, recheck] = useServerStatus();
   const soc = { ...SOCIAL0, ...(hubCfg.social ?? {}) };
@@ -38,7 +44,8 @@ export function HubSettings() {
   const ZT: ZnsTpl = { id: '', name: '', templateId: '', params: [] };
   return (
     <div className="space-y-5">
-      <Panel title="Kết nối máy chủ" action={<button className={cn(btnGhost, btnSm)} onClick={recheck}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Kiểm tra lại</button>}>
+      <Tabs tabs={subs} value={sub} onChange={setSub} />
+      {(sub === 'assist' || sub === 'oa') && <Panel title="Kết nối máy chủ" action={<button className={cn(btnGhost, btnSm)} onClick={recheck}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Kiểm tra lại</button>}>
         <p className="mb-3 text-sm text-[rgb(var(--muted))]">Khóa API đặt trong biến môi trường của máy chủ (Vercel &gt; Settings &gt; Environment Variables hoặc file .env.local), không lưu trong dữ liệu CRM và không gửi về trình duyệt. {srv.checked && !srv.reachable && <b className="text-[rgb(var(--accent-fg))]">Không gọi được route /api trên máy chủ: app đang chạy dạng tĩnh nên dùng chế độ mô phỏng.</b>}</p>
         <ul className="grid gap-2 md:grid-cols-2">
           {dot(srv.ai.anthropic, 'Claude (Anthropic)', `ANTHROPIC_API_KEY · mô hình ${srv.models.anthropic || 'mặc định'} (ANTHROPIC_MODEL)`)}
@@ -53,10 +60,10 @@ export function HubSettings() {
           <div className="mt-1 flex items-center gap-2"><code className="min-w-0 flex-1 truncate font-mono text-[rgb(var(--secondary-fg))]">{hook}</code><button className={cn(btnGhost, btnSm)} onClick={() => { void navigator.clipboard?.writeText(hook); notify('Đã sao chép URL webhook', 'teal'); }}>Sao chép</button></div>
           <p className="mt-1 text-[rgb(var(--muted))]">Mỗi doanh nghiệp có thể dùng OA riêng bằng hậu tố biến môi trường, ví dụ ZALO_OA_ACCESS_TOKEN__{org.id.toUpperCase()}.</p>
         </div>
-      </Panel>
+      </Panel>}
 
       <fieldset disabled={ro} className="space-y-5">
-        <Panel title="Trợ lý AI">
+        {sub === 'assist' && <Panel title="Trợ lý AI">
           <div className="space-y-3">
             <label className="flex items-center justify-between gap-3 text-sm"><span><b>Bật trợ lý AI</b><span className="block text-xs text-[rgb(var(--muted))]">Tắt thì Copilot chỉ dùng bộ phân tích cục bộ, không gửi dữ liệu ra ngoài</span></span><Switch on={hubCfg.ai.enabled} onChange={(v) => { setAi({ enabled: v }); audit('AI_CONFIG', v ? 'Bật trợ lý AI' : 'Tắt trợ lý AI', 'SECURITY'); }} label="Bật trợ lý AI" disabled={ro} /></label>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -72,13 +79,13 @@ export function HubSettings() {
             </div>
             <div className="flex flex-wrap items-center gap-2"><button type="button" className={btnGhost} onClick={() => void runTest()} disabled={busy}><Sparkles className="h-4 w-4 text-[rgb(var(--accent))]" aria-hidden />{busy ? 'Đang thử…' : 'Thử kết nối AI'}</button>{test && <span className="text-xs">{test}</span>}</div>
           </div>
-        </Panel>
+        </Panel>}
 
-        <GhostSettingsPanel />
+        {sub === 'ghost' && <GhostSettingsPanel />}
 
-        <VariantSettingsPanel />
+        {sub === 'variant' && <VariantSettingsPanel />}
 
-        <Panel title="Bản tin điều hành mỗi sáng">
+        {sub === 'media' && <><Panel title="Bản tin điều hành mỗi sáng">
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <label className="flex items-center gap-2"><Switch on={hubCfg.brief.enabled} onChange={(v) => setHubCfg((c) => ({ ...c, brief: { ...c.brief, enabled: v } }))} label="Tự tạo bản tin" disabled={ro} />Tự tạo khi Giám đốc mở Bàn làm việc</label>
             <label className="flex items-center gap-2">từ<select className={cn(inputBase, 'h-9 py-0')} value={hubCfg.brief.hour} onChange={(e) => setHubCfg((c) => ({ ...c, brief: { ...c.brief, hour: Number(e.target.value) } }))}>{[5, 6, 7, 8, 9, 10].map((h) => <option key={h} value={h}>{h}:00</option>)}</select>sáng</label>
@@ -95,9 +102,9 @@ export function HubSettings() {
             <Field label="Địa chỉ kênh YouTube"><input className={inputCls} value={soc.youtubeUrl} placeholder="https://www.youtube.com/@…" onChange={(e) => setSoc({ youtubeUrl: e.target.value.trim() })} /></Field>
             <Field label="YouTube Channel ID" hint="Dạng UC…, xem ở youtube.com/account_advanced. Không cần khóa API" className="sm:col-span-2"><input className={inputCls} value={soc.youtubeChannelId} placeholder="UCxxxxxxxxxxxxxxxxxxxxxx" onChange={(e) => setSoc({ youtubeChannelId: e.target.value.trim() })} /></Field>
           </fieldset>
-        </Panel>
+        </Panel></>}
 
-        <Panel title="Zalo Hub">
+        {sub === 'oa' && <Panel title="Zalo Hub">
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Tên Zalo OA"><input className={inputCls} value={hubCfg.zalo.oaName} onChange={(e) => setZ({ oaName: e.target.value })} placeholder="VD: VASSH - Vật tư điện" /></Field>
@@ -108,9 +115,9 @@ export function HubSettings() {
             <label className="flex items-center justify-between gap-3 text-sm"><span><b>Nhân viên xem mọi hội thoại</b><span className="block text-xs text-[rgb(var(--muted))]">Tắt: nhân viên chỉ thấy hội thoại được giao và hội thoại chưa ai nhận (bảo mật khách hàng)</span></span><Switch on={hubCfg.zalo.salesSeeAll} onChange={(v) => { setZ({ salesSeeAll: v }); audit('ZALO_CONFIG', `Nhân viên xem mọi hội thoại: ${v ? 'bật' : 'tắt'}`, 'SECURITY'); }} label="Nhân viên xem mọi hội thoại" disabled={ro} /></label>
             <Field label="Mẫu trả lời nhanh (mỗi dòng một mẫu; biến {ten} {nhanvien} {congty} {ma})"><textarea className={cn(inputCls, 'min-h-[96px]')} defaultValue={hubCfg.zalo.quickReplies.join('\n')} onBlur={(e) => setZ({ quickReplies: e.target.value.split('\n').map((x) => x.trim()).filter(Boolean) })} /></Field>
           </div>
-        </Panel>
+        </Panel>}
 
-        <Panel title="Mẫu tin ZNS" action={!ro && <button type="button" className={cn(btnGhost, btnSm)} onClick={() => setZ({ znsTemplates: [...hubCfg.zalo.znsTemplates, { ...ZT, id: uid('zt'), name: 'Mẫu mới', params: [{ key: 'customer_name', source: 'customer.name' }] }] })}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm mẫu</button>}>
+        {sub === 'zns' && <Panel title="Mẫu tin ZNS" action={!ro && <button type="button" className={cn(btnGhost, btnSm)} onClick={() => setZ({ znsTemplates: [...hubCfg.zalo.znsTemplates, { ...ZT, id: uid('zt'), name: 'Mẫu mới', params: [{ key: 'customer_name', source: 'customer.name' }] }] })}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm mẫu</button>}>
           <p className="mb-3 text-xs text-[rgb(var(--muted))]">Mẫu ZNS phải được Zalo duyệt trước. Nhập Template ID và tên tham số đúng như mẫu đã duyệt, chọn nguồn dữ liệu để CRM tự điền.</p>
           <ul className="space-y-3">
             {hubCfg.zalo.znsTemplates.map((t, i) => {
@@ -137,9 +144,9 @@ export function HubSettings() {
             })}
             {!hubCfg.zalo.znsTemplates.length && <li className="py-4 text-center text-sm text-[rgb(var(--muted))]">Chưa có mẫu ZNS</li>}
           </ul>
-        </Panel>
+        </Panel>}
 
-        <Panel title="Kiến thức cho AI" action={!ro && <div className="flex gap-2">{!kb.some((k) => k.rule?.kind === 'DEALER_GROWTH_BONUS') && <button type="button" className={cn(btnGhost, btnSm)} onClick={() => setKb((p) => [{ ...DEALER_BONUS_TEMPLATE, id: uid('kb'), updatedAt: Date.now(), updatedBy: me?.id }, ...p])}>+ Chính sách thưởng tăng trưởng</button>}<button type="button" className={cn(btnGhost, btnSm)} onClick={() => setKb((p) => [{ id: uid('kb'), title: 'Quy định mới', body: '', tags: [], updatedAt: Date.now(), updatedBy: me?.id }, ...p])}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm</button></div>}>
+        {sub === 'kb' && <Panel title="Kiến thức cho AI" action={!ro && <div className="flex gap-2">{!kb.some((k) => k.rule?.kind === 'DEALER_GROWTH_BONUS') && <button type="button" className={cn(btnGhost, btnSm)} onClick={() => setKb((p) => [{ ...DEALER_BONUS_TEMPLATE, id: uid('kb'), updatedAt: Date.now(), updatedBy: me?.id }, ...p])}>+ Chính sách thưởng tăng trưởng</button>}<button type="button" className={cn(btnGhost, btnSm)} onClick={() => setKb((p) => [{ id: uid('kb'), title: 'Quy định mới', body: '', tags: [], updatedAt: Date.now(), updatedBy: me?.id }, ...p])}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm</button></div>}>
           <p className="mb-3 text-xs text-[rgb(var(--muted))]">Quy định, chính sách để @AI và Copilot tra cứu. Mục có quy tắc tính toán (thưởng tăng trưởng đại lý) được tính tự động trên doanh số trong CRM.</p>
           <ul className="space-y-3">
             {kb.map((k) => {
@@ -162,8 +169,9 @@ export function HubSettings() {
             })}
             {!kb.length && <li className="py-4 text-center text-sm text-[rgb(var(--muted))]">Chưa có mục kiến thức</li>}
           </ul>
-        </Panel>
+        </Panel>}
       </fieldset>
+      {sub === 'notify' && znsOn && <ZnsSettings />}
     </div>
   );
 }

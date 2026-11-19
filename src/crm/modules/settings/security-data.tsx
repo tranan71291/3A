@@ -5,13 +5,13 @@ import { Database, Download, HardDrive, History, KeyRound, Lock, Pencil, Plus, S
 import { Pagination, usePaged } from '../../components/controls';
 import { Collapse, ConfirmDialog } from '../../components/crud';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, useSticky } from '../../components/ui';
-import { AGING, AUDIT_LABEL, bizMode, btnGhost, btnPrimary, btnSm, C, CLOUD_ON, DATA_VERSION, dataKey, fmtN, inputBase, inputCls, kpiGrid, orgOf, ORGS, rowCls, SESSION_KEY, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd, whQty } from '../../lib/core';
+import { AGING, AUDIT_LABEL, bizMode, btnGhost, btnPrimary, btnSm, C, CLOUD_ON, DATA_VERSION, dataKey, fmtN, inputBase, inputCls, iso, kpiGrid, orgOf, ORGS, rowCls, SESSION_KEY, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd, whQty } from '../../lib/core';
 import { decryptBackup, encryptBackup } from '../../lib/security';
 import { takeSnapshot } from '../../lib/storage';
 import type { AgingScheme, AnyRec, AuditLevel, ConfirmState, EncryptedBackup, MfgConfig, SettingsTab, WarehouseInfo } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { PricingSettings } from '../platform/console';
-import { CompanySettings } from './company';
+import { CompanySettings, SaveBar, SettingsOverview } from './company';
 import { EmailSettings } from './email';
 import { GetflySettings } from './getfly';
 import { HubSettings } from './hub-settings';
@@ -20,7 +20,6 @@ import { FundSettings, OrgSettings, SegmentSettings } from './my-account';
 import { PermissionsSettings } from './permissions';
 import { LegacyDemoPanel } from './sample-data';
 import { BusinessModulesPanel } from './settings';
-import { ZnsSettings } from './zns';
 
 export function SecurityDataSettings() {
   const { security, setSecurity, auditLogs, users, userName, canDo, notify, audit, dataInfo, exportData, importData, restoreSnapshot, company, org, platform } = useApp();
@@ -191,6 +190,37 @@ export function SecurityDataSettings() {
 }
 
 /** Cài đặt › Kho hàng: danh mục kho, người quản lý, trạng thái; kho tổng không xóa / tạm ngưng được */
+/** v42: gợi ý mức tồn tối thiểu = lượng xuất bình quân / tháng (90 ngày) × lead-time nhập Hãng; chỉ đổi khi bấm Áp dụng */
+export function MinStockSuggest() {
+  const { skus, setSkus, stockVouchers, canDo, notify, audit } = useApp();
+  const can = canDo('settings.edit') || canDo('po.manage');
+  const since = iso(new Date(Date.now() - 90 * 864e5));
+  const out = new Map<string, number>();
+  stockVouchers.filter((v) => v.type === 'OUT' && v.status === 'DONE' && v.date >= since).forEach((v) => v.lines.forEach((l) => out.set(l.sku, (out.get(l.sku) ?? 0) + l.qty)));
+  const rows = skus.filter((x) => !x.archived && (out.get(x.sku) ?? 0) > 0).map((x) => {
+    const perMonth = (out.get(x.sku) ?? 0) / 3;
+    const next = Math.max(1, Math.ceil(perMonth * Math.max(1, x.leadTimeDays) / 30));
+    return { x, perMonth, next };
+  }).filter((r) => Math.abs(r.next - r.x.minStock) / Math.max(1, r.x.minStock) > 0.2).slice(0, 8);
+  const apply = (list: typeof rows) => { setSkus((p) => p.map((k) => { const r = list.find((y) => y.x.sku === k.sku); return r ? { ...k, minStock: r.next } : k; })); audit('SKU_MINSTOCK', `Cập nhật mức tồn tối thiểu ${list.length} mã theo gợi ý`); notify(`Đã cập nhật mức tồn tối thiểu ${list.length} mã`, 'teal'); };
+  if (!rows.length) return null;
+  return (
+    <section className="mt-5 border-t border-[rgb(var(--ink)/0.06)] pt-4" aria-label="Gợi ý mức tồn tối thiểu">
+      <div className="mb-2 flex flex-wrap items-baseline gap-2"><b className="text-[14px] font-medium">Gợi ý mức tồn tối thiểu</b><span className="text-xs text-[rgb(var(--muted))]">lượng xuất 90 ngày × lead-time nhập Hãng</span>{can && <button className={cn(btnGhost, btnSm, 'ml-auto')} onClick={() => apply(rows)}>Áp dụng tất cả {rows.length}</button>}</div>
+      <ul className="divide-y divide-[rgb(var(--ink)/0.06)]">
+        {rows.map((r) => (
+          <li key={r.x.sku} className="flex items-center gap-3 py-2 text-[13px]">
+            <Code>{r.x.sku}</Code><span className="min-w-0 flex-1 truncate">{r.x.name}</span>
+            <span className="hidden text-xs text-[rgb(var(--muted))] sm:inline">xuất {Math.round(r.perMonth).toLocaleString('vi-VN')} {r.x.unit}/tháng · lead-time {r.x.leadTimeDays} ngày</span>
+            <span className="font-mono text-xs">{r.x.minStock} → <b className="font-medium">{r.next}</b></span>
+            {can && <button className={cn(btnGhost, btnSm)} onClick={() => apply([r])}>Áp dụng</button>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function WarehouseSettings() {
   const { warehouses, setWarehouses, skus, users, userName, canDo, notify } = useApp();
   const can = canDo('settings.edit') || canDo('po.manage');
@@ -242,19 +272,22 @@ export function WarehouseSettings() {
           </div>
         </Modal>
       )}
+      <MinStockSuggest />
     </Panel>
   );
 }
 
 export function SettingsModule() {
   const { canDo, company, platform, org, presetQuery } = useApp();
-  const [tab, setTab] = useSticky<SettingsTab>('SettingsModule.tab', 'org');
+  const [tab0, setTab] = useSticky<SettingsTab>('SettingsModule.tab42', 'overview');
+  const tab: SettingsTab = tab0 === 'hub' ? 'ai' : tab0 === 'zns' ? 'zalo' : tab0;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (presetQuery && /^[a-z]+$/.test(presetQuery)) setTab(presetQuery as SettingsTab); }, [presetQuery]);
+  useEffect(() => { if (presetQuery && /^[a-z]+$/.test(presetQuery)) setTab((presetQuery === 'hub' ? 'ai' : presetQuery === 'zns' ? 'zalo' : presetQuery) as SettingsTab); }, [presetQuery]);
   const mode = bizMode(company);
   // Tích hợp do 3A cấp phép theo hợp đồng: tắt ở Console thì ẩn tab cấu hình tương ứng
   const feat = platform.tenants.find((t) => t.id === org.id)?.features;
   const all: { id: SettingsTab; label: string; show: boolean; group: string }[] = [
+    { id: 'overview', label: 'Tổng quan', show: true, group: '' },
     { id: 'company', label: 'Doanh nghiệp', show: true, group: 'Tổ chức' },
     { id: 'org', label: 'Phòng ban & nhân sự', show: true, group: 'Tổ chức' },
     { id: 'perms', label: 'Phân quyền', show: true, group: 'Tổ chức' },
@@ -264,13 +297,14 @@ export function SettingsModule() {
     { id: 'segments', label: mode === 'MFG' ? 'Loại & nguồn khách' : 'Phân loại khách', show: true, group: 'Nghiệp vụ' },
     { id: 'fund', label: 'Quỹ Hãng 3M', show: mode !== 'MFG', group: 'Marketing & quỹ' },
     { id: 'mkt', label: 'Ngân sách Marketing', show: true, group: 'Marketing & quỹ' },
-    { id: 'hub', label: 'AI, Zalo OA & ZNS', show: true, group: 'Tích hợp' },
-    { id: 'email', label: 'Email SMTP', show: feat?.smtp !== false, group: 'Tích hợp' },
-    { id: 'getfly', label: 'Getfly API', show: mode !== 'MFG' && feat?.getfly !== false, group: 'Tích hợp' },
+    { id: 'ai', label: 'AI & trợ lý', show: true, group: 'Tích hợp' },
+    { id: 'zalo', label: 'Zalo OA & ZNS', show: true, group: 'Tích hợp' },
+    { id: 'email', label: 'Email', show: feat?.smtp !== false, group: 'Tích hợp' },
+    { id: 'getfly', label: 'Getfly', show: mode !== 'MFG' && feat?.getfly !== false, group: 'Tích hợp' },
     { id: 'security', label: 'Dữ liệu & bảo mật', show: true, group: 'Hệ thống' },
   ];
   const tabs = all.filter((x) => x.show);
-  const cur = tabs.some((x) => x.id === tab) ? tab : 'org';
+  const cur = tabs.some((x) => x.id === tab) ? tab : 'overview';
   // Đường dẫn trực tiếp tới từng mục cài đặt: #/<doanh-nghiệp>/settings/<mục> (vd. settings/warehouses)
   useEffect(() => { const base = `#/${org.id}/settings`; if (location.hash.startsWith(base) && location.hash !== `${base}/${cur}`) history.replaceState(null, '', `${base}/${cur}`); }, [cur, org.id]);
   return (
@@ -283,7 +317,7 @@ export function SettingsModule() {
         <ul className="hidden lg:block">
           {tabs.map((x, i) => (
             <li key={x.id}>
-              {(i === 0 || tabs[i - 1].group !== x.group) && <p className={cn('px-3 pb-1 text-[12px] text-[rgb(var(--faint))]', i > 0 ? 'mt-4' : '')}>{x.group}</p>}
+              {x.group && (i === 0 || tabs[i - 1].group !== x.group) && <p className={cn('px-3 pb-1 text-[12px] text-[rgb(var(--faint))]', i > 0 ? 'mt-4' : '')}>{x.group}</p>}
               <button
                 className={cn('flex w-full items-center rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors', cur === x.id ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--ink)/0.06)]' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}
                 aria-current={cur === x.id ? 'page' : undefined}
@@ -310,7 +344,9 @@ export function SettingsModule() {
       {cur === 'getfly' && <GetflySettings />}
       {cur === 'email' && <EmailSettings />}
       {cur === 'perms' && <PermissionsSettings />}
-      {cur === 'hub' && <><HubSettings />{feat?.zns !== false && <ZnsSettings />}</>}
+      {cur === 'overview' && <SettingsOverview go={setTab} />}
+      {cur === 'ai' && <HubSettings part="ai" />}
+      {cur === 'zalo' && <HubSettings part="zalo" znsOn={feat?.zns !== false} />}
       </div>
     </div>
   );
@@ -344,7 +380,15 @@ export function AccountingSettings() {
         <Field label="Số dư đầu quỹ tiền mặt"><MoneyInput value={f.openingCash} disabled={!can} onChange={(n) => setF({ ...f, openingCash: n })} /></Field>
         <Field label="Số dư đầu tài khoản ngân hàng"><MoneyInput value={f.openingBank} disabled={!can} onChange={(n) => setF({ ...f, openingBank: n })} /></Field>
       </div>
-      <div className="mt-4 flex gap-2"><button className={btnPrimary} disabled={!can} onClick={save}>Lưu cấu hình</button><button className={btnGhost} onClick={() => setF(mfgConfig)}>Hoàn tác</button></div>
+      {(() => { const bs = AGING[f.agingScheme ?? 'AGE_30_60'].buckets; const lim = bs.filter((b) => Number.isFinite(b.max)).map((b) => b.max); const top = (lim[lim.length - 1] ?? 30) * 1.5; return (
+        <div className="mt-4" aria-label="Nhóm tuổi nợ">
+          <p className="mb-1.5 text-xs text-[rgb(var(--muted))]">Nhóm tuổi nợ đang dùng</p>
+          <div className="flex h-7 overflow-hidden rounded-md text-[12px] text-white">
+            {bs.map((b, i) => { const lo = i ? bs[i - 1].max : 0; const hi = Number.isFinite(b.max) ? b.max : top; return <div key={b.id} className="flex items-center truncate px-2" style={{ width: `${((hi - lo) / top) * 100}%`, background: b.color }}>{b.short}</div>; })}
+          </div>
+          <div className="mt-1 flex justify-between font-mono text-[11px] text-[rgb(var(--muted))]"><span>0</span>{lim.map((m) => <span key={m}>{m}</span>)}<span>ngày</span></div>
+        </div>); })()}
+      {can && JSON.stringify(f) !== JSON.stringify(mfgConfig) ? <div className="mt-4"><SaveBar onCancel={() => setF(mfgConfig)} onSave={save} /></div> : null}
       <p className="mt-3 text-xs text-[rgb(var(--muted))]">Phiếu thu / chi tự sinh: thu tiền khách khi kế toán xác nhận phiếu thu; chi công tác phí, chi triển khai sự kiện khi kế toán xác nhận thanh toán; chi hoa hồng khi quyết toán; thu thặng dư quỹ MDF khi hạch toán.</p>
     </Panel>
   );

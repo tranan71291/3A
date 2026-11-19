@@ -1,12 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
+import { RefreshCw, Sparkles } from 'lucide-react';
 import { Avatar } from '../../components/controls';
 import { EmptyState, Panel, useSticky } from '../../components/ui';
 import { ACTION_LABEL, ACTION_MODULE, btnGhost, btnSm, DEFAULT_SCOPE, fold, INITIAL_PERMS, inputBase, inputCls, LOCKED, MODULE_DESC, MODULE_ICON, MODULE_LABEL, moduleEnabled, MODULES, NAV_GROUPS, ROLE_LABEL, ROLES, SCOPE_LABEL, useApp } from '../../lib/core';
 import type { Action, DataScope, Module, Role, User, UserPerm } from '../../lib/types';
 import { cn } from '../../lib/utils';
+import { parseAiJson, useAi } from '../ai/ai-core';
 import { Switch } from '../platform/console';
+
+/** v42: AI rà soát phân quyền: chỉ gợi ý, không tự đổi quyền */
+export function PermAiReview({ summary }: { summary: string }) {
+  const ai = useAi('copilot');
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<{ level: string; title: string; detail: string }[] | null>(null);
+  const [err, setErr] = useState('');
+  const run = async () => {
+    setBusy(true); setErr('');
+    const r = await ai.ask({ maxTokens: 900, prompt: `Rà soát phân quyền CRM dưới đây theo nguyên tắc quyền tối thiểu và phân tách trách nhiệm (người lập không tự duyệt, kế toán đối soát, Giám đốc dự phòng). Chỉ nêu tối đa 5 điểm đáng chú ý nhất, dựa đúng dữ liệu. CHỈ trả về JSON: {"items":[{"level":"cao|vừa|thấp","title":"…","detail":"…"}]}\n\n${summary}` });
+    setBusy(false);
+    if (!r.ok) return setErr(r.error);
+    const d = parseAiJson<{ items?: { level: string; title: string; detail: string }[] }>(r.text);
+    setRes((d?.items ?? []).slice(0, 5));
+  };
+  const tone = (l: string) => (/cao/i.test(l) ? 'bg-[rgb(var(--danger))]' : /vừa/i.test(l) ? 'bg-[rgb(var(--accent))]' : 'bg-[rgb(var(--faint))]');
+  return (
+    <section className="glass-card rounded-xl p-4" aria-label="Rà soát phân quyền">
+      <div className="flex flex-wrap items-center gap-2">
+        <Sparkles className="h-4 w-4 text-[rgb(var(--fg2))]" aria-hidden /><b className="text-[14px] font-medium">Rà soát phân quyền</b>
+        <span className="text-xs text-[rgb(var(--muted))]">{ai.available ? `${ai.label} đọc ma trận và gợi ý, không tự đổi quyền` : 'cần bật trợ lý AI ở Cài đặt › AI & trợ lý'}</span>
+        <button className={cn(btnGhost, btnSm, 'ml-auto')} disabled={!ai.available || busy} onClick={() => void run()}>{busy ? <><RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden />Đang rà soát…</> : res ? 'Rà soát lại' : 'Rà soát'}</button>
+      </div>
+      {err && <p className="mt-2 text-[13px] text-[rgb(var(--danger-fg))]">{err}</p>}
+      {res && (res.length ? (
+        <ul className="mt-2 divide-y divide-[rgb(var(--ink)/0.06)]">
+          {res.map((x, i) => <li key={i} className="flex gap-2.5 py-2 text-[13px]"><span className={cn('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', tone(x.level))} aria-hidden /><span><b className="block font-medium">{x.title}</b><span className="text-[12.5px] text-[rgb(var(--muted))]">{x.detail}</span></span></li>)}
+        </ul>
+      ) : <p className="mt-2 text-[13px] text-[rgb(var(--muted))]">Không thấy điểm cần chú ý</p>)}
+    </section>
+  );
+}
 
 export function PermissionsSettings() {
   const { perms, setPerms, users, canDo, audit, company, me } = useApp();
@@ -47,14 +81,53 @@ export function PermissionsSettings() {
 
       {view === 'ROLE' ? (
         <>
-          <div className="grid gap-2 sm:grid-cols-5" role="tablist" aria-label="Vai trò">
-            {ROLES.map((r) => (
-              <button key={r} role="tab" aria-selected={role === r} onClick={() => setRole(r)} className={cn('rounded-md border px-3 py-2.5 text-left transition-colors', role === r ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.06)]' : 'border-[rgb(var(--line))] bg-[rgb(var(--surface))] hover:border-[rgb(var(--secondary)/0.5)]')}>
-                <p className="text-sm font-semibold">{ROLE_LABEL[r]}</p>
-                <p className="text-[11px] text-[rgb(var(--muted))]">{users.filter((u) => u.role === r && u.active).length} tài khoản · {mods.filter((m) => roleMod(r, m)).length}/{mods.length} phân hệ</p>
-              </button>
-            ))}
-          </div>
+          <section className="glass-card overflow-hidden rounded-xl" aria-label="Ma trận phân quyền">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse text-[13px]">
+                <thead>
+                  <tr className="border-b border-[rgb(var(--ink)/0.08)] text-[12px] text-[rgb(var(--muted))]">
+                    <th className="px-4 py-2.5 text-left font-normal">Phân hệ</th>
+                    {ROLES.map((r) => (
+                      <th key={r} className="px-2 py-2 text-center font-normal">
+                        <button type="button" onClick={() => setRole(r)} aria-pressed={role === r} className={cn('rounded-md px-2 py-1', role === r ? 'bg-[rgb(var(--raised))] text-[rgb(var(--fg))]' : 'hover:text-[rgb(var(--fg))]')}>
+                          <span className="block font-medium">{ROLE_LABEL[r]}</span>
+                          <span className="block font-mono text-[11px]">{users.filter((u) => u.role === r && u.active).length} tk · {SCOPE_LABEL[roleScope(r)].label}</span>
+                        </button>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {groups.map((g) => (
+                    <Fragment key={g.id}>
+                      <tr><td colSpan={ROLES.length + 1} className="bg-[rgb(var(--sunken))] px-4 py-1.5 text-[12px] text-[rgb(var(--muted))]">{g.title}</td></tr>
+                      {g.list.map((m) => (
+                        <tr key={m} className="border-t border-[rgb(var(--ink)/0.06)]">
+                          <td className="px-4 py-2"><span className="block font-medium">{MODULE_LABEL[m]}</span><span className="block max-w-[260px] truncate text-[12px] text-[rgb(var(--muted))]">{MODULE_DESC[m]}</span></td>
+                          {ROLES.map((r) => {
+                            const on = roleMod(r, m);
+                            const acts = actsOf(m);
+                            const n = acts.filter((x) => roleAct(r, x)).length;
+                            return (
+                              <td key={r} className={cn('px-2 py-2 text-center', role === r && 'bg-[rgb(var(--ink)/0.02)]')}>
+                                <span className="inline-flex items-center gap-2">
+                                  <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={on} disabled={!canEdit || LOCKED(r, m)} onChange={(e) => setMod(r, m, e.target.checked)} aria-label={`${ROLE_LABEL[r]} truy cập ${MODULE_LABEL[m]}`} />
+                                  {acts.length > 0 && <button type="button" className={cn('font-mono text-[11.5px] hover:underline', on ? 'text-[rgb(var(--fg2))]' : 'text-[rgb(var(--faint))]')} onClick={() => { setRole(r); setTimeout(() => document.getElementById(`perm-${m}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }} title={`Xem ${acts.length} thao tác của ${ROLE_LABEL[r]}`}>{n}/{acts.length}</button>}
+                                </span>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <p className="text-xs text-[rgb(var(--muted))]">Ô tích = được truy cập phân hệ. Số = thao tác đang bật / tổng; bấm để sửa chi tiết vai trò đó bên dưới</p>
+          <PermAiReview summary={ROLES.map((r) => `${ROLE_LABEL[r]} (${users.filter((u) => u.role === r && u.active).length} tài khoản, phạm vi ${SCOPE_LABEL[roleScope(r)].label}): ` + mods.map((m) => `${MODULE_LABEL[m]} ${roleMod(r, m) ? 'có' : 'không'}${actsOf(m).length ? ` [${actsOf(m).filter((x) => roleAct(r, x)).map((x) => ACTION_LABEL[x]).join('; ') || 'không thao tác'}]` : ''}`).join(', ')).join('\n')} />
+          <h3 className="pt-2 text-[15px] font-medium">Chi tiết vai trò: {ROLE_LABEL[role]}</h3>
           <Panel title={`Phạm vi dữ liệu: ${ROLE_LABEL[role]}`}>
             <div className="grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Phạm vi dữ liệu">
               {(Object.keys(SCOPE_LABEL) as DataScope[]).map((sc) => (
@@ -71,7 +144,7 @@ export function PermissionsSettings() {
             ) : undefined}>
               <ul className="divide-y divide-[rgb(var(--line))]">
                 {g.list.map((m) => { const Icon = MODULE_ICON[m]; const on = roleMod(role, m); return (
-                  <li key={m} className="py-3 first:pt-0 last:pb-0">
+                  <li key={m} id={`perm-${m}`} className="scroll-mt-24 py-3 first:pt-0 last:pb-0">
                     <div className="flex items-center gap-3">
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[rgb(var(--ink)/0.05)]"><Icon className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /></span>
                       <div className="min-w-0 flex-1"><p className="text-sm font-medium">{MODULE_LABEL[m]}</p><p className="truncate text-[11px] text-[rgb(var(--muted))]">{MODULE_DESC[m]}</p></div>

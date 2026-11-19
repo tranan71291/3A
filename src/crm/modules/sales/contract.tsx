@@ -1,15 +1,16 @@
 'use client';
 
 import { Fragment, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Copy, Download, Eye, FileText, History, Mail, Pencil, Plus, Search, Trash2, Upload, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bot, CheckCircle2, Copy, Download, Eye, FileText, History, Mail, Package, Pencil, Plus, RefreshCw, Search, Send, ShieldCheck, Trash2, Upload, XCircle } from 'lucide-react';
 import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { Collapse, ConfirmDialog } from '../../components/crud';
 import { FilterBar, useInRange } from '../../components/filters';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, Panel, StatCard, Table, Tabs, useOverlay, useSticky } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
-import { btnBase, btnGhost, btnPrimary, btnSm, C, compact, contractVersions, docGroupOf, esc, findByTax, fmtDate, fmtN, GENDOC_STATUS, guessTx, inputBase, inputCls, iso, latestQuote, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, rowCls, SAMPLE_FORM, secHead, tdCls, tdFirst, tdLast, TEMPLATE_FLAGS, TEMPLATE_VARS, todayISO, TX_TYPE, uid, useApp } from '../../lib/core';
-import type { ComposerForm, ComposerMode, ConfirmState, DocTemplate, GenDocStatus, GeneratedDoc, PriceTier, Quote, QuoteStatus, TxType } from '../../lib/types';
+import { btnBase, btnGhost, btnPrimary, btnSm, C, CHECK_DOT, compact, contractVersions, docGroupOf, esc, findByTax, fmtDate, fmtN, GENDOC_STATUS, GM_RULE, guessTx, inputBase, inputCls, iso, latestQuote, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, rowCls, SAMPLE_FORM, secHead, tdCls, tdFirst, tdLast, TEMPLATE_FLAGS, TEMPLATE_VARS, tierPrice, todayISO, TX_TYPE, uid, useApp } from '../../lib/core';
+import type { CheckItem, ComposerForm, ComposerMode, ConfirmState, DocLine, DocTemplate, GenDocStatus, GeneratedDoc, PayMilestone, PriceTier, Quote, QuoteStatus, SkuItem, TxType } from '../../lib/types';
 import { cn } from '../../lib/utils';
+import { parseAiJson, useAi } from '../ai/ai-core';
 import { AiWriterSheet } from '../ai/copilot-plus';
 import { DocsPage } from '../docs/docs';
 import { QuoteComposer } from './quote';
@@ -66,7 +67,7 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
   const special = specialTermsOf(form, cTpl, customer, skus);
   const seller = users.find((u) => u.id === baseLead?.assignee) ?? me;
   const { vars, flags } = buildDocVars(form, { company, quoteCode: base?.code ?? '', contractCode: version > 1 ? `${code} (v${version})` : code, projectName: baseLead?.boqNote, projectCode: baseLead?.code, salesName: seller.name, salesPhone: seller.phone ?? company.phone, salesEmail: seller.email, skus });
-  const html = cTpl ? renderTemplate(cTpl.body, vars, flags) : '<p>Chưa chọn mẫu hợp đồng</p>';
+  const html = withMilestones(cTpl ? renderTemplate(cTpl.body, vars, flags) : '<p>Chưa chọn mẫu hợp đồng</p>', form.milestones, totals.grand);
   const docDept = baseLead?.dept ?? customer?.dept;
   const canApprove = canDo('contract.approve') && (role === 'BOD' || (role === 'DEPT_HEAD' && docDept === me.dept));
   const canEdit = canDo('project.update') || canDo('customer.edit');
@@ -76,6 +77,8 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
   if (!base) errs.push('Chọn báo giá làm căn cứ hợp đồng');
   if (form.party.name.trim().length < 3) errs.push('Nhập tên pháp nhân bên mua');
   if (!cTpl) errs.push('Chọn mẫu hợp đồng');
+  const msSum = (form.milestones ?? []).reduce((t, m) => t + (Number(m.pct) || 0), 0);
+  if (form.milestones?.length && Math.round(msSum) !== 100) errs.push(`Các đợt thanh toán cộng ${msSum}%, cần đúng 100%`);
 
   const pickBase = (id: string) => {
     const q = quotes.find((x) => x.id === id);
@@ -130,7 +133,7 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
         </div>
       )}
       <fieldset disabled={locked} className="min-w-0 space-y-4">
-        <section>
+        <section id="ct-1" className="scroll-mt-4">
           {secHead(1, 'Căn cứ & mẫu hợp đồng')}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             {options.length ? (
@@ -161,13 +164,16 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
             </div>
           )}
         </section>
-        <section>
-          {secHead(2, 'Bên mua')}
+        <section id="ct-2" className="scroll-mt-4">
+          <div className="flex items-start justify-between gap-2">
+            {secHead(2, 'Bên mua')}
+            {(customer || baseLead) && !locked && <button type="button" className={cn(btnGhost, btnSm)} title="Điền lại pháp nhân, MST, địa chỉ, người đại diện từ hồ sơ khách hàng" onClick={() => setForm((f) => ({ ...f, party: partyOf(customer, baseLead) }))}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Lấy lại từ CRM</button>}
+          </div>
           <Fold title="Pháp nhân, đại diện ký" summary={[form.party.name, form.party.taxCode && `MST ${form.party.taxCode}`, form.party.rep].filter(Boolean).join(' · ') || 'Chưa có'} open={!form.party.name}>
             <PartyFields form={form} setParty={setParty} />
           </Fold>
         </section>
-        <section>
+        <section id="ct-3" className="scroll-mt-4">
           {secHead(3, 'Điều khoản thanh toán')}
           <TermsFields form={form} set={set} cTpl={cTpl} contract part="pay" />
           <div className="mt-2">
@@ -175,9 +181,12 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
               <TermsFields form={form} set={set} cTpl={cTpl} contract part="other" />
             </Fold>
           </div>
+          <MilestonesField form={form} set={set} grand={totals.grand} />
         </section>
       </fieldset>
       {!locked && errs.length > 0 && <ul className="space-y-0.5 text-xs text-[rgb(var(--danger-fg))]">{errs.map((x) => <li key={x}>{x}</li>)}</ul>}
+      <ContractAiReview html={html} special={special} />
+      {group && <div id="ct-4" className="scroll-mt-4"><ContractVersionDiff key={shown?.id ?? src?.id} group={group} currentId={shown?.id ?? src?.id} /></div>}
     </>
   );
 
@@ -185,12 +194,20 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
     <ComposerShell
       title={`${locked ? 'Hợp đồng' : src ? 'Sửa hợp đồng' : 'Tạo hợp đồng'} ${code} v${version}`}
       subtitle={`${form.party.name || 'Bên mua'}${base ? `, căn cứ báo giá ${base.code} v${base.version}` : ''}`}
+      outline
+      steps={[
+        { label: 'Căn cứ', done: !!base && !!cTpl, target: 'ct-1' },
+        { label: 'Bên mua', done: form.party.name.trim().length >= 3 && !!form.party.taxCode.trim(), target: 'ct-2' },
+        { label: 'Điều khoản', done: !!base && !!form.delivery && !errs.some((x) => x.startsWith('Các đợt')) && (locked || !special.length), target: 'ct-3' },
+        { label: 'Trình ký', done: canExport, target: group ? 'ct-4' : undefined },
+      ]}
       badge={shown ? <Chip tone={GENDOC_STATUS[shown.status].tone}>{GENDOC_STATUS[shown.status].label}</Chip> : undefined}
       left={left}
       html={html}
       onClose={onClose}
       footer={
         <DocActionBar
+          totals={<DocTotals sub={totals.sub} vat={totals.vat} vatPct={form.vatPct} grand={totals.grand} />}
           status={<span className={cn('font-medium', !locked ? (errs.length ? 'text-[rgb(var(--danger-fg))]' : special.length ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]') : canExport ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--accent-fg))]')}>{!locked ? (errs.length ? `Còn thiếu: ${errs[0]}` : special.length ? `Cần duyệt: ${special[0]}${special.length > 1 ? ` (+${special.length - 1})` : ''}` : src ? `Gửi sẽ tạo v${nextVersion}, bản cũ chuyển "Đã thay thế"` : 'Điều khoản chuẩn: gửi là có hiệu lực ngay') : canExport ? 'Hợp đồng có hiệu lực' : shown?.status === 'PENDING_APPROVAL' ? 'Chờ phê duyệt, chưa xuất được' : 'Chỉ xem'}</span>}
           extra={<>
             {locked && shown?.status === 'PENDING_APPROVAL' && canApprove && (
@@ -208,6 +225,279 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
         />
       }
     />
+  );
+}
+
+/** Dải tổng ở chân màn soạn: Cộng tiền hàng · VAT · Tổng · Lãi gộp (chỉ người xem được giá vốn) */
+export function DocTotals({ sub, vat, vatPct, grand, gm }: { sub: number; vat: number; vatPct: number; grand: number; gm?: number | null }) {
+  const it = (l: string, v: string, cls?: string, wide?: boolean) => <span className={cn('whitespace-nowrap', wide && 'hidden 2xl:inline')}>{l}<b className={cn('ml-1.5 font-mono text-[13px] font-medium text-[rgb(var(--fg))]', cls)}>{v}</b></span>;
+  return (
+    <div className="flex w-full flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-[rgb(var(--fg2))] lg:w-auto">
+      {it('Cộng tiền hàng', compact(sub), undefined, true)}
+      {it(`VAT ${vatPct}%`, compact(vat), undefined, true)}
+      {it('Tổng', `${grand.toLocaleString('vi-VN')} đ`)}
+      {gm !== undefined && it('Lãi gộp', gm === null ? (sub ? 'chưa đủ giá vốn' : '—') : `${gm.toFixed(1)}%`, gm === null ? 'font-sans' : gm < GM_RULE.bod ? 'text-[rgb(var(--danger-fg))]' : gm < GM_RULE.head ? 'text-[rgb(var(--accent-fg))]' : undefined)}
+    </div>
+  );
+}
+
+export function CheckList({ items }: { items: CheckItem[] }) {
+  return (
+    <ul className="divide-y divide-[rgb(var(--line))]">
+      {items.map((x) => (
+        <li key={x.title} className="flex items-start gap-3 py-2">
+          <span className={cn('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', CHECK_DOT[x.tone])} aria-hidden />
+          <div className="min-w-0 flex-1"><p className="text-[13px] font-medium">{x.title}</p><p className="text-xs text-[rgb(var(--muted))]">{x.detail}</p></div>
+          {x.act}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Kiểm tra trước khi gửi (tính tại chỗ, không cần AI) + gợi ý "thường mua kèm" từ các báo giá đã có */
+export function QuoteChecks({ form, skus, quotes, canSeeCost, onAdd }: { form: ComposerForm; skus: SkuItem[]; quotes: Quote[]; canSeeCost: boolean; onAdd: (l: DocLine) => void }) {
+  const items: CheckItem[] = [];
+  form.items.forEach((l, i) => {
+    const k = skus.find((s) => s.sku === l.sku);
+    if (!k) return;
+    if (canSeeCost && k.costPrice > 0 && l.price > 0) {
+      const g = ((l.price - k.costPrice) / l.price) * 100;
+      if (g < GM_RULE.head) items.push({ tone: g < GM_RULE.bod ? 'red' : 'orange', title: `Dòng ${i + 1}: ${l.name}, lãi gộp ${g.toFixed(1)}%`, detail: `thấp hơn ngưỡng ${g < GM_RULE.bod ? GM_RULE.bod : GM_RULE.head}%; cấp duyệt tính theo lãi gộp cả báo giá` });
+    }
+    if (l.qty > k.stock) items.push({ tone: 'orange', title: `Tồn ${l.name}: ${k.stock.toLocaleString('vi-VN')}, báo ${l.qty.toLocaleString('vi-VN')}`, detail: `thiếu ${(l.qty - k.stock).toLocaleString('vi-VN')} ${l.unit}${k.leadTimeDays ? `, thời gian về hàng khoảng ${k.leadTimeDays} ngày` : ''}: ghi rõ tiến độ giao ở điều khoản` });
+  });
+  const tax = form.party.taxCode.replace(/[\s.]/g, '');
+  if (!tax) items.push({ tone: 'orange', title: 'Chưa có mã số thuế khách hàng', detail: 'cần khi xuất hóa đơn và làm hợp đồng' });
+  else if (!/^\d{10}(-?\d{3})?$/.test(tax)) items.push({ tone: 'red', title: `Mã số thuế "${form.party.taxCode}" sai định dạng`, detail: 'MST gồm 10 số, chi nhánh thêm 3 số' });
+  else items.push({ tone: 'teal', title: 'Mã số thuế đúng định dạng', detail: 'chỉ kiểm tra định dạng, chưa tra cứu tình trạng hoạt động' });
+  if (!form.party.email && !form.party.phone) items.push({ tone: 'orange', title: 'Chưa có email hoặc điện thoại người nhận', detail: 'nhập ở Thông tin pháp nhân để gửi báo giá' });
+
+  // Thường mua kèm: hàng xuất hiện cùng hàng đang báo trong các báo giá trước
+  const have = new Set(form.items.map((l) => l.sku).filter(Boolean));
+  const tier = form.tier === 'BOQ' ? TX_TYPE[form.txType].tier : form.tier;
+  const pairs = new Map<string, { n: number; base: number; anchor: string; qty: number }>();
+  if (have.size) {
+    const rel = quotes.filter((x) => x.lines.some((ln) => have.has(ln.sku)));
+    rel.forEach((x) => {
+      const anchor = x.lines.find((ln) => have.has(ln.sku))?.name ?? '';
+      new Set(x.lines.map((ln) => ln.sku)).forEach((code) => {
+        if (!code || have.has(code)) return;
+        const p = pairs.get(code) ?? { n: 0, base: rel.length, anchor, qty: x.lines.find((ln) => ln.sku === code)?.qty ?? 1 };
+        pairs.set(code, { ...p, n: p.n + 1 });
+      });
+    });
+  }
+  const sugg = [...pairs.entries()].map(([code, p]) => ({ k: skus.find((s) => s.sku === code && !s.archived), ...p })).filter((x) => x.k && x.n >= 2 && x.n / x.base >= 0.3).sort((x, y) => y.n - x.n).slice(0, 2);
+
+  if (!form.items.length) return null;
+  return (
+    <section className="rounded-[10px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4" aria-label="Kiểm tra trước khi gửi">
+      <p className="mb-1 flex items-center gap-2 text-sm font-medium"><ShieldCheck className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />Kiểm tra trước khi gửi<span className="ml-auto text-xs font-normal text-[rgb(var(--muted))]">tự chạy khi sửa</span></p>
+      <CheckList items={items} />
+      {sugg.length > 0 && (
+        <div className="mt-2 space-y-2 border-t border-[rgb(var(--line))] pt-3">
+          {sugg.map(({ k, n, base, anchor, qty }) => (
+            <div key={k!.sku} className="flex items-center gap-3 rounded-lg border border-dashed border-[rgb(var(--line))] px-3 py-2 text-[13px]">
+              <Package className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />
+              <span className="min-w-0 flex-1">Thường mua kèm {anchor}: <b className="font-medium">{k!.name}</b><span className="block text-xs text-[rgb(var(--muted))]">{n} / {base} báo giá có hàng này · {tierPrice(k, tier).toLocaleString('vi-VN')}đ / {k!.unit}</span></span>
+              <button type="button" className={cn(btnGhost, btnSm)} onClick={() => { const p = tierPrice(k, tier); onAdd({ sku: k!.sku, name: k!.name, unit: k!.unit, qty, price: p, listPrice: p, discountPct: 0 }); }}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm {qty.toLocaleString('vi-VN')} {k!.unit}</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Bước gửi khách: thư soạn sẵn (AI soạn khi đã bật), sao chép, mở ứng dụng email của người dùng, xuất PDF để đính kèm */
+export function QuoteSendPanel({ form, code, version, total, sellerName, onPdf }: { form: ComposerForm; code: string; version: number; total: number; sellerName: string; onPdf: () => void }) {
+  const { company, notify, addMsgLog } = useApp();
+  const ai = useAi('writer');
+  const seller = company.shortName || company.legalName;
+  const greet = form.party.rep ? `Kính gửi ${form.party.repTitle ? `${form.party.repTitle} ` : ''}${form.party.rep},` : `Kính gửi Quý ${form.party.name},`;
+  const plain = `${greet}\n\n${seller} xin gửi báo giá số ${code}${version > 1 ? ` (bản ${version})` : ''}, tổng giá trị ${total.toLocaleString('vi-VN')} đ (đã gồm VAT ${form.vatPct}%), hiệu lực ${form.validDays} ngày.\nĐiều kiện thanh toán: ${form.advancePct ? `tạm ứng ${form.advancePct}%, ` : ''}công nợ ${form.creditDays} ngày. Giao hàng: ${form.delivery || 'theo thỏa thuận'}.\n\nBáo giá chi tiết trong file PDF đính kèm. Rất mong nhận được phản hồi của Quý khách.\n\nTrân trọng,\n${sellerName}\n${seller}`;
+  const [to, setTo] = useState(form.party.email);
+  const [subject, setSubject] = useState(`Báo giá ${code} - ${seller}`);
+  const [body, setBody] = useState(plain);
+  const [busy, setBusy] = useState('');
+  const draft = async (key: string, how: string) => {
+    setBusy(key);
+    const r = await ai.ask({ prompt: `Soạn thư điện tử gửi khách kèm báo giá, tiếng Việt, lịch sự, không bịa thông tin ngoài dữ liệu sau. ${how}\nKhách: ${form.party.name}${form.party.rep ? `, người nhận ${form.party.repTitle} ${form.party.rep}` : ''}\nBáo giá: ${code} v${version}, tổng ${total.toLocaleString('vi-VN')} đ gồm VAT ${form.vatPct}%, hiệu lực ${form.validDays} ngày\nHàng chính: ${form.items.slice(0, 5).map((l) => `${l.name} (${l.qty} ${l.unit})`).join('; ')}\nThanh toán: tạm ứng ${form.advancePct}%, công nợ ${form.creditDays} ngày. Giao hàng: ${form.delivery}\nNgười gửi: ${sellerName}, ${seller}\nChỉ trả về nội dung thư, không có tiêu đề.`, maxTokens: 700 });
+    setBusy('');
+    if (r.ok) setBody(r.text.trim()); else notify(r.error ?? 'AI chưa trả lời', 'orange');
+  };
+  const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.slice(0, 1800))}`;
+  return (
+    <section className="rounded-[10px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4" aria-label="Gửi báo giá">
+      <p className="mb-3 flex items-center gap-2 text-sm font-medium"><Send className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />Gửi khách
+        {ai.available && <span className="ml-auto flex gap-1.5">
+          {[['Soạn bằng AI', ''], ['Ngắn hơn', 'Viết ngắn gọn trong 4 câu.'], ['Trang trọng hơn', 'Văn phong trang trọng, phù hợp cơ quan nhà nước.']].map(([l, how]) => (
+            <button key={l} type="button" className={cn(btnGhost, btnSm)} disabled={!!busy} onClick={() => void draft(l, how)}>{l === 'Soạn bằng AI' && <Bot className="h-3.5 w-3.5" aria-hidden />}{busy === l ? 'Đang soạn…' : l}</button>
+          ))}
+        </span>}
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Field label="Đến"><input className={inputCls} type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="email người nhận" /></Field>
+        <Field label="Tiêu đề"><input className={inputCls} value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>
+      </div>
+      <Field label="Nội dung" className="mt-2"><textarea className={cn(inputCls, 'min-h-[180px] leading-6')} value={body} onChange={(e) => setBody(e.target.value)} /></Field>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button type="button" className={cn(btnGhost, btnSm)} onClick={onPdf}><Download className="h-3.5 w-3.5" aria-hidden />Xuất PDF để đính kèm</button>
+        <button type="button" className={cn(btnGhost, btnSm)} onClick={() => { void navigator.clipboard?.writeText(`${subject}\n\n${body}`).then(() => notify('Đã sao chép thư', 'teal')); }}><Copy className="h-3.5 w-3.5" aria-hidden />Sao chép (Zalo, email)</button>
+        <a className={cn(btnPrimary, btnSm, 'ml-auto', !to && 'pointer-events-none opacity-50')} href={to ? mailto : undefined} aria-disabled={!to}
+          onClick={() => addMsgLog({ channel: 'EMAIL', to, subject, ok: true, detail: 'Mở bằng ứng dụng email của người dùng (mailto), chưa xác nhận đã gửi' })}><Mail className="h-3.5 w-3.5" aria-hidden />Mở ứng dụng email</a>
+      </div>
+      <p className="mt-2 text-xs text-[rgb(var(--muted))]">Ứng dụng email trên máy bạn sẽ mở thư soạn sẵn; đính kèm file PDF vừa xuất rồi bấm gửi ở đó.</p>
+    </section>
+  );
+}
+
+/** Chèn bảng thanh toán theo đợt ngay sau đoạn "Điều N. … thanh toán" của mẫu; mẫu không có thì thêm cuối văn bản */
+export function withMilestones(html: string, ms: PayMilestone[] | undefined, grand: number) {
+  if (!ms?.length) return html;
+  const cell = 'border:1px solid #333;padding:3px 6px';
+  const rows = ms.map((m, i) => `<tr><td style="${cell}">${i + 1}. ${esc(m.label)}</td><td style="${cell};text-align:right">${m.pct}%</td><td style="${cell};text-align:right">${Math.round((grand * m.pct) / 100).toLocaleString('vi-VN')}</td><td style="${cell}">${esc(m.cond)}</td></tr>`).join('');
+  const tb = `<p><b>Lịch thanh toán theo đợt</b></p><table style="width:100%;border-collapse:collapse;margin:4px 0 8px"><tr><th style="${cell}">Đợt</th><th style="${cell}">Tỷ lệ</th><th style="${cell}">Số tiền (đ)</th><th style="${cell}">Điều kiện</th></tr>${rows}</table>`;
+  const m = /Điều\s+\d+\s*[.:]?\s*(?:<[^>]+>\s*)*[^<]{0,40}[Tt]hanh toán/.exec(html);
+  if (m) {
+    const end = html.indexOf('</p>', m.index);
+    if (end > 0) return html.slice(0, end + 4) + tb + html.slice(end + 4);
+  }
+  return html + tb;
+}
+
+/** Thanh toán theo đợt: tùy chọn; tổng tỷ lệ phải đúng 100% */
+export function MilestonesField({ form, set, grand }: { form: ComposerForm; set: <K extends keyof ComposerForm>(k: K, v: ComposerForm[K]) => void; grand: number }) {
+  const ms = form.milestones ?? [];
+  const sum = ms.reduce((t, m) => t + (Number(m.pct) || 0), 0);
+  const put = (i: number, p: Partial<PayMilestone>) => set('milestones', ms.map((m, j) => (j === i ? { ...m, ...p } : m)));
+  const suggest = () => set('milestones', form.advancePct > 0
+    ? [{ label: 'Tạm ứng', pct: form.advancePct, cond: 'Trong 5 ngày sau khi ký hợp đồng' }, { label: 'Giao hàng và nghiệm thu', pct: 100 - form.advancePct, cond: `Công nợ ${form.creditDays} ngày kể từ ngày nghiệm thu` }]
+    : [{ label: 'Giao hàng và nghiệm thu', pct: 100, cond: `Công nợ ${form.creditDays} ngày kể từ ngày nghiệm thu` }]);
+  return (
+    <div className="mt-2 rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))]">
+      <p className="flex items-center gap-2 px-3 py-2.5 text-sm font-semibold">Thanh toán theo đợt
+        <span className={cn('text-xs font-normal', ms.length && Math.round(sum) !== 100 ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')}>{ms.length ? `${ms.length} đợt · cộng ${sum}%` : 'không bắt buộc'}</span>
+        <span className="ml-auto flex gap-1.5">
+          {!ms.length && <button type="button" className={cn(btnGhost, btnSm)} onClick={suggest}>Gợi ý theo tạm ứng</button>}
+          <button type="button" className={cn(btnGhost, btnSm)} onClick={() => set('milestones', [...ms, { label: `Đợt ${ms.length + 1}`, pct: Math.max(0, 100 - sum), cond: '' }])}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm đợt</button>
+        </span>
+      </p>
+      {ms.length > 0 && (
+        <table className="w-full border-t border-[rgb(var(--line))] text-[13px]">
+          <thead className="text-xs text-[rgb(var(--muted))]"><tr><th className="px-3 py-1.5 text-left font-normal">Đợt</th><th className="w-20 px-1 text-right font-normal">Tỷ lệ %</th><th className="w-32 px-2 text-right font-normal">Số tiền (đ)</th><th className="px-2 text-left font-normal">Điều kiện</th><th className="w-8" /></tr></thead>
+          <tbody>
+            {ms.map((m, i) => (
+              <tr key={i} className="border-t border-[rgb(var(--line))]">
+                <td className="px-2 py-1"><input className={inputCls} value={m.label} onChange={(e) => put(i, { label: e.target.value })} aria-label={`Tên đợt ${i + 1}`} /></td>
+                <td className="px-1 py-1"><input className={cn(inputCls, 'text-right tabular-nums')} type="number" min={0} max={100} value={m.pct} onChange={(e) => put(i, { pct: Number(e.target.value) })} aria-label={`Tỷ lệ đợt ${i + 1}`} /></td>
+                <td className="px-2 py-1 text-right font-mono text-xs tabular-nums">{Math.round((grand * (Number(m.pct) || 0)) / 100).toLocaleString('vi-VN')}</td>
+                <td className="px-2 py-1"><input className={inputCls} value={m.cond} onChange={(e) => put(i, { cond: e.target.value })} aria-label={`Điều kiện đợt ${i + 1}`} /></td>
+                <td className="pr-2 text-center"><button type="button" className="rounded p-1 text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => set('milestones', ms.filter((_, j) => j !== i))} aria-label={`Xóa đợt ${i + 1}`}><Trash2 className="h-3.5 w-3.5" /></button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+/** AI rà soát nội dung hợp đồng: chỉ gợi ý, không tự sửa văn bản */
+export function ContractAiReview({ html, special }: { html: string; special: string[] }) {
+  const ai = useAi('copilot');
+  const { notify } = useApp();
+  const [res, setRes] = useState<CheckItem[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').slice(0, 12000);
+    const r = await ai.ask({ maxTokens: 1200, prompt: `Rà soát hợp đồng mua bán dưới đây (luật Việt Nam) từ phía bên bán. Nêu tối đa 6 điểm: điều khoản còn thiếu hoặc mơ hồ (phạt vi phạm, nghiệm thu, bảo hành, giao hàng, thanh toán, tranh chấp), số liệu không khớp nhau, ô còn để trống. Chỉ nêu điều có căn cứ trong văn bản, không khẳng định thay luật sư.
+Điều khoản đặc biệt hệ thống đã đánh dấu: ${special.join('; ') || 'không có'}
+Trả JSON: {"items":[{"level":"risk|warn|ok","title":"...","detail":"..."}]}
+Văn bản:
+${text}` });
+    setBusy(false);
+    if (!r.ok) return notify(r.error, 'orange');
+    const d = parseAiJson<{ items?: { level: string; title: string; detail: string }[] }>(r.text);
+    setRes((d?.items ?? []).slice(0, 6).map((x) => ({ tone: x.level === 'risk' ? 'red' : x.level === 'ok' ? 'teal' : 'orange', title: x.title, detail: x.detail })));
+  };
+  return (
+    <section className="rounded-[10px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4" aria-label="Rà soát hợp đồng">
+      <div className="flex flex-wrap items-center gap-2">
+        <Bot className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><p className="text-sm font-medium">Rà soát hợp đồng</p>
+        <span className="text-xs text-[rgb(var(--muted))]">{ai.available ? `${ai.label} đọc bản xem trước và gợi ý, không tự sửa` : 'cần bật trợ lý AI ở Cài đặt › AI & trợ lý'}</span>
+        <button type="button" className={cn(btnGhost, btnSm, 'ml-auto')} disabled={!ai.available || busy} onClick={() => void run()}>{busy ? <><RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden />Đang rà soát…</> : res ? 'Rà soát lại' : 'Rà soát bằng AI'}</button>
+      </div>
+      {res && (res.length ? <div className="mt-2"><CheckList items={res} /></div> : <p className="mt-2 text-xs text-[rgb(var(--muted))]">AI không trả về gợi ý nào.</p>)}
+    </section>
+  );
+}
+
+/** Danh sách khác nhau giữa hai bản form hợp đồng (dữ liệu đã lưu của từng phiên bản) */
+export function formDiff(x: ComposerForm, y: ComposerForm): CheckItem[] {
+  const out: CheckItem[] = [];
+  const v = (s: string | number | undefined) => (s === undefined || s === '' ? 'trống' : String(s));
+  const P: [keyof ComposerForm['party'], string][] = [['name', 'Tên bên mua'], ['taxCode', 'Mã số thuế'], ['address', 'Địa chỉ'], ['rep', 'Người đại diện'], ['repTitle', 'Chức vụ'], ['phone', 'Điện thoại'], ['email', 'Email']];
+  P.forEach(([k, l]) => { if ((x.party[k] ?? '') !== (y.party[k] ?? '')) out.push({ tone: 'orange', title: `${l}: ${v(x.party[k])} → ${v(y.party[k])}`, detail: 'Bên mua' }); });
+  const T: [keyof ComposerForm, string, string, boolean][] = [['advancePct', 'Tạm ứng', '%', false], ['creditDays', 'Công nợ', ' ngày', true], ['vatPct', 'VAT', '%', false], ['warrantyMonths', 'Bảo hành', ' tháng', false], ['guaranteePct', 'Bảo lãnh', '%', false], ['delivery', 'Giao hàng', '', false], ['paymentMethod', 'Hình thức thanh toán', '', false], ['note', 'Ghi chú', '', false]];
+  T.forEach(([k, l, u, risk]) => { const a = x[k] as string | number; const b = y[k] as string | number; if (a !== b) out.push({ tone: risk && Number(b) > Number(a) ? 'red' : 'orange', title: `${l}: ${v(a)}${a !== '' ? u : ''} → ${v(b)}${b !== '' ? u : ''}`, detail: 'Điều khoản' }); });
+  if (x.contractTplId !== y.contractTplId) out.push({ tone: 'orange', title: 'Đổi mẫu hợp đồng', detail: 'nội dung các điều theo mẫu mới' });
+  const key = (l: DocLine) => l.sku || l.name;
+  const xa = new Map(x.items.map((l) => [key(l), l]));
+  const yb = new Map(y.items.map((l) => [key(l), l]));
+  y.items.forEach((l) => { const o = xa.get(key(l)); if (!o) out.push({ tone: 'orange', title: `Thêm hàng: ${l.name}`, detail: `${l.qty} ${l.unit} × ${l.price.toLocaleString('vi-VN')}` }); else if (o.qty !== l.qty || o.price !== l.price) out.push({ tone: 'orange', title: `${l.name}: ${o.qty} × ${o.price.toLocaleString('vi-VN')} → ${l.qty} × ${l.price.toLocaleString('vi-VN')}`, detail: 'Hàng hóa' }); });
+  x.items.forEach((l) => { if (!yb.has(key(l))) out.push({ tone: 'red', title: `Bỏ hàng: ${l.name}`, detail: `${l.qty} ${l.unit}` }); });
+  const ms = (f: ComposerForm) => (f.milestones ?? []).map((m) => `${m.label} ${m.pct}%${m.cond ? ` (${m.cond})` : ''}`).join('; ');
+  if (ms(x) !== ms(y)) out.push({ tone: 'orange', title: 'Lịch thanh toán theo đợt thay đổi', detail: `${ms(x) || 'không chia đợt'} → ${ms(y) || 'không chia đợt'}` });
+  return out;
+}
+
+/** So sánh hai phiên bản của cùng hợp đồng + tóm tắt cho người duyệt bằng AI */
+export function ContractVersionDiff({ group, currentId }: { group: string; currentId?: string }) {
+  const { genDocs, users, notify } = useApp();
+  const ai = useAi('copilot');
+  const vs = contractVersions(genDocs, group);
+  const [aId, setA] = useState('');
+  const [bId, setB] = useState('');
+  const [sum, setSum] = useState('');
+  const [busy, setBusy] = useState(false);
+  if (vs.length < 2) return null;
+  // Mặc định: bản đang mở so với bản liền trước
+  const B = vs.find((d) => d.id === bId) ?? vs.find((d) => d.id === currentId) ?? vs[0];
+  const A = vs.find((d) => d.id === aId) ?? vs.find((d) => (d.version ?? 1) < (B.version ?? 1)) ?? vs[vs.length - 1];
+  const diff = formDiff(A.form, B.form);
+  if (A.total !== B.total) diff.unshift({ tone: B.total < A.total ? 'red' : 'orange', title: `Giá trị: ${A.total.toLocaleString('vi-VN')} → ${B.total.toLocaleString('vi-VN')} đ`, detail: 'Tổng sau VAT' });
+  const who = users.find((u) => u.id === B.createdBy)?.name;
+  const label = (d: GeneratedDoc) => `v${d.version ?? 1} · ${new Date(d.createdAt).toLocaleDateString('vi-VN')} · ${GENDOC_STATUS[d.status].label}`;
+  const summarize = async () => {
+    setBusy(true);
+    const r = await ai.ask({ maxTokens: 500, prompt: `Tóm tắt cho người duyệt (3-4 câu, tiếng Việt) thay đổi giữa hai phiên bản hợp đồng ${B.contractCode} với ${B.partyName}: nêu thay đổi chính, ảnh hưởng dòng tiền hoặc rủi ro nếu có. Không thêm thông tin ngoài danh sách.\nTừ v${A.version ?? 1} sang v${B.version ?? 1}:\n${diff.map((d) => `- ${d.title} (${d.detail})`).join('\n')}\nĐiều khoản đặc biệt của v${B.version ?? 1}: ${B.special.join('; ') || 'không'}` });
+    setBusy(false);
+    if (r.ok) setSum(r.text.trim()); else notify(r.error, 'orange');
+  };
+  return (
+    <section className="rounded-[10px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4" aria-label="So sánh phiên bản">
+      <div className="flex flex-wrap items-center gap-2">
+        <History className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><p className="text-sm font-medium">So sánh phiên bản</p>
+        <span className="ml-auto flex items-center gap-1.5 text-xs">
+          <select className={cn(inputBase, 'w-auto py-1 text-xs')} value={A.id} onChange={(e) => { setA(e.target.value); setSum(''); }} aria-label="Bản gốc">{vs.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</select>
+          <ArrowRight className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden />
+          <select className={cn(inputBase, 'w-auto py-1 text-xs')} value={B.id} onChange={(e) => { setB(e.target.value); setSum(''); }} aria-label="Bản so sánh">{vs.map((d) => <option key={d.id} value={d.id}>{label(d)}</option>)}</select>
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-[rgb(var(--muted))]">{diff.length} thay đổi{who ? ` · người tạo v${B.version ?? 1}: ${who}` : ''}{B.special.length ? ` · cần duyệt: ${B.special.join('; ')}` : ''}</p>
+      {diff.length ? <div className="mt-1"><CheckList items={diff} /></div> : <p className="mt-2 text-xs text-[rgb(var(--muted))]">Hai phiên bản giống nhau về dữ liệu.</p>}
+      {diff.length > 0 && (
+        <div className="mt-2 rounded-lg bg-[rgb(var(--raised))] p-3">
+          <div className="flex items-center gap-2 text-[13px] font-medium"><Bot className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />Tóm tắt cho người duyệt
+            <button type="button" className={cn(btnGhost, btnSm, 'ml-auto')} disabled={!ai.available || busy} title={ai.available ? '' : 'Cần bật trợ lý AI'} onClick={() => void summarize()}>{busy ? 'Đang tóm tắt…' : sum ? 'Tóm tắt lại' : 'Tóm tắt bằng AI'}</button>
+          </div>
+          {sum && <p className="mt-2 whitespace-pre-line text-[13px] leading-6">{sum}</p>}
+        </div>
+      )}
+    </section>
   );
 }
 

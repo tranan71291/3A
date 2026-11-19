@@ -312,7 +312,7 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
                     {!ghost && (
                       <p className="mt-0.5 flex items-center gap-1 truncate px-1.5 text-[11px] text-[rgb(var(--muted))]">
                         {l.ai && <span className="rounded bg-[rgb(var(--secondary)/0.15)] px-1 font-semibold text-[rgb(var(--secondary-fg))]">AI</span>}
-                        {k ? <span className="truncate"><span className="code-chip">{k.sku}</span> · Danh mục</span>
+                        {k ? <span className="truncate"><span className="code-chip">{k.sku}</span> · <span className={cn(l.qty > k.stock && 'text-[rgb(var(--danger-fg))]')}>tồn {k.stock.toLocaleString('vi-VN')}{l.qty > k.stock ? `, thiếu ${(l.qty - k.stock).toLocaleString('vi-VN')}` : ''}</span></span>
                           : dr ? <span className="truncate">Nháp · bán gần nhất {dr.lastPrice.toLocaleString('vi-VN')}đ, {new Date(dr.lastAt).toLocaleDateString('vi-VN')}</span>
                           : l.name.trim() ? <span className="truncate text-[rgb(var(--accent-fg))]">Mới · tự lưu vào danh mục nháp khi tạo báo giá</span> : null}
                       </p>
