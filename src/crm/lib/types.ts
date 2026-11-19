@@ -136,7 +136,11 @@ export type ComposerForm = {
   paymentMethod: string;
   validDays: number;
   note: string;
+  /** v42: lịch thanh toán theo đợt (không bắt buộc) */
+  milestones?: PayMilestone[];
 };
+
+export type PayMilestone = { label: string; pct: number; cond: string };
 
 export type GenDocStatus = 'DRAFT' | 'ISSUED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'SUPERSEDED';
 
@@ -1694,6 +1698,10 @@ export type DocContext = { company: CompanyInfo; quoteCode: string; contractCode
 
 export type ComposerMode = 'QUOTE' | 'CONTRACT';
 
+/** Khung chung Split-View cố định: trái 38% form tối giản, phải 62% bản A4 xem trước theo thời gian thực;
+ *  thanh nút hành động cố định dưới đáy. Hai cột cuộn độc lập, không cuộn dài cả trang. */
+export type ComposerStep = { label: string; done: boolean; target?: string };
+
 export type BarAct = { onClick: () => void; disabled?: boolean; title?: string; label?: string };
 
 // =====================================================================
@@ -1716,6 +1724,8 @@ export type PasteRow = { name: string; unit: string; qty: number; price?: number
 export type SmartSuggest = { kind: 'SKU' | 'DRAFT'; key: string; name: string; unit: string; price: number; discountPct?: number; sku?: string; sub: string };
 
 export type SmartCatalog = { skus: SkuItem[]; drafts: DraftProduct[]; quotes: Quote[]; tier: PriceTier };
+
+export type CheckItem = { tone: 'red' | 'orange' | 'teal'; title: string; detail: string; act?: ReactNode };
 
 // =====================================================================
 //  PHÂN HỆ: LẮP ĐẶT, NGHIỆM THU, BÀN GIAO & THU TIỀN
@@ -1786,7 +1796,7 @@ export type InvoiceDraft = { serial: string; number: string; date: string; suppl
 
 export type ReportView = 'mfg' | 'trade' | 'aging' | 'commission' | 'mdf';
 
-export type SettingsTab = 'perms' | 'hub' | 'platform' | 'company' | 'org' | 'fund' | 'mkt' | 'segments' | 'pricing' | 'accounting' | 'getfly' | 'email' | 'zns' | 'security' | 'warehouses';
+export type SettingsTab = 'overview' | 'ai' | 'zalo' | 'perms' | 'hub' | 'platform' | 'company' | 'org' | 'fund' | 'mkt' | 'segments' | 'pricing' | 'accounting' | 'getfly' | 'email' | 'zns' | 'security' | 'warehouses';
 
 // =====================================================================
 //  3A PLATFORM CONSOLE — quản trị nền tảng: doanh nghiệp, cấp phép module, dữ liệu & nâng cấp an toàn

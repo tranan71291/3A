@@ -6,6 +6,7 @@ import { Chip, Field, useSticky } from '../../components/ui';
 import { APPROVAL_LEVEL, approvalOf, approvalReasons, btnBase, btnGhost, btnSm, compact, docLineToQuote, findByTax, guessTx, inputBase, inputCls, iso, latestQuote, nextCode, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, secHead, tierPrice, todayISO, TX_TYPE, uid, useApp } from '../../lib/core';
 import type { ApprovalDecision, ComposerForm, DocLine, Lead, PriceTier, Quote, QuoteStatus, TxType, User } from '../../lib/types';
 import { cn } from '../../lib/utils';
+import { DocTotals, QuoteChecks, QuoteSendPanel } from './contract';
 import { learnDrafts, SmartQuoteGrid } from './smart-quote';
 import { buildDocVars, ComposerShell, DocActionBar, docShell, docTotals, downloadWord, Fold, PartyFields, printHtml, renderTemplate, TermsFields } from './templates';
 
@@ -149,7 +150,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
           <Field label="VAT %"><input className={cn(inputBase, 'w-16 text-right tabular-nums')} type="number" min={0} max={10} value={form.vatPct} onChange={(e) => set('vatPct', Number(e.target.value))} /></Field>
         </div>
 
-        <section>
+        <section id="qc-1" className="scroll-mt-4">
           {secHead(1, 'Khách hàng')}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             <Field label="Khách hàng CRM">
@@ -172,14 +173,9 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
           </div>
         </section>
 
-        <section>
+        <section id="qc-2" className="scroll-mt-4">
           {secHead(2, `Hàng hóa (${form.items.length} dòng)`)}
           <SmartQuoteGrid items={form.items} onChange={(v) => set('items', v)} locked={locked} tier={form.tier === 'BOQ' ? TX_TYPE[form.txType].tier : form.tier} wide={wide} onWide={setWide} canSeeCost={canSeeCost} />
-          <div className="mt-2 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--line))] text-xs tabular-nums">
-            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right"><span className="block text-[11px] text-[rgb(var(--muted))]">Cộng tiền hàng</span>{totals.sub.toLocaleString('vi-VN')}</p>
-            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right"><span className="block text-[11px] text-[rgb(var(--muted))]">VAT {form.vatPct}%</span>{totals.vat.toLocaleString('vi-VN')}</p>
-            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right font-semibold text-[rgb(var(--accent-fg))]"><span className="block text-[11px] font-normal text-[rgb(var(--muted))]">Tổng cộng (đ)</span>{totals.grand.toLocaleString('vi-VN')}</p>
-          </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[rgb(var(--muted))]">
             <span className="ml-auto">{canSeeCost ? (gm !== null ? `Biên gộp ${gm.toFixed(1)}%` : 'Có hàng chưa có giá vốn (hàng nháp / thiếu giá vốn): chưa tính được GM') : ''}</span>
             {level !== 'AUTO' && <Chip tone={APPROVAL_LEVEL[level].tone}>{APPROVAL_LEVEL[level].label}</Chip>}
@@ -187,7 +183,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
           {!locked && reasons.length > 0 && <p className="mt-1 text-[11px] text-[rgb(var(--accent-fg))]">{reasons.join('; ')}. Bấm "Gửi duyệt" để chuyển cấp duyệt giá.</p>}
         </section>
 
-        <section>
+        <section id="qc-3" className="scroll-mt-4">
           {secHead(3, 'Điều khoản thanh toán')}
           <TermsFields form={form} set={set} contract={false} part="pay" />
           <div className="mt-2">
@@ -198,6 +194,8 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
         </section>
       </fieldset>
       {errs.length > 0 && !locked && <ul className="space-y-0.5 text-xs text-[rgb(var(--danger-fg))]">{errs.map((x) => <li key={x}>{x}</li>)}</ul>}
+      {!locked && <QuoteChecks form={form} skus={skus} quotes={quotes} canSeeCost={canSeeCost} onAdd={(l) => set('items', [...form.items, l])} />}
+      {saved && !exportLocked && <div id="qc-4" className="scroll-mt-4"><QuoteSendPanel form={form} code={code} version={version} total={totals.grand} sellerName={seller.name} onPdf={() => exportQuote('PDF')} /></div>}
     </>
   );
 
@@ -213,6 +211,12 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
     <ComposerShell
       title={`${locked ? 'Báo giá' : 'Tạo báo giá'} ${code} v${version}`}
       wide={wide}
+      steps={[
+        { label: 'Khách hàng', done: form.party.name.trim().length >= 3 && (!!lead || !!form.customerId), target: 'qc-1' },
+        { label: 'Hàng hóa', done: form.items.length > 0 && !noName.length && !noPrice.length, target: 'qc-2' },
+        { label: 'Điều khoản', done: !!qTpl && !!savedId, target: 'qc-3' },
+        { label: 'Gửi khách', done: !!saved?.exports?.length, target: saved && !exportLocked ? 'qc-4' : undefined },
+      ]}
       subtitle={`${form.party.name || 'Khách hàng'}${lead ? `, dự án ${lead.code}` : ''}`}
       badge={saved ? <Chip tone={QUOTE_STATUS[saved.status].tone}>{QUOTE_STATUS[saved.status].label}</Chip> : undefined}
       left={left}
@@ -220,6 +224,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
       onClose={onClose}
       footer={
         <DocActionBar
+          totals={<DocTotals sub={totals.sub} vat={totals.vat} vatPct={form.vatPct} grand={totals.grand} gm={canSeeCost ? gm : undefined} />}
           status={<span className={cn('font-medium', locked ? 'text-[rgb(var(--success-fg))]' : errs.length ? 'text-[rgb(var(--danger-fg))]' : level === 'AUTO' ? 'text-[rgb(var(--muted))]' : 'text-[rgb(var(--accent-fg))]')}>{locked ? (exportLocked ? 'Đã gửi, chờ duyệt giá' : lead?.status === 'WON' ? 'Đơn đã chốt' : 'Đã duyệt, xuất file / chốt đơn được') : errs.length ? `Còn thiếu: ${errs[0]}` : level === 'AUTO' ? `Giá trong ngưỡng: gửi là tự duyệt, tạo bản v${version}` : `${APPROVAL_LEVEL[level].label}: gửi để duyệt giá`}</span>}
           extra={<>
             {locked && canRevise && <button className={cn(btnGhost, btnSm)} onClick={() => { onClose(); openComposer({ leadId: lead!.id, mode: 'QUOTE' }); }}><Pencil className="h-3.5 w-3.5" aria-hidden />Báo giá điều chỉnh</button>}

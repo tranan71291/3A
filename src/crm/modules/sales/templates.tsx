@@ -1,10 +1,10 @@
 'use client';
 
-import { type KeyboardEvent as RKeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent as RKeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronDown, Download, Eye, FileText, Send, Wallet, X } from 'lucide-react';
 import { Field, useOverlay } from '../../components/ui';
 import { btnBase, btnGhost, btnPrimary, compact, DOC_CSS, esc, GUARANTEE_LABEL, inputCls, missingCompanyInfo, money, RAW_VARS, REQUIRED_VARS, TX_CLAUSE, TX_TYPE, useApp, varLabel, VN_DIGITS } from '../../lib/core';
-import type { BarAct, ComposerForm, Customer, DocContext, DocTemplate, GuaranteeType, SkuItem, TxType } from '../../lib/types';
+import type { BarAct, ComposerForm, ComposerStep, Customer, DocContext, DocTemplate, GuaranteeType, SkuItem, TxType } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
 export function quoteBody(title: string, clause: string) {
@@ -288,9 +288,19 @@ export function specialTermsOf(f: ComposerForm, tpl: DocTemplate | undefined, cu
   return out;
 }
 
-/** Khung chung Split-View cố định: trái 38% form tối giản, phải 62% bản A4 xem trước theo thời gian thực;
- *  thanh nút hành động cố định dưới đáy. Hai cột cuộn độc lập, không cuộn dài cả trang. */
-export function ComposerShell({ title, subtitle, badge, left, html, footer, onClose, wide }: { title: string; subtitle: string; badge?: ReactNode; left: ReactNode; html: string; footer: ReactNode; onClose: () => void; wide?: boolean }) {
+/** Mục lục "Điều N. …" lấy từ HTML đã dựng (mẫu do người dùng soạn nên chỉ nhận dạng theo chữ "Điều N") */
+export function docOutline(html: string): { key: string; label: string }[] {
+  const out: { key: string; label: string }[] = [];
+  const text = html.replace(/<[^>]+>/g, '\n').replace(/&nbsp;/g, ' ');
+  for (const m of text.matchAll(/(?:^|\n)\s*(Điều\s+(\d+))\s*[.:]?\s*([^\n:.]{0,48})/g)) {
+    const key = `Điều ${m[2]}`;
+    if (out.some((x) => x.key === key)) continue;
+    out.push({ key, label: `${key}. ${m[3].trim()}`.replace(/[.\s]+$/, '') });
+  }
+  return out;
+}
+
+export function ComposerShell({ title, subtitle, badge, left, html, footer, onClose, wide, steps, outline }: { title: string; subtitle: string; badge?: ReactNode; left: ReactNode; html: string; footer: ReactNode; onClose: () => void; wide?: boolean; steps?: ComposerStep[]; outline?: boolean }) {
   const ov = useOverlay();
   const { company, go, canDo } = useApp();
   const miss = missingCompanyInfo(company);
@@ -305,6 +315,18 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
     return () => ro.disconnect();
   }, []);
   const doc = docShell('Xem trước', html).replace('</head>', `<style>@media screen{html{background:#cfd3da}body{zoom:${zoom.toFixed(3)}}}</style></head>`);
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const toc = useMemo(() => (outline ? docOutline(html) : []), [outline, html]);
+  const [tocOn, setTocOn] = useState('');
+  const jump = (key: string) => {
+    setTocOn(key);
+    const d = frameRef.current?.contentDocument;
+    if (!d?.body) return;
+    const re = new RegExp(`^\\s*${key.replace(' ', '\\s+')}(?!\\d)`);
+    const el = Array.from(d.body.querySelectorAll('h1,h2,h3,h4,h5,p,b,strong,td,li,div')).find((e) => re.test(e.textContent ?? '') && !Array.from(e.children).some((c) => re.test(c.textContent ?? '')));
+    el?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+  const firstOpen = steps ? steps.findIndex((s) => !s.done) : -1;
   return (
     <div className={cn('fixed inset-0 z-50 flex flex-col bg-[rgb(var(--bg))] motion-safe:animate-[fadeIn_.15s_ease-out]', !ov.top && 'invisible')} aria-hidden={!ov.top || undefined} role="dialog" aria-modal="true" aria-label={title}>
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[rgb(var(--line))] px-4 pt-[env(safe-area-inset-top)] sm:px-5">
@@ -313,21 +335,48 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
           <p className="truncate text-sm font-semibold">{title}</p>
           <p className="truncate text-xs text-[rgb(var(--muted))]">{subtitle}</p>
         </div>
+        {steps && (
+          <ol className="hidden shrink-0 items-center gap-1 text-[13px] xl:flex" aria-label="Các bước">
+            {steps.map((s, i) => {
+              const on = i === (firstOpen < 0 ? steps.length - 1 : firstOpen);
+              return (
+                <li key={s.label}>
+                  <button type="button" disabled={!s.target} onClick={() => s.target && document.getElementById(s.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} aria-current={on ? 'step' : undefined}
+                    className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1', on ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : s.done ? 'text-[rgb(var(--fg2))]' : 'text-[rgb(var(--muted))]', s.target && 'hover:text-[rgb(var(--fg))]')}>
+                    {s.done ? <CheckCircle2 className="h-4 w-4 text-[rgb(var(--success-fg))]" aria-hidden /> : <span className={cn('flex h-[18px] w-[18px] items-center justify-center rounded-full border font-mono text-[11px]', on ? 'border-[rgb(var(--fg))]' : 'border-[rgb(var(--line))]')}>{i + 1}</span>}
+                    {s.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        )}
         {badge}
         <button className={cn(btnGhost, 'p-2')} onClick={onClose} aria-label="Đóng" title="Đóng"><X className="h-5 w-5" /></button>
       </header>
-      <div className={cn('grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:overflow-hidden', wide ? 'lg:grid-cols-[64fr_36fr]' : 'lg:grid-cols-[38fr_62fr]')}>
+      <div className={cn('grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:overflow-hidden', wide ? 'lg:grid-cols-[64fr_36fr]' : 'lg:grid-cols-[54fr_46fr]')}>
         <div className="min-w-0 space-y-4 border-[rgb(var(--line))] p-4 lg:overflow-y-auto lg:border-r [scrollbar-gutter:stable]">{left}</div>
         <div className="flex min-h-[75vh] min-w-0 flex-col bg-[rgb(var(--sunken))] lg:min-h-0">
           <p className="flex items-center gap-2 border-b border-[rgb(var(--line))] px-4 py-2 text-xs text-[rgb(var(--muted))]"><Eye className="h-3.5 w-3.5" aria-hidden />Xem trước khổ A4, cập nhật theo từng thao tác. Ô vàng là biến chưa có dữ liệu.<span className="ml-auto tabular-nums">{Math.round(zoom * 100)}%</span></p>
           {miss.length > 0 && (
             <p className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--accent)/0.3)] bg-[rgb(var(--accent)/0.1)] px-4 py-2 text-xs text-[rgb(var(--accent-fg))]" role="status">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />Thông tin bên bán ({company.legalName || company.shortName}) còn thiếu {miss.join(', ')}: các ô vàng sẽ in ra nếu xuất ngay.
-              {canDo('settings.edit') && <button className="font-semibold text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => { onClose(); go('settings'); }}>Khai báo ở Cài đặt › Doanh nghiệp</button>}
+              {canDo('settings.edit') && <button className="font-semibold text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => { onClose(); go('settings', 'company'); }}>Khai báo ở Cài đặt › Doanh nghiệp</button>}
             </p>
           )}
-          <div ref={boxRef} className="min-h-0 flex-1">
-            <iframe title="Xem trước tài liệu" className="h-full min-h-[70vh] w-full bg-[#cfd3da] lg:min-h-0" srcDoc={doc} sandbox="allow-same-origin" />
+          <div className="flex min-h-0 flex-1">
+            {toc.length >= 3 && (
+              <nav className="hidden w-44 shrink-0 overflow-y-auto border-r border-[rgb(var(--line))] p-2 text-[12.5px] xl:block" aria-label="Mục lục hợp đồng">
+                <p className="px-2 pb-2 pt-1 text-xs text-[rgb(var(--muted))]">Mục lục</p>
+                {toc.map((t) => (
+                  <button key={t.key} type="button" onClick={() => jump(t.key)} title={t.label}
+                    className={cn('block w-full truncate rounded-md px-2 py-1.5 text-left', tocOn === t.key ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.04)]')}>{t.label}</button>
+                ))}
+              </nav>
+            )}
+            <div ref={boxRef} className="min-h-0 min-w-0 flex-1">
+              <iframe ref={frameRef} title="Xem trước tài liệu" className="h-full min-h-[70vh] w-full bg-[#cfd3da] lg:min-h-0" srcDoc={doc} sandbox="allow-same-origin" />
+            </div>
           </div>
         </div>
       </div>
@@ -337,12 +386,13 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
 }
 
 /** Thanh hành động cố định của báo giá / hợp đồng: [Xuất PDF] [Tải Word] [Chốt đơn] [Gửi duyệt] */
-export function DocActionBar({ status, extra, pdf, word, win, submit }: { status: ReactNode; extra?: ReactNode; pdf: BarAct; word: BarAct; win: BarAct; submit: BarAct }) {
+export function DocActionBar({ status, extra, pdf, word, win, submit, totals }: { status: ReactNode; extra?: ReactNode; pdf: BarAct; word: BarAct; win: BarAct; submit: BarAct; totals?: ReactNode }) {
   const b = (a: BarAct, cls: string, Icon: typeof Wallet, label: string, primary?: boolean) => (
     <button className={cn(cls, 'min-w-[112px] justify-center', primary && 'shadow-[0_0_0_1px_rgba(255,140,0,.35)]')} disabled={a.disabled} title={a.title} onClick={a.onClick}><Icon className="h-4 w-4" aria-hidden />{a.label ?? label}</button>
   );
   return (
     <>
+      {totals}
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-xs">{status}{extra}</div>
       <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
         {b(pdf, btnGhost, Download, 'Xuất PDF')}

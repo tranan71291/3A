@@ -58,7 +58,7 @@ export function MyAccountSheet({ onClose, onPassword }: { onClose: () => void; o
 }
 
 export function OrgSettings() {
-  const { departments, setDepartments, users, setUsers, leads, customers, programs, me, canDo, userName, dept, notify, org } = useApp();
+  const { departments, setDepartments, users, setUsers, leads, customers, programs, me, canDo, userName, dept, notify, org , platform } = useApp();
   const canEdit = canDo('settings.edit');
   const [deptModal, setDeptModal] = useState<{ code?: string } | null>(null);
   const [userModal, setUserModal] = useState<{ id?: string } | null>(null);
@@ -96,8 +96,17 @@ export function OrgSettings() {
     });
   };
 
+  const actU = users.filter((u) => u.active);
+  const idle30 = actU.filter((u) => !u.lastLoginAt || Date.now() - u.lastLoginAt > 30 * 864e5).length;
+  const seats = platform.tenants.find((t) => t.id === org.id)?.seats;
+  const ago = (t?: number) => { if (!t) return 'chưa đăng nhập'; const d = Math.floor((Date.now() - t) / 864e5); return d <= 0 ? 'hôm nay' : d === 1 ? 'hôm qua' : `${d} ngày trước`; };
   return (
     <div className="space-y-4">
+      <div className="kpi-strip grid grid-cols-2 lg:grid-cols-4">
+        {([['Phòng ban', String(departments.filter((d) => d.active).length), `${departments.filter((d) => d.receivesLeads && d.active).length} nhận lead`, false], ['Tài khoản hoạt động', String(actU.length), `${users.length - actU.length} ngừng`, false], ['Chưa đăng nhập 30 ngày', String(idle30), 'tài khoản', idle30 > 0], ['Ghế bản quyền', seats ? `${actU.length} / ${seats}` : String(actU.length), seats ? 'theo hợp đồng' : '', false]] as const).map(([l, v, sub, warn]) => (
+          <div key={l} className="px-4 py-3"><p className="text-[12.5px] text-[rgb(var(--muted))]">{l}</p><p className={cn('text-[22px] font-medium leading-7 tabular-nums', warn && 'text-[rgb(var(--warn))]')}>{v}</p><p className="text-xs text-[rgb(var(--muted))]">{sub}</p></div>
+        ))}
+      </div>
       <Collapse
         title="Phòng ban"
         summary={`${departments.length} phòng, ${departments.filter((d) => d.receivesLeads && d.active).length} phòng nhận lead`}
@@ -138,7 +147,7 @@ export function OrgSettings() {
           </div>
         }
       >
-        <Table head={['Nhân sự', 'Email', 'Vai trò', 'Chức vụ', 'Phòng ban', <span key="h" className="block text-right">Hạn mức duyệt</span>, 'Trạng thái', '']} minW={1100}>
+        <Table head={['Nhân sự', 'Email', 'Vai trò', 'Chức vụ', 'Phòng ban', <span key="h" className="block text-right">Hạn mức duyệt</span>, 'Đăng nhập', 'Trạng thái', '']} minW={1180}>
           {shownUsers.map((u) => {
             const headOf = departments.find((d) => d.headId === u.id);
             return (
@@ -151,6 +160,7 @@ export function OrgSettings() {
                 <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{headOf ? `Trưởng ${headOf.short}` : '—'}</td>
                 <td className={tdCls}>{dept(u.dept)?.short ?? <span className="text-[rgb(var(--muted))]">Ban Giám đốc</span>}</td>
                 <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{u.approvalLimit ? compact(u.approvalLimit) : <span className="text-[rgb(var(--muted))]">—</span>}</td>
+                <td className={cn(tdCls, 'text-[13px]', u.active && (!u.lastLoginAt || Date.now() - u.lastLoginAt > 30 * 864e5) ? 'text-[rgb(var(--warn))]' : 'text-[rgb(var(--fg2))]')}>{ago(u.lastLoginAt)}</td>
                 <td className={tdCls}>
                   <button disabled={!canEdit || u.id === me.id} onClick={() => {
                     setUsers((p) => p.map((x) => (x.id === u.id ? { ...x, active: !x.active } : x)));
