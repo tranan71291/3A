@@ -5,7 +5,7 @@ import { ClipboardPaste, Maximize2, Minimize2, PackagePlus, Plus, RefreshCw, Sca
 import { removeWithUndo } from '../../app/context';
 import { Pagination, usePaged } from '../../components/controls';
 import { EmptyState, FilePicker, Table } from '../../components/ui';
-import { AI_NAME, aiErrText, btnGhost, btnSm, catalogSkus, digits, fileB64, HEAD_RULES, inputBase, isUnitWord, liveDrafts, netOf, nextCode, normKey, rowCls, shrinkImage, tdCls, tdLast, tierPrice, uid, useApp } from '../../lib/core';
+import { AI_NAME, aiErrText, btnGhost, btnSm, catalogSkus, digits, fileB64, GM_RULE, HEAD_RULES, inputBase, isUnitWord, liveDrafts, netOf, nextCode, normKey, rowCls, shrinkImage, tdCls, tdLast, tierPrice, uid, useApp } from '../../lib/core';
 import type { DocLine, DraftProduct, PasteRow, PriceTier, Quote, SkuItem, SmartCatalog, SmartSuggest } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { apiPost, useAi } from '../ai/ai-core';
@@ -288,11 +288,11 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
         </div>
       )}
       {busy && <p className="flex items-center gap-2 rounded-md border border-[rgb(var(--secondary)/0.4)] bg-[rgb(var(--secondary)/0.08)] px-3 py-2 text-xs text-[rgb(var(--secondary-fg))]" role="status"><Sparkles className="h-3.5 w-3.5" aria-hidden />{busy} Các dòng sẽ tự thêm vào cuối bảng.</p>}
-      <div ref={ref} onPaste={onPaste} className="rounded-md border border-[rgb(var(--line))] max-lg:overflow-x-auto" aria-label="Bảng dòng hàng báo giá">
-        <table className="w-full min-w-[720px] table-fixed text-xs">
-          <colgroup><col className="w-7" /><col /><col className="w-[60px]" /><col className="w-[60px]" /><col className={wide ? 'w-[110px]' : 'w-[92px]'} /><col className="w-[48px]" /><col className={wide ? 'w-[120px]' : 'w-[96px]'} /><col className="w-7" /></colgroup>
-          <thead className="bg-[rgb(var(--raised))] text-[11px] text-[rgb(var(--muted))]">
-            <tr><th className="py-1.5 text-center font-medium">#</th><th className="px-2 text-left font-medium">Tên hàng / quy cách</th><th className="px-1 text-left font-medium">ĐVT</th><th className="px-1 text-right font-medium">SL</th><th className="px-1 text-right font-medium">Đơn giá</th><th className="px-1 text-right font-medium">CK %</th><th className="px-2 text-right font-medium">Thành tiền</th><th /></tr>
+      <div ref={ref} onPaste={onPaste} className="-mx-1 overflow-x-auto px-1" aria-label="Bảng dòng hàng báo giá">
+        <table className="w-full min-w-[640px] table-fixed text-xs">
+          <colgroup><col className="w-7" /><col /><col className="w-[60px]" /><col className="w-[60px]" /><col className={wide ? 'w-[110px]' : 'w-[92px]'} /><col className="w-[48px]" /><col className={wide ? 'w-[120px]' : 'w-[96px]'} /><col className="w-[64px]" />{canSeeCost && <col className="w-[44px]" />}<col className="w-7" /></colgroup>
+          <thead className="border-b border-[rgb(var(--line))] text-[11.5px] text-[rgb(var(--muted))]">
+            <tr><th className="py-2 text-center font-normal">#</th><th className="px-2 text-left font-medium">Tên hàng / quy cách</th><th className="px-1 text-left font-medium">ĐVT</th><th className="px-1 text-right font-medium">SL</th><th className="px-1 text-right font-medium">Đơn giá</th><th className="px-1 text-right font-medium">CK %</th><th className="px-2 text-right font-medium">Thành tiền</th><th className="px-1 text-right font-medium">Kho</th>{canSeeCost && <th className="px-1 text-right font-medium">GM</th>}<th /></tr>
           </thead>
           <tbody>
             {rows.map((l, r) => {
@@ -312,7 +312,7 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
                     {!ghost && (
                       <p className="mt-0.5 flex items-center gap-1 truncate px-1.5 text-[11px] text-[rgb(var(--muted))]">
                         {l.ai && <span className="rounded bg-[rgb(var(--secondary)/0.15)] px-1 font-semibold text-[rgb(var(--secondary-fg))]">AI</span>}
-                        {k ? <span className="truncate"><span className="code-chip">{k.sku}</span> · <span className={cn(l.qty > k.stock && 'text-[rgb(var(--danger-fg))]')}>tồn {k.stock.toLocaleString('vi-VN')}{l.qty > k.stock ? `, thiếu ${(l.qty - k.stock).toLocaleString('vi-VN')}` : ''}</span></span>
+                        {k ? <span className="truncate"><span className="code-chip">{k.sku}</span></span>
                           : dr ? <span className="truncate">Nháp · bán gần nhất {dr.lastPrice.toLocaleString('vi-VN')}đ, {new Date(dr.lastAt).toLocaleDateString('vi-VN')}</span>
                           : l.name.trim() ? <span className="truncate text-[rgb(var(--accent-fg))]">Mới · tự lưu vào danh mục nháp khi tạo báo giá</span> : null}
                       </p>
@@ -336,7 +336,9 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
                   <td className="px-0.5 py-1"><input data-r={r} data-c={2} disabled={locked} className={num} inputMode="decimal" value={numText(r, 2, l.qty, ghost && !l.qty)} onChange={(e) => typeNum(r, 2, e.target.value, (n) => upd(r, { qty: n }))} onBlur={() => setEd(null)} onKeyDown={(e) => onKey(e, r, 2, [])} aria-label={`Số lượng dòng ${r + 1}`} /></td>
                   <td className="px-0.5 py-1"><input data-r={r} data-c={3} disabled={locked} className={cn(num, !ghost && !(l.listPrice ?? l.price) && 'border-[rgb(var(--accent)/0.6)] bg-[rgb(var(--accent)/0.06)]')} inputMode="numeric" placeholder={ghost ? '' : 'Nhập giá'} value={(l.listPrice ?? l.price) ? (l.listPrice ?? l.price).toLocaleString('vi-VN') : ''} onChange={(e) => upd(r, { listPrice: digits(e.target.value) })} onKeyDown={(e) => onKey(e, r, 3, [])} aria-label={`Đơn giá dòng ${r + 1}`} /></td>
                   <td className="px-0.5 py-1"><input data-r={r} data-c={4} disabled={locked} className={num} inputMode="decimal" value={numText(r, 4, l.discountPct ?? 0, ghost)} onChange={(e) => typeNum(r, 4, e.target.value, (n) => upd(r, { discountPct: Math.min(100, Math.max(0, n)) }))} onBlur={() => setEd(null)} onKeyDown={(e) => onKey(e, r, 4, [])} aria-label={`Chiết khấu dòng ${r + 1}`} /></td>
-                  <td className="px-2 py-2 text-right tabular-nums">{!ghost && <><p className="font-medium text-[rgb(var(--fg))]">{Math.round(l.qty * l.price).toLocaleString('vi-VN')}</p>{canSeeCost && lineGm !== null && <p className={cn('text-[11px]', lineGm < 10 ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')}>GM {lineGm.toFixed(1)}%</p>}</>}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{!ghost && <span className="font-medium text-[rgb(var(--fg))]">{Math.round(l.qty * l.price).toLocaleString('vi-VN')}</span>}</td>
+                  <td className={cn('px-1 py-2 text-right text-[11px] tabular-nums', k && l.qty > k.stock ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')} title={k && l.qty > k.stock ? `Thiếu ${(l.qty - k.stock).toLocaleString('vi-VN')} ${l.unit}` : undefined}>{!ghost && (k ? `tồn ${k.stock.toLocaleString('vi-VN')}` : '—')}</td>
+                  {canSeeCost && <td className={cn('px-1 py-2 text-right font-mono text-[11px] tabular-nums', lineGm !== null && lineGm < GM_RULE.bod ? 'text-[rgb(var(--danger-fg))]' : lineGm !== null && lineGm < GM_RULE.head ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--fg2))]')}>{!ghost && (lineGm !== null ? `${lineGm.toFixed(0)}%` : '—')}</td>}
                   <td className="py-1.5 pr-1 text-center">{!ghost && !locked && <button tabIndex={-1} className="rounded p-1 text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => onChange(items.filter((_, j) => j !== r))} aria-label={`Xóa dòng ${r + 1}`}><Trash2 className="h-3.5 w-3.5" /></button>}</td>
                 </tr>
               );

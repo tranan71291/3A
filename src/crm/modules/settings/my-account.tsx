@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, KeyRound, Pencil, Plus, Settings, Trash2, Upload, X, Zap } from 'lucide-react';
+import { AlertTriangle, KeyRound, Pencil, Plus, Settings, Sparkles, Trash2, Upload, X, Zap } from 'lucide-react';
 import { Avatar, RowMenu } from '../../components/controls';
 import { CatalogTable, codeFrom, Collapse, ConfirmDialog } from '../../components/crud';
-import { Chip, Code, Field, Modal, MoneyInput, Panel, ProgressBar, SideSheet, Table, useOverlay } from '../../components/ui';
+import { Chip, Code, Field, Modal, MoneyInput, ProgressBar, SetBlock, SideCard, SideSheet, Table, useOverlay } from '../../components/ui';
 import { fundUsage } from '../../lib/business';
 import { cloudMessage } from '../../lib/cloud';
 import { btnGhost, btnPrimary, btnSm, C, cloud, CLOUD_ON, compact, deptIcon, digits, FUND_LABEL, inputBase, inputCls, OPEN_STATUSES, POP_LABEL, progYear, ROLE_LABEL, rowCls, SETTLEMENT_LABEL, shrinkImage, tdCls, tdFirst, tdLast, tierFor, TONES, useApp, usedByType, vnd } from '../../lib/core';
@@ -107,10 +107,10 @@ export function OrgSettings() {
           <div key={l} className="px-4 py-3"><p className="text-[12.5px] text-[rgb(var(--muted))]">{l}</p><p className={cn('text-[22px] font-medium leading-7 tabular-nums', warn && 'text-[rgb(var(--warn))]')}>{v}</p><p className="text-xs text-[rgb(var(--muted))]">{sub}</p></div>
         ))}
       </div>
-      <Collapse
+      <SetBlock flush
         title="Phòng ban"
-        summary={`${departments.length} phòng, ${departments.filter((d) => d.receivesLeads && d.active).length} phòng nhận lead`}
-        action={<button className={cn(btnPrimary, btnSm)} disabled={!canEdit} onClick={() => setDeptModal({})}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm phòng ban</button>}
+        sub={`${departments.length} phòng, ${departments.filter((d) => d.receivesLeads && d.active).length} phòng nhận lead`}
+        action={<button className={cn(btnGhost, btnSm)} disabled={!canEdit} onClick={() => setDeptModal({})}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm phòng ban</button>}
       >
         <Table head={['Mã', 'Phòng ban', 'Trưởng phòng', <span key="n" className="block text-right">Nhân sự</span>, 'Nhận lead', 'SLA', <span key="l" className="block text-right">Lead đang xử lý</span>, 'Trạng thái', '']} minW={1080}>
           {departments.map((d) => {
@@ -132,11 +132,11 @@ export function OrgSettings() {
             );
           })}
         </Table>
-      </Collapse>
+      </SetBlock>
 
-      <Collapse
+      <SetBlock flush
         title="Nhân sự và tài khoản"
-        summary={`${users.filter((u) => u.active).length} đang hoạt động, ${users.filter((u) => !u.active).length} đã khóa`}
+        sub={`${users.filter((u) => u.active).length} đang hoạt động, ${users.filter((u) => !u.active).length} đã khóa`}
         action={
           <div className="flex flex-wrap gap-2">
             <select className={cn(inputBase, 'w-auto py-1.5')} value={userFilter} onChange={(e) => setUserFilter(e.target.value)} aria-label="Lọc phòng ban">
@@ -178,7 +178,7 @@ export function OrgSettings() {
             );
           })}
         </Table>
-      </Collapse>
+      </SetBlock>
 
       {deptModal && <DeptModal code={deptModal.code} onClose={() => setDeptModal(null)} />}
       {userModal && <UserModal id={userModal.id} onClose={() => setUserModal(null)} />}
@@ -422,7 +422,7 @@ export function YearConfigModal({ onClose }: { onClose: () => void }) {
 }
 
 export function FundSettings() {
-  const { budget, budgets, setBudgets, setFiscalYear, programs, canDo } = useApp();
+  const { budget, budgets, setBudgets, setFiscalYear, programs, claims, canDo } = useApp();
   const canEdit = canDo('settings.edit');
   const [declare, setDeclare] = useState<{ year?: number } | null>(null);
   const [config, setConfig] = useState(false);
@@ -437,19 +437,24 @@ export function FundSettings() {
           <button className={cn(btnPrimary, btnSm)} disabled={!canEdit} onClick={() => setDeclare({ year: budget.fiscalYear })}><Plus className="h-3.5 w-3.5" aria-hidden />Khai báo năm {budget.fiscalYear}</button>
         </div>
       )}
-      <Panel title="Hạn mức quỹ theo năm" action={<button className={cn(btnPrimary, btnSm)} disabled={!canEdit} onClick={() => setDeclare({})}><Plus className="h-3.5 w-3.5" aria-hidden />Khai báo ngân sách năm mới</button>}>
-        <Table head={['Năm tài chính', 'Hãng tài trợ', 'Hạn mức MDF', 'Hạn mức CS', 'Tổng trần', 'Thao tác']} minW={860}>
+      <SetBlock title="Hạn mức quỹ theo năm" action={<button className={cn(btnGhost, btnSm)} disabled={!canEdit} onClick={() => setDeclare({})}><Plus className="h-3.5 w-3.5" aria-hidden />Khai báo năm mới</button>} flush>
+        <Table head={['Năm', 'Hãng tài trợ', <span key="m" className="block text-right">MDF (đ)</span>, <span key="c" className="block text-right">CS (đ)</span>, <span key="t" className="block text-right">Tổng trần (đ)</span>, 'Đã dùng', 'Trạng thái', '']} minW={960}>
           {rows.map((x) => {
             const active = x.fiscalYear === budget.fiscalYear;
+            const u = fundUsage(x.fiscalYear, programs, claims);
+            const cap = x.mdfTotal + x.csTotal;
+            const used = cap ? Math.min(100, Math.round(((u.spent + u.committed) / cap) * 100)) : 0;
             return (
-              <tr key={x.fiscalYear} className={cn(rowCls, active && 'bg-[rgb(var(--accent)/0.05)]')}>
-                <td className={tdFirst}><b className="tabular-nums">{x.fiscalYear}</b>{active && <Chip tone="orange">Đang kích hoạt</Chip>}</td>
-                <td className={tdCls}>{x.vendor}</td>
-                <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{vnd(x.mdfTotal)}</td>
-                <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{vnd(x.csTotal)}</td>
-                <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums font-semibold')}>{vnd(x.mdfTotal + x.csTotal)}</td>
-                <td className={cn(tdLast, 'whitespace-nowrap')}>
-                  <button className={cn(btnGhost, btnSm, 'mr-1')} onClick={() => { setFiscalYear(x.fiscalYear); setConfig(true); }}><Settings className="h-3.5 w-3.5" aria-hidden />Cấu hình hạng mục & tiêu chí claim</button>
+              <tr key={x.fiscalYear} className={rowCls}>
+                <td className={tdFirst}><b className="font-medium tabular-nums">{x.fiscalYear}</b></td>
+                <td className={tdCls}><span className="block max-w-[200px] truncate" title={x.vendor}>{x.vendor}</span></td>
+                <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{x.mdfTotal.toLocaleString('vi-VN')}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{x.csTotal.toLocaleString('vi-VN')}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{cap.toLocaleString('vi-VN')}</td>
+                <td className={tdCls}><span className="flex items-center gap-2" title={`Đã chi ${vnd(u.spent)}, đang giữ ${vnd(u.committed)}`}><span className="h-1.5 w-20 overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]"><span className="block h-full rounded-full bg-[rgb(var(--fg))]" style={{ width: `${used}%` }} /></span><span className="font-mono text-xs tabular-nums text-[rgb(var(--fg2))]">{used}%</span></span></td>
+                <td className={tdCls}><span className="inline-flex items-center gap-1.5 text-[13px]"><span className={cn('h-1.5 w-1.5 rounded-full', active ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--ink)/0.3)]')} aria-hidden />{active ? 'Đang kích hoạt' : x.fiscalYear < budget.fiscalYear ? 'Đã qua' : 'Kế hoạch'}</span></td>
+                <td className={cn(tdLast, 'whitespace-nowrap text-right')}>
+                  <button className={cn(btnGhost, 'p-1.5')} onClick={() => { setFiscalYear(x.fiscalYear); setConfig(true); }} title="Cấu hình hạng mục & tiêu chí claim" aria-label={`Cấu hình năm ${x.fiscalYear}`}><Settings className="h-3.5 w-3.5" aria-hidden /></button>
                   <button className={cn(btnGhost, 'p-1.5 hover:text-[rgb(var(--danger-fg))]')} disabled={!canEdit} onClick={() => setConfirm({
                     title: `Xóa ngân sách năm ${x.fiscalYear}`, message: <>Xóa khai báo ngân sách năm {x.fiscalYear}?</>,
                     blocked: programs.some((p) => progYear(p) === x.fiscalYear) ? 'Năm này đã có chương trình / claim, giữ lại để tra cứu lịch sử.' : undefined,
@@ -460,9 +465,9 @@ export function FundSettings() {
             );
           })}
         </Table>
-        <p className="mt-3 text-xs text-[rgb(var(--muted))]">Năm đang kích hoạt theo bộ lọc thời gian trên header. Số đã tiêu, giữ chỗ, còn lại xem ở Tổng quan và Hồ sơ MDF.</p>
-      </Panel>
-      <ClaimRulesSection />
+      </SetBlock>
+      <p className="px-1 text-xs text-[rgb(var(--muted))]">Đã dùng = đã Hãng duyệt chi + đang giữ chỗ cho chương trình. Năm kích hoạt theo bộ lọc thời gian trên đầu trang.</p>
+      <ClaimRulesSection defaultOpen />
       {declare && <BudgetYearModal initialYear={declare.year} onClose={() => setDeclare(null)} />}
       {config && <YearConfigModal onClose={() => setConfig(false)} />}
       {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
@@ -471,6 +476,37 @@ export function FundSettings() {
 }
 
 // ---------------- Phân loại khách hàng: nhóm & hạng ----------------
+
+/** Đề xuất xếp hạng: khách có doanh số năm không khớp hạng hiện tại (tính theo quy tắc hạng), duyệt từng khách */
+export function TierSuggest() {
+  const { customers, setCustomers, tierRules, canDo, notify, audit } = useApp();
+  const can = canDo('settings.edit');
+  const list = customers.filter((c) => tierFor(c.ytdRevenue, tierRules) !== c.tier).sort((x, y) => y.ytdRevenue - x.ytdRevenue);
+  const name = (t: string) => tierRules.find((r) => r.tier === t)?.name ?? (t || 'chưa xếp');
+  const apply = (ids: string[]) => {
+    setCustomers((p) => p.map((c) => (ids.includes(c.id) ? { ...c, tier: tierFor(c.ytdRevenue, tierRules) } : c)));
+    audit('CUSTOMER_TIER', `Xếp hạng lại ${ids.length} khách theo doanh số năm`);
+    notify(`Đã xếp hạng lại ${ids.length} khách`, 'teal');
+  };
+  return (
+    <SideCard title="Đề xuất xếp hạng" icon={Sparkles} sub="theo doanh số năm">
+      {!list.length ? <p className="py-2 text-xs text-[rgb(var(--muted))]">Mọi khách đang đúng hạng theo doanh số.</p> : (
+        <>
+          <ul className="divide-y divide-[rgb(var(--ink)/0.06)]">
+            {list.slice(0, 6).map((c) => (
+              <li key={c.id} className="flex items-start gap-2 py-2.5">
+                <span className={cn('mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full', (tierRules.find((r) => r.tier === tierFor(c.ytdRevenue, tierRules))?.minRevenue ?? 0) > (tierRules.find((r) => r.tier === c.tier)?.minRevenue ?? 0) ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--accent))]')} aria-hidden />
+                <div className="min-w-0 flex-1"><p className="truncate text-[13px] font-medium">{c.name} → {name(tierFor(c.ytdRevenue, tierRules))}</p><p className="text-xs text-[rgb(var(--muted))]">đang {name(c.tier)} · doanh số năm {compact(c.ytdRevenue)}</p></div>
+                {can && <button type="button" className={cn(btnGhost, btnSm)} onClick={() => apply([c.id])}>Duyệt</button>}
+              </li>
+            ))}
+          </ul>
+          {can && list.length > 1 && <button type="button" className={cn(btnGhost, btnSm, 'mt-2')} onClick={() => apply(list.map((c) => c.id))}>Duyệt tất cả {list.length} khách</button>}
+        </>
+      )}
+    </SideCard>
+  );
+}
 
 export function SegmentSettings() {
   const { segments, setSegments, tierRules, setTierRules, customers, setCustomers, leads, departments, canDo, notify } = useApp();
@@ -482,7 +518,7 @@ export function SegmentSettings() {
 
   return (
     <div className="space-y-4">
-      <Collapse title="Nhóm khách hàng (đại lý / nhà thầu)" summary={`${segments.length} nhóm, phân lead theo khu vực Bắc / Nam`}>
+      <SetBlock flush title="Nhóm khách hàng" sub={`${segments.length} nhóm, phân lead theo khu vực Bắc / Nam`}>
         <p className="mb-3 text-sm text-[rgb(var(--muted))]">Khi Marketing phân lead tự động: khách hiện hữu giữ phòng đang phụ trách, còn lại chọn phòng theo nhóm và khu vực của lead.</p>
         <CatalogTable<SegmentDef>
           rows={segments}
@@ -524,11 +560,13 @@ export function SegmentSettings() {
             return n ? `Đang có ${n} khách hàng / lead thuộc nhóm này. Chuyển sang nhóm khác trước khi xóa.` : undefined;
           }}
         />
-      </Collapse>
+      </SetBlock>
 
-      <Collapse
-        title="Hạng khách hàng và hạn mức tài trợ"
-        summary={`${tierRules.length} hạng${mismatched.length ? `, ${mismatched.length} khách lệch hạng` : ''}`}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+        <div className="min-w-0">
+      <SetBlock flush
+        title="Hạng khách hàng" 
+        sub={`${tierRules.length} hạng${mismatched.length ? `, ${mismatched.length} khách lệch hạng` : ''}`}
         action={<button className={cn(btnGhost, btnSm)} disabled={!canEdit || !mismatched.length} onClick={() => { setCustomers((p) => p.map((c) => ({ ...c, tier: tierFor(c.ytdRevenue, tierRules) }))); notify(`Đã phân hạng lại ${mismatched.length} khách hàng`, 'teal'); }}><Zap className="h-3.5 w-3.5" aria-hidden />Áp dụng phân hạng tự động ({mismatched.length})</button>}
       >
         <CatalogTable<TierRule>
@@ -569,7 +607,10 @@ export function SegmentSettings() {
             return undefined;
           }}
         />
-      </Collapse>
+      </SetBlock>
+        </div>
+        <TierSuggest />
+      </div>
     </div>
   );
 }

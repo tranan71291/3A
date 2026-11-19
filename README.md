@@ -1,3 +1,90 @@
+# 3A CRM v44 (Cài đặt, Báo giá, Hợp đồng bám 18 ảnh đề xuất — dựa trên v43)
+
+> Không đổi bảng, API hay SQL. Các trường mới (báo giá nháp, nội dung sửa trực tiếp, phạt chậm thanh toán, giấy ủy quyền, chi nhánh) là trường tùy chọn trong dữ liệu đã có; dữ liệu cũ mở bình thường.
+
+## Cập nhật v44 (19/11)
+
+**Báo giá**
+- Thẻ từng phần: Khách hàng dạng tóm tắt + "Đổi" (bảng giá, VAT ở cạnh), Hàng hóa có cột Kho và GM riêng, "Thường mua kèm" trong thẻ hàng, Điều khoản 4 ô một hàng với chọn mẫu ở đầu thẻ.
+- Kiểm tra trước khi gửi có nút xử lý ngay: Gửi duyệt, Ghi chú giao (tự thêm câu giao hàng vào ghi chú), Nhập MST.
+- Bước Gửi khách là màn riêng: kênh Email / Zalo / Tải về, thư soạn sẵn (AI: ngắn hơn, trang trọng hơn, soạn lại; dùng chữ ký của người gửi nếu có), đính kèm, chân màn hình "Quay lại / Gửi báo giá".
+- **Báo giá nháp (khách lẻ)**: không MST, công nợ 0 ngày, chưa có trong CRM → lưu là xuất được ngay, không cần duyệt giá; Tài liệu › Báo giá có lọc "Nháp, khách lẻ"; nút "Ghi nhận chốt" tự thêm khách vào CRM (dùng khách trùng tên + điện thoại nếu đã có).
+
+**Hợp đồng**
+- Thẻ Căn cứ (tóm tắt báo giá + Đổi báo giá, hàng hóa gấp gọn), Bên mua 3 cột có **Giấy ủy quyền** (in cạnh chức vụ người ký), Thanh toán theo đợt có dòng Cộng, Bảo lãnh / **Phạt chậm thanh toán** (%/ngày, in dưới điều thanh toán) / Bảo hành.
+- Chế độ **So sánh phiên bản** riêng: danh sách thay đổi, tóm tắt AI cho người duyệt, ô ý kiến + Duyệt / Từ chối (ghi lý do), **Khôi phục bản cũ** (tạo phiên bản mới từ nội dung bản cũ).
+- Nút chính: "Trình ký" (điều khoản chuẩn) hoặc "Trình duyệt" (có điều khoản đặc biệt).
+
+**Khung xem trước (báo giá và hợp đồng)**
+- Thu nhỏ / phóng to, 100%, Vừa khung (nhớ lựa chọn), Toàn màn hình, In, **Chia sẻ** (điện thoại / máy hỗ trợ: gửi file Word qua Zalo, email; máy không hỗ trợ: tải file về). In và chia sẻ theo đúng khóa duyệt giá / hiệu lực.
+- **Sửa trực tiếp** trên trang xem trước: bấm vào chữ để sửa, "Xong" lưu nội dung vào bản đang soạn (lưu cùng phiên bản, xuất PDF / Word đúng bản đã sửa); "Dựng lại từ form" để quay về bản dựng từ mẫu.
+- Mục lục "Điều N" bên trái trang hợp đồng.
+
+**Cài đặt**
+- Tổng quan: thẻ Sức khỏe hệ thống. Doanh nghiệp: nút "Điền từ giấy phép ĐKKD", nhãn MST đúng / sai dạng, bảng Văn phòng / chi nhánh (biến {{company_branches}}).
+- Phân quyền: ô tích 3 trạng thái (đủ / một phần / tắt), tab Nhật ký thay đổi.
+- Phòng ban, Phân loại khách, Dữ liệu & bảo mật: tiêu đề ngoài thẻ, bỏ khung gấp; Phân loại khách có "Đề xuất xếp hạng" theo doanh số (Duyệt từng khách); Dữ liệu & bảo mật có tải nhật ký CSV và thẻ "Phát hiện bất thường" (đăng nhập lỗi dồn dập, khóa tài khoản, đổi quyền ngoài giờ).
+- Kế toán: thẻ Công nợ, Số chứng từ (định dạng + số tiếp theo, chỉ xem), Số dư đầu kỳ, Phiếu tự sinh, AI soạn mẫu tin nhắc nợ (sao chép để gửi).
+- Kho: bảng kho, Quy tắc phiếu kho đang áp dụng, Gợi ý mức tồn tối thiểu (Áp dụng tất cả).
+- Quỹ Hãng: cột Đã dùng (đã duyệt chi + đang giữ chỗ) và Trạng thái; tiêu chí claim mở sẵn.
+- Ngân sách Marketing: 4 số (kế hoạch, đã chi, chi phí mỗi lead, ROI theo đơn chốt từ kênh), cột % dùng và CPL, AI gợi ý phân bổ.
+- AI & trợ lý: 3 thẻ trạng thái nhà cung cấp, Nhà cung cấp, Tính năng, An toàn dữ liệu, Thử kết nối (đo thời gian). Zalo: thẻ OA + webhook, Phân công hội thoại, Mẫu trả lời nhanh, Mẫu ZNS. Email: 2 cột, thanh "Có thay đổi chưa lưu". Getfly: dải 4 số trạng thái.
+
+**Kiểm tra:** TypeScript không lỗi (kể cả chế độ strict như Next build); chụp lại 14 mục Cài đặt và 4 màn báo giá / hợp đồng ở 1440px, không lỗi console. Ảnh 3 cột trước (v43) / sau (v44) / đề xuất trong `anh-v44`.
+
+**Không làm vì cần dịch vụ hoặc dữ liệu chưa có (không làm giả):** tra cứu MST trực tuyến, gửi email trực tiếp từ hệ thống và theo dõi khách đã mở thư, nhắc nợ / nhắc khách tự động theo lịch, thống kê lượt dùng và chi phí AI, đổi định dạng số chứng từ, lịch đồng bộ Getfly tự động, AI tự kiểm chứng chứng từ POP, xác thực 2 bước, công tắc cho các quy tắc kho (đang là quy tắc cố định của hệ thống nên hiện "Đang áp dụng").
+
+# 3A CRM v43 (Phân quyền chỉnh lại theo đề xuất — dựa trên v42)
+
+> v43 chỉ đổi giao diện trang Cài đặt › Phân quyền: **không đổi dữ liệu quyền, API hay SQL**.
+
+## Cập nhật v43 (19/11): Phân quyền
+- Ma trận: ô tích luôn cùng một cột (rãnh cố định ô tích 16px + số đếm 36px, dòng không có thao tác vẫn giữ rãnh trống); cột vai trò chia đều, cột Phân hệ cố định và đứng yên khi cuộn ngang trên điện thoại; mọi dòng cao 48px.
+- Tiêu đề vai trò: tên, số tài khoản, phạm vi dữ liệu trên 3 dòng; vai trò đang chọn có vạch cam trên đầu và cả cột nền nhạt.
+- Nhóm (Làm việc, Bán hàng…) không còn dải nền xám; bỏ khoảng trống thừa trước nhóm không tên.
+- Số đếm 3 mức: bật đủ (đậm), bật một phần, 0 hoặc phân hệ tắt (nhạt). Ô khóa hiện ổ khóa thay cho ô tích xám. Ô tích vẽ riêng, giống nhau trên Windows / Mac, theo giao diện sáng / tối. Chú giải dùng đúng các ký hiệu.
+- Chi tiết vai trò: Phạm vi dữ liệu dạng nút chọn tròn, mục đang chọn viền đậm; phân hệ và thao tác gộp một thẻ, mỗi dòng 3 cột (phân hệ | thao tác dạng ô tích 2 cột | công tắc), bỏ chữ "Truy cập" lặp lại; "Cho phép tất cả / Tắt tất cả" ở đầu mỗi nhóm.
+- Bàn phím: ô tích là nút có vòng focus, đọc được bằng trình đọc màn hình.
+
+# 3A CRM v42 (Cài đặt, Báo giá, Hợp đồng làm lại theo 18 ảnh đề xuất v42 — dựa trên v41)
+
+> v42 **không đổi bảng, API hay SQL**. Không cần chạy file SQL mới. Trường mới "thanh toán theo đợt" là trường tùy chọn nằm trong dữ liệu hợp đồng đã có; hợp đồng cũ vẫn mở bình thường.
+
+## Cập nhật v42 (19/11)
+
+**Cài đặt**
+- Mục mới **Tổng quan**: danh sách việc cần thiết lập tính từ dữ liệu thật (thông tin doanh nghiệp, logo và mộc, đại diện và ngân hàng, phòng ban và tài khoản, mật khẩu yếu, số dư đầu kỳ, kho, AI, Zalo, Email, Getfly), thanh tiến độ, nút đi tới từng mục.
+- **AI & trợ lý** và **Zalo OA & ZNS** tách thành hai mục riêng, mỗi mục có tab con (AI: Trợ lý · Gợi ý khi gõ · Biến thể · Kiến thức · Bản tin & truyền thông; Zalo: Kết nối OA · Mẫu ZNS · Thông báo). Đường dẫn cũ `hub` / `zns` tự chuyển sang mục mới.
+- **Doanh nghiệp**: bố cục 2 cột, xem trước đầu trang in (ô còn thiếu tô vàng), thanh "Có thay đổi chưa lưu"; **AI điền từ giấy phép kinh doanh / ảnh** (PDF cần Claude), chỉ liệt kê trường khác nhau để bấm "Dùng".
+- **Phân quyền**: ma trận phân hệ × vai trò (tích để bật / tắt, số thao tác n/tổng bấm để xem chi tiết); **AI rà soát phân quyền** theo nguyên tắc quyền tối thiểu (chỉ gợi ý, không tự đổi).
+- **Phòng ban & nhân sự**: dải số (phòng ban, tài khoản hoạt động, chưa đăng nhập 30 ngày, ghế bản quyền), cột "Đăng nhập" gần nhất.
+- **Kế toán & công nợ**: thanh nhóm tuổi nợ đang dùng; thanh "Có thay đổi chưa lưu".
+- **Kho hàng**: gợi ý mức tồn tối thiểu từ lượng xuất 90 ngày × thời gian về hàng, bấm "Áp dụng" (có ghi nhật ký).
+
+**Báo giá**
+- Thanh bước trên đầu (Khách hàng · Hàng hóa · Điều khoản · Gửi khách), bấm để cuộn tới phần tương ứng.
+- Mỗi dòng hàng hiện **tồn kho** (đỏ khi thiếu, ghi số thiếu) cạnh mã hàng; lãi gộp từng dòng giữ như cũ.
+- Chân màn hình: Tổng, Lãi gộp (chỉ người xem được giá vốn); màn rộng ≥1536px hiện thêm Cộng tiền hàng, VAT.
+- **Kiểm tra trước khi gửi** (tính ngay, không cần AI): dòng có lãi gộp dưới ngưỡng, hàng thiếu tồn, MST trống / sai định dạng, thiếu email và điện thoại người nhận.
+- **Thường mua kèm**: hàng hay đi cùng hàng đang báo trong các báo giá trước (từ 2 lần và ≥30%), bấm "Thêm".
+- **Gửi khách** (sau khi báo giá được duyệt / không cần duyệt): thư soạn sẵn, **AI soạn / ngắn hơn / trang trọng hơn**, sao chép (dán vào Zalo, email), **Mở ứng dụng email** của máy (mailto) và Xuất PDF để đính kèm.
+
+**Hợp đồng**
+- Thanh bước (Căn cứ · Bên mua · Điều khoản · Trình ký), **mục lục "Điều N"** cạnh khung xem trước (màn ≥1280px), bấm để cuộn tới điều đó.
+- Nút **Lấy lại từ CRM** điền pháp nhân bên mua từ hồ sơ khách / dự án.
+- **Thanh toán theo đợt** (không bắt buộc): tên đợt, tỷ lệ, số tiền tự tính, điều kiện; tổng phải đúng 100%; bảng tự chèn dưới "Điều … Thanh toán" của mẫu (mẫu không có điều này thì thêm cuối văn bản).
+- **AI rà soát hợp đồng**: đọc bản xem trước, nêu tối đa 6 điểm thiếu / mơ hồ / lệch số; chỉ gợi ý, không tự sửa, không thay luật sư.
+- **So sánh phiên bản**: chọn 2 phiên bản, liệt kê thay đổi (giá trị, bên mua, điều khoản, hàng hóa, đợt thanh toán), **AI tóm tắt cho người duyệt**.
+- Cột trái rộng hơn (54/46); link "Khai báo ở Cài đặt › Doanh nghiệp" mở đúng mục.
+
+**Kiểm tra:** TypeScript không lỗi (cả chế độ strict như Next build); chụp lại 14 mục Cài đặt, Báo giá, Hợp đồng ở 1440px, không lỗi console. Ảnh trước / sau trong thư mục `anh-v42`.
+
+**Chưa làm (cần thêm dữ liệu / dịch vụ, không tự bịa):**
+- Gửi email trực tiếp từ hệ thống: chưa có máy chủ gửi thư thật, v42 mở ứng dụng email trên máy bạn (mailto, không tự đính kèm file). Gửi báo giá qua Zalo ZNS chưa làm (cần mẫu ZNS được duyệt có tham số báo giá).
+- Tra cứu MST trực tuyến: chưa có API, chỉ kiểm tra định dạng.
+- Thống kê lượt dùng / chi phí AI: cần ghi nhật ký ở máy chủ (thêm bảng SQL).
+- Xác thực 2 lớp, đổi định dạng đánh số chứng từ, chi nhánh trên mẫu in.
+
 # 3A CRM v41 (bố cục mới theo 75 ảnh đề xuất v40 — dựa trên v40)
 
 > v41 chỉ đổi giao diện: **không đổi bảng, dữ liệu, API hay SQL**. Không cần chạy file SQL mới.

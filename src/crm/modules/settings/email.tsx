@@ -1,11 +1,13 @@
 'use client';
 
-import { CheckCircle2, Send, XCircle } from 'lucide-react';
+import { CheckCircle2, Mail, Send, XCircle } from 'lucide-react';
 import { useState } from 'react';
-import { EmptyState, Field, Panel } from '../../components/ui';
-import { btnGhost, btnPrimary, EMAIL_PRESET, EMAIL_RE, inputBase, inputCls, useApp } from '../../lib/core';
+import { EmptyState, Field, Panel, SetBlock, SideCard } from '../../components/ui';
+import { btnGhost, EMAIL_PRESET, EMAIL_RE, inputCls, useApp } from '../../lib/core';
 import type { EmailConfig, EmailProvider } from '../../lib/types';
 import { cn } from '../../lib/utils';
+import { Switch } from '../platform/console';
+import { SaveBar } from './company';
 
 // =====================================================================
 //  CÀI ĐẶT: EMAIL SMTP
@@ -66,12 +68,14 @@ export function EmailSettings() {
     notify(ok ? `Đã gửi email kiểm tra tới ${testTo}` : 'Gửi thất bại, xem nhật ký', ok ? 'teal' : 'red');
   };
 
+  const dirty = canEdit && JSON.stringify(f) !== JSON.stringify(emailCfg);
   return (
-    <div className="space-y-5">
-      <Panel title="Máy chủ gửi email" action={<label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" disabled={!canEdit} checked={f.enabled} onChange={(ev) => set('enabled', ev.target.checked)} />Bật kênh Email</label>}>
-        <div className="mb-4 flex flex-wrap gap-2" role="radiogroup" aria-label="Nhà cung cấp">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+      <div className="min-w-0 space-y-4">
+      <Panel title="Máy chủ gửi email" action={<span className="flex items-center gap-2 text-[13px] text-[rgb(var(--fg2))]">Bật kênh email<Switch on={f.enabled} disabled={!canEdit} onChange={(v) => set('enabled', v)} label="Bật kênh email" /></span>}>
+        <div className="mb-2 flex w-fit flex-wrap gap-0.5 rounded-lg bg-[rgb(var(--raised))] p-0.5" role="radiogroup" aria-label="Nhà cung cấp">
           {(Object.keys(EMAIL_PRESET) as EmailProvider[]).map((p) => (
-            <button key={p} role="radio" aria-checked={f.provider === p} disabled={!canEdit} onClick={() => pickProvider(p)} className={cn('rounded border px-3 py-2 text-sm transition-colors disabled:opacity-50', f.provider === p ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.1)] text-[rgb(var(--accent-fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>
+            <button key={p} role="radio" aria-checked={f.provider === p} disabled={!canEdit} onClick={() => pickProvider(p)} className={cn('rounded-md px-3 py-1.5 text-[13px] transition-colors disabled:opacity-50', f.provider === p ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>
               {EMAIL_PRESET[p].label}
             </button>
           ))}
@@ -94,21 +98,21 @@ export function EmailSettings() {
         </div>
       </Panel>
 
-      <Panel title="Email báo cáo tháng">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <Field label="Người nhận (cách nhau bởi dấu phẩy)" error={err('reportRecipients')} className="md:col-span-2"><input className={inputCls} disabled={!canEdit} value={f.reportRecipients} onChange={(ev) => set('reportRecipients', ev.target.value)} /></Field>
+      <SetBlock title="Nhật ký gửi"><MsgLogList channel="EMAIL" /></SetBlock>
+        {dirty && <SaveBar onCancel={() => setF(emailCfg)} onSave={save} />}
+      </div>
+      <div className="min-w-0 space-y-4">
+        <SideCard title="Email báo cáo tháng" icon={Mail}>
+        <div className="grid grid-cols-1 gap-3">
+          <Field label="Người nhận (cách nhau bởi dấu phẩy)" error={err('reportRecipients')}><input className={inputCls} disabled={!canEdit} value={f.reportRecipients} onChange={(ev) => set('reportRecipients', ev.target.value)} /></Field>
           <Field label="Gửi vào ngày trong tháng" hint="Lúc 08:00 giờ Việt Nam"><input className={inputCls} type="number" min={1} max={28} disabled={!canEdit} value={f.reportDay} onChange={(ev) => set('reportDay', Math.min(28, Math.max(1, Number(ev.target.value))))} /></Field>
         </div>
-        <div className="mt-4 flex flex-wrap items-end gap-2">
-          <button className={btnPrimary} disabled={!canEdit} onClick={save}>Lưu cấu hình Email</button>
-          <div className="ml-auto flex items-end gap-2">
-            <Field label="Gửi email kiểm tra tới"><input className={cn(inputBase, 'w-64')} value={testTo} onChange={(ev) => setTestTo(ev.target.value.trim())} placeholder="ten@congty.vn" /></Field>
-            <button className={btnGhost} onClick={test}><Send className="h-4 w-4" aria-hidden />Gửi thử</button>
-          </div>
-        </div>
-      </Panel>
-
-      <Panel title="Nhật ký gửi email"><MsgLogList channel="EMAIL" /></Panel>
+        </SideCard>
+        <SideCard title="Gửi thử" icon={Send}>
+          <p className="mb-2 text-xs text-[rgb(var(--muted))]">Kiểm tra cấu hình đã lưu bằng một email thử</p>
+          <div className="flex gap-2"><input className={inputCls} value={testTo} onChange={(ev) => setTestTo(ev.target.value.trim())} placeholder="ten@congty.vn" aria-label="Gửi email kiểm tra tới" /><button className={cn(btnGhost, 'shrink-0')} onClick={test}><Send className="h-4 w-4" aria-hidden />Gửi</button></div>
+        </SideCard>
+      </div>
     </div>
   );
 }

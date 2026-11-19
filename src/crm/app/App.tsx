@@ -9,13 +9,13 @@ import { periodRange } from '../components/filters';
 import { Skeleton } from '../components/ui';
 import { fundUsage, scoreLead, shipmentAllocation } from '../lib/business';
 import { canon, cloudMessage, statsOf } from '../lib/cloud';
-import { AVATARS, bizMode, blockersOf, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, znsPhone } from '../lib/core';
+import { AVATARS, bizMode, blockersOf, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, fold, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, znsPhone } from '../lib/core';
 import { buildGetflyPayload, financialsFromOrders } from '../lib/getfly';
 import { LoginScreen, orgDefaults, pathOrgOf, registerOrgs, regsFromStored, setPathOrg } from '../lib/modules';
 import { initialNotices } from '../lib/notify';
 import { encryptBackup, hashPassword, verifyPassword } from '../lib/security';
 import { listSnapshots, migrateData, takeSnapshot, withDefaults } from '../lib/storage';
-import type { Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, Job, KbItem, KpiTarget, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, Receipt, RemoteBatch, Role, RowComment, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
+import type { Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, Job, KbItem, KpiTarget, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
 import { cn, initialLeads, initialMoves, initialPOs, initialQuotes, initialReservations, syncCatalog } from '../lib/utils';
 import { AiChatBot } from '../modules/ai/copilot-plus';
 import { InstallModule } from '../modules/alux/install';
@@ -40,7 +40,7 @@ import { PlatformConsole } from '../modules/platform/console';
 import { SkuCatalog } from '../modules/products/catalog';
 import { ProjectsPage } from '../modules/projects/projects';
 import { ReportsPage } from '../modules/reports/reports';
-import { DocComposerModal, DocsModule } from '../modules/sales/contract';
+import { DocComposerModal, DocsModule } from '../modules/sales/quote';
 import { WinModal } from '../modules/sales/sales-flow';
 import { initialDocTemplates } from '../modules/sales/templates';
 import { BrandMark } from '../modules/settings/company';
@@ -703,6 +703,30 @@ export default function DashboardApp() {
     setLeads((p) => p.map((x) => (x.id === id ? won : x)));
     setQuotes((p) => p.map((x) => (x.leadId !== id ? x : x.id === q.id ? { ...x, status: 'ACCEPTED' } : x.status === 'SENT' ? { ...x, status: 'REVISED' } : x)));
     notify(`Chốt đơn ${l.company} theo ${q.code}: ghi nhận doanh số ${compact(q.amount)} (trước VAT)${existing ? '' : `, tạo khách hàng ${cust.code}`}. Tạo hợp đồng ở tab Hợp đồng & Doanh số khi cần.`, 'teal');
+  };
+
+  /** Báo giá nháp của khách lẻ: khi khách đồng ý thì tạo khách hàng trong CRM (hoặc dùng khách trùng tên + điện thoại) */
+  const winDraftQuote = (quoteId: string) => {
+    const q = quotes.find((x) => x.id === quoteId);
+    const p = q?.quoteForm?.party;
+    if (!q || !p || !q.lines.length) return notify('Báo giá chưa có khách hoặc dòng hàng', 'red');
+    const phone = p.phone.replace(/\D/g, '');
+    const existing = customers.find((c) => c.id === q.customerId) ?? customers.find((c) => fold(c.name) === fold(p.name) && (!phone || c.contactPhone.replace(/\D/g, '') === phone));
+    let cust: Customer;
+    if (existing) {
+      cust = existing;
+      setCustomers((all) => all.map((c) => (c.id === existing.id ? { ...c, ytdRevenue: c.ytdRevenue + q.amount, status: 'ACTIVE' } : c)));
+    } else {
+      cust = {
+        ...EMPTY_CUSTOMER, id: uid('k'), code: nextCode(customers.map((c) => c.code), 'KH-', 6), name: p.name, taxCode: '', dept: me?.dept ?? routableDepts[0]?.code ?? EMPTY_CUSTOMER.dept,
+        amId: q.createdBy ?? me?.id, contactName: p.rep || p.name, contactTitle: p.repTitle, contactPhone: p.phone, contactEmail: p.email, address: p.address,
+        ytdRevenue: q.amount, tier: TIERS[TIERS.length - 1] ?? EMPTY_CUSTOMER.tier, status: 'ACTIVE', createdAt: todayISO(),
+      };
+      setCustomers((all) => [...all, cust]);
+    }
+    setQuotes((all) => all.map((x) => (x.id === q.id ? { ...x, status: 'ACCEPTED' as QuoteStatus, customerId: cust.id, draft: false } : x)));
+    if (me) writeAudit('QUOTE_WIN', `Chốt báo giá nháp ${q.code}: ${p.name}${existing ? '' : `, thêm khách ${cust.code}`}`, 'INFO', realUserId ?? me.id);
+    notify(`Đã ghi nhận chốt ${q.code}: ${compact(q.amount)} trước VAT${existing ? `, khách ${cust.code} đã có trong CRM` : `, đã thêm khách ${cust.code} vào CRM`}`, 'teal');
   };
 
   const syncLeadToGetfly = (leadId: string) => {
@@ -1536,7 +1560,7 @@ export default function DashboardApp() {
     jobs, setJobs, receipts, setReceipts, stockItems, setStockItems, stockMoves, setStockMoves, cashEntries, setCashEntries, priceItems, setPriceItems, mfgConfig, setMfgConfig, openJob: setOpenJobId,
     canDo: (a) => myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role),
     userName, dept, routableDepts, routeLeads, acceptLead,
-    getflyOrders, setGetflyOrders, getfly, setGetfly, getflyLogs, addGetflyLog, winLead, syncLeadToGetfly, recomputeLinked,
+    getflyOrders, setGetflyOrders, getfly, setGetfly, getflyLogs, addGetflyLog, winLead, winDraftQuote, syncLeadToGetfly, recomputeLinked,
     assignLead, submitQuote, markLost,
     notices: myNotices,
     markNoticeRead: (id) => setNotices((p) => p.map((n) => (!id || n.id === id ? { ...n, read: true } : n))),

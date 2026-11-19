@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Database, Download, HardDrive, History, KeyRound, Lock, Pencil, Plus, ShieldCheck, Trash2, Upload } from 'lucide-react';
+import { Copy, Database, Download, HardDrive, History, KeyRound, Lock, Pencil, Plus, ShieldCheck, Sparkles, Trash2, Upload } from 'lucide-react';
 import { Pagination, usePaged } from '../../components/controls';
-import { Collapse, ConfirmDialog } from '../../components/crud';
-import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, useSticky } from '../../components/ui';
-import { AGING, AUDIT_LABEL, bizMode, btnGhost, btnPrimary, btnSm, C, CLOUD_ON, DATA_VERSION, dataKey, fmtN, inputBase, inputCls, iso, kpiGrid, orgOf, ORGS, rowCls, SESSION_KEY, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd, whQty } from '../../lib/core';
+import { ConfirmDialog } from '../../components/crud';
+import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, RuleRow, SetBlock, SideCard, StatCard, Table, useSticky } from '../../components/ui';
+import { AGING, AUDIT_LABEL, bizMode, btnGhost, btnPrimary, btnSm, C, CLOUD_ON, DATA_VERSION, dataKey, fmtN, inputBase, inputCls, iso, kpiGrid, nextCode, orgOf, ORGS, rowCls, SESSION_KEY, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd, whQty } from '../../lib/core';
 import { decryptBackup, encryptBackup } from '../../lib/security';
 import { takeSnapshot } from '../../lib/storage';
-import type { AgingScheme, AnyRec, AuditLevel, ConfirmState, EncryptedBackup, MfgConfig, SettingsTab, WarehouseInfo } from '../../lib/types';
+import type { AgingScheme, AnyRec, AuditLevel, CheckItem, ConfirmState, EncryptedBackup, SettingsTab, WarehouseInfo } from '../../lib/types';
 import { cn } from '../../lib/utils';
+import { useAi } from '../ai/ai-core';
 import { PricingSettings } from '../platform/console';
+import { CheckList } from '../sales/quote';
 import { CompanySettings, SaveBar, SettingsOverview } from './company';
 import { EmailSettings } from './email';
 import { GetflySettings } from './getfly';
@@ -20,6 +22,25 @@ import { FundSettings, OrgSettings, SegmentSettings } from './my-account';
 import { PermissionsSettings } from './permissions';
 import { LegacyDemoPanel } from './sample-data';
 import { BusinessModulesPanel } from './settings';
+
+/** Phát hiện bất thường từ nhật ký: đăng nhập lỗi dồn dập, khóa tài khoản, đổi quyền ngoài giờ (22h–6h) trong 7 ngày */
+export function AnomalyCard() {
+  const { auditLogs, userName } = useApp();
+  const week = Date.now() - 7 * 864e5;
+  const recent = auditLogs.filter((x) => x.at > week);
+  const fails = recent.filter((x) => x.action === 'LOGIN_FAIL');
+  const byDetail = new Map<string, number>();
+  fails.forEach((x) => byDetail.set(x.detail, (byDetail.get(x.detail) ?? 0) + 1));
+  const items: CheckItem[] = [];
+  [...byDetail.entries()].filter(([, n]) => n >= 3).slice(0, 3).forEach(([d, n]) => items.push({ tone: 'red', title: `${n} lần đăng nhập lỗi`, detail: d }));
+  recent.filter((x) => x.action === 'ACCOUNT_LOCKED').slice(0, 2).forEach((x) => items.push({ tone: 'red', title: 'Tài khoản bị khóa', detail: `${x.detail} · ${new Date(x.at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}` }));
+  recent.filter((x) => x.action.startsWith('PERM') && ((h) => h >= 22 || h < 6)(new Date(x.at).getHours())).slice(0, 2).forEach((x) => items.push({ tone: 'orange', title: 'Đổi quyền ngoài giờ', detail: `${x.userId ? userName(x.userId) : ''} · ${x.detail}` }));
+  return (
+    <SideCard title="Phát hiện bất thường" sub="7 ngày qua">
+      {items.length ? <CheckList items={items} /> : <p className="py-2 text-xs text-[rgb(var(--muted))]">Không thấy dấu hiệu bất thường trong nhật ký 7 ngày qua (đăng nhập lỗi dồn dập, khóa tài khoản, đổi quyền ngoài giờ).</p>}
+    </SideCard>
+  );
+}
 
 export function SecurityDataSettings() {
   const { security, setSecurity, auditLogs, users, userName, canDo, notify, audit, dataInfo, exportData, importData, restoreSnapshot, company, org, platform } = useApp();
@@ -109,7 +130,8 @@ export function SecurityDataSettings() {
         <StatCard label="Đăng nhập lỗi 24h" value={String(fails24)} icon={ShieldCheck} color={fails24 > 5 ? C.red : C.teal} sub="Sai mật khẩu / khóa tài khoản" />
       </div>
 
-      <Collapse title="Sao lưu & khôi phục" summary="Tự lưu trên máy, chụp bản trước mỗi lần nâng cấp, sao lưu ra file có mã hóa" defaultOpen>
+      <div className="grid grid-cols-1 items-start gap-4 2xl:grid-cols-2">
+      <SetBlock flush title="Sao lưu & khôi phục" sub="Tự lưu trên máy, chụp bản trước mỗi lần nâng cấp, sao lưu ra file có mã hóa">
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div className="space-y-3">
             <p className="text-sm font-semibold">Tải bản sao lưu dữ liệu {org.shortName} (mã hóa AES-256-GCM)</p>
@@ -147,9 +169,9 @@ export function SecurityDataSettings() {
             </>}
           </div>
         </div>
-      </Collapse>
+      </SetBlock>
 
-      <Collapse title="Chính sách bảo mật" summary={`Mật khẩu ≥${security.minPasswordLength} ký tự, khóa sau ${security.lockoutAttempts} lần sai, tự đăng xuất ${security.idleMinutes} phút`} action={<button className={cn(btnPrimary, btnSm)} disabled={!canSec} onClick={savePolicy}>Lưu</button>}>
+      <SetBlock flush title="Chính sách bảo mật" sub={`Mật khẩu ≥${security.minPasswordLength} ký tự, khóa sau ${security.lockoutAttempts} lần sai, tự đăng xuất ${security.idleMinutes} phút`} action={<button className={cn(btnPrimary, btnSm)} disabled={!canSec} onClick={savePolicy}>Lưu</button>}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Field label="Độ dài mật khẩu tối thiểu"><input className={inputCls} type="number" disabled={!canSec} value={p.minPasswordLength} onChange={(e) => setP({ ...p, minPasswordLength: Number(e.target.value) })} /></Field>
           <Field label="Khóa sau số lần sai"><input className={inputCls} type="number" disabled={!canSec} value={p.lockoutAttempts} onChange={(e) => setP({ ...p, lockoutAttempts: Number(e.target.value) })} /></Field>
@@ -162,12 +184,14 @@ export function SecurityDataSettings() {
           <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" disabled={!canSec} checked={p.roleSwitch} onChange={(e) => setP({ ...p, roleSwitch: e.target.checked })} />Cho phép Ban Giám đốc chuyển vai trò để xem thử (tắt khi chạy thật)</label>
         </div>
         {weak.length > 0 && <p className="mt-3 rounded bg-[rgb(var(--accent)/0.1)] p-3 text-xs text-[rgb(var(--accent-fg))]">{weak.length} tài khoản chưa đặt mật khẩu riêng: {weak.slice(0, 6).map((u) => u.name).join(', ')}{weak.length > 6 ? '...' : ''}. Họ sẽ phải đổi ở lần đăng nhập tới.</p>}
-      </Collapse>
+      </SetBlock>
+      </div>
 
-      {is3A && <Panel title={`Nhật ký hệ thống (${auditLogs.length}) · chỉ 3A Group`} action={
+      {is3A && <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]"><div className="min-w-0"><Panel title={`Nhật ký hệ thống (${auditLogs.length}) · chỉ 3A Group`} action={
+        <span className="flex gap-2"><button type="button" className={cn(btnGhost, btnSm)} onClick={() => { const rows = [['Thời gian', 'Người thực hiện', 'Thao tác', 'Chi tiết', 'Mức'], ...logs.map((x) => [new Date(x.at).toLocaleString('vi-VN'), x.userId ? userName(x.userId) : '', x.action, x.detail, x.level])]; const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n'); const el = document.createElement('a'); el.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv' })); el.download = `nhat-ky-he-thong-${todayISO()}.csv`; el.click(); }}><Download className="h-3.5 w-3.5" aria-hidden />CSV</button>
         <select className={cn(inputBase, 'w-auto py-1.5 text-xs')} value={lv} onChange={(e) => setLv(e.target.value as 'ALL' | AuditLevel)} aria-label="Mức độ">
           <option value="ALL">Mọi mức</option><option value="SECURITY">Bảo mật</option><option value="WARN">Cảnh báo</option><option value="INFO">Thông tin</option>
-        </select>
+        </select></span>
       }>
         <>
             <Table stt={Math.max(0, paged.from - 1)} head={['Thời gian', 'Người thực hiện', 'Thao tác', 'Chi tiết']} minW={720}>
@@ -183,7 +207,7 @@ export function SecurityDataSettings() {
             {!logs.length && <EmptyState text={<>Chưa có sự kiện.</>} art="doc" />}
             <Pagination paged={paged} unit="sự kiện" />
         </>
-      </Panel>}
+      </Panel></div><AnomalyCard /></div>}
       {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
     </div>
   );
@@ -203,10 +227,11 @@ export function MinStockSuggest() {
     return { x, perMonth, next };
   }).filter((r) => Math.abs(r.next - r.x.minStock) / Math.max(1, r.x.minStock) > 0.2).slice(0, 8);
   const apply = (list: typeof rows) => { setSkus((p) => p.map((k) => { const r = list.find((y) => y.x.sku === k.sku); return r ? { ...k, minStock: r.next } : k; })); audit('SKU_MINSTOCK', `Cập nhật mức tồn tối thiểu ${list.length} mã theo gợi ý`); notify(`Đã cập nhật mức tồn tối thiểu ${list.length} mã`, 'teal'); };
-  if (!rows.length) return null;
   return (
-    <section className="mt-5 border-t border-[rgb(var(--ink)/0.06)] pt-4" aria-label="Gợi ý mức tồn tối thiểu">
-      <div className="mb-2 flex flex-wrap items-baseline gap-2"><b className="text-[14px] font-medium">Gợi ý mức tồn tối thiểu</b><span className="text-xs text-[rgb(var(--muted))]">lượng xuất 90 ngày × lead-time nhập Hãng</span>{can && <button className={cn(btnGhost, btnSm, 'ml-auto')} onClick={() => apply(rows)}>Áp dụng tất cả {rows.length}</button>}</div>
+    <section className="glass-card rounded-xl p-5" aria-label="Gợi ý mức tồn tối thiểu">
+      <p className="flex items-start gap-2 text-[14px] font-medium"><Sparkles className="mt-0.5 h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><span className="flex-1">Gợi ý mức tồn tối thiểu</span>{rows.length > 0 && <span className="text-xs font-normal text-[rgb(var(--muted))]">{rows.length} mã hàng</span>}</p>
+      <p className="mb-2 text-xs text-[rgb(var(--muted))]">Tính từ lượng xuất 90 ngày và thời gian về hàng (lead-time)</p>
+      {!rows.length && <p className="py-3 text-[13px] text-[rgb(var(--muted))]">Mức tồn tối thiểu đang hợp lý, hoặc chưa đủ phiếu xuất 90 ngày để gợi ý.</p>}
       <ul className="divide-y divide-[rgb(var(--ink)/0.06)]">
         {rows.map((r) => (
           <li key={r.x.sku} className="flex items-center gap-3 py-2 text-[13px]">
@@ -217,6 +242,7 @@ export function MinStockSuggest() {
           </li>
         ))}
       </ul>
+      {can && rows.length > 1 && <button className={cn(btnGhost, btnSm, 'mt-2')} onClick={() => apply(rows)}>Áp dụng tất cả {rows.length} gợi ý</button>}
     </section>
   );
 }
@@ -244,23 +270,35 @@ export function WarehouseSettings() {
     notify(clean.id ? `Đã cập nhật ${clean.code}` : `Đã thêm kho ${clean.code}`, 'teal'); setEdit(null);
   };
   return (
-    <Panel title={`Danh mục kho (${warehouses.length})`} action={<button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setEdit({ ...blank })}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm kho</button>}>
-      <p className="mb-3 text-sm text-[rgb(var(--muted))]">Tồn kho mỗi SKU được phân bổ theo kho. Kho tổng nhận phần còn lại (hàng về từ PO, giải phóng giữ chỗ…). Điều chuyển giữa các kho ở Sản phẩm › bấm vào số tồn.</p>
-      <Table head={['Mã kho', 'Loại', 'Tên kho', 'Địa chỉ', 'Quản lý kho', <span key="s" className="block text-right">SKU có tồn</span>, <span key="q" className="block text-right">Tổng số lượng</span>, 'Trạng thái', '']} minW={1100}>
-        {warehouses.map((w) => (
-          <tr key={w.id} className={rowCls}>
-            <td className={tdFirst}><Code>{w.code}</Code></td>
-            <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{w.main ? 'Kho tổng' : 'Kho thường'}</td>
-            <td className={tdCls}><span className="font-medium">{w.name}</span></td>
-            <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[260px] truncate" title={w.address}>{w.address || '—'}</span></td>
-            <td className={tdCls}>{w.managerId ? userName(w.managerId) : '—'}</td>
-            <td className={cn(tdCls, 'text-right tabular-nums')}>{skuIn(w.id)}</td>
-            <td className={cn(tdCls, 'text-right tabular-nums')}>{fmtN(qtyIn(w.id))}</td>
-            <td className={tdCls}><Chip tone={w.active ? 'teal' : 'muted'}>{w.active ? 'Đang hoạt động' : 'Tạm ngưng'}</Chip></td>
-            <td className={cn(tdLast, 'text-right')}><button className={cn(btnGhost, 'p-1.5')} disabled={!can} onClick={() => setEdit({ ...w })} aria-label={`Sửa kho ${w.code}`}><Pencil className="h-3.5 w-3.5" aria-hidden /></button></td>
-          </tr>
-        ))}
-      </Table>
+    <div className="space-y-4">
+      <SetBlock title="Danh mục kho" sub={`${warehouses.length} kho · kho tổng nhận phần còn lại`} action={<button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setEdit({ ...blank })}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm kho</button>} flush>
+        <Table head={['Mã kho', 'Tên kho', 'Địa chỉ', 'Loại', 'Quản lý', <span key="s" className="block text-right">SKU</span>, <span key="q" className="block text-right">Số lượng</span>, 'Trạng thái', '']} minW={980}>
+          {warehouses.map((w) => (
+            <tr key={w.id} className={rowCls}>
+              <td className={tdFirst}><Code>{w.code}</Code></td>
+              <td className={tdCls}><span className="font-medium">{w.name}</span></td>
+              <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[220px] truncate" title={w.address}>{w.address || '—'}</span></td>
+              <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{w.main ? 'Kho tổng' : 'Kho thường'}</td>
+              <td className={tdCls}>{w.managerId ? userName(w.managerId) : '—'}</td>
+              <td className={cn(tdCls, 'text-right tabular-nums')}>{skuIn(w.id)}</td>
+              <td className={cn(tdCls, 'text-right tabular-nums')}>{fmtN(qtyIn(w.id))}</td>
+              <td className={tdCls}><Chip tone={w.active ? 'teal' : 'muted'}>{w.active ? 'Hoạt động' : 'Tạm ngưng'}</Chip></td>
+              <td className={cn(tdLast, 'text-right')}><button className={cn(btnGhost, 'p-1.5')} disabled={!can} onClick={() => setEdit({ ...w })} aria-label={`Sửa kho ${w.code}`}><Pencil className="h-3.5 w-3.5" aria-hidden /></button></td>
+            </tr>
+          ))}
+        </Table>
+      </SetBlock>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <Panel title="Quy tắc phiếu kho">
+          <ul className="-mt-2 divide-y divide-[rgb(var(--ink)/0.06)]">
+            <RuleRow title="Duyệt phiếu nhập / xuất" detail="người có quyền duyệt phiếu kho (thủ kho của kho đó) duyệt trước khi ghi sổ" />
+            <RuleRow title="Chặn xuất âm" detail="không xuất quá số tồn của kho" />
+            <RuleRow title="Giữ chỗ theo dự án" detail="giữ hàng cho dự án / khách, giải phóng khi dự án trượt" />
+            <RuleRow title="Điều chuyển giữa kho" detail="ở Sản phẩm › bấm vào số tồn của mã hàng" />
+          </ul>
+        </Panel>
+        <MinStockSuggest />
+      </div>
       {edit && (
         <Modal title={edit.id ? `Sửa kho ${edit.code}` : 'Thêm kho'} onClose={() => setEdit(null)} footer={<><button className={btnGhost} onClick={() => setEdit(null)}>Hủy</button><button className={btnPrimary} disabled={Object.keys(err).length > 0} onClick={save}>Lưu</button></>}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -272,8 +310,7 @@ export function WarehouseSettings() {
           </div>
         </Modal>
       )}
-      <MinStockSuggest />
-    </Panel>
+    </div>
   );
 }
 
@@ -355,42 +392,116 @@ export function SettingsModule() {
 // ---------------- Kế toán & công nợ ----------------
 
 export function AccountingSettings() {
-  const { mfgConfig, setMfgConfig, canDo, company, audit, notify } = useApp();
+  const { mfgConfig, setMfgConfig, canDo, company, audit, notify, quotes, genDocs, cashEntries } = useApp();
   const mode = bizMode(company);
   const can = canDo('settings.edit') || canDo('cash.manage');
   const [f, setF] = useState(mfgConfig);
-  const num = (k: keyof MfgConfig, v: string, min = 0) => setF({ ...f, [k]: Math.max(min, Number(v) || 0) });
   const save = () => {
     setMfgConfig((c) => ({ ...c, agingScheme: f.agingScheme ?? 'AGE_30_60', creditDays: f.creditDays, dueDays: f.dueDays, salesCommissionPct: f.salesCommissionPct, installCommissionPct: f.installCommissionPct, openingCash: f.openingCash, openingBank: f.openingBank }));
     audit('ACCOUNTING_CONFIG', `Công nợ ${mode === 'MFG' ? f.dueDays : f.creditDays} ngày, hoa hồng ${f.salesCommissionPct}% + ${f.installCommissionPct}%, số dư đầu ${vnd(f.openingCash + f.openingBank)}`, 'WARN');
     notify('Đã lưu cấu hình kế toán', 'teal');
   };
+  const year = new Date().getFullYear();
+  const cashCodes = (pre: string) => cashEntries.filter((e) => e.code.startsWith(`${pre}-`)).map((e) => e.code);
+  const short = company.shortName || 'CTY';
+  const nextContract = `${String(Math.max(0, ...genDocs.map((d) => Number(d.contractCode.match(/^(\d+)/)?.[1] ?? 0))) + 1).padStart(4, '0')}/${year}/HĐ-${short}`;
+  const numbering: [string, string, string][] = [
+    ['Phiếu thu', 'PT-{YYYY}-{0000}', nextCode(cashCodes('PT'), `PT-${year}-`, 4)],
+    ['Phiếu chi', 'PC-{YYYY}-{0000}', nextCode(cashCodes('PC'), `PC-${year}-`, 4)],
+    ['Báo giá', 'BG-{YYYY}-{0000}', nextCode(quotes.map((q) => q.code), `BG-${year}-`, 4)],
+    ['Hợp đồng', `{0000}/{YYYY}/HĐ-${short}`, nextContract],
+  ];
+  const bs = AGING[f.agingScheme ?? 'AGE_30_60'].buckets;
+  const lim = bs.filter((b) => Number.isFinite(b.max)).map((b) => b.max);
+  const top = (lim[lim.length - 1] ?? 30) * 1.5;
+  const dirty = can && JSON.stringify(f) !== JSON.stringify(mfgConfig);
   return (
-    <Panel title="Kế toán & công nợ">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {mode !== 'MFG' && <Field label="Số ngày công nợ mặc định (thương mại)" hint="Dùng khi khách chưa có hợp đồng ghi số ngày công nợ"><input className={inputCls} type="number" min={0} disabled={!can} value={f.creditDays} onChange={(e) => num('creditDays', e.target.value)} /></Field>}
-        {mode !== 'TRADING' && <Field label="Hạn thanh toán sau mốc (ngày)" hint="Cọc, giao hàng, nghiệm thu: quá số ngày này tính vào tuổi nợ"><input className={inputCls} type="number" min={0} disabled={!can} value={f.dueDays} onChange={(e) => num('dueDays', e.target.value)} /></Field>}
-        {mode !== 'TRADING' && <Field label="Hoa hồng sales / kỹ thuật (%)" hint="Trên giá trị hợp đồng trước VAT"><input className={inputCls} type="number" min={0} max={30} step={0.1} disabled={!can} value={f.salesCommissionPct} onChange={(e) => num('salesCommissionPct', e.target.value)} /></Field>}
-        {mode !== 'TRADING' && <Field label="Hoa hồng đội lắp đặt (%)" hint="Chia đều đội trưởng và thành viên lắp đơn"><input className={inputCls} type="number" min={0} max={30} step={0.1} disabled={!can} value={f.installCommissionPct} onChange={(e) => num('installCommissionPct', e.target.value)} /></Field>}
-        <Field label="Nhóm tuổi nợ (bảng theo dõi công nợ)" className="sm:col-span-2 xl:col-span-1" hint={AGING[f.agingScheme ?? 'AGE_30_60'].note}>
-          <select className={inputCls} disabled={!can} value={f.agingScheme ?? 'AGE_30_60'} onChange={(e) => setF({ ...f, agingScheme: e.target.value as AgingScheme })}>
-            {(Object.keys(AGING) as AgingScheme[]).map((k) => <option key={k} value={k}>{AGING[k].label}</option>)}
-          </select>
-        </Field>
-        <Field label="Số dư đầu quỹ tiền mặt"><MoneyInput value={f.openingCash} disabled={!can} onChange={(n) => setF({ ...f, openingCash: n })} /></Field>
-        <Field label="Số dư đầu tài khoản ngân hàng"><MoneyInput value={f.openingBank} disabled={!can} onChange={(n) => setF({ ...f, openingBank: n })} /></Field>
-      </div>
-      {(() => { const bs = AGING[f.agingScheme ?? 'AGE_30_60'].buckets; const lim = bs.filter((b) => Number.isFinite(b.max)).map((b) => b.max); const top = (lim[lim.length - 1] ?? 30) * 1.5; return (
-        <div className="mt-4" aria-label="Nhóm tuổi nợ">
-          <p className="mb-1.5 text-xs text-[rgb(var(--muted))]">Nhóm tuổi nợ đang dùng</p>
-          <div className="flex h-7 overflow-hidden rounded-md text-[12px] text-white">
-            {bs.map((b, i) => { const lo = i ? bs[i - 1].max : 0; const hi = Number.isFinite(b.max) ? b.max : top; return <div key={b.id} className="flex items-center truncate px-2" style={{ width: `${((hi - lo) / top) * 100}%`, background: b.color }}>{b.short}</div>; })}
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+      <div className="min-w-0 space-y-4">
+        <Panel title="Công nợ">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {mode !== 'MFG' && <Field label="Số ngày công nợ mặc định" hint="Khi hợp đồng không ghi số ngày"><span className="relative block"><input className={cn(inputCls, 'pr-12')} type="number" min={0} disabled={!can} value={f.creditDays} onChange={(e) => setF({ ...f, creditDays: Math.max(0, Number(e.target.value) || 0) })} /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[rgb(var(--muted))]">ngày</span></span></Field>}
+            {mode !== 'TRADING' && <Field label="Hạn thanh toán sau mốc" hint="Cọc, giao hàng, nghiệm thu"><span className="relative block"><input className={cn(inputCls, 'pr-12')} type="number" min={0} disabled={!can} value={f.dueDays} onChange={(e) => setF({ ...f, dueDays: Math.max(0, Number(e.target.value) || 0) })} /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[rgb(var(--muted))]">ngày</span></span></Field>}
+            <Field label="Tính tuổi nợ theo" className="sm:col-span-2" hint={AGING[f.agingScheme ?? 'AGE_30_60'].note}>
+              <select className={inputCls} disabled={!can} value={f.agingScheme ?? 'AGE_30_60'} onChange={(e) => setF({ ...f, agingScheme: e.target.value as AgingScheme })}>
+                {(Object.keys(AGING) as AgingScheme[]).map((k) => <option key={k} value={k}>{AGING[k].label}</option>)}
+              </select>
+            </Field>
+            {mode !== 'TRADING' && <Field label="Hoa hồng sales / kỹ thuật (%)" hint="Trên giá trị hợp đồng trước VAT"><input className={inputCls} type="number" min={0} max={30} step={0.1} disabled={!can} value={f.salesCommissionPct} onChange={(e) => setF({ ...f, salesCommissionPct: Math.max(0, Number(e.target.value) || 0) })} /></Field>}
+            {mode !== 'TRADING' && <Field label="Hoa hồng đội lắp đặt (%)" hint="Chia đều đội lắp đơn"><input className={inputCls} type="number" min={0} max={30} step={0.1} disabled={!can} value={f.installCommissionPct} onChange={(e) => setF({ ...f, installCommissionPct: Math.max(0, Number(e.target.value) || 0) })} /></Field>}
           </div>
-          <div className="mt-1 flex justify-between font-mono text-[11px] text-[rgb(var(--muted))]"><span>0</span>{lim.map((m) => <span key={m}>{m}</span>)}<span>ngày</span></div>
-        </div>); })()}
-      {can && JSON.stringify(f) !== JSON.stringify(mfgConfig) ? <div className="mt-4"><SaveBar onCancel={() => setF(mfgConfig)} onSave={save} /></div> : null}
-      <p className="mt-3 text-xs text-[rgb(var(--muted))]">Phiếu thu / chi tự sinh: thu tiền khách khi kế toán xác nhận phiếu thu; chi công tác phí, chi triển khai sự kiện khi kế toán xác nhận thanh toán; chi hoa hồng khi quyết toán; thu thặng dư quỹ MDF khi hạch toán.</p>
-    </Panel>
+          <div className="mt-4" aria-label="Nhóm tuổi nợ">
+            <p className="mb-1.5 text-xs text-[rgb(var(--muted))]">Nhóm tuổi nợ</p>
+            <div className="flex h-7 overflow-hidden rounded-md text-[12px] text-white">
+              {bs.map((b, i) => { const lo = i ? bs[i - 1].max : 0; const hi = Number.isFinite(b.max) ? b.max : top; return <div key={b.id} className="flex items-center truncate px-2" style={{ width: `${((hi - lo) / top) * 100}%`, background: b.color }}>{b.short ?? b.label}</div>; })}
+            </div>
+            <div className="mt-1 flex justify-between font-mono text-[11px] text-[rgb(var(--muted))]"><span>0</span>{lim.map((m) => <span key={m}>{m}</span>)}<span>ngày</span></div>
+            <p className="mt-1.5 text-xs text-[rgb(var(--muted))]">Áp dụng cho báo cáo Công nợ và tuổi nợ</p>
+          </div>
+        </Panel>
+        <SetBlock title="Số chứng từ" sub="định dạng hệ thống đang dùng, số tiếp theo tính từ dữ liệu" flush>
+          <Table head={['Loại', 'Mẫu số', 'Số tiếp theo', 'Đặt lại']} minW={520} stt={false}>
+            {numbering.map(([k, fmt, nx]) => (
+              <tr key={k} className={rowCls}>
+                <td className={tdFirst}>{k}</td>
+                <td className={cn(tdCls, 'font-mono text-xs')}>{fmt}</td>
+                <td className={tdCls}><Code>{nx}</Code></td>
+                <td className={cn(tdLast, 'text-[rgb(var(--fg2))]')}>Hằng năm</td>
+              </tr>
+            ))}
+          </Table>
+        </SetBlock>
+        <Panel title="Số dư đầu kỳ">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Quỹ tiền mặt"><MoneyInput value={f.openingCash} disabled={!can} onChange={(n) => setF({ ...f, openingCash: n })} /></Field>
+            <Field label="Tài khoản ngân hàng"><MoneyInput value={f.openingBank} disabled={!can} onChange={(n) => setF({ ...f, openingBank: n })} /></Field>
+          </div>
+        </Panel>
+        <Panel title="Phiếu tự sinh">
+          <ul className="grid grid-cols-1 gap-x-8 divide-y divide-[rgb(var(--ink)/0.06)] sm:grid-cols-2 sm:divide-y-0">
+            <RuleRow title="Thu tiền khách" detail="khi kế toán xác nhận phiếu thu" />
+            <RuleRow title="Chi công tác phí, sự kiện" detail="khi kế toán xác nhận thanh toán" />
+            <RuleRow title="Chi hoa hồng" detail="khi quyết toán" />
+            <RuleRow title="Thặng dư quỹ MDF" detail="khi hạch toán" />
+          </ul>
+        </Panel>
+        {dirty && <SaveBar onCancel={() => setF(mfgConfig)} onSave={save} />}
+      </div>
+      <div className="min-w-0 space-y-4"><DunningAiCard creditDays={f.creditDays} /></div>
+    </div>
+  );
+}
+
+/** AI soạn mẫu tin nhắc nợ theo nhóm tuổi nợ: chỉ soạn mẫu, kế toán sao chép để gửi (chưa có lịch tự gửi) */
+export function DunningAiCard({ creditDays }: { creditDays: number }) {
+  const ai = useAi('writer');
+  const { company, notify } = useApp();
+  const [pick, setPick] = useState<'before' | 'over1' | 'over30'>('before');
+  const [out, setOut] = useState('');
+  const [busy, setBusy] = useState(false);
+  const opts = { before: 'Trước hạn 5 ngày, giọng nhẹ nhàng', over1: 'Quá hạn 1 ngày, kèm số dư và số tài khoản', over30: 'Quá hạn 30 ngày, lịch sự nhưng rõ ràng' } as const;
+  const run = async () => {
+    setBusy(true);
+    const r = await ai.ask({ maxTokens: 400, prompt: `Soạn một tin nhắn Zalo / email nhắc công nợ (tiếng Việt, 3-5 câu) của ${company.legalName || company.shortName} gửi khách hàng. Tình huống: ${opts[pick]}. Dùng biến {ten_khach}, {so_tien}, {han_thanh_toan}, {so_tai_khoan} thay cho số liệu cụ thể. Công nợ chuẩn ${creditDays} ngày. Không bịa thông tin khác.` });
+    setBusy(false);
+    if (r.ok) setOut(r.text.trim()); else notify(r.error, 'orange');
+  };
+  return (
+    <SideCard title="Mẫu tin nhắc nợ" sub={ai.available ? ai.label : undefined}>
+      <p className="mb-3 text-xs text-[rgb(var(--muted))]">AI soạn mẫu theo từng nhóm, kế toán sao chép để gửi qua Zalo hoặc email. Hệ thống chưa tự gửi theo lịch.</p>
+      <div className="space-y-1.5" role="radiogroup" aria-label="Nhóm nhắc nợ">
+        {(Object.keys(opts) as (keyof typeof opts)[]).map((k) => (
+          <button key={k} type="button" role="radio" aria-checked={pick === k} onClick={() => { setPick(k); setOut(''); }} className={cn('flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-[13px]', pick === k ? 'border-[rgb(var(--fg))]' : 'border-[rgb(var(--ink)/0.1)] hover:border-[rgb(var(--ink)/0.2)]')}>
+            <span className={cn('h-3.5 w-3.5 shrink-0 rounded-full border', pick === k ? 'border-[4px] border-[rgb(var(--fg))]' : 'border-[rgb(var(--ink)/0.25)]')} aria-hidden />{opts[k]}
+          </button>
+        ))}
+      </div>
+      {out && <p className="mt-3 whitespace-pre-line rounded-lg bg-[rgb(var(--raised))] p-3 text-[13px] leading-6">{out}</p>}
+      <div className="mt-3 flex gap-2">
+        <button type="button" className={cn(btnGhost, btnSm)} disabled={!ai.available || busy} onClick={() => void run()} title={ai.available ? '' : 'Cần bật trợ lý AI'}>{busy ? 'Đang soạn…' : out ? 'Soạn lại' : 'Soạn mẫu bằng AI'}</button>
+        {out && <button type="button" className={cn(btnGhost, btnSm)} onClick={() => { void navigator.clipboard?.writeText(out).then(() => notify('Đã sao chép mẫu tin', 'teal')); }}><Copy className="h-3.5 w-3.5" aria-hidden />Sao chép</button>}
+      </div>
+    </SideCard>
   );
 }
 

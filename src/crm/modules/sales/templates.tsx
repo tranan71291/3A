@@ -1,10 +1,10 @@
 'use client';
 
 import { type KeyboardEvent as RKeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, Download, Eye, FileText, Send, Wallet, X } from 'lucide-react';
-import { Field, useOverlay } from '../../components/ui';
+import { AlertTriangle, CheckCircle2, ChevronDown, Download, FileText, Maximize2, Minimize2, Minus, Pencil, Plus, Printer, Send, Share2, Wallet, X } from 'lucide-react';
+import { Field, useOverlay, useSticky } from '../../components/ui';
 import { btnBase, btnGhost, btnPrimary, compact, DOC_CSS, esc, GUARANTEE_LABEL, inputCls, missingCompanyInfo, money, RAW_VARS, REQUIRED_VARS, TX_CLAUSE, TX_TYPE, useApp, varLabel, VN_DIGITS } from '../../lib/core';
-import type { BarAct, ComposerForm, ComposerStep, Customer, DocContext, DocTemplate, GuaranteeType, SkuItem, TxType } from '../../lib/types';
+import type { BarAct, ComposerForm, ComposerStep, Customer, DocContext, DocTemplate, GuaranteeType, PreviewAct, SkuItem, TxType } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
 export function quoteBody(title: string, clause: string) {
@@ -169,13 +169,14 @@ export function buildDocVars(f: ComposerForm, x: DocContext) {
     company_rep: x.company.representative,
     company_rep_title: x.company.representativeTitle,
     company_bank: [x.company.bankAccount, x.company.bankName].filter(Boolean).join(' tại '),
+    company_branches: (x.company.branches ?? []).filter((b) => b.print && b.name.trim()).map((b) => `${b.name}: ${b.address}`).join('; '),
     company_logo: x.company.logo ? `<img src="${x.company.logo}" alt="" style="height:48px;display:block;margin-bottom:6px">` : '',
     company_stamp: img(x.company.stamp),
     customer_name: f.party.name,
     tax_code: f.party.taxCode,
     customer_address: f.party.address,
     customer_rep: f.party.rep,
-    customer_rep_title: f.party.repTitle,
+    customer_rep_title: `${f.party.repTitle}${f.party.authDoc?.trim() ? ` (theo giấy ủy quyền số ${f.party.authDoc.trim()})` : ''}`,
     customer_phone: f.party.phone,
     customer_email: f.party.email,
     project_name: x.projectName ?? '',
@@ -300,22 +301,77 @@ export function docOutline(html: string): { key: string; label: string }[] {
   return out;
 }
 
-export function ComposerShell({ title, subtitle, badge, left, html, footer, onClose, wide, steps, outline }: { title: string; subtitle: string; badge?: ReactNode; left: ReactNode; html: string; footer: ReactNode; onClose: () => void; wide?: boolean; steps?: ComposerStep[]; outline?: boolean }) {
+/** File Word (.doc dạng HTML) để tải hoặc chia sẻ */
+export function wordBlob(title: string, body: string) {
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${body}</body></html>`;
+  return new Blob(['﻿' + html], { type: 'application/msword' });
+}
+
+export function ComposerShell({ title, subtitle, badge, left, html, footer, onClose, wide, steps, outline, edit, print, share, notice }: {
+  title: string; subtitle: string; badge?: ReactNode; left: ReactNode; html: string; footer: ReactNode; onClose: () => void; wide?: boolean; steps?: ComposerStep[]; outline?: boolean;
+  /** Sửa trực tiếp trên bản xem trước: onSave nhận HTML đã sửa; customized = đang dùng bản sửa tay */
+  edit?: { enabled: boolean; customized: boolean; onSave: (html: string) => void; onReset: () => void };
+  print?: PreviewAct; share?: { name: string; disabled?: boolean; title?: string }; notice?: ReactNode;
+}) {
   const ov = useOverlay();
-  const { company, go, canDo } = useApp();
+  const { company, go, canDo, notify } = useApp();
   const miss = missingCompanyInfo(company);
   const boxRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
+  const paneRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const [fit, setFit] = useState(1);
+  const [zoomPick, setZoomPick] = useSticky<number>('Composer.zoom', 0);
+  const [editing, setEditing] = useState(false);
+  const [frozen, setFrozen] = useState('');
+  const [full, setFull] = useState(false);
   useEffect(() => {
     const el = boxRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    // Trang A4 rộng 210mm ≈ 794px: thu nhỏ vừa khung xem trước, không phóng to quá 100%
-    const ro = new ResizeObserver(([e]) => setZoom(Math.max(0.4, Math.min(1, (e.contentRect.width - 24) / 820))));
+    // Trang A4 rộng 210mm ≈ 794px: "Vừa khung" thu nhỏ theo bề rộng khung xem trước
+    const ro = new ResizeObserver(([e]) => setFit(Math.max(0.3, Math.min(1.2, (e.contentRect.width - 24) / 820))));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const doc = docShell('Xem trước', html).replace('</head>', `<style>@media screen{html{background:#cfd3da}body{zoom:${zoom.toFixed(3)}}}</style></head>`);
-  const frameRef = useRef<HTMLIFrameElement>(null);
+  useEffect(() => {
+    const on = () => setFull(document.fullscreenElement === paneRef.current);
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  }, []);
+  const zoom = zoomPick || fit;
+  const step = (d: number) => setZoomPick(Math.round(Math.max(0.3, Math.min(2, zoom + d)) * 10) / 10);
+  // Khi đang sửa trực tiếp: giữ nguyên nội dung khung để không mất chữ đang gõ
+  const src = editing ? frozen : html;
+  const doc = docShell('Xem trước', src).replace('</head>', `<style>@media screen{html{background:#cfd3da}body{zoom:${zoom.toFixed(3)}}${editing ? '.page{outline:2px dashed #f28c28;outline-offset:4px}.page:focus{outline-style:solid}' : ''}}</style></head>`);
+  const onFrameLoad = () => {
+    const d = frameRef.current?.contentDocument;
+    const page = d?.querySelector('.page') as HTMLElement | null;
+    if (page) page.contentEditable = editing ? 'true' : 'false';
+    if (editing) page?.focus();
+  };
+  useEffect(onFrameLoad, [editing]);
+  const startEdit = () => { setFrozen(html); setEditing(true); };
+  const finishEdit = (keep: boolean) => {
+    const page = frameRef.current?.contentDocument?.querySelector('.page') as HTMLElement | null;
+    if (keep && page && edit) {
+      page.querySelectorAll('[contenteditable]').forEach((n) => n.removeAttribute('contenteditable'));
+      const out = page.innerHTML;
+      if (out !== frozen) { edit.onSave(out); notify('Đã lưu nội dung sửa trực tiếp vào bản đang soạn', 'teal'); }
+    }
+    setEditing(false);
+  };
+  const toggleFull = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void paneRef.current?.requestFullscreen?.(); };
+  const doShare = async () => {
+    if (!share || share.disabled) return;
+    const file = new File([wordBlob(share.name, html)], `${share.name.replace(/[\\/:*?"<>|\s]+/g, '_')}.doc`, { type: 'application/msword' });
+    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+    try {
+      if (nav.share && nav.canShare?.({ files: [file] })) { await nav.share({ files: [file], title: share.name }); return; }
+    } catch { return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file); a.download = file.name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    notify('Trình duyệt này không chia sẻ trực tiếp được: đã tải file Word để gửi qua Zalo / email', 'orange');
+  };
   const toc = useMemo(() => (outline ? docOutline(html) : []), [outline, html]);
   const [tocOn, setTocOn] = useState('');
   const jump = (key: string) => {
@@ -327,23 +383,25 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
     el?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
   const firstOpen = steps ? steps.findIndex((s) => !s.done) : -1;
+  const tb = 'inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-[rgb(var(--fg2))] transition-colors hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--fg))] disabled:pointer-events-none disabled:opacity-40';
   return (
     <div className={cn('fixed inset-0 z-50 flex flex-col bg-[rgb(var(--bg))] motion-safe:animate-[fadeIn_.15s_ease-out]', !ov.top && 'invisible')} aria-hidden={!ov.top || undefined} role="dialog" aria-modal="true" aria-label={title}>
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[rgb(var(--line))] px-4 pt-[env(safe-area-inset-top)] sm:px-5">
-        <span className="flex h-8 w-8 items-center justify-center rounded bg-[rgb(var(--accent)/0.15)]"><FileText className="h-4 w-4 text-[rgb(var(--accent))]" aria-hidden /></span>
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-4 pt-[env(safe-area-inset-top)] sm:px-5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgb(var(--raised))]"><FileText className="h-4 w-4 text-[rgb(var(--fg2))]" aria-hidden /></span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{title}</p>
+          <p className="truncate text-[15px] font-medium">{title}</p>
           <p className="truncate text-xs text-[rgb(var(--muted))]">{subtitle}</p>
         </div>
         {steps && (
           <ol className="hidden shrink-0 items-center gap-1 text-[13px] xl:flex" aria-label="Các bước">
             {steps.map((s, i) => {
               const on = i === (firstOpen < 0 ? steps.length - 1 : firstOpen);
+              const act = s.onClick ?? (s.target ? () => document.getElementById(s.target!)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : undefined);
               return (
                 <li key={s.label}>
-                  <button type="button" disabled={!s.target} onClick={() => s.target && document.getElementById(s.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} aria-current={on ? 'step' : undefined}
-                    className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1', on ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : s.done ? 'text-[rgb(var(--fg2))]' : 'text-[rgb(var(--muted))]', s.target && 'hover:text-[rgb(var(--fg))]')}>
-                    {s.done ? <CheckCircle2 className="h-4 w-4 text-[rgb(var(--success-fg))]" aria-hidden /> : <span className={cn('flex h-[18px] w-[18px] items-center justify-center rounded-full border font-mono text-[11px]', on ? 'border-[rgb(var(--fg))]' : 'border-[rgb(var(--line))]')}>{i + 1}</span>}
+                  <button type="button" disabled={!act} onClick={act} aria-current={on ? 'step' : undefined}
+                    className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors disabled:cursor-default', on ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : s.done ? 'text-[rgb(var(--fg2))]' : 'text-[rgb(var(--muted))]', act && 'hover:text-[rgb(var(--fg))]')}>
+                    {s.done ? <CheckCircle2 className="h-4 w-4 text-[rgb(var(--fg))]" aria-hidden /> : <span className={cn('flex h-[18px] w-[18px] items-center justify-center rounded-full border font-mono text-[11px]', on ? 'border-[rgb(var(--fg))]' : 'border-[rgb(var(--line))]')}>{i + 1}</span>}
                     {s.label}
                   </button>
                 </li>
@@ -354,19 +412,40 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
         {badge}
         <button className={cn(btnGhost, 'p-2')} onClick={onClose} aria-label="Đóng" title="Đóng"><X className="h-5 w-5" /></button>
       </header>
-      <div className={cn('grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:overflow-hidden', wide ? 'lg:grid-cols-[64fr_36fr]' : 'lg:grid-cols-[54fr_46fr]')}>
-        <div className="min-w-0 space-y-4 border-[rgb(var(--line))] p-4 lg:overflow-y-auto lg:border-r [scrollbar-gutter:stable]">{left}</div>
-        <div className="flex min-h-[75vh] min-w-0 flex-col bg-[rgb(var(--sunken))] lg:min-h-0">
-          <p className="flex items-center gap-2 border-b border-[rgb(var(--line))] px-4 py-2 text-xs text-[rgb(var(--muted))]"><Eye className="h-3.5 w-3.5" aria-hidden />Xem trước khổ A4, cập nhật theo từng thao tác. Ô vàng là biến chưa có dữ liệu.<span className="ml-auto tabular-nums">{Math.round(zoom * 100)}%</span></p>
+      <div className={cn('grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:overflow-hidden', wide ? 'lg:grid-cols-[64fr_36fr]' : 'lg:grid-cols-[52fr_48fr]')}>
+        <div className="min-w-0 space-y-3 border-[rgb(var(--line))] p-4 lg:overflow-y-auto lg:border-r lg:px-5 [scrollbar-gutter:stable]">{left}</div>
+        <div ref={paneRef} className="flex min-h-[75vh] min-w-0 flex-col bg-[rgb(var(--sunken))] lg:min-h-0">
+          <div className="flex flex-wrap items-center gap-1 border-b border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-2 py-1.5" role="toolbar" aria-label="Thao tác xem trước">
+            <button type="button" className={tb} onClick={() => step(-0.1)} aria-label="Thu nhỏ" title="Thu nhỏ"><Minus className="h-3.5 w-3.5" aria-hidden /></button>
+            <button type="button" className={cn(tb, 'w-12 justify-center font-mono tabular-nums')} onClick={() => setZoomPick(zoomPick ? 0 : 1)} title={zoomPick ? 'Bấm để vừa khung' : 'Bấm để xem 100%'}>{Math.round(zoom * 100)}%</button>
+            <button type="button" className={tb} onClick={() => step(0.1)} aria-label="Phóng to" title="Phóng to"><Plus className="h-3.5 w-3.5" aria-hidden /></button>
+            <button type="button" className={cn(tb, !zoomPick && 'bg-[rgb(var(--ink)/0.06)] text-[rgb(var(--fg))]')} onClick={() => setZoomPick(0)} aria-pressed={!zoomPick}>Vừa khung</button>
+            <span className="mx-1 h-4 w-px bg-[rgb(var(--line))]" aria-hidden />
+            {edit?.enabled && (editing
+              ? <><button type="button" className={cn(tb, 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))] hover:bg-[rgb(var(--fg))] hover:text-[rgb(var(--bg))]')} onClick={() => finishEdit(true)}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Xong</button><button type="button" className={tb} onClick={() => finishEdit(false)}>Bỏ sửa</button></>
+              : <button type="button" className={tb} onClick={startEdit} title="Bấm vào chữ trên trang để sửa; nội dung sửa được lưu cùng phiên bản"><Pencil className="h-3.5 w-3.5" aria-hidden />Sửa trực tiếp</button>)}
+            <span className="ml-auto" />
+            <button type="button" className={tb} onClick={toggleFull} title={full ? 'Thoát toàn màn hình' : 'Toàn màn hình'}>{full ? <Minimize2 className="h-3.5 w-3.5" aria-hidden /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden />}<span className="hidden 2xl:inline">{full ? 'Thu lại' : 'Toàn màn hình'}</span></button>
+            {print && <button type="button" aria-label="In" className={tb} onClick={print.onClick} disabled={print.disabled} title={print.title}><Printer className="h-3.5 w-3.5" aria-hidden /><span className="hidden 2xl:inline">In</span></button>}
+            {share && <button type="button" className={tb} onClick={() => void doShare()} disabled={share.disabled} title={share.title ?? 'Chia sẻ file Word qua Zalo, email (điện thoại / máy hỗ trợ), hoặc tải về'}><Share2 className="h-3.5 w-3.5" aria-hidden />Chia sẻ</button>}
+          </div>
+          {editing && <p className="border-b border-[rgb(var(--accent)/0.3)] bg-[rgb(var(--accent)/0.08)] px-4 py-2 text-xs text-[rgb(var(--accent-fg))]" role="status">Đang sửa trực tiếp: bấm vào chữ trên trang để sửa, xong bấm "Xong". Thay đổi ở form bên trái sẽ không cập nhật vào trang cho tới khi bấm "Dựng lại từ form".</p>}
+          {!editing && edit?.customized && (
+            <p className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--line))] bg-[rgb(var(--raised))] px-4 py-2 text-xs text-[rgb(var(--fg2))]" role="status">
+              <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden />Đang dùng nội dung sửa trực tiếp; số liệu đổi ở form không tự cập nhật vào trang
+              {edit.enabled && <button type="button" className="font-medium text-[rgb(var(--fg))] hover:underline" onClick={edit.onReset}>Dựng lại từ form</button>}
+            </p>
+          )}
+          {notice}
           {miss.length > 0 && (
-            <p className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--accent)/0.3)] bg-[rgb(var(--accent)/0.1)] px-4 py-2 text-xs text-[rgb(var(--accent-fg))]" role="status">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />Thông tin bên bán ({company.legalName || company.shortName}) còn thiếu {miss.join(', ')}: các ô vàng sẽ in ra nếu xuất ngay.
-              {canDo('settings.edit') && <button className="font-semibold text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => { onClose(); go('settings', 'company'); }}>Khai báo ở Cài đặt › Doanh nghiệp</button>}
+            <p className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--accent)/0.3)] bg-[rgb(var(--accent)/0.08)] px-4 py-2 text-xs text-[rgb(var(--accent-fg))]" role="status">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />Bên bán còn thiếu {miss.join(', ')}: ô vàng sẽ in ra nếu xuất ngay.
+              {canDo('settings.edit') && <button className="font-medium text-[rgb(var(--fg))] hover:underline" onClick={() => { onClose(); go('settings', 'company'); }}>Khai báo ở Cài đặt › Doanh nghiệp</button>}
             </p>
           )}
           <div className="flex min-h-0 flex-1">
             {toc.length >= 3 && (
-              <nav className="hidden w-44 shrink-0 overflow-y-auto border-r border-[rgb(var(--line))] p-2 text-[12.5px] xl:block" aria-label="Mục lục hợp đồng">
+              <nav className="hidden w-40 shrink-0 overflow-y-auto border-r border-[rgb(var(--line))] p-2 text-[12.5px] xl:block" aria-label="Mục lục hợp đồng">
                 <p className="px-2 pb-2 pt-1 text-xs text-[rgb(var(--muted))]">Mục lục</p>
                 {toc.map((t) => (
                   <button key={t.key} type="button" onClick={() => jump(t.key)} title={t.label}
@@ -375,12 +454,12 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
               </nav>
             )}
             <div ref={boxRef} className="min-h-0 min-w-0 flex-1">
-              <iframe ref={frameRef} title="Xem trước tài liệu" className="h-full min-h-[70vh] w-full bg-[#cfd3da] lg:min-h-0" srcDoc={doc} sandbox="allow-same-origin" />
+              <iframe ref={frameRef} title="Xem trước tài liệu" className="h-full min-h-[70vh] w-full bg-[#cfd3da] lg:min-h-0" srcDoc={doc} onLoad={onFrameLoad} sandbox="allow-same-origin" />
             </div>
           </div>
         </div>
       </div>
-      <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[rgb(var(--line))] bg-[rgb(var(--sunken))] px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:px-5">{footer}</footer>
+      <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:px-5">{footer}</footer>
     </div>
   );
 }
@@ -388,7 +467,7 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
 /** Thanh hành động cố định của báo giá / hợp đồng: [Xuất PDF] [Tải Word] [Chốt đơn] [Gửi duyệt] */
 export function DocActionBar({ status, extra, pdf, word, win, submit, totals }: { status: ReactNode; extra?: ReactNode; pdf: BarAct; word: BarAct; win: BarAct; submit: BarAct; totals?: ReactNode }) {
   const b = (a: BarAct, cls: string, Icon: typeof Wallet, label: string, primary?: boolean) => (
-    <button className={cn(cls, 'min-w-[112px] justify-center', primary && 'shadow-[0_0_0_1px_rgba(255,140,0,.35)]')} disabled={a.disabled} title={a.title} onClick={a.onClick}><Icon className="h-4 w-4" aria-hidden />{a.label ?? label}</button>
+    <button className={cn(cls, 'justify-center sm:min-w-[96px]', primary && 'font-medium')} disabled={a.disabled} title={a.title} onClick={a.onClick}><Icon className="h-4 w-4" aria-hidden />{a.label ?? label}</button>
   );
   return (
     <>
@@ -436,11 +515,11 @@ export function useGridKeys() {
 }
 
 /** Ô điều khoản dùng chung cho báo giá và hợp đồng */
-export function TermsFields({ form, set, cTpl, contract, part = 'all' }: { form: ComposerForm; set: <K extends keyof ComposerForm>(k: K, v: ComposerForm[K]) => void; cTpl?: DocTemplate; contract: boolean; part?: 'all' | 'pay' | 'other' }) {
+export function TermsFields({ form, set, cTpl, contract, part = 'all', dense }: { form: ComposerForm; set: <K extends keyof ComposerForm>(k: K, v: ComposerForm[K]) => void; cTpl?: DocTemplate; contract: boolean; part?: 'all' | 'pay' | 'other'; dense?: boolean }) {
   const pay = part !== 'other';
   const other = part !== 'pay';
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className={cn('grid grid-cols-2 gap-3', dense && 'xl:grid-cols-4')}>
       {other && <Field label="Tiến độ / địa điểm giao hàng" className="col-span-2"><input className={inputCls} value={form.delivery} onChange={(e) => set('delivery', e.target.value)} /></Field>}
       {pay && <><Field label="Tạm ứng (%)"><input className={inputCls} type="number" min={0} max={100} value={form.advancePct} onChange={(e) => set('advancePct', Number(e.target.value))} /></Field>
       <Field label="Công nợ (ngày)" hint={contract ? `Chuẩn của mẫu: ${cTpl?.standardCreditDays ?? 0} ngày` : undefined}><input className={inputCls} type="number" min={0} value={form.creditDays} onChange={(e) => set('creditDays', Number(e.target.value))} /></Field></>}

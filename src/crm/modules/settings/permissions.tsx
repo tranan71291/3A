@@ -3,8 +3,8 @@
 import { Fragment, useState } from 'react';
 import { Lock, RefreshCw, Sparkles } from 'lucide-react';
 import { Avatar } from '../../components/controls';
-import { EmptyState, Panel, useSticky } from '../../components/ui';
-import { ACTION_LABEL, ACTION_MODULE, btnGhost, btnSm, DEFAULT_SCOPE, fold, INITIAL_PERMS, inputBase, inputCls, LOCKED, MODULE_DESC, MODULE_LABEL, moduleEnabled, MODULES, NAV_GROUPS, ROLE_LABEL, ROLES, SCOPE_LABEL, useApp } from '../../lib/core';
+import { EmptyState, Panel, SetBlock, Table, useSticky } from '../../components/ui';
+import { ACTION_LABEL, ACTION_MODULE, btnGhost, btnSm, DEFAULT_SCOPE, fold, INITIAL_PERMS, inputBase, inputCls, LOCKED, MODULE_DESC, MODULE_LABEL, moduleEnabled, MODULES, NAV_GROUPS, ROLE_LABEL, ROLES, rowCls, SCOPE_LABEL, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
 import type { Action, DataScope, Module, Role, User, UserPerm } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { parseAiJson, useAi } from '../ai/ai-core';
@@ -43,8 +43,9 @@ export function PermAiReview({ summary }: { summary: string }) {
 }
 
 /** Ô tích của trang Phân quyền: 16px, bo 4px; khóa = ổ khóa trên nền xám */
-export function PermTick({ on, locked }: { on: boolean; locked?: boolean }) {
+export function PermTick({ on, locked, partial }: { on: boolean; locked?: boolean; partial?: boolean }) {
   if (locked) return <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-[rgb(var(--ink)/0.1)]"><Lock className="h-2.5 w-2.5 text-[rgb(var(--muted))]" aria-hidden /></span>;
+  if (on && partial) return <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-[rgb(var(--ink)/0.14)]"><span className="h-0.5 w-2 rounded-full bg-[rgb(var(--fg))]" /></span>;
   return on
     ? <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-[rgb(var(--fg))]"><svg viewBox="0 0 16 16" className="h-4 w-4 text-[rgb(var(--bg))]" aria-hidden><path d="M4.5 8.2l2.3 2.3 4.7-4.8" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
     : <span className="block h-4 w-4 rounded-[4px] border-[1.5px] border-[rgb(var(--ink)/0.25)] bg-[rgb(var(--surface))]" />;
@@ -53,7 +54,8 @@ export function PermTick({ on, locked }: { on: boolean; locked?: boolean }) {
 export function PermissionsSettings() {
   const { perms, setPerms, users, canDo, audit, company, me } = useApp();
   const canEdit = canDo('settings.edit');
-  const [view, setView] = useSticky<'ROLE' | 'USER'>('Perm.view', 'ROLE');
+  const [view, setView] = useSticky<'ROLE' | 'USER' | 'LOG'>('Perm.view', 'ROLE');
+  const { auditLogs, userName } = useApp();
   const [role, setRole] = useSticky<Role>('Perm.role', 'SALES_REP');
   const [uid0, setUid0] = useSticky<string>('Perm.user', '');
   const [q, setQ] = useState('');
@@ -81,13 +83,26 @@ export function PermissionsSettings() {
     <div className="space-y-4">
       <Panel title="Phân quyền" action={
         <div className="flex rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--sunken))] p-0.5" role="tablist" aria-label="Kiểu phân quyền">
-          {([['ROLE', 'Theo vai trò'], ['USER', 'Ngoại lệ từng tài khoản']] as const).map(([v, l]) => <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className={cn('rounded px-3 py-1.5 text-xs font-semibold', view === v ? 'bg-[rgb(var(--surface))] text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))]')}>{l}</button>)}
+          {([['ROLE', 'Ma trận vai trò'], ['USER', 'Ngoại lệ từng tài khoản'], ['LOG', 'Nhật ký thay đổi']] as const).map(([v, l]) => <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className={cn('rounded px-3 py-1.5 text-xs font-semibold', view === v ? 'bg-[rgb(var(--surface))] text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))]')}>{l}</button>)}
         </div>
       }>
-        <p className="text-sm text-[rgb(var(--muted))]">{view === 'ROLE' ? 'Mỗi tài khoản nhận quyền theo vai trò. Bật / tắt phân hệ và từng thao tác, chọn phạm vi dữ liệu được xem' : 'Cấp thêm hoặc chặn riêng một quyền cho từng tài khoản, ưu tiên hơn quyền của vai trò. Mọi thay đổi ghi nhật ký bảo mật.'}</p>
+        <p className="text-sm text-[rgb(var(--muted))]">{view === 'ROLE' ? 'Mỗi tài khoản nhận quyền theo vai trò. Bật / tắt phân hệ và từng thao tác, chọn phạm vi dữ liệu được xem' : view === 'LOG' ? 'Mọi thay đổi phân quyền, phạm vi dữ liệu và ngoại lệ tài khoản, mới nhất trước' : 'Cấp thêm hoặc chặn riêng một quyền cho từng tài khoản, ưu tiên hơn quyền của vai trò. Mọi thay đổi ghi nhật ký bảo mật.'}</p>
       </Panel>
 
-      {view === 'ROLE' ? (
+      {view === 'LOG' ? (
+        <SetBlock title="Nhật ký thay đổi" sub={`${auditLogs.filter((x) => x.action.startsWith('PERM')).length} sự kiện`} flush>
+          <Table head={['Thời gian', 'Người thực hiện', 'Thay đổi']} minW={640}>
+            {auditLogs.filter((x) => x.action.startsWith('PERM')).slice(0, 100).map((x) => (
+              <tr key={x.id} className={rowCls}>
+                <td className={cn(tdFirst, 'whitespace-nowrap font-mono text-xs')}>{new Date(x.at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}</td>
+                <td className={tdCls}>{x.userId ? userName(x.userId) : '—'}</td>
+                <td className={cn(tdLast, 'text-[rgb(var(--fg2))]')}>{x.detail}</td>
+              </tr>
+            ))}
+          </Table>
+          {!auditLogs.some((x) => x.action.startsWith('PERM')) && <p className="py-6 text-center text-[13px] text-[rgb(var(--muted))]">Chưa có thay đổi phân quyền nào được ghi.</p>}
+        </SetBlock>
+      ) : view === 'ROLE' ? (
         <>
           <section className="glass-card overflow-hidden rounded-xl" aria-label="Ma trận phân quyền">
             <div className="overflow-x-auto">
@@ -124,7 +139,7 @@ export function PermissionsSettings() {
                               <td key={r} className={cn('h-12 px-2 text-center', role === r && 'bg-[rgb(var(--ink)/0.025)]')}>
                                 <span className="inline-grid grid-cols-[16px_36px] items-center gap-2">
                                   <button type="button" role="checkbox" aria-checked={on} disabled={!canEdit || locked} onClick={() => setMod(r, m, !on)} title={locked ? 'Khóa, không đổi được' : undefined}
-                                    aria-label={`${ROLE_LABEL[r]} truy cập ${MODULE_LABEL[m]}`} className="rounded-[4px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))] disabled:cursor-default"><PermTick on={on} locked={locked} /></button>
+                                    aria-label={`${ROLE_LABEL[r]} truy cập ${MODULE_LABEL[m]}${on && acts.length && n < acts.length ? `, ${n}/${acts.length} thao tác` : ''}`} className="rounded-[4px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))] disabled:cursor-default"><PermTick on={on} locked={locked} partial={acts.length > 0 && n < acts.length} /></button>
                                   {acts.length > 0
                                     ? <button type="button" className={cn('text-left font-mono text-[11.5px] tabular-nums hover:underline', !on || n === 0 ? 'text-[rgb(var(--faint))]' : n === acts.length ? 'font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--fg2))]')} onClick={() => { setRole(r); setTimeout(() => document.getElementById(`perm-${m}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }} title={`Xem ${acts.length} thao tác của ${ROLE_LABEL[r]}`}>{n}/{acts.length}</button>
                                     : <span aria-hidden />}
@@ -141,7 +156,8 @@ export function PermissionsSettings() {
             </div>
           </section>
           <p className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-[rgb(var(--muted))]">
-            <span className="inline-flex items-center gap-1.5"><PermTick on />có truy cập</span>
+            <span className="inline-flex items-center gap-1.5"><PermTick on />đủ thao tác</span>
+            <span className="inline-flex items-center gap-1.5"><PermTick on partial />vào được, một phần thao tác</span>
             <span className="inline-flex items-center gap-1.5"><PermTick on={false} />không</span>
             <span className="inline-flex items-center gap-1.5"><PermTick on locked />khóa, không đổi được</span>
             <span className="inline-flex items-center gap-1.5"><span className="font-mono tabular-nums text-[rgb(var(--fg2))]">2/4</span>thao tác đang bật / tổng, bấm để sửa bên dưới</span>

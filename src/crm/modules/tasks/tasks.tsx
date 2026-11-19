@@ -13,7 +13,7 @@ import { cn } from '../../lib/utils';
 import { advanceCash, expenseCash, receiptCash } from '../../lib/workshop';
 import { contentToArticle, getPlatform } from '../marketing/content-studio';
 import { wsMakeVersion } from '../marketing/content-workspace';
-import { useContractApprover } from '../sales/contract';
+import { useContractApprover } from '../sales/quote';
 import { useActivityApprover } from '../staff/staff';
 import { DecideReleaseModal } from '../supply/inventory';
 

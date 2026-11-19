@@ -141,8 +141,14 @@ export function GetflySettings() {
   const custOrders = getflyOrders.filter((o) => o.customerId === hookCustomer);
   const orderOptions = hookEvent === 'order.approved' ? custOrders.filter((o) => !o.approved) : custOrders.filter((o) => o.approved && o.paid < o.gross);
 
+  const lastSync = getflyLogs[0];
   return (
     <div className="space-y-5">
+      <div className="kpi-strip grid grid-cols-2 lg:grid-cols-4">
+        {([['Trạng thái', getfly.isActive ? (getfly.demoMode ? 'Mô phỏng' : 'Đang kết nối') : 'Chưa kết nối', getfly.baseUrl ? getfly.baseUrl.replace(/^https?:\/\//, '') : 'chưa nhập địa chỉ'], ['Đồng bộ gần nhất', lastSync ? new Date(lastSync.at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—', lastSync ? (lastSync.ok ? 'thành công' : 'có lỗi') : 'chưa có'], ['Đơn hàng đã nhận', String(getflyOrders.length), 'từ webhook / đồng bộ'], ['Lỗi đồng bộ', String(getflyLogs.filter((l) => !l.ok).length), `trong ${getflyLogs.length} lần`]] as const).map(([l, v, sub]) => (
+          <div key={l} className="min-w-0 px-4 py-3"><p className="text-[12.5px] text-[rgb(var(--muted))]">{l}</p><p className="truncate text-[20px] font-medium leading-7 tabular-nums">{v}</p><p className="truncate text-xs text-[rgb(var(--muted))]">{sub}</p></div>
+        ))}
+      </div>
       <Panel
         title="Thông tin kết nối Getfly API v3"
         action={getfly.lastTest && <Chip tone={getfly.lastTest.ok ? 'teal' : 'red'}>{getfly.lastTest.ok ? 'Kết nối tốt' : 'Lỗi kết nối'}, {new Date(getfly.lastTest.at).toLocaleTimeString('vi-VN')}</Chip>}
