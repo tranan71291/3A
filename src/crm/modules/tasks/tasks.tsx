@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, Clock, Eye, Pencil, UserPlus, XCircle, Zap } from 'lucide-react';
+import { CheckCircle2, Eye, Pencil, UserPlus, XCircle } from 'lucide-react';
 import { Avatar, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ChipFilter, FilterBar } from '../../components/filters';
+import { Sla } from '../../components/sla';
 import { Chip, EmptyState, Field, Modal, Panel, Table, Tabs, useSticky, ViewSwitch } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
 import { ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, compact, CONTENT_STATUS, dayStart, DECISION_LABEL, EXPENSE_STATUS, fmtDate, fmtDT, groupOf, HS_CLICHES_DEFAULT, HUB_GROUP, HUB_KIND, HUB_SHORT, HUB_SLA, inputBase, inputCls, LEAVE_KIND, needsApproval, openContentReview, platformOfContent, POP_LABEL, progName, PROGRAM_STATUS, rowCls, SOURCE_LABEL, stCompanyOf, tdCls, tdFirst, tdLast, todayISO, useApp, vnd, wsPushVersion } from '../../lib/core';
@@ -23,7 +24,7 @@ export function slaInfo(requestedAt: number, slaMin: number, now: number) {
   const d = Math.floor(abs / 864e5), h = Math.floor((abs % 864e5) / 3.6e6), m = Math.max(1, Math.round((abs % 3.6e6) / 60_000));
   const span = d ? `${d} ngày${h ? ` ${h} giờ` : ''}` : h ? `${h} giờ${m && m < 60 ? ` ${m} phút` : ''}` : `${m} phút`;
   const ratio = left / (slaMin * 60_000);
-  return { text: left >= 0 ? `Còn ${span}` : `Quá hạn ${span}`, overdue: left < 0, tight: left >= 0 && ratio < 0.25, deadline };
+  return { text: left >= 0 ? `Còn ${span}` : `Quá ${span}`, overdue: left < 0, tight: left >= 0 && ratio < 0.25, deadline };
 }
 
 /** Xây hàng đợi duyệt của người đang đăng nhập và danh sách yêu cầu họ đã gửi */
@@ -291,7 +292,7 @@ export function AssignInline({ lead, reps, onAssign }: { lead: Lead; reps: User[
       <select className={cn(inputBase, 'w-auto max-w-[150px] py-1 text-xs')} value={rep} onChange={(e) => setRep(e.target.value)} aria-label={`Chọn Sales cho ${lead.code}`}>
         {sorted.map((u) => <option key={u.id} value={u.id}>{u.name} ({load(u.id)} việc)</option>)}
       </select>
-      <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} disabled={!rep} onClick={() => onAssign(rep)}><UserPlus className="h-3.5 w-3.5" aria-hidden />Chỉ định</button>
+      <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]')} disabled={!rep} onClick={() => onAssign(rep)}><UserPlus className="h-3.5 w-3.5" aria-hidden />Chỉ định</button>
     </span>
   );
 }
@@ -308,11 +309,7 @@ export function ReleaseInline({ r }: { r: StockReservation }) {
 
 export function SlaBadge({ requestedAt, slaMin, now }: { requestedAt: number; slaMin: number; now: number }) {
   const s = slaInfo(requestedAt, slaMin, now);
-  return (
-    <span className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold tabular-nums', s.overdue ? 'bg-[rgb(var(--danger)/0.15)] text-[rgb(var(--danger-fg))]' : s.tight ? 'bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent-fg))]' : 'bg-[rgb(var(--raised))] text-[rgb(var(--muted))]')}>
-      <Clock className="h-3 w-3" aria-hidden />{s.text}
-    </span>
-  );
+  return <Sla tone={s.overdue ? 'over' : s.tight ? 'tight' : 'ok'}>{s.text}</Sla>;
 }
 
 export function TasksModule() {
@@ -345,9 +342,9 @@ export function TasksModule() {
   const bulkApprove = () => { todoList.filter((x) => sel.has(x.key) && x.approve).forEach(quick); sel.clear(); };
   const deptOf = (uid?: string, code?: DeptCode) => departments.find((d) => d.code === (code ?? users.find((u) => u.id === uid)?.dept))?.short;
   const person = (uid?: string, code?: DeptCode) => uid ? (
-    <span className="flex min-w-0 items-center gap-2"><Avatar name={userName(uid)} size={28} /><span className="min-w-0"><span className="block truncate text-sm">{userName(uid)}</span><span className="block truncate text-[11px] text-[rgb(var(--muted))]">{deptOf(uid, code) ?? '—'}</span></span></span>
+    <span className="flex min-w-0 items-center gap-2" title={deptOf(uid, code) ?? undefined}><Avatar name={userName(uid)} size={22} /><span className="block min-w-0 truncate text-sm">{userName(uid)}</span></span>
   ) : <span className="text-xs text-[rgb(var(--muted))]">Hệ thống</span>;
-  const kindCell = (k: ApprovalKind) => <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs" title={HUB_KIND[k]}><i className="h-2 w-2 shrink-0 rounded-full" style={{ background: HUB_GROUP[groupOf(k)].color }} />{HUB_SHORT[k]}</span>;
+  const kindCell = (k: ApprovalKind) => <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] text-[rgb(var(--fg2))]" title={HUB_KIND[k]}><i className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: HUB_GROUP[groupOf(k)].color }} />{HUB_SHORT[k]}</span>;
   const sentAt = (t0: number) => new Date(t0).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
   const selCls = 'h-4 w-4 accent-[rgb(var(--accent))]';
   const counts = (Object.keys(HUB_GROUP) as HubGroup[]).map((g) => [g, todo.filter((x) => groupOf(x.kind) === g).length] as const);
@@ -368,18 +365,16 @@ export function TasksModule() {
     <div className="space-y-4">
       {/* Thanh tab */}
       <Tabs tabs={[
-        { id: 'todo', label: `Chờ tôi duyệt (${todo.length})` },
-        { id: 'mine', label: `Tôi đã yêu cầu (${mine.filter((x) => x.status === 'PENDING').length})` },
-        { id: 'history', label: 'Lịch sử đã xử lý' },
-      ]} value={tab} onChange={(v) => { setTab(v); sel.clear(); }} />
+        { id: 'todo', label: 'Chờ tôi duyệt', count: todo.length },
+        { id: 'mine', label: 'Tôi yêu cầu', count: mine.filter((x) => x.status === 'PENDING').length },
+        { id: 'history', label: 'Đã xử lý' },
+      ]} value={tab} onChange={(v) => { setTab(v); sel.clear(); }}
+        aside={tab === 'todo' ? <button className={cn(sel.ids.length ? btnPrimary : btnGhost, btnSm)} disabled={!sel.ids.length} onClick={bulkApprove} title={sel.ids.length ? `Duyệt ${sel.ids.length} yêu cầu đã chọn` : 'Tích chọn các dòng cần duyệt'}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Duyệt chọn{sel.ids.length ? ` (${sel.ids.length})` : ''}</button> : undefined} />
 
       {/* Thanh công cụ: tìm kiếm, loại yêu cầu, phòng ban, ưu tiên, duyệt hàng loạt + tag lọc con */}
-      <FilterBar q={q} onQ={setQ} placeholder="Tìm mã, khách hàng, lý do..." status={grp} onStatus={(v) => setGrp(v as 'ALL' | HubGroup)} statusLabel="Loại yêu cầu"
+      <FilterBar q={q} onQ={setQ} placeholder="Tìm mã, khách hàng, lý do…" status={grp} onStatus={(v) => setGrp(v as 'ALL' | HubGroup)} statusLabel="Loại yêu cầu"
         statusOptions={(Object.keys(HUB_GROUP) as HubGroup[]).map((g) => ({ value: g, label: HUB_GROUP[g].label }))} extraActive={(who !== 'ALL' ? 1 : 0) + (prio !== 'ALL' ? 1 : 0)}
-        actions={tab === 'todo' ? (<>
-          <ViewSwitch value={view} onChange={setView} options={['table', 'board']} />
-          <button className={cn(btnPrimary, 'py-2')} disabled={!sel.ids.length} onClick={bulkApprove} title={sel.ids.length ? `Duyệt ${sel.ids.length} yêu cầu đã chọn` : 'Tích chọn các dòng cần duyệt'}><Zap className="h-4 w-4" aria-hidden />Duyệt chọn{sel.ids.length ? ` (${sel.ids.length})` : ''}</button>
-        </>) : undefined}
+        actions={tab === 'todo' ? <ViewSwitch value={view} onChange={setView} options={['table', 'board']} /> : undefined}
         chips={tab === 'todo' ? <ChipFilter value={grp} onChange={(v) => setGrp(v)} total={todo.length} options={counts.filter(([, n]) => n > 0).map(([g, n]) => ({ value: g, label: HUB_GROUP[g].label, count: n, color: HUB_GROUP[g].color }))} /> : undefined}>
         {tab !== 'mine' && (
           <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto sm:max-w-[200px]')} value={who} onChange={(e) => setWho(e.target.value)} aria-label="Phòng ban / nhân sự">
@@ -405,7 +400,7 @@ export function TasksModule() {
                 <section key={g} className="flex w-[300px] shrink-0 flex-col rounded-md border border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--surface)/0.7)]" aria-label={HUB_GROUP[g].label}>
                   <header className="flex items-center gap-2 border-b border-[rgb(var(--ink)/0.06)] px-3 py-2.5">
                     <i className="h-2.5 w-2.5 rounded-full" style={{ background: HUB_GROUP[g].color }} />
-                    <h3 className="font-display min-w-0 flex-1 truncate text-sm font-bold">{HUB_GROUP[g].label}</h3>
+                    <h3 className="font-display min-w-0 flex-1 truncate text-sm font-semibold">{HUB_GROUP[g].label}</h3>
                     <span className="font-num rounded-sm bg-[rgb(var(--ink)/0.06)] px-1.5 text-xs text-[rgb(var(--muted))]">{items.length}</span>
                   </header>
                   <div className="flex max-h-[62vh] flex-col gap-2 overflow-y-auto p-2">
@@ -424,7 +419,7 @@ export function TasksModule() {
                           <div className="mt-2 flex items-center justify-between gap-2">
                             <SlaBadge requestedAt={x.requestedAt} slaMin={x.slaMin} now={now} />
                             <div className="flex items-center gap-1">
-                              {x.approve && <button className={cn(btnBase, 'whitespace-nowrap bg-[rgb(var(--success))] px-2 py-1 text-xs font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} onClick={() => quick(x)}>{x.approveLabel ?? 'Duyệt'}</button>}
+                              {x.approve && <button className={cn(btnBase, 'whitespace-nowrap border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] px-2 py-1 text-xs font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]')} onClick={() => quick(x)}>{x.approveLabel ?? 'Duyệt'}</button>}
                               <RowMenu items={[
                                 ...(x.view ? [{ label: 'Xem chi tiết', icon: Eye, onClick: x.view }] : []),
                                 ...(x.needInfo ? [{ label: 'Yêu cầu sửa / bổ sung', icon: Pencil, onClick: () => { setModal({ item: x, mode: 'NEED_INFO' }); setNote(''); } }] : []),
@@ -448,7 +443,7 @@ export function TasksModule() {
         <Panel>
           <Table stt={Math.max(0, todoPaged.from - 1)} minW={1000} head={[
             <input key="all" type="checkbox" className={selCls} checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" disabled={!todoList.some((x) => x.approve)} />,
-            'Nội dung', 'Phân loại', 'Người đề nghị', 'SLA / thời hạn', 'Trạng thái', <span key="act" className="block text-right">Thao tác</span>,
+            'Nội dung', <span key="m" className="block text-right">Số tiền</span>, 'Loại', 'Người đề nghị', 'Phòng', 'Gửi lúc', 'SLA', 'Lưu ý', <span key="act" className="block text-right">Thao tác</span>,
           ]}>
             {todoPaged.slice.map((x) => {
               const urgent = urgentOf(x);
@@ -458,17 +453,20 @@ export function TasksModule() {
                   <td className={cn(tdFirst, 'w-10')}><input type="checkbox" className={selCls} checked={sel.has(x.key)} onChange={() => sel.toggle(x.key)} disabled={!x.approve} aria-label={`Chọn ${x.title}`} /></td>
                   <td className={cn(tdCls, 'max-w-[340px]')}>
                     <button className="block max-w-full text-left" onClick={x.view} disabled={!x.view} title={[x.sub, x.reason].filter(Boolean).join('\n')}>
-                      <p className="flex min-w-0 items-baseline gap-2"><span className="truncate font-medium text-[rgb(var(--fg))] hover:text-[rgb(var(--accent-fg))]">{x.title}</span>{x.amount ? <span className="shrink-0 text-xs font-semibold tabular-nums text-[rgb(var(--fg)/0.8)]">{compact(x.amount)}</span> : null}</p>
+                      <span className="block truncate font-medium text-[rgb(var(--fg))] hover:underline">{x.title}</span>
                     </button>
                   </td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{x.amount ? compact(x.amount) : <span className="text-[rgb(var(--faint))]">—</span>}</td>
                   <td className={tdCls}>{kindCell(x.kind)}</td>
                   <td className={cn(tdCls, 'max-w-[180px]')}>{person(x.requesterId, x.deptCode)}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap')}><SlaBadge requestedAt={x.requestedAt} slaMin={x.slaMin} now={now} /><span className="mt-0.5 block text-[11px] text-[rgb(var(--muted))]">Gửi {sentAt(x.requestedAt)}</span></td>
-                  <td className={cn(tdCls, 'whitespace-nowrap')}>{s.overdue || urgent ? <Chip tone="red">Khẩn cấp</Chip> : x.flagged ? <Chip tone="orange">{x.flagged}</Chip> : <Chip tone="orange">Chờ duyệt</Chip>}{x.flagged && (s.overdue || urgent) && <span className="mt-0.5 block text-[11px] text-[rgb(var(--accent-fg))]">{x.flagged}</span>}</td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{x.requesterId ? deptOf(x.requesterId, x.deptCode) ?? '—' : '—'}</td>
+                  <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--muted))]')}>{sentAt(x.requestedAt)}</td>
+                  <td className={tdCls}><SlaBadge requestedAt={x.requestedAt} slaMin={x.slaMin} now={now} /></td>
+                  <td className={cn(tdCls, 'text-[13px]', (s.overdue || urgent) && !x.flagged ? 'text-[rgb(var(--muted))]' : 'text-[rgb(var(--warn))]')}>{x.flagged ?? '—'}</td>
                   <td className={tdLast}>
                     <div className="flex items-center justify-end gap-1.5">
-                      {x.pick ? <RowMenu text={x.pick.label} icon={UserPlus} primary items={x.pick.options.length ? x.pick.options.map((o) => ({ label: o.label, icon: UserPlus, onClick: () => { setBusyKeys((k) => [...k, x.key]); x.pick!.onPick(o.id); } })) : [{ label: 'Phòng chưa có Sales hoạt động', onClick: () => undefined, disabled: true }]} /> : x.custom}
-                      {x.approve && <button className={cn(btnBase, btnSm, 'whitespace-nowrap bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} onClick={() => quick(x)} title={x.nextStep ? `Duyệt xong: ${x.nextStep.toLowerCase()}` : undefined}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />{x.approveLabel ?? 'Duyệt'}</button>}
+                      {x.pick ? <RowMenu text={x.pick.label} icon={UserPlus} items={x.pick.options.length ? x.pick.options.map((o) => ({ label: o.label, icon: UserPlus, onClick: () => { setBusyKeys((k) => [...k, x.key]); x.pick!.onPick(o.id); } })) : [{ label: 'Phòng chưa có Sales hoạt động', onClick: () => undefined, disabled: true }]} /> : x.custom}
+                      {x.approve && <button className={cn(btnGhost, btnSm)} onClick={() => quick(x)} title={x.nextStep ? `Duyệt xong: ${x.nextStep.toLowerCase()}` : undefined}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />{x.approveLabel ?? 'Duyệt'}</button>}
                       <RowMenu items={[
                         ...(x.view ? [{ label: 'Xem chi tiết', icon: Eye, onClick: x.view }] : []),
                         ...(x.needInfo ? [{ label: 'Yêu cầu sửa / bổ sung', icon: Pencil, onClick: () => { setModal({ item: x, mode: 'NEED_INFO' }); setNote(''); } }] : []),
@@ -487,15 +485,16 @@ export function TasksModule() {
 
       {tab === 'mine' && (
         <Panel>
-          <Table stt={Math.max(0, minePaged.from - 1)} minW={1000} head={['Nội dung', 'Phân loại', 'Gửi lúc', 'SLA / thời hạn', 'Người xử lý', 'Trạng thái', <span key="act" className="block text-right">Thao tác</span>]}>
+          <Table stt={Math.max(0, minePaged.from - 1)} minW={1000} head={['Nội dung', 'Loại', 'Gửi lúc', 'SLA', 'Người xử lý', 'Kết quả', 'Ghi chú', <span key="act" className="block text-right">Thao tác</span>]}>
             {minePaged.slice.map((x) => (
               <tr key={x.key} className={rowCls}>
-                <td className={cn(tdFirst, 'max-w-[360px]')}><p className="truncate font-medium">{x.title}</p><p className="truncate text-xs text-[rgb(var(--muted))]">{x.sub}</p>{x.note && x.status !== 'PENDING' && <p className={cn('truncate text-[11px]', x.status === 'APPROVED' ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')}>{x.note}</p>}</td>
+                <td className={cn(tdFirst, 'max-w-[360px]')}><span className="block truncate font-medium" title={x.sub}>{x.title}</span></td>
                 <td className={tdCls}>{kindCell(x.kind)}</td>
-                <td className={cn(tdCls, 'whitespace-nowrap text-xs tabular-nums')}>{sentAt(x.requestedAt)}</td>
+                <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--muted))]')}>{sentAt(x.requestedAt)}</td>
                 <td className={cn(tdCls, 'whitespace-nowrap')}>{x.status === 'PENDING' ? <SlaBadge requestedAt={x.requestedAt} slaMin={x.slaMin} now={now} /> : <span className="text-xs text-[rgb(var(--muted))]">—</span>}</td>
                 <td className={cn(tdCls, 'max-w-[200px]')}>{x.deciderId ? person(x.deciderId) : <span className="text-xs text-[rgb(var(--muted))]">Chưa xử lý</span>}</td>
-                <td className={cn(tdCls, 'whitespace-nowrap')}><Chip tone={x.status === 'PENDING' ? 'orange' : DECISION_LABEL[x.status].tone}>{x.status === 'PENDING' ? 'Đang chờ duyệt' : DECISION_LABEL[x.status].label}</Chip></td>
+                <td className={tdCls}><Chip tone={x.status === 'PENDING' ? 'orange' : DECISION_LABEL[x.status].tone}>{x.status === 'PENDING' ? 'Đang chờ duyệt' : DECISION_LABEL[x.status].label}</Chip></td>
+                <td className={cn(tdCls, 'text-[13px] text-[rgb(var(--muted))]')}><span className="block max-w-[220px] truncate" title={x.note}>{x.note && x.status !== 'PENDING' ? x.note : '—'}</span></td>
                 <td className={cn(tdLast, 'text-right')}>{x.view && <button className={cn(btnGhost, btnSm)} onClick={x.view}><Eye className="h-3.5 w-3.5" aria-hidden />Xem</button>}</td>
               </tr>
             ))}
@@ -507,10 +506,10 @@ export function TasksModule() {
 
       {tab === 'history' && (
         <Panel>
-          <Table stt={Math.max(0, histPaged.from - 1)} head={['Thời gian', 'Mã & nội dung', 'Phân loại', 'Người đề nghị', 'Người xử lý', 'Giá trị', 'Kết quả', 'Lý do / ghi chú']} minW={1120} right={[5]}>
+          <Table stt={Math.max(0, histPaged.from - 1)} head={['Thời gian', 'Nội dung', 'Loại', 'Người đề nghị', 'Người xử lý', 'Giá trị', 'Kết quả', 'Ghi chú']} minW={1120} right={[5]}>
             {histPaged.slice.map((x) => (
               <tr key={x.id} className={rowCls}>
-                <td className={cn(tdFirst, 'whitespace-nowrap text-xs tabular-nums')}>{new Date(x.at).toLocaleString('vi-VN')}</td>
+                <td className={cn(tdFirst, 'font-mono text-xs text-[rgb(var(--muted))]')}>{new Date(x.at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}</td>
                 <td className={cn(tdCls, 'max-w-[300px]')}><p className="truncate font-medium">{x.title}</p></td>
                 <td className={tdCls}>{kindCell(x.kind)}</td>
                 <td className={cn(tdCls, 'max-w-[190px]')}>{person(x.requesterId)}</td>

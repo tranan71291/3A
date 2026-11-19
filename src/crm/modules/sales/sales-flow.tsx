@@ -30,7 +30,7 @@ export function WinModal({ leadId, onClose }: { leadId: string; onClose: () => v
     <Modal
       title={`Chốt đơn: ${lead.company}`}
       onClose={onClose}
-      footer={<><button className={btnGhost} onClick={onClose}>Hủy</button><button className={cn(btnBase, 'bg-[rgb(var(--success))] px-3.5 py-2 font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} disabled={!q} onClick={() => { winLead(lead.id, sel); onClose(); }}><CheckCircle2 className="h-4 w-4" aria-hidden />Xác nhận chốt đơn</button></>}
+      footer={<><button className={btnGhost} onClick={onClose}>Hủy</button><button className={cn(btnBase, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] px-3.5 py-2 font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]')} disabled={!q} onClick={() => { winLead(lead.id, sel); onClose(); }}><CheckCircle2 className="h-4 w-4" aria-hidden />Xác nhận chốt đơn</button></>}
     >
       {!list.some((x) => x.lines.length) ? (
         <div className="space-y-3 text-sm">
@@ -81,11 +81,11 @@ export function ProjectFlow({ lead }: { lead: Lead }) {
         <li key={s.title} className="flex min-w-0 flex-1 flex-col items-center text-center">
           <div className="flex w-full items-center">
             <span className={cn('h-0.5 flex-1', i === 0 ? 'opacity-0' : steps[i - 1].done ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--line))]')} />
-            <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold', s.done ? 'bg-[rgb(var(--success))] text-[rgb(var(--on-accent))]' : 'border border-[rgb(var(--line))] bg-[rgb(var(--raised))] text-[rgb(var(--muted))]')}>{s.done ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : i + 1}</span>
+            <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold', s.done ? 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] text-[rgb(var(--fg))]' : 'border border-[rgb(var(--line))] bg-[rgb(var(--raised))] text-[rgb(var(--muted))]')}>{s.done ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : i + 1}</span>
             <span className={cn('h-0.5 flex-1', i === steps.length - 1 ? 'opacity-0' : s.done ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--line))]')} />
           </div>
           <p className={cn('mt-1 text-xs font-medium', s.done ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--fg))]')}>{s.title}</p>
-          <p className="w-full truncate px-1 text-[10px] text-[rgb(var(--muted))]">{s.value}</p>
+          <p className="w-full truncate px-1 text-[11px] text-[rgb(var(--muted))]">{s.value}</p>
         </li>
       ))}
     </ol>

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Copy, RefreshCw, Send, Sparkles } from 'lucide-react';
-import { Field, SideSheet, useSticky } from '../../components/ui';
+import { Sparkles } from 'lucide-react';
+import { Field, SideSheet } from '../../components/ui';
 import { AI_NAME, aiMsgText, bizMode, boqTotal, btnAccent, btnGhost, btnPrimary, compact, fmtN, fold, givenName, inputCls, MDF_REIMBURSE_LAG_DAYS, plainMd, uid, useApp, WRITER, WRITER_TONES } from '../../lib/core';
 import type { AiMsg, Brief, CompanyInfo, JobStage, WriterPreset } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -97,66 +97,6 @@ export function useBriefData(): Omit<Brief, 'id' | 'date' | 'at'> {
   if (over.length) sections.push({ title: 'Công nợ', items: over.slice(0, 4).map((c) => `${c.name} nợ ${compact(c.debt)} / hạn mức ${compact(c.creditLimit)}`) });
   if (todo.length) { kpis.push({ label: 'Chờ bạn duyệt', value: String(todo.length), tone: 'red' }); sections.push({ title: 'Việc chờ duyệt', items: [`${todo.length} việc đang chờ bạn quyết định ở phân hệ Công việc`] }); }
   return { kpis, sections };
-}
-
-export function ExecBriefCard() {
-  const app = useApp();
-  const { briefs, setBriefs, hubCfg, me, role, now, addBotComment, notify, company } = app;
-  const data = useBriefData();
-  const ai = useAi('brief');
-  const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useSticky('ExecBrief.open2', false);
-  const t = now ?? Date.now();
-  const today = new Date(t).toISOString().slice(0, 10);
-  const cur = briefs.find((b) => b.id === today);
-  const auto = useRef(false);
-  const make = async (auto = false) => {
-    setBusy(true);
-    let text: string | undefined; let provider: string | undefined;
-    if (ai.available) {
-      const r = await ai.ask({ system: 'Bạn viết bản tin điều hành buổi sáng cho Ban Giám đốc: 5-8 gạch đầu dòng ngắn, ưu tiên rủi ro và việc cần quyết, kết thúc bằng mục "3 việc ưu tiên hôm nay". Không thêm số liệu ngoài dữ liệu được cung cấp.', prompt: `Dữ liệu ngày ${new Date(t).toLocaleDateString('vi-VN')}:\n${JSON.stringify(data)}\n\nTổng quan:\n${buildAiContext(app, t)}`, maxTokens: 900 });
-      if (r.ok) { text = r.text; provider = `${AI_NAME[r.provider]} · ${r.model}`; } else notify(`AI chưa tạo được bản tin (${r.error}), dùng bản tin tổng hợp tự động`, 'orange');
-    }
-    setBriefs((p) => [{ id: today, date: today, at: Date.now(), by: me?.id, provider, text, auto, ...data }, ...p.filter((b) => b.id !== today)].slice(0, 60));
-    setBusy(false);
-  };
-  useEffect(() => {
-    // Tự tạo 1 lần mỗi ngày; bản tự tạo đã cũ hơn 3 giờ thì làm mới khi mở lại
-    if (auto.current || (cur && !(cur.auto && Date.now() - cur.at > 3 * 3.6e6)) || !hubCfg.brief.enabled || role !== 'BOD' || !now) return;
-    if (new Date(t).getHours() < hubCfg.brief.hour) return;
-    auto.current = true;
-    void make(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cur?.id, now != null, ai.available]);
-  if (role !== 'BOD') return null;
-  const b = cur;
-  const asText = b ? (b.text ?? b.sections.map((s) => `${s.title}:\n${s.items.map((x) => `- ${x}`).join('\n')}`).join('\n\n')) : '';
-  const n = b ? (b.text ? 1 : b.sections.reduce((x, sct) => x + sct.items.length, 0)) : 0;
-  const ib = cn(btnGhost, 'h-8 w-8 justify-center p-0');
-  return (
-    <section className="rounded-md border border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--surface))]" aria-label="Bản tin điều hành">
-      <div className="flex items-center gap-1 px-4 pb-2 pt-3">
-        <button className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setOpen(!open)} aria-expanded={open}>
-          <Sparkles className="h-4 w-4 shrink-0 text-[rgb(var(--accent))]" aria-hidden />
-          <span className="min-w-0"><span className="block truncate text-[15px] font-semibold">Bản tin điều hành</span><span className="block truncate text-[11px] text-[rgb(var(--muted))]">{new Date(t).toLocaleDateString('vi-VN')}{b ? ` · ${b.provider ? `Viết bởi ${b.provider}` : 'Tổng hợp tự động'} ${new Date(b.at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` : ''}</span></span>
-          <ChevronDown className={cn('ml-auto h-4 w-4 shrink-0 text-[rgb(var(--muted))] transition-transform', open && 'rotate-180')} aria-hidden />
-        </button>
-        <button className={ib} onClick={() => void make()} disabled={busy} aria-label={b ? 'Tạo lại bản tin' : 'Tạo bản tin'} title={b ? 'Tạo lại' : 'Tạo bản tin'}><RefreshCw className={cn('h-3.5 w-3.5', busy && 'motion-safe:animate-spin')} aria-hidden /></button>
-        {b && <button className={ib} onClick={() => { void navigator.clipboard?.writeText(asText); notify('Đã sao chép bản tin', 'teal'); }} aria-label="Sao chép bản tin" title="Sao chép"><Copy className="h-3.5 w-3.5" aria-hidden /></button>}
-        {b && <button className={ib} onClick={() => { addBotComment({ entity: 'channel', entityId: 'general', text: `📋 Bản tin điều hành ${new Date(t).toLocaleDateString('vi-VN')}\n\n${asText}`, mentions: [], module: 'messages' }); notify('Đã đăng bản tin lên Kênh chung', 'teal'); }} aria-label="Đăng lên Kênh chung" title="Đăng Kênh chung"><Send className="h-3.5 w-3.5" aria-hidden /></button>}
-      </div>
-      <div className="px-4 pb-4">
-        {!b ? <p className="text-sm text-[rgb(var(--muted))]">{busy ? 'Đang tổng hợp số liệu…' : `Bản tin tự tạo sau ${hubCfg.brief.hour} giờ sáng khi Giám đốc mở ${company.appName}. Bấm tạo để có ngay.`}</p> : (
-          <>
-            <div className="grid grid-cols-2 gap-1.5">{b.kpis.map((k) => <div key={k.label} className="min-w-0 rounded-md bg-[rgb(var(--ink)/0.04)] px-2.5 py-1.5"><p className="truncate text-[11px] text-[rgb(var(--muted))]">{k.label}</p><p className={cn('font-num text-base font-semibold tabular-nums', k.tone === 'red' && 'text-[rgb(var(--danger-fg))]', k.tone === 'teal' && 'text-[rgb(var(--success))]')}>{k.value}</p></div>)}</div>
-            {open ? (b.text ? <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{b.text}</div> : (
-              <div className="mt-3 space-y-3">{b.sections.map((sct) => <div key={sct.title}><h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">{sct.title}</h3><ul className="list-disc space-y-0.5 pl-4 text-[13px] leading-snug">{sct.items.map((x, i) => <li key={i}>{x}</li>)}</ul></div>)}</div>
-            )) : <button className="mt-2 text-xs font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => setOpen(true)}>Xem chi tiết {n > 1 ? `${n} mục` : ''}</button>}
-          </>
-        )}
-      </div>
-    </section>
-  );
 }
 
 /** Bản soạn theo mẫu khi chưa kết nối AI */

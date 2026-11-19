@@ -176,9 +176,9 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
           {secHead(2, `Hàng hóa (${form.items.length} dòng)`)}
           <SmartQuoteGrid items={form.items} onChange={(v) => set('items', v)} locked={locked} tier={form.tier === 'BOQ' ? TX_TYPE[form.txType].tier : form.tier} wide={wide} onWide={setWide} canSeeCost={canSeeCost} />
           <div className="mt-2 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--line))] text-xs tabular-nums">
-            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right"><span className="block text-[10px] text-[rgb(var(--muted))]">Cộng tiền hàng</span>{totals.sub.toLocaleString('vi-VN')}</p>
-            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right"><span className="block text-[10px] text-[rgb(var(--muted))]">VAT {form.vatPct}%</span>{totals.vat.toLocaleString('vi-VN')}</p>
-            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right font-semibold text-[rgb(var(--accent-fg))]"><span className="block text-[10px] font-normal text-[rgb(var(--muted))]">Tổng cộng (đ)</span>{totals.grand.toLocaleString('vi-VN')}</p>
+            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right"><span className="block text-[11px] text-[rgb(var(--muted))]">Cộng tiền hàng</span>{totals.sub.toLocaleString('vi-VN')}</p>
+            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right"><span className="block text-[11px] text-[rgb(var(--muted))]">VAT {form.vatPct}%</span>{totals.vat.toLocaleString('vi-VN')}</p>
+            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right font-semibold text-[rgb(var(--accent-fg))]"><span className="block text-[11px] font-normal text-[rgb(var(--muted))]">Tổng cộng (đ)</span>{totals.grand.toLocaleString('vi-VN')}</p>
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[rgb(var(--muted))]">
             <span className="ml-auto">{canSeeCost ? (gm !== null ? `Biên gộp ${gm.toFixed(1)}%` : 'Có hàng chưa có giá vốn (hàng nháp / thiếu giá vốn): chưa tính được GM') : ''}</span>
@@ -225,7 +225,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
             {locked && canRevise && <button className={cn(btnGhost, btnSm)} onClick={() => { onClose(); openComposer({ leadId: lead!.id, mode: 'QUOTE' }); }}><Pencil className="h-3.5 w-3.5" aria-hidden />Báo giá điều chỉnh</button>}
             {canDecide && (
               <>
-                <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')} onClick={() => decideQuote('APPROVED')}>Duyệt giá</button>
+                <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]')} onClick={() => decideQuote('APPROVED')}>Duyệt giá</button>
                 <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--danger)/0.15)] text-[rgb(var(--danger-fg))]')} onClick={() => { const n = window.prompt('Lý do từ chối / yêu cầu sửa giá'); if (n && n.trim().length >= 3) decideQuote('REJECTED', n.trim()); }}>Từ chối</button>
               </>
             )}

@@ -1,4 +1,207 @@
-# 3A CRM v37 (Tổng quan điều hành + chỉ tiêu KPI, AI Content Studio đa kênh, Copilot dạng Skill — dựa trên v36)
+# 3A CRM v41 (bố cục mới theo 75 ảnh đề xuất v40 — dựa trên v40)
+
+> v41 chỉ đổi giao diện: **không đổi bảng, dữ liệu, API hay SQL**. Không cần chạy file SQL mới.
+
+## Cập nhật v41 (19/11): đổi bố cục trang theo ảnh đề xuất
+
+**Khung chung (mọi trang)**
+- Đầu menu là tên doanh nghiệp, bấm vào để chuyển doanh nghiệp / Console (bỏ hàng "3A Group › VASSH"). Chân menu hiện người đang đăng nhập.
+- Tiêu đề trang dùng tên ngắn như menu (Lead, Marketing, Kho, Công nợ, Quỹ MDF, Vật tư…). Bộ chọn thời gian hiện gọn "Tháng 11/2026", "Quý 4/2026", "Năm 2026".
+- Nút tạo mới / thao tác chính nằm ở bên phải hàng tab (Thêm lead, Duyệt chọn, Thêm lịch, Lập phiếu, Tạo PO, Phiếu thu / chi, Đề xuất chương trình, Thêm đơn…).
+- Thanh lọc một hàng: [ô tìm][lọc nhanh có số đếm][Bộ lọc][kiểu xem]; lọc nhanh trung tính (chấm màu + số).
+- Bảng nằm sát mép thẻ, bỏ dòng tiêu đề kiểu "4 khách hàng"; dòng thấp hơn (≈44px); phân trang "1–4 trong 4 khách hàng".
+
+**Từng trang**
+- Bàn làm việc: Việc của tôi dạng danh sách; Sinh nhật sang cột phải.
+- Tổng quan (4 tab): tiêu đề kỳ lớn "Tháng 11/2026" + dòng cập nhật; bộ chọn kỳ / so sánh / phòng / chỉ tiêu / PDF bên phải; phễu thanh mảnh.
+- Công việc, Lịch công tác, Lead (Điều phối: dải 4 bước thay 4 thẻ số trùng; Data MKT), Khách hàng, Dự án (cảnh báo 1 dòng trên cùng), Sản phẩm (thanh lọc không khung), Kho (5 tab, Kiểm kho / Lập phiếu), Đặt hàng, Quỹ MDF (Claim & POP đứng đầu), Tài liệu.
+- Thu chi: tab Sổ chi tiết / Tổng hợp trên cùng, chọn sổ dạng nút gộp có số dư, thanh lọc ngoài bảng.
+- Công nợ: thẻ Tuổi nợ (thanh cơ cấu + chú giải) thay 4 ô; lọc nhanh theo nhóm nợ.
+- Danh bạ: mặc định dạng bảng (họ tên, chức danh, phòng, điện thoại, email, ngày sinh, trạng thái), vẫn chuyển được sang thẻ.
+- Tin nhắn / Zalo: màn rộng tự mở Kênh chung / hội thoại mới nhất (không còn màn chào trống).
+- Marketing: tab tiếng Việt (Kế hoạch · Nội dung · Hình ảnh · Ngân sách · Tự động), thanh lịch gọn.
+- Cài đặt: menu mục không khung, nhóm chữ thường, tên mục ngắn.
+- ALUX: Đơn hàng, Sản xuất, Lắp đặt, Vật tư theo cùng bố cục (tab + nút trên cùng, thanh lọc ngoài bảng).
+- 3A Console: bỏ băng tiêu đề và tab viên (menu trái đã có); Doanh nghiệp dạng bảng (mã, đường dẫn, gói, người dùng, hết hạn, module, dữ liệu, trạng thái, Truy cập).
+
+**Kiểm tra:** TypeScript không lỗi; chụp lại 74 màn (VASSH, ALUX, Console, 12 mục Cài đặt) ở 1440px, không lỗi console. Ảnh trước / sau kèm theo.
+
+**Chưa làm theo đề xuất:** nội dung form trong Cài đặt (thanh "Có thay đổi chưa lưu", công tắc), Cấp phép module / Người dùng của Console dạng bảng, Kế hoạch quỹ MDF dạng bảng hạng mục, giao diện điện thoại.
+
+> v40 chỉ đổi giao diện: **không đổi bảng, dữ liệu, API hay SQL**. Không cần chạy file SQL mới (nếu chưa chạy `supabase-v39.sql` thì vẫn cần chạy file đó).
+
+## Cập nhật v40 (18/11): giao diện mới theo đề xuất v40
+
+**Khung ứng dụng**
+- Menu trái nền xanh đậm, mở sẵn; **Tổng quan** nằm trên cùng, bỏ nút "+ Thêm nhanh". Tên mục rút gọn (Lead, Dự án, Kho, Đặt hàng, Quỹ MDF, Lịch công tác, Công nợ…) và xếp lại nhóm: Làm việc · Bán hàng · Hàng hóa (ALUX: Xưởng) · Tài chính · Tài liệu, Cài đặt.
+- Chọn doanh nghiệp chuyển vào đầu menu. Thanh trên: tiêu đề trang, ô tìm khách hàng / MST / mã đơn, Chat và Trợ lý AI luôn ở thanh trên (bỏ cột biểu tượng bên phải).
+- Có liên kết "Bỏ qua tới nội dung" cho bàn phím; nội dung rộng tối đa 1680px.
+
+**Hệ thống giao diện chung** (sửa một chỗ, áp dụng mọi trang)
+- Màu nền trung tính, một màu nhấn cam cho nút chính và mục đang chọn; nút phụ viền mảnh; trạng thái là chấm màu + chữ thay cho nhãn tô nền.
+- Tiêu đề bảng chữ thường; số căn phải, cùng độ rộng chữ số; mã (SKU, mã KH, số phiếu, số HĐ) hiện dạng thẻ xám chữ đơn cách; SLA hiện "Còn 3 giờ" / "Quá 2 ngày" kèm đồng hồ, bỏ khung nhấp nháy.
+- Chữ nhỏ nhất 11px, bỏ chữ IN HOA giãn chữ, bỏ chữ đậm 700–800; có viền focus cho bàn phím.
+- Ô điện thoại `type="tel"`, ô email `type="email"` (bàn phím đúng trên điện thoại, trình duyệt tự điền).
+- Bỏ hộp `window.confirm` khi đóng bài đang soạn ở Bàn làm việc, thay bằng xác nhận ngay trong khung.
+
+**Bảng: mỗi thông tin một cột, mỗi dòng một bản ghi**
+- Sản phẩm, Khách hàng, Dự án, Lead (Data MKT, Phân luồng), Công việc, Lịch công tác, Kho tài liệu, Kho (tồn kho, phiếu kho, xuất nhập tồn), Đặt hàng, Thu chi, Công nợ, ALUX (đơn hàng, sản xuất, lắp đặt, vật tư), Cài đặt (phòng ban, nhân sự, danh mục kho).
+- Kho hàng: 8 tab gọn thành 5 (Tồn kho · Phiếu kho có chọn Nhập / Xuất / Chuyển / Kiểm · Thẻ kho · Xuất nhập tồn · Danh mục kho).
+- Tổng quan: thẻ KPI thành một dải số; biểu đồ doanh thu tháng trước màu xám, tháng này màu cam, chỉ tiêu là đường mực.
+- Khung cảnh báo lớn (chưa có chỉ tiêu, dự án quá hạn) đổi thành dòng chú thích có liên kết.
+
+**Tài liệu › Báo giá & Hợp đồng** (làm lại cả hai)
+- Nút chuyển Báo giá / Hợp đồng; nút chính đổi theo: "Tạo báo giá" / "Tạo hợp đồng".
+- Báo giá: dải số (bộ báo giá, đã gửi chờ phản hồi, khách chấp nhận, hết hiệu lực trong 7 ngày); cột Mã (+ phiên bản), Khách hàng, Dự án, Ngày, Hiệu lực đến (đỏ khi hết hạn), Trước VAT, Sau VAT, Trạng thái. Menu dòng có **Tạo hợp đồng từ báo giá** và lịch sử phiên bản.
+- Hợp đồng: dải số (hợp đồng hiệu lực, giá trị hiệu lực, chờ duyệt, bị từ chối cần sửa); cột Số hợp đồng (+ phiên bản), Bên mua, MST, Báo giá căn cứ, Ngày lập, Giá trị, Tạm ứng, Công nợ, Trạng thái. Rê chuột vào trạng thái xem lý do từ chối, điều khoản đặc biệt, bảo hành. Nút **Duyệt** ngay trên dòng chờ duyệt (người có quyền), Từ chối / xem / in / xuất Word, PDF / phiên bản cũ trong menu. Dòng bị từ chối có vạch đỏ; phiên bản cũ mở ngay dưới dòng, thẳng cột.
+
+**Rà soát mã**
+- Bỏ thư mục `single-file/` (bản sao 1 file 2,5 MB của chính `src/crm`, không được dùng khi build).
+- Bỏ các hàm / component không còn ai gọi sau khi đổi giao diện (thẻ tóm tắt điều hành cũ, Sparkline, thanh "Thêm nhanh"…). Cấu trúc 86 file trong `src/crm` giữ nguyên như v39.
+- Đã kiểm tra: TypeScript không lỗi; chạy thử trên trình duyệt ở 1440px các trang chính (Tổng quan, Bàn làm việc, Lead, Dự án, Sản phẩm, Khách hàng, Công việc, Quỹ MDF, Kho, Tài liệu › Hợp đồng, Cài đặt, Thu chi), không lỗi console.
+
+**Còn lại / giới hạn**
+- Ở màn 1440px, các bảng nhiều cột (Công việc, Lead, Dự án, Lịch công tác, Kế hoạch MDF, Sản phẩm, Phiếu kho, Đặt hàng, Kho tài liệu, Công nợ) vẫn cuộn ngang một đoạn; ở màn ~1920px vừa khung.
+- Chưa làm lại trong đợt này: thẻ các bước Phân luồng lead, Kế hoạch quỹ MDF, lịch chiến dịch Marketing, bảng của 3A Platform Console, thanh lưu ở các form Cài đặt, danh sách dạng thẻ trên điện thoại, lưu tab / bộ lọc trên đường dẫn.
+- Người dùng cũ: menu trái sẽ mở lại một lần (khóa ghi nhớ mới `pin40`).
+
+
+> Luồng Plan → AI soạn → duyệt → Workspace đã chạy thử trên trình duyệt (riêng trình soạn TipTap thay bằng bản giả vì môi trường dựng không cài được thư viện). Đã kiểm tra kiểu TypeScript với khai báo TipTap v3
+> và kiểm thử các hàm tính toán (chuyển dữ liệu, Human Score, so sánh, kiểm số liệu). Hãy thử trên máy / Vercel Preview trước khi gộp vào main.
+
+## Cập nhật v39 (18/11): thêm doanh nghiệp A, B, C… không cần sửa code
+**Cần làm 1 lần:** chạy `supabase-v39.sql` trong Supabase › SQL Editor (sau các file SQL trước). Chỉ thêm hàm `tenant_brand`, không đổi bảng / dữ liệu.
+
+- **Danh mục doanh nghiệp không còn ghi cứng.** VASSH, ALUX có sẵn; doanh nghiệp mới tạo ở **3A Platform Console › Doanh nghiệp › Thêm doanh nghiệp**: tên, tên viết tắt, mã đường dẫn, tên miền email, loại hình (thương mại / sản xuất / cả hai), gói bản quyền, màu, logo, quản trị viên đầu tiên (email + mật khẩu tạm, bắt buộc đổi ở lần đăng nhập đầu). Hồ sơ lưu trong dữ liệu nền tảng, mọi máy tự cập nhật.
+- **Doanh nghiệp mới bắt đầu sạch:** không mang dữ liệu mẫu của VASSH; phòng ban, nguồn lead, mẫu báo giá lấy theo loại hình; module cấp phép theo loại hình (chỉnh ở Cấp phép module). Dữ liệu tách biệt bằng RLS như VASSH / ALUX.
+- **Đường dẫn riêng:** `crm.3agroup.vn/vassh`, `/alux`, `/<mã mới>` (thêm route `src/app/[org]/page.tsx`). Console hiện đường dẫn từng doanh nghiệp, có nút chép để gửi nhân viên. Vào app, đường dẫn tự đổi theo doanh nghiệp đang mở.
+- **Trang đăng nhập mới** (theo mẫu): một thẻ Đăng nhập (email, mật khẩu, ghi nhớ), không còn ô chọn VASSH / ALUX nên không lộ danh sách khách hàng của nền tảng. Bên phải: logo + tên. Vào bằng đường dẫn riêng thì hiện logo, tên, màu của doanh nghiệp đó và giới thiệu theo loại hình; đường dẫn chung hiện nhận diện 3A Group.
+- **Sau khi đăng nhập:** đúng đường dẫn và có quyền → vào thẳng; tài khoản thuộc 1 doanh nghiệp → vào thẳng; thuộc nhiều doanh nghiệp → màn **Chọn doanh nghiệp** (chỉ các doanh nghiệp được cấp quyền); quản trị 3A → chọn 3A Platform Console hoặc một doanh nghiệp. Vào nhầm đường dẫn doanh nghiệp không có quyền → báo rõ và cho chọn doanh nghiệp của mình.
+- Chế độ lưu trên máy (không Supabase): đăng nhập nhận doanh nghiệp theo đường dẫn hoặc theo tên miền email.
+
+## Cập nhật v38.10.1 (18/11): sửa lỗi build trên Vercel
+- `src/crm/modules/home/home.tsx`: `useRef()` thiếu giá trị khởi tạo (React 19 bắt buộc), gây lỗi TS2554 khi `npm run build`. Đã sửa; bộ kiểm tra kiểu nội bộ cũng siết lại để bắt lỗi này.
+
+## Cập nhật v38.10 (18/11): bỏ hàng ô chỉ số đầu trang
+- Bỏ hàng KPI phía trên ở: Khách hàng (cả chế độ Nhà máy), Dự án & BOQ, Lịch công tác, Tài liệu (Kho tài liệu và Báo giá & Hợp đồng), Marketing Hub › Plan. Trang mở ra là thấy ngay bộ lọc và danh sách.
+- Marketing Hub › Budget vẫn giữ 4 ô ngân sách / đã chi / lead / ROI vì đó là nội dung chính của tab. Số liệu tổng hợp vẫn xem ở Tổng quan và Báo cáo.
+
+## Cập nhật v38.9 (18/11): tối giản Công việc và thanh trên cùng
+- Công việc: bỏ hàng 4 ô chỉ số; tab Chờ tôi duyệt / Tôi đã yêu cầu / Lịch sử nằm ngay trên cùng. Cột "Nội dung" chỉ 1 dòng (lý do / mô tả hiện khi rê chuột, bấm để xem chi tiết). Số việc quá hạn vẫn thấy qua nhãn SLA đỏ và "Khẩn cấp" từng dòng.
+- Thanh trên cùng: chỉ còn ảnh đại diện; tên, email, vai trò, doanh nghiệp hiện trong menu khi bấm vào ảnh (Tài khoản của tôi, Cài đặt, Đổi mật khẩu, Giao diện tối, Xem với vai trò, Đăng xuất như cũ).
+- Bàn làm việc: bỏ thẻ Bản tin điều hành.
+
+## Cập nhật v38.8 (18/11): Bàn làm việc tối giản, bảng tin kiểu Facebook
+- Bố cục 3 cột: trái = mục bảng tin + Sinh nhật (+ hashtag); giữa = soạn bài + bảng tin (rộng tối đa 680px như Facebook); phải = Việc của tôi, Truyền thông (bỏ thẻ Bản tin điều hành khỏi Bàn làm việc). Bỏ thẻ hồ sơ và "Bán hàng xuất sắc" khỏi trang này. Ô "Hỏi trợ lý hoặc tìm nhanh" chuyển lên thanh trên cùng (⌘K vẫn mở tìm nhanh). Màu theo giao diện sáng / tối của app.
+- Khung "Tạo bài viết": ảnh/video (nhiều ảnh, kéo thả, dán ảnh từ bộ nhớ tạm; ảnh tự nén ≤ 1600px), gắn thẻ đồng nghiệp (được báo), cảm xúc / hoạt động, địa điểm, bình chọn, đính kèm tài liệu; loại bài (Chia sẻ / Sáng kiến / Thông báo / Bình chọn). Các bước chọn đổi trang trong cùng khung, không mở thêm cửa sổ.
+- Bài đăng: dòng đầu "… đang 😎 cảm thấy tuyệt cùng A và B tại Bắc Ninh.", thời gian kiểu Facebook, ảnh dạng lưới (1 / 2 / 3 / 4 / 5+ ảnh, ô cuối "+N"), bấm ảnh xem toàn màn hình (← → để chuyển, tải về), "Xem thêm" cho bài dài, chữ to cho bài ngắn.
+- Thanh tương tác: Thích + 6 cảm xúc (rê chuột vào nút Thích), Bình luận, Chia sẻ (có số lượt), Lượt xem 👁 (tính khi bài hiện trên màn hình 1 giây, mỗi người 1 lần).
+- Chia sẻ: chia sẻ ngay lên Bảng tin, chia sẻ kèm cảm nghĩ (bài gốc lồng bên trong **kèm ảnh**), chia sẻ ra Zalo / Facebook kèm ảnh (điện thoại mở bảng chia sẻ của máy; máy tính chép nội dung và tải ảnh về để dán), sao chép nội dung.
+- Dữ liệu: bài cũ hiển thị bình thường; chỉ thêm các trường tùy chọn vào bài viết, không cần chạy SQL.
+
+## Cập nhật v38.7 (18/11): nút thao tác ở Plan / Content / Budget; mẫu báo giá thiết bị vật tư
+- **Content**: cột thao tác mỗi bài: Mở / sửa, Xem & duyệt, Nhân bản (bản nháp mới), Tải Word (.doc), Tải PDF (in / lưu PDF), Tải HTML, Sao chép nội dung, Xóa (hỏi xác nhận, hoàn tác được; bài AI đang soạn không xóa được). Thêm ô tìm kiếm và Xuất Excel danh sách.
+- **Plan**: Xuất Excel có ở mọi chế độ xem; dạng Danh sách có menu: Sửa, Giao cho AI, Xem & duyệt, Mở Workspace, Nhân bản, xuất bài (Word / PDF / HTML / sao chép), Xóa. Xóa nhiệm vụ không xóa bài AI đã soạn.
+- **Budget**: menu chiến dịch Sửa / Nhân bản (đã chi về 0) / Xóa; Xuất Excel bảng hiệu quả chiến dịch.
+- **Mẫu báo giá**: biến mới `{{items_table_full}}` (STT, mã hàng, hạng mục, hãng SX lấy từ danh mục sản phẩm, đơn vị, số lượng, đơn giá, VAT từng dòng, thành tiền, ghi chú; dòng tổng nền vàng), `{{doc_date_long}}` (ngày 29 tháng 07 năm 2026), `{{doc_revision}}` (lần thứ), `{{sales_email}}`.
+- File `mau/mau-bao-gia-vassh.html`: mẫu báo giá dựng theo file Excel "Mẫu báo giá 2026 VASSH", dán vào Tài liệu › Mẫu văn bản › Thêm mẫu mới.
+
+## Cập nhật v38.6 (18/11): Marketing Hub = Plan · Content · Image · Budget · Automation
+- **Tab mới, theo thứ tự**: Plan (trước là Lịch tổng), Content (Content Studio giữ nguyên), Image (mới), Budget (Ngân sách & ROI), Automation. Tab cũ đang ghi nhớ trên máy tự chuyển: Thiết kế banner → Image, Phân khúc → Automation.
+- **Phân khúc được giữ** (không xóa) vì đang dùng thật: là điều kiện kích hoạt "Toàn bộ phân khúc" của kịch bản tự động và là "Phân khúc mục tiêu" của chiến dịch. Đã chuyển vào Automation › Phân khúc khách hàng.
+- **Nhiệm vụ nội dung (Plan)** chia 3 tab: Thông tin chung · Cấu hình nội dung · Cấu hình hình ảnh; nút Lưu / Giao cho AI luôn nằm ở chân khung; tab còn thiếu thông tin có chấm đỏ.
+  - **Mẫu nhanh** ở đầu tab nội dung (Bài PR kỹ thuật chuẩn SEO, Hướng dẫn thi công, So sánh / tư vấn chọn mua, Case study, Khuyến mãi Fanpage, Kể chuyện công trình, Mẹo kỹ thuật nhanh, Bản tin / Ưu đãi Zalo OA, Bài Google Maps) + mẫu riêng của doanh nghiệp: bấm 1 lần điền toàn bộ thông số. Nút ✦ cạnh "Mẫu nhanh": AI gợi ý 3 cấu hình theo tiêu đề.
+  - Nhóm 2–3 lựa chọn dùng thanh chọn liền khối (VD Độ dài); nhóm nhiều lựa chọn dùng ô xổ xuống có tìm kiếm, chọn nhiều hiện thành thẻ trong ô (Chứng cứ, Bối cảnh…). Bỏ dấu sao cam; lựa chọn mặc định ghi chữ nhỏ "mặc định".
+  - "+ Hiện cài đặt nâng cao": Số mục H2, Cấu trúc thêm, Mức độ kỹ thuật, Xưng hô, Mật độ / vị trí từ khóa, thông tin brief, Ghi chú thêm cho AI.
+  - Nút AI ✦ trong góc ô Focus Keyword (hoặc Từ khóa địa phương / Lời kêu gọi) và ở tiêu đề khối Thông số kênh: AI điền các ô còn trống.
+- **Chiến dịch** chia 3 tab: Thông tin chung · Mục tiêu & ngân sách (thanh đã chi, chi phí / lead mục tiêu) · Nội dung AI (chọn kênh AI soạn bài đầu tiên + đầy đủ thông số kênh, mẫu nhanh, cấu hình ảnh như Nhiệm vụ). Kênh chọn nhiều bằng ô xổ xuống.
+- **Image**: Tạo ảnh AI · Thư viện ảnh · Thiết kế banner.
+  - Tải tối đa 3 ảnh tham chiếu hoặc chọn ảnh sản phẩm trong danh mục, thanh "bám ảnh gốc ↔ sáng tạo".
+  - 10 kích thước có sẵn (Bài Facebook 1200×630, Vuông 1080, Dọc 4:5, Story 9:16, Bìa Zalo OA, Ảnh bài website, Banner website 1920×600, Ảnh sản phẩm, Google Maps) hoặc tự nhập; ảnh xuất được cắt đúng kích thước.
+  - Bối cảnh / phong cách / màu sắc, 1–3 phương án; ✦ AI viết mô tả ảnh.
+  - SEO ảnh: từ khóa, tên file không dấu, alt ≤ 125 ký tự, chú thích, title (✦ AI viết cả 4), đóng logo / tên / không, WebP hoặc JPEG, chất lượng nén; ảnh xuất xóa EXIF / GPS của ảnh gốc, cảnh báo khi > 300 KB.
+  - Lưu vào **Thư viện ảnh** (tối đa 200 ảnh / doanh nghiệp, nhóm dữ liệu mới `mktImages`); trong Workspace, khung chèn ảnh có "Chọn từ thư viện ảnh".
+- **Automation**: thêm kênh Messenger (Fanpage). SMS và Messenger vẫn ghi nhận ở chế độ mô phỏng cho đến khi kết nối nhà cung cấp; ZNS / Zalo OA gửi thật như trước.
+- Dữ liệu: DATA_VERSION 30 (chỉ thêm nhóm `mktImages`, không đổi dữ liệu cũ). Không cần chạy thêm SQL.
+
+## Cập nhật v38.5 (18/11): sửa lỗi "AI trả sai định dạng"
+- Nguyên nhân: "AI điền ô trống" chỉ cho AI tối đa 700 token; câu trả lời tiếng Việt dài (8 từ khóa LSI, meta description…) bị cắt giữa chừng, thường nằm trong khối ```json chưa đóng, nên bộ đọc JSON cũ không đọc được.
+- Bộ đọc JSON mới (dùng cho mọi tính năng AI trả JSON): chịu được khối ```json, chữ giải thích trước / sau, ngoặc kép cong, dấu phẩy thừa, và câu trả lời bị cắt (giữ các ô đã trọn vẹn).
+- AI điền ô trống: tăng lên 1.600 token, sai định dạng thì tự hỏi lại 1 lần; vẫn sai thì ghi câu trả lời gốc ra F12 › Console. AI gợi ý biến thể: 1.800 token; AI viết alt / chú thích ảnh: 600 token.
+
+## Cập nhật v38.4 (18/11): luồng duyệt không phải qua 3 bước — đã chạy thử trên trình duyệt
+- **Khung "Xem & duyệt"**: bấm bài ở Trung tâm phê duyệt (nhóm Nội dung marketing) hoặc "Xem & duyệt" trong Nhiệm vụ nội dung là mở ngay bài như sẽ đăng (bản xuất bản theo kênh, xem trước trên Google), điểm SEO, điểm tự nhiên, từ khóa, thông số còn thiếu, các tiêu chí SEO chưa đạt; nút Duyệt / Trả về sửa (bắt buộc lý do) / Mở để sửa. Không cần đi qua Cài đặt → Dàn ý.
+- **Bài đã có nội dung (đã soạn, chờ duyệt, đã duyệt, bị trả về) mở thẳng Workspace**, ẩn thanh 3 bước; cần thì bấm "Sửa cài đặt / dàn ý". Ở Cài đặt / Dàn ý có nút "Về Workspace", không bị chặn khi thiếu Focus Keyword. Bài nháp mới vẫn đi 3 bước.
+- Bài cũ chỉ có nội dung dạng chữ (không có khối) được tách theo tiêu đề ##/### để mở được trong Workspace.
+- "Mở Workspace" từ Lịch tổng chuyển đúng sang Content Studio và mở bài, kể cả khi đang đứng ở Marketing Hub.
+- Lịch tổng có trạng thái **Đã duyệt** (trước đây bài đã duyệt vẫn hiện "AI xong / chờ duyệt").
+- "Giao AI làm lại" đưa bài về Nháp; bài AI đang viết dở không hiện trong danh sách chờ duyệt.
+- Luật SEO "Độ dài" của Website theo nhóm Độ dài đã chọn (VD chọn Ngắn 600–800 từ thì chấm theo mức đó).
+- Sửa lỗi form Nhiệm vụ nội dung bị tràn ngang khi mở phần biến thể.
+
+## Cập nhật v38.3 (18/11): luồng duyệt nội dung
+- **Trung tâm phê duyệt (Công việc)** có nhóm mới "Nội dung marketing": mọi bài Chờ duyệt (gửi tay hoặc AI soạn xong từ Lịch tổng) hiện ở đây cho Giám đốc / Trưởng Marketing, có đếm SLA 24 giờ, nút Duyệt / Từ chối / Yêu cầu sửa (bắt buộc ghi lý do) và "Xem" mở bài trong Content Studio. Người gửi thấy trạng thái ở tab "Của tôi".
+- **Content Studio**: nút Gửi duyệt / Duyệt / Trả về sửa / Đánh dấu đã đăng nằm ngay đầu trang cạnh nhãn trạng thái (trước đây ở cuối trang, bị khuất dưới Workspace). Bài bị trả về hiện dải "Cần sửa trước khi gửi duyệt lại" kèm lý do.
+- Gửi duyệt hoặc AI soạn xong: chuông thông báo của Giám đốc và Trưởng Marketing; duyệt / trả về: báo lại người gửi. Mỗi quyết định ghi vào nhật ký duyệt và chụp mốc "Đã duyệt" trong Lịch sử phiên bản.
+
+## Cập nhật v38.2 (18/11): biến thể nội dung & hình ảnh, mẫu brief, AI gợi ý, cảnh báo trùng từ khóa
+- **Yêu cầu nội dung bấm chọn** (form Nhiệm vụ nội dung ở Lịch tổng và Bước 1 Content Studio): Dạng bài · Độ dài (theo kênh: Website 600–800 / 1.200–1.500 / 1.800–2.500 từ; Facebook ≤ 80 / 120–200 / 300–500 từ; Zalo ≤ 150 / 150–300 từ; Maps ≤ 750 / ≤ 1.500 ký tự) · Giọng văn · Đối tượng đọc · Chứng cứ cần có · Số mục H2 · Cấu trúc thêm (FAQ, bảng, gạch đầu dòng, tóm tắt) · Mức độ kỹ thuật · Kết bài / CTA · Xưng hô · Mật độ và vị trí từ khóa (Website). Ô ★ là mặc định.
+- **Mẫu brief theo dạng bài**: chọn Hướng dẫn, So sánh, Case study, Giới thiệu sản phẩm, Sai lầm thường gặp, Tin tức, Khuyến mãi là tự tích sẵn các nhóm phù hợp (VD Case study: ví dụ công trình, trước / sau, ý kiến khách, CTA khảo sát, ảnh tại công trình).
+- **Yêu cầu hình ảnh bấm chọn**: số lượng ảnh, khung hình, bối cảnh, phong cách, màu sắc, đóng dấu (logo / tên / không), ảnh tham chiếu lấy từ danh mục Sản phẩm (AI bám theo hình sản phẩm thật).
+- **✦ AI gợi ý**: AI đề xuất 3 tổ hợp phù hợp với tiêu đề, bấm là áp dụng. **Bộ cài sẵn**: lưu tổ hợp đang chọn thành bộ có tên, lần sau chọn 1 lần.
+- "Xem chỉ dẫn gửi AI" hiện đúng đoạn yêu cầu được ghép từ các ô đã chọn. Ô ghi chú tự do vẫn giữ.
+- **Cài đặt › AI, Zalo › Biến thể nội dung & hình ảnh**: ẩn / hiện lựa chọn, đặt mặc định riêng (☆), thêm lựa chọn riêng của doanh nghiệp (VD "Bảo hành 10 năm 3M"), xóa bộ cài sẵn. VASSH và ALUX cấu hình riêng.
+- **Cảnh báo trùng từ khóa chính** với bài / nhiệm vụ khác ở form Nhiệm vụ và Bước 1 Studio, kèm danh sách bài trùng.
+- Website: ô Đối tượng đọc, Độ dài, FAQ chuyển vào nhóm biến thể (dùng chung mọi kênh). Không đổi dữ liệu, không cần chạy SQL.
+
+## Cập nhật v38.1 (18/11)
+- **Bài AI soạn xong mở thẳng Workspace**, không bắt làm lại bước Cài đặt. Thiếu thông số kênh (VD Focus Keyword) thì hiện dải nhắc "Mở Cài đặt", nội dung vẫn sửa được.
+- **Nhiệm vụ nội dung (Lịch tổng) có đủ thông số của kênh** như Bước 1 Content Studio: Website có Focus Keyword, LSI, Meta Title, Meta Description, slug, đối tượng đọc, ý định tìm kiếm, độ dài bài, liên kết nội bộ, FAQ; Facebook / Zalo có hook, giọng, CTA, hashtag; Maps có loại bài, từ khóa địa phương, NAP. Thêm "Brief nội dung": thông điệp chính, sản phẩm / mã hàng, ưu đãi, ý bắt buộc, điều không nhắc, nguồn tham khảo.
+- Nút **"AI điền ô trống"** đề xuất từ khóa, LSI, meta, slug, ý định tìm kiếm từ tiêu đề (chỉ điền ô trống). Thiếu trường bắt buộc thì chưa giao AI được.
+- AI chạy nền soạn theo đúng prompt của kênh + brief (như Content Studio), tự điền meta còn trống, ảnh có alt. Giao AI làm lại sẽ soạn mới theo thông số mới.
+- Sửa lỗi kênh Google Maps không nhận đúng cài đặt khi mở lại bài.
+
+## Cài đặt / nâng cấp từ v37
+```bash
+git checkout -b v38
+npm i @tiptap/react@^3 @tiptap/core@^3 @tiptap/pm@^3 @tiptap/starter-kit@^3 @tiptap/extension-image@^3
+# chép đè thư mục src/ của gói vào dự án, rồi XÓA thư mục cũ src/lib/ai/skills/sales_pipeline/ (đã gộp vào sales_crm)
+npm run build
+```
+- Supabase SQL Editor: chạy `supabase-v38.sql` (sau v37; chạy lại nhiều lần vẫn an toàn). Tạo bảng đếm lượt `ai_usage`, hàm `ai_ghost_status` / `ai_ghost_take`, và chỉ cho Giám đốc / quản trị ghi cấu hình hạn mức (`'$'/aiQuota`).
+- Biến môi trường mới (tùy chọn): `AI_COMPLETE_MODEL_ANTHROPIC` (mặc định claude-haiku-5-5), `AI_COMPLETE_MODEL_OPENAI` (mặc định gpt-4o-mini), `AI_GHOST_RATE_PER_MIN` (mặc định 12 lượt / phút / người), `AI_GHOST_DAILY_LIMIT` (chỉ dùng khi chạy cục bộ không Supabase).
+- Dữ liệu: DATA_VERSION 29 chỉ thêm `contentVersions` (lịch sử phiên bản) và `aiQuota`. Bài cũ (dạng `blocks`) tự chuyển sang `doc` khi mở lần đầu; vẫn ghi `blocks` song song nên bản v37 đọc được. Không xóa dữ liệu, không đổi API cũ.
+
+## Điểm mới v38
+
+### Marketing Hub
+- Tab "Lịch chiến dịch" đổi tên thành **Lịch tổng** (một lịch duy nhất cho chiến dịch và nội dung; đợt 3 nâng cấp kéo thả đa kênh).
+- Content Studio còn 3 bước: Cài đặt → Dàn ý → **Workspace** (gộp "Viết & ảnh" và "Hoàn thiện").
+
+### Workspace soạn thảo (TipTap)
+- Một trang: dàn ý (trái, bấm để nhảy tới mục, "✦ Viết" cho mục trống, "AI viết n mục trống") · trình soạn (giữa) · sidebar dính 4 tab SEO · Tự nhiên · LSI · Lịch sử (phải).
+- Bôi đen → thanh công cụ nổi: Đậm, Nghiêng, Liên kết (Ctrl+K), H2, H3, ✦ Viết lại (ngắn hơn / rõ hơn / thuyết phục hơn), ✦ Humanize, ✦ Chèn LSI.
+- Gõ `/` ở dòng trống để chèn: H2, H3, đoạn, danh sách, danh sách số, trích dẫn, ảnh chuẩn SEO, lời kêu gọi liên hệ, đường kẻ.
+- Mọi lệnh AI ra **đề xuất dạng so sánh** (chữ xóa gạch đỏ, chữ thêm xanh), Nhận / Bỏ; cảnh báo đỏ khi bản mới làm mất số liệu, mã sản phẩm hoặc từ khóa. Trình soạn khóa trong lúc chờ đề xuất.
+- Ghost text: ngừng gõ ~0,6 giây ở cuối đoạn → AI gợi ý tối đa ~30 từ chữ mờ, Tab nhận, Esc bỏ, gõ tiếp thì hủy. Mặc định bật cho Giám đốc, Trưởng Marketing, nhân sự phòng Marketing; giới hạn 50 lượt / người / ngày (chọn 50, 100 hoặc số khác ở Cài đặt › AI, Zalo › "Gợi ý viết tiếp"). Máy chủ đếm và chặn khi vượt. Mỗi người tự tắt được ở cột dàn ý.
+- Zen Mode: chỉ còn trang viết (~720 px), Esc thoát, có nút toàn màn hình.
+- Xem bản xuất bản theo kênh ngay trong Workspace (nút "Bản Website / Facebook…"), sao chép HTML / bài.
+
+### Tự nhiên (Human Score) & Humanize
+- Điểm 0–100 tính trong trình duyệt, không tốn tiền AI: câu dài ngắn xen kẽ, đa dạng từ vựng, lặp cụm 3 từ, mật độ cụm sáo (sửa danh sách ở Cài đặt), độ đều của đoạn văn. Đoạn dưới ngưỡng được tô viền cam, liệt kê kèm lý do và nút "Humanize đoạn này".
+- Humanize chọn giọng Giao tiếp / Chuyên gia / Bán hàng; giữ số liệu, mã, từ khóa. Đây là công cụ biên tập, **không phải máy dò AI** và không đảm bảo qua công cụ phát hiện nào.
+
+### LSI, lịch sử, ảnh SEO
+- Tab LSI: số lần từng từ khóa xuất hiện (không dấu), bấm từ còn thiếu → tô 1–3 đoạn hợp nhất, "Chèn vào đoạn này".
+- Tab Lịch sử: tự lưu mốc khi AI viết, khi Humanize, khi Gửi duyệt / Duyệt, hoặc bấm "Lưu mốc"; tối đa 20 mốc / bài; chọn 2 mốc để so sánh theo từng khối (kèm điểm SEO, Human Score); khôi phục mốc (tự lưu mốc hiện tại trước).
+- Ảnh chuẩn SEO: tải lên hoặc AI tạo; tên file theo tiêu đề mục (`bang-keo-vhb-mat-dung-kinh-1.webp`), alt ≤ 125 ký tự và chú thích do AI viết (sửa được), đóng logo doanh nghiệp, chuyển WebP. Tab SEO có danh sách ảnh để sửa alt / chú thích và luật mới: thiếu alt, alt trùng, alt ảnh đầu thiếu từ khóa. HTML xuất bản Website có `<figure>`, `alt`, `<figcaption>`.
+
+### AI Copilot: 15 công cụ
+- `src/lib/ai/tools/schema.ts`: định nghĩa tham số của 15 công cụ. Chạy được: `get_customer_360`, `get_sales_pipeline`, `check_mdf_budget`, `get_revenue_report`, `search_internal_documents`, `add_calendar_event` (ghi, cần xác nhận). Còn lại là khung (`draft: true`, AI không thấy) có chú thích bảng cần đọc.
+- Mọi truy vấn dùng client gắn phiên đăng nhập người dùng (RLS tách doanh nghiệp); phạm vi Giám đốc / Trưởng phòng / nhân viên được lọc trong từng công cụ.
+- Khung chat của app chưa có nút "Xác nhận" cho công cụ ghi dữ liệu: AI sẽ hỏi lại, việc thêm lịch qua Copilot cần bổ sung nút này ở bản sau.
+
+## Ghi chú v37 (Tổng quan điều hành + chỉ tiêu KPI, AI Content Studio đa kênh, Copilot dạng Skill — dựa trên v36)
 
 ## Cài đặt / nâng cấp từ v36
 ```bash
@@ -75,7 +278,6 @@ src/
                 business, cloud (Supabase), storage (phiên bản dữ liệu), security, modules, workshop, getfly...
     modules/    dashboard, leads, customers, projects, sales, products, supply, mdf, finance,
                 alux (đơn hàng, sản xuất, lắp đặt, vật tư), staff, tasks, docs, reports, settings, messages, platform
-single-file/DashboardApp.tsx   cùng mã nguồn ở dạng 1 file (dán vào src/app/page.tsx nếu muốn dùng như v25)
 ```
 
 Quy ước: hằng số và lớp nằm ở `lib/core.tsx` (giữ đúng thứ tự khởi tạo), các file module chỉ chứa hàm và component. Muốn thêm hằng số mới thì đặt ở `core.tsx` để tránh vòng import lúc khởi tạo.

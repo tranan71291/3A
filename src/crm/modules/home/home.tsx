@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Bookmark, Cake, CheckCircle2, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, Eye, EyeOff, FolderOpen, Globe, House, ImagePlus, Lightbulb, MapPin, Megaphone, MessageCircle, Newspaper, Paperclip, PenLine, Pencil, Pin, Plus, Share2, SmilePlus, Sparkles, SquarePlay, ThumbsUp, Trash2, Trophy, UserPlus, Vote, Wallet, X } from 'lucide-react';
+import { ArrowLeft, Bookmark, CheckCircle2, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, Eye, EyeOff, FolderOpen, Globe, House, ImagePlus, Lightbulb, MapPin, Megaphone, MessageCircle, Newspaper, Paperclip, PenLine, Pencil, Pin, Plus, Share2, SmilePlus, Sparkles, SquarePlay, ThumbsUp, Trash2, Trophy, UserPlus, Vote, Wallet, X } from 'lucide-react';
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { removeWithUndo } from '../../app/context';
 import { PAvatar, useOutsideClose } from '../../app/header';
@@ -140,7 +140,8 @@ export function PostComposer({ edit, sharing, start = 'main', pick, onClose }: {
   const fileRef = useRef<HTMLInputElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const dirty = !!(text.trim() || files.length || feeling || tagged.length || place);
-  const close = () => { if (!edit && dirty && !window.confirm('Bỏ bài viết đang soạn?')) return; onClose(); };
+  const [askClose, setAskClose] = useState(false);
+  const close = () => { if (!edit && dirty && !askClose) { setAskClose(true); return; } onClose(); };
   useEscClose(ov.id, close);
   useEffect(() => { if (pick) setTimeout(() => fileRef.current?.click(), 50); else if (view === 'main') setTimeout(() => areaRef.current?.focus(), 30); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
   if (!me) return null;
@@ -170,7 +171,7 @@ export function PostComposer({ edit, sharing, start = 'main', pick, onClose }: {
   const back = (title: string) => (
     <header className="relative flex items-center justify-center border-b border-[rgb(var(--line))] px-12 py-3.5">
       <button className="absolute left-3 rounded-full bg-[rgb(var(--ink)/0.06)] p-2 hover:bg-[rgb(var(--ink)/0.1)]" onClick={() => { setView('main'); setQ(''); }} aria-label="Quay lại"><ArrowLeft className="h-5 w-5" /></button>
-      <h2 className="text-lg font-bold">{title}</h2>
+      <h2 className="text-lg font-semibold">{title}</h2>
     </header>
   );
   const addBtn = (label: string, color: string, icon: typeof Wallet, run: () => void, on?: boolean) => {
@@ -185,7 +186,7 @@ export function PostComposer({ edit, sharing, start = 'main', pick, onClose }: {
         <input ref={fileRef} type="file" multiple accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip" className="sr-only" onChange={(e) => { void add([...(e.target.files ?? [])]); e.target.value = ''; }} />
         {view === 'main' && <>
           <header className="relative flex items-center justify-center border-b border-[rgb(var(--line))] px-12 py-3.5">
-            <h2 className="text-lg font-bold">{edit ? 'Chỉnh sửa bài viết' : sharing ? 'Chia sẻ bài viết' : 'Tạo bài viết'}</h2>
+            <h2 className="text-lg font-semibold">{edit ? 'Chỉnh sửa bài viết' : sharing ? 'Chia sẻ bài viết' : 'Tạo bài viết'}</h2>
             <button className="absolute right-3 rounded-full bg-[rgb(var(--ink)/0.06)] p-2 hover:bg-[rgb(var(--ink)/0.1)]" onClick={close} aria-label="Đóng"><X className="h-5 w-5" /></button>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-3">
@@ -242,7 +243,7 @@ export function PostComposer({ edit, sharing, start = 'main', pick, onClose }: {
               {!edit && !sharing && canPoll && addBtn('Bình chọn', FB_ICON.poll, Vote, () => setKind(kind === 'POLL' ? 'POST' : 'POLL'), kind === 'POLL')}
               {!sharing && addBtn('Đính kèm tài liệu', FB_ICON.file, Paperclip, () => fileRef.current?.click(), docsF.length > 0)}
             </div>
-            <button className={cn(btnPrimary, 'h-10 w-full justify-center text-[15px]')} disabled={!can} onClick={publish}>{edit ? 'Lưu' : sharing ? 'Chia sẻ ngay' : 'Đăng'}</button>
+            {askClose ? <div className="flex items-center gap-2" role="alert"><span className="min-w-0 flex-1 text-sm">Bỏ bài đang soạn?</span><button className={btnGhost} onClick={() => setAskClose(false)}>Tiếp tục soạn</button><button className={cn(btnGhost, 'text-[rgb(var(--danger-fg))]')} onClick={onClose}>Bỏ bài</button></div> : <button className={cn(btnPrimary, 'h-10 w-full justify-center text-[15px]')} disabled={!can} onClick={publish}>{edit ? 'Lưu' : sharing ? 'Chia sẻ ngay' : 'Đăng'}</button>}
           </div>
         </>}
         {view === 'feeling' && <>
@@ -403,7 +404,7 @@ export function FeedPostCard({ p, hot, saved, onSave, onEdit, onShare, onConfirm
           {p.poll.options.map((o) => { const n = o.votes.length; const pc = pollTotal ? Math.round((n / pollTotal) * 100) : 0; const on = o.votes.includes(me.id); return (
             <button key={o.id} disabled={closed} onClick={() => vote(o.id)} aria-pressed={on} className={cn('relative w-full overflow-hidden rounded-lg border px-3 py-2 text-left text-sm disabled:cursor-default', on ? 'border-[rgb(var(--secondary))]' : 'border-[rgb(var(--line))] hover:border-[rgb(var(--secondary)/0.6)]')}>
               <span className="absolute inset-y-0 left-0 bg-[rgb(var(--secondary)/0.14)]" style={{ width: `${pc}%` }} aria-hidden />
-              <span className="relative flex items-center gap-2"><span className={cn('flex h-4 w-4 shrink-0 items-center justify-center border text-[10px]', p.poll!.multi ? 'rounded-sm' : 'rounded-full', on ? 'border-[rgb(var(--secondary))] bg-[rgb(var(--secondary))] text-white' : 'border-[rgb(var(--line))]')}>{on ? '✓' : ''}</span><span className="flex-1">{o.text}</span><span className="tabular-nums text-[rgb(var(--muted))]">{pc}%</span></span>
+              <span className="relative flex items-center gap-2"><span className={cn('flex h-4 w-4 shrink-0 items-center justify-center border text-[11px]', p.poll!.multi ? 'rounded-sm' : 'rounded-full', on ? 'border-[rgb(var(--secondary))] bg-[rgb(var(--secondary))] text-white' : 'border-[rgb(var(--line))]')}>{on ? '✓' : ''}</span><span className="flex-1">{o.text}</span><span className="tabular-nums text-[rgb(var(--muted))]">{pc}%</span></span>
             </button>
           ); })}
           <p className="text-xs text-[rgb(var(--muted))]">{pollTotal} người đã bình chọn{p.poll.multi ? ' · chọn nhiều phương án' : ''}{p.poll.closesAt ? ` · ${closed ? 'đã kết thúc' : 'kết thúc'} ${fmtDate(p.poll.closesAt)}` : ''}</p>
@@ -513,7 +514,7 @@ export function HomePage() {
     { id: 'BIZ', label: 'Hoạt động kinh doanh', icon: Trophy, n: auto.length },
     { id: 'SAVED', label: 'Đã lưu', icon: Bookmark, n: saved.filter((id) => visible.some((p) => p.id === id)).length },
   ];
-  const tile = (n: ReactNode, label: string, run: () => void) => <button className="min-w-0 rounded-md bg-[rgb(var(--ink)/0.04)] p-3 text-left hover:bg-[rgb(var(--ink)/0.07)]" onClick={run}><p className="truncate font-display text-xl font-bold tabular-nums">{n}</p><p className="truncate text-xs text-[rgb(var(--muted))]">{label}</p></button>;
+  const tile = (n: ReactNode, label: string, run: () => void) => <button className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-1.5 text-left text-[13.5px] hover:bg-[rgb(var(--ink)/0.04)]" onClick={run}><span className="truncate text-[rgb(var(--fg2))]">{label}</span><b className="font-mono text-[13px] font-medium tabular-nums">{n}</b></button>;
   const quick = (label: string, color: string, icon: typeof Wallet, run: () => void) => { const I = icon; return <button className="flex h-10 items-center justify-center gap-2 rounded-md text-[15px] font-medium text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.05)]" onClick={run}><I className="h-6 w-6" style={{ color }} aria-hidden /><span className="truncate">{label}</span></button>; };
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[220px_1fr] xl:grid-cols-[220px_1fr_320px] 2xl:grid-cols-[240px_1fr_360px]">
@@ -521,17 +522,14 @@ export function HomePage() {
       <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
         <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible" aria-label="Bảng tin">
           {navItems.map((n) => (
-            <button key={n.id} className={cn('flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors', filter === n.id && !tag ? 'bg-[rgb(var(--secondary)/0.12)] font-semibold text-[rgb(var(--secondary-fg))]' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)]')} onClick={() => { setFilter(n.id); setTag(''); }} aria-current={filter === n.id && !tag ? 'page' : undefined}>
+            <button key={n.id} className={cn('flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors', filter === n.id && !tag ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--ink)/0.06)]' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)]')} onClick={() => { setFilter(n.id); setTag(''); }} aria-current={filter === n.id && !tag ? 'page' : undefined}>
               <n.icon className="h-4 w-4" aria-hidden /><span className="flex-1 whitespace-nowrap">{n.label}</span>{n.n ? <span className="text-xs tabular-nums text-[rgb(var(--muted))]">{n.n}</span> : null}
             </button>
           ))}
         </nav>
         <div className="hidden lg:block">
-          <WidgetCard title={<span className="flex items-center gap-2"><Cake className="h-4 w-4 text-[rgb(var(--accent))]" aria-hidden />Sinh nhật</span>} period="7 ngày tới">
-            {upcoming.length ? <ul className="space-y-2">{upcoming.map((x) => <li key={x.u.id} className="flex items-center gap-2.5 text-sm"><PAvatar user={x.u} size={28} meId={me.id} /><span className="min-w-0 flex-1"><span className="block truncate" title={x.u.name}>{x.u.name}</span><span className="text-xs text-[rgb(var(--muted))]">{x.days === 0 ? 'Hôm nay 🎂' : x.days === 1 ? 'Ngày mai' : `${x.days} ngày nữa`}{x.days === 0 && x.u.id !== me.id && <> · <button className="font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => go('messages', dmId(me.id, x.u.id))}>Chúc mừng</button></>}</span></span></li>)}</ul>
-              : <p className="text-xs text-[rgb(var(--muted))]">Không có sinh nhật trong 7 ngày tới. Thêm ngày sinh ở Cài đặt › Nhân sự.</p>}
-          </WidgetCard>
-          {allTags.length > 0 && <div className="mt-4"><p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">Hashtag</p>{allTags.map(([t, n]) => <button key={t} className={cn('block w-full rounded px-3 py-1 text-left text-sm text-[rgb(var(--secondary-fg))] hover:bg-[rgb(var(--ink)/0.05)]', tag === t && 'font-semibold')} onClick={() => setTag(tag === t ? '' : t)}>{t} <span className="text-xs text-[rgb(var(--muted))]">{n}</span></button>)}</div>}
+
+          {allTags.length > 0 && <div className="mt-4"><p className="mb-1 px-3 text-[11px] font-semibold text-[rgb(var(--faint))]">Hashtag</p>{allTags.map(([t, n]) => <button key={t} className={cn('block w-full rounded px-3 py-1 text-left text-sm text-[rgb(var(--secondary-fg))] hover:bg-[rgb(var(--ink)/0.05)]', tag === t && 'font-semibold')} onClick={() => setTag(tag === t ? '' : t)}>{t} <span className="text-xs text-[rgb(var(--muted))]">{n}</span></button>)}</div>}
         </div>
       </aside>
 
@@ -564,13 +562,17 @@ export function HomePage() {
       {/* Phải: việc của tôi, truyền thông */}
       <aside className="space-y-4 lg:col-span-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0 xl:sticky xl:top-20 xl:col-span-1 xl:block xl:space-y-4 xl:self-start">
         <WidgetCard title="Việc của tôi" period="Tháng này">
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="divide-y divide-[rgb(var(--ink)/0.06)]">
             {tile(taskN, 'Việc chờ xử lý', () => go('tasks'))}
             {canSee('leads') && tile(leads7, 'Lead mới 7 ngày', () => go('leads'))}
             {!mfg && tile(myQuotes.length, 'Báo giá đã tạo', () => go('docs'))}
             {tile(compact(myWon), 'Doanh số đã chốt', () => go(mfg ? 'jobs' : 'projects'))}
           </div>
         </WidgetCard>
+        <WidgetCard title={<span className="flex items-center gap-2">Sinh nhật</span>} period="7 ngày tới">
+            {upcoming.length ? <ul className="space-y-2">{upcoming.map((x) => <li key={x.u.id} className="flex items-center gap-2.5 text-sm"><PAvatar user={x.u} size={28} meId={me.id} /><span className="min-w-0 flex-1"><span className="block truncate" title={x.u.name}>{x.u.name}</span><span className="text-xs text-[rgb(var(--muted))]">{x.days === 0 ? 'Hôm nay 🎂' : x.days === 1 ? 'Ngày mai' : `${x.days} ngày nữa`}{x.days === 0 && x.u.id !== me.id && <> · <button className="font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => go('messages', dmId(me.id, x.u.id))}>Chúc mừng</button></>}</span></span></li>)}</ul>
+              : <p className="text-xs text-[rgb(var(--muted))]">Không có sinh nhật trong 7 ngày tới. Thêm ngày sinh ở Cài đặt › Nhân sự.</p>}
+          </WidgetCard>
         <SocialHubWidget />
       </aside>
       {compose && <PostComposer {...compose} onClose={() => setCompose(null)} />}

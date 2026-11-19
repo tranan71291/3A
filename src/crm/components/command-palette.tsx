@@ -115,10 +115,10 @@ export function CommandPalette({ onClose, extra = [], onAsk, image }: { onClose:
         onDragOver={(e) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }} onDrop={(e) => { if (takeImage(e.dataTransfer.files?.[0])) e.preventDefault(); }}>
         <input ref={fileRef} type="file" accept="image/*" className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => { takeImage(e.target.files?.[0]); e.target.value = ''; }} />
         <div className="flex items-center gap-3 border-b border-[rgb(var(--ink)/0.08)] px-5">
-          {cmdMode ? <span className="g-brand-text font-mono text-xl font-bold" aria-hidden>&gt;</span> : <Search className="h-5 w-5 text-[rgb(var(--muted))]" aria-hidden />}
+          {cmdMode ? <span className="g-brand-text font-mono text-xl font-semibold" aria-hidden>&gt;</span> : <Search className="h-5 w-5 text-[rgb(var(--muted))]" aria-hidden />}
           <input
             ref={inputRef}
-            className="h-16 flex-1 bg-transparent text-lg text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted)/0.8)] focus:outline-none"
+            className="h-16 flex-1 bg-transparent text-lg text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted)/0.8)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--fg)/0.4)]"
             placeholder="Tìm khách, MST, SĐT, mã đơn… gõ > để ra lệnh, hỏi AI, hoặc dán / kéo thả ảnh"
             value={q}
             onChange={(e) => { setQ(e.target.value); setActive(0); }}
@@ -146,24 +146,24 @@ export function CommandPalette({ onClose, extra = [], onAsk, image }: { onClose:
         {img ? <VisualSearchPanel file={img} onReset={() => { setImg(null); fileRef.current?.click(); }} onPick={onClose} /> : <ul id="spotlight-list" ref={listRef} className="max-h-[52vh] overflow-y-auto py-2" role="listbox">
           {results.map((r, i) => (
             <li key={r.id} id={`sp-${r.id}`} role="option" aria-selected={i === active}>
-              {(i === 0 || results[i - 1].group !== r.group) && <p className="px-5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">{r.group}</p>}
+              {(i === 0 || results[i - 1].group !== r.group) && <p className="px-5 pb-1 pt-2 text-[11px] font-semibold text-[rgb(var(--faint))]">{r.group}</p>}
               <button className={cn('flex w-full items-center gap-3 px-5 py-2.5 text-left', i === active ? 'bg-[rgb(var(--secondary)/0.25)]' : 'hover:bg-[rgb(var(--ink)/0.04)]')} onMouseEnter={() => setActive(i)} onClick={() => run(r)}>
                 <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded', r.cmd ? 'bg-[rgb(var(--accent)/0.12)] text-[rgb(var(--accent-fg))]' : 'bg-[rgb(var(--ink)/0.05)] text-[rgb(var(--muted))]')}><r.icon className="h-4 w-4" aria-hidden /></span>
                 <span className="min-w-0 flex-1"><span className="block truncate text-sm">{r.label}</span>{r.sub && <span className="block truncate text-xs text-[rgb(var(--muted))]">{r.sub}</span>}</span>
-                {i === active && <kbd className="rounded-sm border border-[rgb(var(--ink)/0.1)] px-1.5 py-0.5 text-[10px] text-[rgb(var(--muted))]">Enter</kbd>}
+                {i === active && <kbd className="rounded-sm border border-[rgb(var(--ink)/0.1)] px-1.5 py-0.5 text-[11px] text-[rgb(var(--muted))]">Enter</kbd>}
               </button>
             </li>
           ))}
-          {!results.length && <li className="px-5 py-10 text-center text-sm text-[rgb(var(--muted))]">Không có kết quả cho "{q}". Thử gõ <span className="font-mono text-[rgb(var(--accent-fg))]">&gt;</span> để xem danh sách lệnh.</li>}
+          {!results.length && <li className="px-5 py-10 text-center text-sm text-[rgb(var(--muted))]">Không có kết quả cho "{q}". Thử gõ <span className="code-chip">&gt;</span> để xem danh sách lệnh.</li>}
         </ul>}
-        <p className="flex flex-wrap gap-x-4 gap-y-1 border-t border-[rgb(var(--ink)/0.06)] px-5 py-2 text-[11px] text-[rgb(var(--faint))]"><span>↑ ↓ chọn</span><span>Enter mở</span><span><b className="font-mono text-[rgb(var(--accent-fg))]">&gt;</b> chế độ lệnh</span><span>Ctrl/⌘ + K mở từ mọi màn hình</span></p>
+        <p className="flex flex-wrap gap-x-4 gap-y-1 border-t border-[rgb(var(--ink)/0.06)] px-5 py-2 text-[11px] text-[rgb(var(--faint))]"><span>↑ ↓ chọn</span><span>Enter mở</span><span><b className="code-chip">&gt;</b> chế độ lệnh</span><span>Ctrl/⌘ + K mở từ mọi màn hình</span></p>
       </div>
     </div>
   );
 }
 
 /** Chọn phòng ban để phân lead (thủ công); phòng gợi ý theo quy tắc nhóm khách / khu vực được đánh dấu */
-export function RouteMenu({ lead, primary = true }: { lead: Lead; primary?: boolean }) {
+export function RouteMenu({ lead, primary = false }: { lead: Lead; primary?: boolean }) {
   const { routableDepts, routeLeads, canDo, customers, segRules, departments } = useApp();
   const hint = decideDept(lead, customers, segRules, departments).code;
   return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Bell, Building2, CheckCircle2, ChevronDown, ChevronRight, Eye, Factory, Globe, KeyRound, LogOut, Moon, RefreshCw, Settings, Sun, UserCog } from 'lucide-react';
 import { Avatar } from '../components/controls';
 import { EmptyState, Field, Modal } from '../components/ui';
@@ -73,7 +73,7 @@ export function NotificationBell() {
 export function SyncChip({ info }: { info: SyncInfo }) {
   const ago = info.lastOk ? Math.max(0, Math.round((Date.now() - info.lastOk) / 1000)) : null;
   const tone = info.state === 'error' || info.state === 'offline' ? 'red' : info.state === 'syncing' || info.pending > 0 ? 'orange' : 'teal';
-  const label = info.state === 'offline' ? 'Mất kết nối' : info.state === 'error' ? 'Lỗi đồng bộ' : info.state === 'syncing' ? 'Đang lưu...' : info.pending > 0 ? `Chờ lưu ${info.pending}` : 'Đã đồng bộ';
+  const label = info.state === 'offline' ? 'Mất kết nối' : info.state === 'error' ? 'Lỗi đồng bộ' : info.state === 'syncing' ? 'Đang lưu…' : info.pending > 0 ? `Chờ lưu ${info.pending}` : 'Đã đồng bộ';
   const title = `${label}${info.error ? `: ${info.error}` : ''}${ago !== null ? `. Lần cuối ${ago < 60 ? `${ago} giây` : `${Math.round(ago / 60)} phút`} trước` : ''}${info.state === 'offline' || info.state === 'error' ? '. Thay đổi vẫn giữ trên máy và tự gửi lại khi có mạng; đừng đóng tab.' : ''}`;
   const color = tone === 'red' ? 'border-[rgb(var(--danger)/0.5)] text-[rgb(var(--danger-fg))]' : tone === 'orange' ? 'border-[rgb(var(--accent)/0.5)] text-[rgb(var(--accent-fg))]' : 'border-[rgb(var(--success)/0.4)] text-[rgb(var(--success-fg))]';
   return (
@@ -91,7 +91,7 @@ export function Logo3A({ size = 28 }: { size?: number }) {
 }
 
 /** Breadcrumb dạng dropdown cho quản trị 3A: 3A Group › [Console | VASSH | ALUX] ▾ */
-export function TenantSwitcher({ orgId, consoleOn, onConsole, onSwitch }: { orgId: string; consoleOn: boolean; onConsole: () => void; onSwitch: (org: string) => void }) {
+export function TenantSwitcher({ orgId, consoleOn, onConsole, onSwitch, children }: { orgId: string; consoleOn: boolean; onConsole: () => void; onSwitch: (org: string) => void; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -109,7 +109,14 @@ export function TenantSwitcher({ orgId, consoleOn, onConsole, onSwitch }: { orgI
   const cur = consoleOn ? '__console' : orgId;
   const curItem = items.find((x) => x.id === cur) ?? items[0];
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className={cn('relative', children && 'min-w-0 flex-1')}>
+      {children ? (
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={open} aria-label={`Đang ở: ${curItem.label}. Chuyển doanh nghiệp`}
+          className={cn('-mx-2 flex w-[calc(100%+1rem)] items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/5', open && 'bg-white/5')}>
+          <span className="min-w-0 flex-1">{children}</span>
+          <ChevronDown className={cn('h-4 w-4 shrink-0 text-[rgb(var(--muted))] transition-transform', open && 'rotate-180')} aria-hidden />
+        </button>
+      ) : (
       <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={open} aria-label={`Đang ở: ${curItem.label}. Chuyển doanh nghiệp`}
         className={cn('flex items-center gap-1.5 rounded px-1.5 py-1 text-sm transition-colors hover:bg-[rgb(var(--secondary)/0.15)]', open && 'bg-[rgb(var(--secondary)/0.15)]')}>
         <Logo3A size={18} />
@@ -118,6 +125,7 @@ export function TenantSwitcher({ orgId, consoleOn, onConsole, onSwitch }: { orgI
         <span className="hidden font-semibold text-[rgb(var(--fg))] sm:inline">{consoleOn ? 'Console' : orgOf(orgId).shortName}</span>
         <ChevronDown className={cn('h-3.5 w-3.5 text-[rgb(var(--muted))] transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
+      )}
       {open && (
         <ul role="listbox" aria-label="Chọn không gian làm việc" className="glass absolute left-0 top-full z-[60] mt-1.5 w-72 rounded-md border border-[rgb(var(--ink)/0.1)] p-1 shadow-2xl motion-safe:animate-[popIn_.14s_ease-out]">
           {items.map((it) => {
@@ -181,7 +189,7 @@ export function ChangePasswordModal({ forced, onClose }: { forced?: boolean; onC
     }
   };
   return (
-    <Modal title={forced ? 'Đổi mật khẩu trước khi tiếp tục' : 'Đổi mật khẩu'} onClose={forced ? logout : onClose} footer={<>{forced ? <button className={btnGhost} onClick={logout}>Đăng xuất</button> : <button className={btnGhost} onClick={onClose}>Hủy</button>}<button className={btnPrimary} disabled={busy} onClick={() => void submit()}>{busy ? 'Đang lưu...' : 'Đổi mật khẩu'}</button></>}>
+    <Modal title={forced ? 'Đổi mật khẩu trước khi tiếp tục' : 'Đổi mật khẩu'} onClose={forced ? logout : onClose} footer={<>{forced ? <button className={btnGhost} onClick={logout}>Đăng xuất</button> : <button className={btnGhost} onClick={onClose}>Hủy</button>}<button className={btnPrimary} disabled={busy} onClick={() => void submit()}>{busy ? 'Đang lưu…' : 'Đổi mật khẩu'}</button></>}>
       {forced && <p className="mb-3 rounded bg-[rgb(var(--accent)/0.1)] p-3 text-sm text-[rgb(var(--accent-fg))]">Tài khoản đang dùng mật khẩu tạm hoặc mật khẩu mặc định. Đặt mật khẩu riêng để tiếp tục.</p>}
       <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
         <Field label="Mật khẩu hiện tại"><input className={inputCls} type="password" autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} /></Field>

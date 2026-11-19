@@ -5,7 +5,8 @@ import { Banknote, CalendarDays, Camera, ClipboardCheck, Download, HardHat, MapP
 import { Pagination, usePaged } from '../../components/controls';
 import { Drawer } from '../../components/drawer';
 import { useInRange } from '../../components/filters';
-import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, useSticky } from '../../components/ui';
+import { Sla } from '../../components/sla';
+import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, useSticky } from '../../components/ui';
 import { addMonthsISO, btnBase, btnGhost, btnPrimary, btnSm, C, compact, esc, fmtDate, fmtDT, inputCls, INSTALL_VIEW, installView, jobCustName, jobPhone, kpiGrid, nextCode, pad2, rowCls, tdCls, tdFirst, tdLast, todayISO, toLocal, uid, useApp, vnd } from '../../lib/core';
 import type { CompanyInfo, InstallAcceptance, InstallJob, InstallRow, InstallView, Job, Receipt, WorkOrder } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -50,7 +51,7 @@ export function InstallScheduleModal({ wo, ij, onClose }: { wo?: WorkOrder; ij?:
         <Field label="Dự kiến xong *"><input className={inputCls} type="datetime-local" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></Field>
         <Field label="Địa chỉ lắp đặt *" className="sm:col-span-2"><input className={inputCls} value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></Field>
         <Field label="Đội trưởng (bàn giao, thu tiền)"><select className={inputCls} value={f.leaderId} onChange={(e) => setF({ ...f, leaderId: e.target.value })}>{users.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
-        <Field label="Ghi chú"><input className={inputCls} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Giờ thi công, thang máy, bảo vệ tòa nhà..." /></Field>
+        <Field label="Ghi chú"><input className={inputCls} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Giờ thi công, thang máy, bảo vệ tòa nhà…" /></Field>
       </div>
       <p className="mb-2 mt-4 text-xs font-medium text-[rgb(var(--muted))]">Thành viên đội lắp</p>
       <div className="flex flex-wrap gap-2">
@@ -178,7 +179,7 @@ export function AcceptanceModal({ ij, onClose }: { ij: InstallJob; onClose: () =
   const sec = 'rounded-md border border-[rgb(var(--line))] p-4';
   return (
     <Modal title="Nghiệm thu, bàn giao & thu tiền" onClose={onClose} wide
-      footer={<><button className={btnGhost} onClick={onClose}>Hủy</button><button className={cn(btnBase, 'bg-[rgb(var(--success))] px-3.5 py-2 font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} disabled={busy} onClick={() => void save()}><ShieldCheck className="h-4 w-4" aria-hidden />{busy ? 'Đang ký...' : 'Ký & hoàn tất bàn giao'}</button></>}>
+      footer={<><button className={btnGhost} onClick={onClose}>Hủy</button><button className={cn(btnBase, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] px-3.5 py-2 font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]')} disabled={busy} onClick={() => void save()}><ShieldCheck className="h-4 w-4" aria-hidden />{busy ? 'Đang ký…' : 'Ký & hoàn tất bàn giao'}</button></>}>
       <div className="space-y-4">
         <section className={sec}>
           <h3 className="mb-2 text-sm font-semibold">1. Hạng mục bàn giao</h3>
@@ -236,7 +237,7 @@ export function AcceptanceModal({ ij, onClose }: { ij: InstallJob; onClose: () =
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Đại diện khách *"><input className={inputCls} value={rep} onChange={(e) => setRep(e.target.value)} /></Field>
             <Field label="Chức vụ / quan hệ"><input className={inputCls} value={repTitle} onChange={(e) => setRepTitle(e.target.value)} /></Field>
-            <Field label="Số điện thoại"><input className={inputCls} inputMode="tel" value={repPhone} onChange={(e) => setRepPhone(e.target.value)} /></Field>
+            <Field label="Số điện thoại"><input type="tel" autoComplete="tel" className={inputCls} inputMode="tel" value={repPhone} onChange={(e) => setRepPhone(e.target.value)} /></Field>
           </div>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SignaturePad label="Chữ ký khách hàng *" signer={rep} value={custSign} onChange={setCustSign} />
@@ -313,7 +314,7 @@ export function InstallDrawer({ id, onClose }: { id: string; onClose: () => void
   return (
     <Drawer title={custName} eyebrow={`${i.code}${job ? ` · ${job.code}` : ''}`} badge={<Chip tone={INSTALL_VIEW[view].tone}>{INSTALL_VIEW[view].label}</Chip>} onClose={onClose}
       actions={<>
-        {i.status !== 'ACCEPTED' && can && <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} onClick={() => setModal('accept')}><ClipboardCheck className="h-3.5 w-3.5" aria-hidden />Nghiệm thu, bàn giao & thu tiền</button>}
+        {i.status !== 'ACCEPTED' && can && <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]')} onClick={() => setModal('accept')}><ClipboardCheck className="h-3.5 w-3.5" aria-hidden />Nghiệm thu, bàn giao & thu tiền</button>}
         {i.status !== 'ACCEPTED' && can && <button className={cn(btnGhost, btnSm)} onClick={() => setModal('reschedule')}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Đổi lịch</button>}
         {a && <button className={cn(btnPrimary, btnSm)} onClick={print}><Download className="h-3.5 w-3.5" aria-hidden />Biên bản PDF</button>}
         {a && money && money.remaining > 0 && (can || canDo('job.manage')) && <button className={cn(btnGhost, btnSm)} onClick={() => setModal('collect')}><Banknote className="h-3.5 w-3.5" aria-hidden />Thu tiền còn lại</button>}
@@ -339,7 +340,7 @@ export function InstallDrawer({ id, onClose }: { id: string; onClose: () => void
       <section>
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 className="flex items-center gap-2 text-sm font-semibold"><MapPin className="h-4 w-4 text-[rgb(var(--accent))]" aria-hidden />Check-in công trình ({i.checkins.length})</h3>
-          {can && i.status !== 'ACCEPTED' && <FilePicker accept="image/*" multiple disabled={busy} onFiles={checkin} className={cn(btnGhost, btnSm, 'inline-flex')}><Camera className="h-3.5 w-3.5" aria-hidden />{busy ? 'Đang lấy vị trí...' : 'Check-in & chụp ảnh'}</FilePicker>}
+          {can && i.status !== 'ACCEPTED' && <FilePicker accept="image/*" multiple disabled={busy} onFiles={checkin} className={cn(btnGhost, btnSm, 'inline-flex')}><Camera className="h-3.5 w-3.5" aria-hidden />{busy ? 'Đang lấy vị trí…' : 'Check-in & chụp ảnh'}</FilePicker>}
         </div>
         {i.checkins.length ? (
           <ul className="space-y-2">
@@ -366,10 +367,10 @@ export function InstallDrawer({ id, onClose }: { id: string; onClose: () => void
           {(a.customerSign || a.staffSign) && (
             <div className="mt-3 grid grid-cols-2 gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {[['Khách hàng', a.customerSign], ['Công ty', a.staffSign]].map(([k, v]) => <div key={k} className="rounded bg-white p-1.5"><p className="text-[10px] text-slate-500">{k}</p>{v && <img src={v} alt={`Chữ ký ${k}`} className="h-14 w-full object-contain" />}</div>)}
+              {[['Khách hàng', a.customerSign], ['Công ty', a.staffSign]].map(([k, v]) => <div key={k} className="rounded bg-white p-1.5"><p className="text-[11px] text-slate-500">{k}</p>{v && <img src={v} alt={`Chữ ký ${k}`} className="h-14 w-full object-contain" />}</div>)}
             </div>
           )}
-          {a.hash && <p className="mt-2 break-all font-mono text-[10px] text-[rgb(var(--muted))]">Mã xác thực {a.hash.slice(0, 32).toUpperCase()}</p>}
+          {a.hash && <p className="mt-2 break-all font-mono text-[11px] text-[rgb(var(--muted))]">Mã xác thực {a.hash.slice(0, 32).toUpperCase()}</p>}
         </section>
       )}
       {modal === 'accept' && <AcceptanceModal ij={i} onClose={() => setModal(null)} />}
@@ -406,10 +407,12 @@ export function InstallModule() {
         <StatCard label="Chờ thu tiền" value={String(count('WAIT_PAYMENT'))} icon={Banknote} color={C.red} sub={compact(rows.filter((r) => r.view === 'WAIT_PAYMENT' && r.job).reduce((s, r) => s + jobMoney(r.job!, receipts).receivable, 0))} />
         <StatCard label="Hoàn tất trong kỳ" value={String(count('DONE'))} icon={ShieldCheck} color={C.teal} sub="Đã thu đủ, đang bảo hành" />
       </div>
+      <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
+        <SearchBox value={q} onChange={setQ} placeholder="Tìm khách hàng, số điện thoại, địa chỉ" />
+        <div className="min-w-0 flex-1"><StagePills items={[{ id: 'ALL' as InstallView | 'ALL', label: 'Tất cả', count: rows.length }, ...order.map((v) => ({ id: v as InstallView | 'ALL', label: INSTALL_VIEW[v].label, count: count(v) }))]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} /></div>
+      </div>
       <Panel>
-        <div className="mb-3 flex flex-wrap items-center gap-2"><SearchBox value={q} onChange={setQ} placeholder="Tìm khách hàng, số điện thoại, địa chỉ" /></div>
-        <StagePills items={[{ id: 'ALL' as InstallView | 'ALL', label: 'Tất cả', count: rows.length }, ...order.map((v) => ({ id: v as InstallView | 'ALL', label: INSTALL_VIEW[v].label, count: count(v) }))]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} />
-        <div className="mt-3 space-y-2 md:hidden">
+        <div className="space-y-2 md:hidden">
           {paged.slice.map((r, i) => (
             <button key={r.key} className="w-full rounded bg-[rgb(var(--raised))] p-3 text-left" onClick={() => (r.ij ? setOpen(r.ij.id) : r.wo && setSchedule(r.wo))}>
               <div className="flex items-start justify-between gap-2"><p className="text-sm font-medium">{(paged.page - 1) * 20 + i + 1}. {r.job ? jobCustName(r.job, customers) : '—'}</p><Chip tone={INSTALL_VIEW[r.view].tone}>{INSTALL_VIEW[r.view].label}</Chip></div>
@@ -418,19 +421,20 @@ export function InstallModule() {
             </button>
           ))}
         </div>
-        <div className="mt-3 hidden md:block">
-          <Table head={['STT', 'Khách hàng', 'Số điện thoại', 'Địa chỉ', 'Thời gian lắp đặt', 'Trạng thái']} minW={960}>
+        <div className="hidden md:block">
+          <Table head={['STT', 'Mã', 'Khách hàng', 'Điện thoại', 'Địa chỉ', 'Lịch lắp', 'Đội trưởng', 'Trạng thái', '']} minW={1200}>
             {paged.slice.map((r, i) => (
               <tr key={r.key} className={cn(rowCls, 'cursor-pointer')} onClick={() => (r.ij ? setOpen(r.ij.id) : r.wo && canDo('install.manage') && setSchedule(r.wo))}>
                 <td className={cn(tdFirst, 'w-12 tabular-nums text-[rgb(var(--muted))]')}>{(paged.page - 1) * 20 + i + 1}</td>
-                <td className={tdCls}><p className="font-medium">{r.job ? jobCustName(r.job, customers) : customers.find((c) => c.id === r.ij?.customerId)?.name ?? '—'}</p><p className="text-xs text-[rgb(var(--muted))]">{r.ij ? `${r.ij.code}, ${userName(r.ij.leaderId)}` : r.wo?.code}</p></td>
-                <td className={cn(tdCls, 'whitespace-nowrap tabular-nums')}>{r.job ? jobPhone(r.job, customers) : ''}</td>
-                <td className={cn(tdCls, 'max-w-[280px]')}><p className="line-clamp-2 text-xs">{r.ij?.address ?? r.job?.siteAddress}</p></td>
-                <td className={cn(tdCls, 'whitespace-nowrap text-xs tabular-nums', r.ij?.status === 'SCHEDULED' && r.time < nowL && 'text-[rgb(var(--danger-fg))]')}>{r.time ? fmtDT(r.time) : '—'}</td>
-                <td className={tdLast}>
-                  {r.view === 'WAIT'
-                    ? <button className={cn(btnPrimary, btnSm, 'whitespace-nowrap')} disabled={!canDo('install.manage')} onClick={(e) => { e.stopPropagation(); if (r.wo) setSchedule(r.wo); }}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Lên lịch lắp đặt</button>
-                    : <Chip tone={INSTALL_VIEW[r.view].tone}>{INSTALL_VIEW[r.view].label}</Chip>}
+                <td className={tdCls}><Code>{r.ij?.code ?? r.wo?.code ?? '—'}</Code></td>
+                <td className={tdCls}><span className="block max-w-[220px] truncate font-medium">{r.job ? jobCustName(r.job, customers) : customers.find((c) => c.id === r.ij?.customerId)?.name ?? '—'}</span></td>
+                <td className={cn(tdCls, 'tabular-nums')}>{r.job ? jobPhone(r.job, customers) : '—'}</td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[240px] truncate" title={r.ij?.address ?? r.job?.siteAddress}>{r.ij?.address ?? r.job?.siteAddress}</span></td>
+                <td className={tdCls}>{r.time ? (r.ij?.status === 'SCHEDULED' && r.time < nowL ? <Sla tone="over">{fmtDT(r.time)} · quá hẹn</Sla> : <span className="font-mono text-xs text-[rgb(var(--fg2))]">{fmtDT(r.time)}</span>) : <span className="text-[rgb(var(--faint))]">Chưa hẹn</span>}</td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{r.ij ? userName(r.ij.leaderId) : '—'}</td>
+                <td className={tdCls}><Chip tone={INSTALL_VIEW[r.view].tone}>{INSTALL_VIEW[r.view].label}</Chip></td>
+                <td className={cn(tdLast, 'text-right')}>
+                  {r.view === 'WAIT' && <button className={cn(btnGhost, btnSm)} disabled={!canDo('install.manage')} onClick={(e) => { e.stopPropagation(); if (r.wo) setSchedule(r.wo); }}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Hẹn lắp</button>}
                 </td>
               </tr>
             ))}

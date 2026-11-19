@@ -106,7 +106,7 @@ export function inkOn(hex: string) {
 export function OrgMark({ o, size = 40 }: { o: Pick<Org, 'shortName' | 'color' | 'logo'>; size?: number }) {
   if (o.logo) return <img src={o.logo} alt="" style={{ height: size, width: size }} className="shrink-0 rounded-lg bg-white object-contain p-1" />;
   const ini = o.shortName.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 2).toUpperCase() || '?';
-  return <span className="flex shrink-0 items-center justify-center rounded-lg font-display font-extrabold" style={{ height: size, width: size, background: o.color, color: inkOn(o.color), fontSize: size * 0.38 }} aria-hidden>{ini}</span>;
+  return <span className="flex shrink-0 items-center justify-center rounded-lg font-display font-semibold" style={{ height: size, width: size, background: o.color, color: inkOn(o.color), fontSize: size * 0.38 }} aria-hidden>{ini}</span>;
 }
 
 /**
@@ -147,10 +147,10 @@ export function LoginScreen({ onLogin, idleOut, dataLocked, brand, choices, onPi
     setBusy(false);
     if (err) setError(err);
   };
-  const field = 'peer h-12 w-full rounded-md border border-[rgb(var(--ink)/0.1)] bg-[#0B1220]/80 pl-11 pr-3 text-[15px] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--faint))] transition-[border-color,box-shadow] focus:outline-none';
+  const field = 'peer h-12 w-full rounded-md border border-[rgb(var(--ink)/0.1)] bg-[#0B1220]/80 pl-11 pr-3 text-[15px] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--faint))] transition-[border-color,box-shadow] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--fg)/0.4)]';
   const brandBlock = (big: boolean) => brand
-    ? <div className="flex items-center gap-3"><OrgMark o={brand} size={big ? 46 : 36} /><div className="min-w-0"><p className={cn('font-display font-extrabold leading-tight tracking-tight', big ? 'text-2xl' : 'text-lg')}>{brand.shortName}</p><p className="truncate text-xs text-[rgb(var(--muted))]">{brand.name}</p></div></div>
-    : <div className="flex items-center gap-3"><Logo3A size={big ? 46 : 36} /><div className="min-w-0"><p className={cn('font-display font-extrabold leading-tight tracking-tight', big ? 'text-2xl' : 'text-lg')}>3A GROUP</p><p className="truncate text-[11px] text-[rgb(var(--muted))]">Vietnam Joint Stock Company</p></div></div>;
+    ? <div className="flex items-center gap-3"><OrgMark o={brand} size={big ? 46 : 36} /><div className="min-w-0"><p className={cn('font-display font-semibold leading-tight tracking-normal', big ? 'text-2xl' : 'text-lg')}>{brand.shortName}</p><p className="truncate text-xs text-[rgb(var(--muted))]">{brand.name}</p></div></div>
+    : <div className="flex items-center gap-3"><Logo3A size={big ? 46 : 36} /><div className="min-w-0"><p className={cn('font-display font-semibold leading-tight tracking-normal', big ? 'text-2xl' : 'text-lg')}>3A GROUP</p><p className="truncate text-[11px] text-[rgb(var(--muted))]">Vietnam Joint Stock Company</p></div></div>;
   return (
     <div className="relative grid min-h-screen bg-[#070B12] text-[rgb(var(--fg))] lg:grid-cols-[5fr_7fr]" style={{ '--acc': accent } as CSSProperties}>
       <style>{`.login-field:focus{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 25%,transparent)}.login-field:focus~.login-ico{color:var(--acc)}.login-btn{box-shadow:0 10px 30px -8px color-mix(in srgb,var(--acc) 70%,transparent)}.login-btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.08)}.login-btn:hover .login-arrow{transform:translateX(4px)}`}</style>
@@ -165,7 +165,7 @@ export function LoginScreen({ onLogin, idleOut, dataLocked, brand, choices, onPi
           <div className="rounded-xl p-px" style={{ background: `linear-gradient(140deg, ${accent}99, rgba(255,255,255,.08) 40%, rgba(255,255,255,.04) 60%, ${accentHi}55)` }}>
             {!choices ? (
               <form className="space-y-4 rounded-[11px] bg-[#111827]/85 p-6 shadow-[0_30px_80px_-20px_rgba(0,0,0,.7)] backdrop-blur-xl" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
-                <h1 className="font-display text-xl font-extrabold tracking-tight">Đăng nhập</h1>
+                <h1 className="font-display text-xl font-semibold tracking-normal">Đăng nhập</h1>
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-medium text-[rgb(var(--muted))]">Email công ty</span>
                   <span className="relative block">
@@ -183,14 +183,14 @@ export function LoginScreen({ onLogin, idleOut, dataLocked, brand, choices, onPi
                 </label>
                 <label className="flex items-start gap-2.5 text-sm text-[rgb(var(--fg2))]"><input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0" style={{ accentColor: accent }} checked={remember} onChange={(e) => setRemember(e.target.checked)} /><span>Ghi nhớ đăng nhập trên máy này<span className="block text-xs text-[rgb(var(--faint))]">Không chọn khi dùng máy chung</span></span></label>
                 {error && <p className="rounded-md border border-[rgb(var(--danger)/0.4)] bg-[rgb(var(--danger)/0.1)] px-3 py-2 text-sm text-[rgb(var(--danger-fg))]" role="alert">{error}</p>}
-                <button type="submit" disabled={!!busy || !email || !password} className="login-btn flex h-11 w-full items-center justify-center gap-2 rounded-md text-[15px] font-bold transition-[transform,filter] duration-200 disabled:cursor-not-allowed disabled:opacity-50" style={{ background: btnBg, color: brand ? inkOn(brand.color) : '#0F141E' }}>
-                  {busy ? <><RefreshCw className="h-4 w-4 motion-safe:animate-spin" aria-hidden />Đang xác thực...</> : <>Đăng nhập<ArrowRight className="login-arrow h-4 w-4 transition-transform duration-200" aria-hidden /></>}
+                <button type="submit" disabled={!!busy || !email || !password} className="login-btn flex h-11 w-full items-center justify-center gap-2 rounded-md text-[15px] font-semibold transition-[transform,filter] duration-200 disabled:cursor-not-allowed disabled:opacity-50" style={{ background: btnBg, color: brand ? inkOn(brand.color) : '#0F141E' }}>
+                  {busy ? <><RefreshCw className="h-4 w-4 motion-safe:animate-spin" aria-hidden />Đang xác thực…</> : <>Đăng nhập<ArrowRight className="login-arrow h-4 w-4 transition-transform duration-200" aria-hidden /></>}
                 </button>
                 {CLOUD_ON && <p className="text-center text-[11px] text-[rgb(var(--muted))]">Quên mật khẩu: nhờ Giám đốc doanh nghiệp cấp lại.</p>}
               </form>
             ) : (
               <div className="space-y-3 rounded-[11px] bg-[#111827]/85 p-6 shadow-[0_30px_80px_-20px_rgba(0,0,0,.7)] backdrop-blur-xl">
-                <div><h1 className="font-display text-xl font-extrabold tracking-tight">Chọn doanh nghiệp</h1><p className="mt-1 truncate text-xs text-[rgb(var(--muted))]">Đăng nhập: {choices.email}</p></div>
+                <div><h1 className="font-display text-xl font-semibold tracking-normal">Chọn doanh nghiệp</h1><p className="mt-1 truncate text-xs text-[rgb(var(--muted))]">Đăng nhập: {choices.email}</p></div>
                 {choices.note && <p className="rounded-md border border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--accent)/0.08)] px-3 py-2 text-xs text-[rgb(var(--accent-fg))]">{choices.note}</p>}
                 <ul className="max-h-[52vh] space-y-2 overflow-y-auto pr-1">
                   {choices.platform && (
@@ -220,7 +220,7 @@ export function LoginScreen({ onLogin, idleOut, dataLocked, brand, choices, onPi
         <div className="relative flex flex-1 flex-col justify-center px-12 py-12 xl:px-20">
           <div className="mb-10">{brandBlock(true)}</div>
           <div key={slide} className="motion-safe:animate-[popIn_.5s_ease-out]" role="group" aria-roledescription="slide" aria-label={`${slide + 1} / ${slides.length}: ${cur.title}`}>
-            <h2 className="font-display max-w-xl text-4xl font-extrabold leading-[1.12] tracking-tight xl:text-[44px]">{cur.title}</h2>
+            <h2 className="font-display max-w-xl text-4xl font-semibold leading-[1.12] tracking-normal xl:text-[44px]">{cur.title}</h2>
             <p className="mt-4 max-w-lg text-[15px] text-[rgb(var(--muted))]">{cur.desc}</p>
             <div className="mt-8"><LoginArt kind={cur.kind} accent={accent} /></div>
             <ul className="mt-8 grid max-w-2xl gap-3 xl:grid-cols-3">
@@ -229,7 +229,7 @@ export function LoginScreen({ onLogin, idleOut, dataLocked, brand, choices, onPi
           </div>
         </div>
         <div className="relative flex items-center gap-3 px-12 pb-10 xl:px-20">
-          {slides.map((x, i) => <button key={x.title} onClick={() => setSlide(i)} aria-label={`Xem ${x.title}`} aria-current={i === slide % slides.length} className="h-1.5 rounded-full transition-all duration-300" style={{ width: i === slide % slides.length ? 36 : 12, background: i === slide % slides.length ? accentHi : 'rgba(255,255,255,.2)' }} />)}
+          {slides.map((x, i) => <button key={x.title} onClick={() => setSlide(i)} aria-label={`Xem ${x.title}`} aria-current={i === slide % slides.length} className="h-1.5 rounded-full transition-colors duration-300" style={{ width: i === slide % slides.length ? 36 : 12, background: i === slide % slides.length ? accentHi : 'rgba(255,255,255,.2)' }} />)}
           <span className="ml-auto text-xs text-[rgb(var(--faint))]">{paused ? 'Đang tạm dừng' : 'Tự chuyển sau 6 giây'}</span>
         </div>
       </section>

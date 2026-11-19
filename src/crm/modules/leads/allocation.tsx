@@ -1,17 +1,17 @@
 'use client';
 
-import { AlertTriangle, ArrowRight, ChevronDown, Clock, Inbox, Lock, MapPin, Pencil, Phone, Trash2, UserPlus, Users, Wallet } from 'lucide-react';
 import { type DragEvent, type ReactNode, useState } from 'react';
+import { ArrowRight, ChevronDown, Clock, Inbox, Lock, MapPin, Pencil, Phone, Trash2, Users, Wallet } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { RouteMenu } from '../../components/command-palette';
 import { CommentButton } from '../../components/comments';
 import { AgeBadge, Avatar, BulkBar, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
-import { QuoteTimer } from '../../components/sla';
-import { Chip, EmptyState, Modal, monthly, Panel, ProgressBar, StatCard, Table, useSticky, ViewSwitch } from '../../components/ui';
+import { QuoteTimer, Sla } from '../../components/sla';
+import { Chip, Code, EmptyState, Modal, Panel, Table, useSticky, ViewSwitch } from '../../components/ui';
 import { scoreLead } from '../../lib/business';
-import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, C, compact, deptIcon, fmtDur, initials, inputCls, isAcceptLate, isQuoteOverdue, kpiGrid, LEAD_STATUS, leadAgeH, leadAt, leadDate, OPEN_STATUSES, overdueCls, pct, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, STEP_COLORS, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
+import { boqIsEstimate, boqTotal, btnGhost, btnPrimary, btnSm, C, compact, deptIcon, fmtDur, initials, inputCls, isAcceptLate, isQuoteOverdue, LEAD_STATUS, leadAgeH, leadDate, OPEN_STATUSES, overdueCls, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
 import type { ConfirmState, DeptCode, Lead, LeadStatus, MenuItem, Region } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
@@ -27,8 +27,8 @@ import { cn } from '../../lib/utils';
 export function SlaTimer({ deadline, now }: { deadline: number; now: number | null }) {
   if (now == null) return <span className="text-xs text-[rgb(var(--muted))]">--:--</span>;
   const diff = deadline - now;
-  if (diff < 0) return <Chip tone="red"><AlertTriangle className="h-3 w-3" aria-hidden />Quá SLA {fmtDur(diff)}</Chip>;
-  return <Chip tone={diff < 30 * 6e4 ? 'orange' : 'muted'}><Clock className="h-3 w-3" aria-hidden />Còn {fmtDur(diff)}</Chip>;
+  if (diff < 0) return <Sla tone="over">Quá {fmtDur(diff)}</Sla>;
+  return <Sla tone={diff < 30 * 6e4 ? 'tight' : 'ok'}>Còn {fmtDur(diff)}</Sla>;
 }
 
 export function AssignModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
@@ -172,8 +172,8 @@ export function AllocationPage() {
   const sel = useSelection(tableRows.filter((l) => ['NEW', 'NURTURE', 'ROUTED'].includes(l.status)).map((l) => l.id));
   const slaCell = (l: Lead) => l.status === 'ASSIGNED' ? <SlaTimer deadline={l.slaDeadline ?? 0} now={now} /> : l.status === 'ACCEPTED' ? <QuoteTimer deadline={l.quoteDeadline} now={now} /> : <AgeBadge hours={leadAgeH(l, now)} />;
   const actionCell = (l: Lead) => l.status === 'NEW' ? <RouteMenu lead={l} />
-    : l.status === 'ROUTED' ? <button disabled={!canAssignIn(l.dept)} className={cn(btnPrimary, 'px-2.5 py-1 text-xs')} onClick={() => setAssigning(l)}>Chỉ định</button>
-    : l.status === 'ASSIGNED' ? <button disabled={!canAcceptLead(l)} className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')} onClick={() => acceptLead(l.id)}>Tiếp nhận</button>
+    : l.status === 'ROUTED' ? <button disabled={!canAssignIn(l.dept)} className={cn(btnGhost, btnSm)} onClick={() => setAssigning(l)}>Chỉ định</button>
+    : l.status === 'ASSIGNED' ? <button disabled={!canAcceptLead(l)} className={cn(btnGhost, btnSm)} onClick={() => acceptLead(l.id)}>Tiếp nhận</button>
     : null;
 
   type Col = { key: string; title: string; icon: typeof Wallet; tint: string; count: number; body: ReactNode; drop?: DeptCode };
@@ -222,41 +222,18 @@ export function AllocationPage() {
 
   return (
     <div className="space-y-4">
-      <div className={kpiGrid('lg:grid-cols-4')}>
-        <StatCard label="Tổng lead" value={String(total)} icon={Users} color={C.orange} highlight spark={monthly(scope, leadAt)} />
-        <StatCard label="Chờ phân phòng" value={String(scope.filter((l) => l.status === 'NEW').length)} icon={Inbox} color="#F6B533" sub={`${pct(scope.filter((l) => l.status === 'NEW').length, total)} tổng lead`} />
-        <StatCard label="Chờ chỉ định" value={String(scope.filter((l) => l.status === 'ROUTED').length)} icon={UserPlus} color={C.blue} sub={`${pct(scope.filter((l) => l.status === 'ROUTED').length, total)} tổng lead`} />
-        <StatCard label="Quá SLA" value={String(late)} icon={Clock} color={C.red} sub="Tiếp nhận 2h hoặc báo giá 24h" />
-      </div>
+      <ol className="kpi-strip grid grid-cols-2 lg:grid-cols-4" aria-label="Quy trình phân lead">
+        {steps.map(([title, n], i) => (
+          <li key={title} className="flex min-w-0 flex-col gap-1 px-4 py-3">
+            <p className="flex items-baseline gap-2 text-[12.5px] text-[rgb(var(--muted))]"><span className="font-mono text-[11px] text-[rgb(var(--faint))]">{String(i + 1).padStart(2, '0')}</span><span className="truncate">{title}</span></p>
+            <p className="text-[22px] font-medium leading-7 tabular-nums">{n}<span className="ml-1 text-xs font-normal text-[rgb(var(--muted))]">/ {total} lead</span></p>
+            <div className="mt-1 h-1 rounded-full bg-[rgb(var(--ink)/0.08)]"><div className="h-full rounded-full" style={{ width: `${total ? (n / total) * 100 : 0}%`, background: i === 3 ? 'rgb(var(--accent))' : 'rgb(var(--fg) / 0.75)' }} /></div>
+          </li>
+        ))}
+      </ol>
+      {late > 0 && <p className="flex items-center gap-2 text-sm text-[rgb(var(--fg2))]"><Clock className="h-4 w-4 text-[rgb(var(--danger-fg))]" aria-hidden />{late} lead quá SLA (tiếp nhận 2 giờ hoặc báo giá 24 giờ), xếp đầu bảng</p>}
 
-      {/* Quy trình 2 bước */}
-      <div className="rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-3 sm:p-4">
-        <ol className="grid grid-cols-4 gap-2 lg:gap-0">
-          {steps.map(([title, n], i) => {
-            const p = total ? (n / total) * 100 : 0;
-            return (
-              <li key={title} className="flex min-w-0 items-start gap-2 lg:gap-3 lg:pr-6">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-col items-center gap-1 text-center lg:flex-row lg:items-center lg:gap-3 lg:text-left">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-[rgb(var(--on-accent))] lg:h-11 lg:w-11 lg:text-sm" style={{ background: STEP_COLORS[i] }}>{String(i + 1).padStart(2, '0')}</span>
-                    <div className="min-w-0">
-                      <p className="truncate text-[11px] font-medium text-[rgb(var(--fg))] lg:text-sm">{title}</p>
-                      <p className="hidden text-xs tabular-nums text-[rgb(var(--muted))] lg:block">{n} / {total} lead</p>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="flex-1"><ProgressBar value={n} max={total || 1} tone={STEP_COLORS[i]} /></div>
-                    <span className="text-[11px] tabular-nums text-[rgb(var(--muted))]">{p.toFixed(0)}%</span>
-                  </div>
-                </div>
-                {i < 3 && <ArrowRight className="mt-3 hidden h-5 w-5 shrink-0 text-[rgb(var(--muted))] lg:block" aria-hidden />}
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-
-      <FilterBar q={q} onQ={setQ} placeholder="Tìm MST, tên khách hàng, mã lead..." status={st} onStatus={setSt} extraActive={(reg !== 'ALL' ? 1 : 0) + (seg !== 'ALL' ? 1 : 0)}
+      <FilterBar q={q} onQ={setQ} placeholder="Tìm MST, tên khách hàng, mã lead…" status={st} onStatus={setSt} extraActive={(reg !== 'ALL' ? 1 : 0) + (seg !== 'ALL' ? 1 : 0)}
         actions={<>
           <ViewSwitch value={view} onChange={setView} options={['table', 'board']} />
         </>}
@@ -282,17 +259,19 @@ export function AllocationPage() {
           <Panel>
             <Table stt={Math.max(0, paged.from - 1)} minW={1000} head={[
               <input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" disabled={!canRoute} />,
-              'Mã & khách hàng', 'Phòng ban', 'Phụ trách', <span key="v" className="block text-right">Giá trị BOQ</span>, 'SLA / thời hạn', 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>,
+              'Mã', 'Khách hàng', 'Nhu cầu', 'Phòng', 'Phụ trách', <span key="v" className="block text-right">BOQ</span>, 'SLA', 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>,
             ]}>
               {paged.slice.map((l) => {
                 const late = isAcceptLate(l, now) || isQuoteOverdue(l, now);
                 const canSel = ['NEW', 'NURTURE', 'ROUTED'].includes(l.status);
                 return (
                   <tr key={l.id} className={cn(rowCls, sel.has(l.id) && 'bg-[rgb(var(--accent)/0.05)]')}>
-                    <td className={cn(tdFirst, 'w-10')}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" disabled={!canSel || !canRoute} checked={sel.has(l.id)} onChange={() => sel.toggle(l.id)} aria-label={`Chọn ${l.company}`} /></td>
-                    <td className={cn(tdCls, 'max-w-[230px]')} title={`${l.boqNote ?? ''}\n${l.province ?? REGION_LABEL[l.region]}${l.phone ? ` · ${l.phone}` : ''}`}><p className="truncate font-medium">{l.company}</p><p className="truncate text-xs text-[rgb(var(--muted))]"><span className="font-mono text-[rgb(var(--accent-fg))]">{l.code}</span> · {l.boqNote || (l.province ?? REGION_LABEL[l.region])}</p></td>
-                    <td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{l.dept ? deptOf(l.dept)?.short ?? l.dept : <span className="text-[rgb(var(--muted))]">MKT</span>}</td>
-                    <td className={cn(tdCls, 'max-w-[170px]')}>{l.assignee ? <span className="flex items-center gap-2"><Avatar name={userName(l.assignee)} size={26} /><span className="truncate text-sm">{userName(l.assignee)}</span></span> : <span className="text-xs text-[rgb(var(--muted))]">{l.dept ? 'Chờ chỉ định' : '—'}</span>}</td>
+                    <td className={cn(tdFirst, 'w-10', late && 'shadow-[inset_3px_0_0_rgb(var(--danger))]')}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" disabled={!canSel || !canRoute} checked={sel.has(l.id)} onChange={() => sel.toggle(l.id)} aria-label={`Chọn ${l.company}`} /></td>
+                    <td className={tdCls}><Code>{l.code}</Code></td>
+                    <td className={tdCls} title={`${l.province ?? REGION_LABEL[l.region]}${l.phone ? ` · ${l.phone}` : ''}`}><span className="block max-w-[240px] truncate font-medium">{l.company}</span></td>
+                    <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[200px] truncate" title={l.boqNote}>{l.boqNote || (l.province ?? REGION_LABEL[l.region])}</span></td>
+                    <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{l.dept ? deptOf(l.dept)?.short ?? l.dept : <span className="text-[rgb(var(--muted))]">MKT</span>}</td>
+                    <td className={cn(tdCls, 'max-w-[170px]')}>{l.assignee ? <span className="flex items-center gap-2"><Avatar name={userName(l.assignee)} size={22} /><span className="truncate text-sm">{userName(l.assignee)}</span></span> : <span className="text-xs text-[rgb(var(--muted))]">{l.dept ? 'Chờ chỉ định' : '—'}</span>}</td>
                     <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{boqTotal(l) ? compact(boqTotal(l)) : '—'}</td>
                     <td className={cn(tdCls, 'whitespace-nowrap')}>{slaCell(l)}</td>
                     <td className={cn(tdCls, 'whitespace-nowrap')}>{late ? <Chip tone="red">Quá hạn SLA</Chip> : <Chip tone={LEAD_STATUS[l.status].tone}>{LEAD_STATUS[l.status].label}</Chip>}</td>

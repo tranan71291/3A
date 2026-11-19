@@ -1,12 +1,12 @@
 'use client';
 
-import { Building2, CalendarDays, CheckCircle2, ChevronRight, Copy, Download, Globe, KeyRound, Link2, LogIn, Pencil, Plug, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, Users, XCircle } from 'lucide-react';
+import { Building2, CalendarDays, CheckCircle2, ChevronRight, Copy, Download, KeyRound, Link2, LogIn, Pencil, Plug, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, Users, XCircle } from 'lucide-react';
 import { Fragment, useState } from 'react';
-import { Pagination, usePaged } from '../../components/controls';
+import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { Chip, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { cloudMessage } from '../../lib/cloud';
-import { btnAccent, btnBase, btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, isPlatformEmail, kpiGrid, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, isPlatformEmail, kpiGrid, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { AddTenantModal, OrgMark } from '../../lib/modules';
 import { hashPassword } from '../../lib/security';
@@ -30,11 +30,8 @@ export function PlatformConsole() {
   const meta = CONSOLE_TABS.find((t) => t.id === tab)!;
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3 rounded-md border border-[rgb(var(--accent)/0.3)] bg-gradient-to-r from-[rgb(var(--accent)/0.1)] to-transparent px-4 py-3">
-        <Globe className="h-6 w-6 text-[rgb(var(--accent))]" aria-hidden />
-        <div className="min-w-0 flex-1"><p className="font-semibold">3A Platform Console · {meta.label}</p><p className="text-xs text-[rgb(var(--muted))]">{meta.desc}</p></div>
-        <div className="w-full min-w-0 overflow-x-auto lg:w-auto"><Tabs variant="pill" tabs={CONSOLE_TABS.map((t) => ({ id: t.id, label: t.label }))} value={tab} onChange={platform.setConsoleTab} /></div>
-      </div>
+      <div className="lg:hidden"><Tabs tabs={CONSOLE_TABS.map((t) => ({ id: t.id, label: t.label }))} value={tab} onChange={platform.setConsoleTab} /></div>
+      <p className="sr-only">{meta.desc}</p>
       {tab === 'overview' && <ConsoleOverview />}
       {tab === 'tenants' && <ConsoleTenants />}
       {tab === 'modules' && <ConsoleModules />}
@@ -159,7 +156,7 @@ export function ConsoleUsers() {
                 <div key={k} className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">{k}</dt><dd className="font-semibold tabular-nums">{v}</dd></div>
               ))}
             </dl>
-            <h4 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">Vai trò → số phân hệ được truy cập</h4>
+            <h4 className="mb-1.5 mt-4 text-xs font-semibold text-[rgb(var(--muted))]">Vai trò → số phân hệ được truy cập</h4>
             <ul className="space-y-1.5">
               {ROLES.map((r) => {
                 const n = MODULES.filter((m) => perms.modules?.[r]?.[m]).length;
@@ -217,47 +214,43 @@ export function ConsoleTenants() {
   const linkOf = (id: string) => (typeof window !== 'undefined' ? `${window.location.origin}/${id}` : `/${id}`);
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-[rgb(var(--muted))]"><b className="text-[rgb(var(--fg))]">{ORGS.length}</b> doanh nghiệp trên nền tảng. Mỗi doanh nghiệp có đường dẫn đăng nhập riêng, dữ liệu tách biệt hoàn toàn.</p>
-        <button className={cn(btnAccent, 'ml-auto')} onClick={() => setAdding(true)}><Plus className="h-4 w-4" aria-hidden />Thêm doanh nghiệp</button>
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <p className="text-[13px] text-[rgb(var(--muted))]">{ORGS.length} doanh nghiệp · mỗi doanh nghiệp có đường dẫn đăng nhập và dữ liệu riêng</p>
+        <button className={cn(btnPrimary, btnSm, 'lg:ml-auto')} onClick={() => setAdding(true)}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm doanh nghiệp</button>
       </div>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {ORGS.map((o) => {
-          const r = platform.tenants.find((x) => x.id === o.id) ?? defaultTenantReg(o);
-          const st = tenantStats(o.id);
-          const left = daysTo(r.contractEnd);
-          const on = PROVISION_MODULES.filter((m) => r.modules[m]).length;
-          return (
-            <section key={o.id} className={cn('rounded-md border bg-[rgb(var(--surface))] p-5', r.status === 'SUSPENDED' ? 'border-[rgb(var(--danger)/0.5)]' : 'border-[rgb(var(--line))]')}>
-              <div className="flex items-start gap-3">
-                <OrgMark o={o} size={44} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-lg font-semibold">{o.name}</p>
-                  <p className="text-xs text-[rgb(var(--muted))]">{o.profile === 'MANUFACTURING' ? 'Xưởng nội thất, nhôm kính: báo giá m² / md, lệnh sản xuất, lắp đặt, thu tiền' : 'Thương mại B2B, đối tác Hãng 3M: quỹ MDF, PO Hãng, BOQ, Getfly'} · @{o.domain}</p>
-                </div>
-                <Chip tone={r.status === 'ACTIVE' ? 'teal' : 'red'}>{r.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}</Chip>
-              </div>
-              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                <div className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Gói bản quyền</dt><dd className="font-semibold">{TENANT_PLAN[r.plan].label}</dd></div>
-                <div className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Người dùng kích hoạt</dt><dd className={cn('font-semibold tabular-nums', st.activeUsers > r.seats && 'text-[rgb(var(--danger-fg))]')}>{st.activeUsers} / {r.seats}</dd></div>
-                <div className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Hết hạn hợp đồng</dt><dd className={cn('font-semibold tabular-nums', left < 0 ? 'text-[rgb(var(--danger-fg))]' : left <= 30 ? 'text-[rgb(var(--accent-fg))]' : '')}>{fmtDate(r.contractEnd)}</dd><dd className="text-[11px] text-[rgb(var(--muted))]">{left < 0 ? `Quá hạn ${-left} ngày` : `Còn ${left} ngày`}</dd></div>
-                <div className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Module cấp phép</dt><dd className="font-semibold tabular-nums">{on} / {PROVISION_MODULES.length}</dd></div>
-              </dl>
-              <p className="mt-3 flex items-center gap-2 text-xs"><Link2 className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden /><a className="font-mono text-[rgb(var(--secondary-fg))] hover:underline" href={linkOf(o.id)} target="_blank" rel="noreferrer">{linkOf(o.id).replace(/^https?:\/\//, '')}</a><button className="text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => { void navigator.clipboard?.writeText(linkOf(o.id)).then(() => notify('Đã chép đường dẫn đăng nhập', 'teal')); }} aria-label={`Chép đường dẫn ${o.shortName}`}><Copy className="h-3.5 w-3.5" /></button>{o.adminEmail && <span className="text-[rgb(var(--muted))]">· quản trị {o.adminEmail}</span>}</p>
-              <p className="mt-1 text-xs text-[rgb(var(--muted))]">{st.customers} khách hàng, {st.records} {o.profile === 'MANUFACTURING' ? 'đơn hàng' : 'lead / dự án'}, {(st.size / 1024).toFixed(0)} KB, dữ liệu v{st.version || '—'}{st.savedAt ? `, lưu ${new Date(st.savedAt).toLocaleString('vi-VN')}` : ''}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button className={cn(btnPrimary, btnSm)} onClick={() => platform.switchTenant(o.id)}><LogIn className="h-3.5 w-3.5" aria-hidden />Truy cập hệ thống{org.id === o.id ? ' (đang mở)' : ''}</button>
-                <button className={cn(btnGhost, btnSm)} onClick={() => setEdit(r)}><Pencil className="h-3.5 w-3.5" aria-hidden />Hợp đồng & gói</button>
-                <button className={cn(btnGhost, btnSm)} onClick={() => { platform.setConsoleTab('modules'); }}><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />Cấp phép module</button>
-                <button className={cn(btnBase, btnSm, r.status === 'ACTIVE' ? 'border border-[rgb(var(--danger)/0.4)] text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--danger)/0.1)]' : 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')}
-                  onClick={() => setConfirm({ title: r.status === 'ACTIVE' ? `Tạm dừng ${o.shortName}` : `Kích hoạt lại ${o.shortName}`, confirmLabel: r.status === 'ACTIVE' ? 'Tạm dừng' : 'Kích hoạt', message: r.status === 'ACTIVE' ? `Người dùng ${o.shortName} sẽ không đăng nhập được cho tới khi kích hoạt lại. Dữ liệu giữ nguyên; kỹ thuật 3A vẫn truy cập hỗ trợ được.` : `Cho phép người dùng ${o.shortName} đăng nhập lại.`, onConfirm: () => platform.setTenantReg(o.id, { status: r.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }, r.status === 'ACTIVE' ? 'Tạm dừng doanh nghiệp' : 'Kích hoạt lại doanh nghiệp') })}>
-                  {r.status === 'ACTIVE' ? <><XCircle className="h-3.5 w-3.5" aria-hidden />Tạm dừng</> : <><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Kích hoạt</>}
-                </button>
-              </div>
-            </section>
-          );
-        })}
-      </div>
+      <Panel>
+        <Table minW={1100} head={['Mã', 'Doanh nghiệp', 'Đường dẫn', 'Gói', <span key="u" className="block text-right">Người dùng</span>, 'Hết hạn', 'Còn', <span key="m" className="block text-right">Module</span>, 'Dữ liệu', 'Trạng thái', '']}>
+          {ORGS.map((o) => {
+            const r = platform.tenants.find((x) => x.id === o.id) ?? defaultTenantReg(o);
+            const st = tenantStats(o.id);
+            const left = daysTo(r.contractEnd);
+            const on = PROVISION_MODULES.filter((m) => r.modules[m]).length;
+            return (
+              <tr key={o.id} className={rowCls}>
+                <td className={tdFirst}><Code>{o.id}</Code></td>
+                <td className={tdCls}><span className="flex items-center gap-2"><OrgMark o={o} size={22} /><span className="font-medium">{o.shortName}</span></span></td>
+                <td className={cn(tdCls, 'font-mono text-xs')}><a className="hover:underline" href={linkOf(o.id)} target="_blank" rel="noreferrer">/{o.id}</a></td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{TENANT_PLAN[r.plan].label}</td>
+                <td className={cn(tdCls, 'text-right font-mono text-xs', st.activeUsers > r.seats && 'text-[rgb(var(--danger-fg))]')}>{st.activeUsers} / {r.seats}</td>
+                <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(r.contractEnd)}</td>
+                <td className={cn(tdCls, left < 0 ? 'text-[rgb(var(--danger-fg))]' : left <= 60 ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--fg2))]')}>{left < 0 ? `Quá ${-left} ngày` : `Còn ${left} ngày`}</td>
+                <td className={cn(tdCls, 'text-right font-mono text-xs')}>{on} / {PROVISION_MODULES.length}</td>
+                <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--muted))]')}>v{st.version || '—'} · {(st.size / 1024).toFixed(0)} KB</td>
+                <td className={tdCls}><Chip tone={r.status === 'ACTIVE' ? 'teal' : 'red'}>{r.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}</Chip></td>
+                <td className={cn(tdLast, 'text-right')}><span className="flex items-center justify-end gap-1">
+                  <button className={cn(btnGhost, btnSm)} onClick={() => platform.switchTenant(o.id)}><LogIn className="h-3.5 w-3.5" aria-hidden />{org.id === o.id ? 'Đang mở' : 'Truy cập'}</button>
+                  <RowMenu label={`Thao tác ${o.shortName}`} items={[
+                    { label: 'Hợp đồng & gói', icon: Pencil, onClick: () => setEdit(r) },
+                    { label: 'Cấp phép module', icon: SlidersHorizontal, onClick: () => platform.setConsoleTab('modules') },
+                    { label: 'Sao chép đường dẫn', icon: Link2, onClick: () => navigator.clipboard?.writeText(linkOf(o.id)).then(() => notify('Đã sao chép đường dẫn', 'teal'), () => notify('Trình duyệt chặn sao chép', 'red')) },
+                    { label: r.status === 'ACTIVE' ? 'Tạm dừng' : 'Kích hoạt lại', icon: r.status === 'ACTIVE' ? XCircle : CheckCircle2, danger: r.status === 'ACTIVE', onClick: () => setConfirm({ title: r.status === 'ACTIVE' ? `Tạm dừng ${o.shortName}` : `Kích hoạt lại ${o.shortName}`, confirmLabel: r.status === 'ACTIVE' ? 'Tạm dừng' : 'Kích hoạt', message: r.status === 'ACTIVE' ? `Người dùng ${o.shortName} sẽ không đăng nhập được cho tới khi kích hoạt lại. Dữ liệu giữ nguyên; kỹ thuật 3A vẫn truy cập hỗ trợ được.` : `Cho phép người dùng ${o.shortName} đăng nhập lại.`, onConfirm: () => platform.setTenantReg(o.id, { status: r.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }, r.status === 'ACTIVE' ? 'Tạm dừng doanh nghiệp' : 'Kích hoạt lại doanh nghiệp') }) },
+                  ]} />
+                </span></td>
+              </tr>
+            );
+          })}
+        </Table>
+      </Panel>
       {edit && (
         <Modal title={`Hợp đồng & gói: ${orgOf(edit.id).shortName}`} onClose={() => setEdit(null)} footer={<><button className={btnGhost} onClick={() => setEdit(null)}>Hủy</button><button className={btnPrimary} onClick={() => { platform.setTenantReg(edit.id, { plan: edit.plan, seats: edit.seats, contractStart: edit.contractStart, contractEnd: edit.contractEnd, note: edit.note }, `Gói ${TENANT_PLAN[edit.plan].label}, ${edit.seats} người dùng, hạn ${fmtDate(edit.contractEnd)}`); setEdit(null); }}>Lưu</button></>}>
           <div className="grid grid-cols-2 gap-3">
@@ -309,7 +302,7 @@ export function ConsoleModules() {
             <tr className="border-b border-[rgb(var(--line)/0.6)] bg-[rgb(var(--raised)/0.4)]"><td className="py-2 pl-5 text-xs text-[rgb(var(--muted))]" colSpan={ORGS.length + 1}>Luôn bật: Tổng quan, Công việc, Cài đặt</td></tr>
             {MODULE_GROUP.map((g) => (
               <Fragment key={g.title}>
-                <tr><td className="pb-1 pl-5 pt-4 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--muted))]" colSpan={ORGS.length + 1}>{g.title}</td></tr>
+                <tr><td className="pb-1 pl-5 pt-4 text-[11px] font-semibold text-[rgb(var(--muted))]" colSpan={ORGS.length + 1}>{g.title}</td></tr>
                 {g.list.map((m) => {
                   const Icon = MODULE_ICON[m];
                   return (
@@ -321,7 +314,7 @@ export function ConsoleModules() {
                 })}
               </Fragment>
             ))}
-            <tr><td className="pb-1 pl-5 pt-4 text-[11px] font-semibold uppercase tracking-wide text-[rgb(var(--muted))]" colSpan={ORGS.length + 1}>Tích hợp</td></tr>
+            <tr><td className="pb-1 pl-5 pt-4 text-[11px] font-semibold text-[rgb(var(--muted))]" colSpan={ORGS.length + 1}>Tích hợp</td></tr>
             {(Object.keys(FEATURE_LABEL) as (keyof TenantReg['features'])[]).map((k) => (
               <tr key={k} className="border-b border-[rgb(var(--line)/0.6)] hover:bg-[rgb(var(--raised)/0.5)]">
                 <td className="py-2.5 pl-5 pr-3"><span className="flex items-center gap-2"><Plug className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{FEATURE_LABEL[k]}</span></td>
@@ -403,7 +396,7 @@ export function ConsoleData() {
         </ul>
       </Panel>
       {backup && (
-        <Modal title={`Sao lưu mã hóa ${orgOf(backup).shortName}`} onClose={() => setBackup(null)} footer={<><button className={btnGhost} onClick={() => setBackup(null)}>Hủy</button><button className={btnPrimary} disabled={busy} onClick={() => void doBackup()}>{busy ? 'Đang mã hóa...' : 'Tải bản sao lưu'}</button></>}>
+        <Modal title={`Sao lưu mã hóa ${orgOf(backup).shortName}`} onClose={() => setBackup(null)} footer={<><button className={btnGhost} onClick={() => setBackup(null)}>Hủy</button><button className={btnPrimary} disabled={busy} onClick={() => void doBackup()}>{busy ? 'Đang mã hóa…' : 'Tải bản sao lưu'}</button></>}>
           <div className="space-y-3">
             <Field label="Mật khẩu bản sao lưu" hint="Tối thiểu 10 ký tự. Mất mật khẩu sẽ không mở được file."><input className={inputCls} type="password" value={pass} onChange={(e) => setPass(e.target.value)} /></Field>
             <Field label="Nhập lại mật khẩu"><input className={inputCls} type="password" value={pass2} onChange={(e) => setPass2(e.target.value)} /></Field>
@@ -583,13 +576,13 @@ export function PricingSettings() {
         <Modal title={priceItems.some((p) => p.id === edit.id) ? `Sửa ${edit.code}` : 'Thêm hạng mục đơn giá'} onClose={() => setEdit(null)} footer={<><button className={btnGhost} onClick={() => setEdit(null)}>Hủy</button><button className={btnPrimary} onClick={saveItem}>Lưu</button></>}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Mã *"><input className={inputCls} value={edit.code} onChange={(e) => setEdit({ ...edit, code: e.target.value })} placeholder="XF55-DI" /></Field>
-            <Field label="Nhóm"><input className={inputCls} list="pi-cats" value={edit.category} onChange={(e) => setEdit({ ...edit, category: e.target.value })} placeholder="Cửa nhôm, Kính, Nội thất..." /><datalist id="pi-cats">{cats.map((c) => <option key={c} value={c} />)}</datalist></Field>
+            <Field label="Nhóm"><input className={inputCls} list="pi-cats" value={edit.category} onChange={(e) => setEdit({ ...edit, category: e.target.value })} placeholder="Cửa nhôm, Kính, Nội thất…" /><datalist id="pi-cats">{cats.map((c) => <option key={c} value={c} />)}</datalist></Field>
             <Field label="Tên hạng mục *" className="sm:col-span-2"><input className={inputCls} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Cửa đi nhôm Xingfa hệ 55, kính hộp" /></Field>
             <Field label="Đơn vị tính"><select className={inputCls} value={edit.unit} onChange={(e) => setEdit({ ...edit, unit: e.target.value as PriceUnit })}>{(Object.keys(PRICE_UNIT) as PriceUnit[]).map((u) => <option key={u} value={u}>{PRICE_UNIT[u].label}</option>)}</select></Field>
             {(edit.unit === 'M2' || edit.unit === 'MD') && <Field label={`Tối thiểu mỗi tấm (${PRICE_UNIT[edit.unit].short})`}><input className={inputCls} type="number" min={0} step={0.1} value={edit.minMeasure ?? 0} onChange={(e) => setEdit({ ...edit, minMeasure: Math.max(0, Number(e.target.value) || 0) })} /></Field>}
             <Field label={`Đơn giá bán / ${PRICE_UNIT[edit.unit].short} *`}><MoneyInput value={edit.price} onChange={(n) => setEdit({ ...edit, price: n })} /></Field>
             <Field label={`Giá vốn / ${PRICE_UNIT[edit.unit].short}`} hint="Chỉ dùng tính lãi gộp, không in ra báo giá"><MoneyInput value={edit.cost} onChange={(n) => setEdit({ ...edit, cost: n })} /></Field>
-            <Field label="Ghi chú" className="sm:col-span-2"><input className={inputCls} value={edit.note ?? ''} onChange={(e) => setEdit({ ...edit, note: e.target.value || undefined })} placeholder="Màu, phụ kiện kèm theo..." /></Field>
+            <Field label="Ghi chú" className="sm:col-span-2"><input className={inputCls} value={edit.note ?? ''} onChange={(e) => setEdit({ ...edit, note: e.target.value || undefined })} placeholder="Màu, phụ kiện kèm theo…" /></Field>
           </div>
         </Modal>
       )}
@@ -761,7 +754,7 @@ export function UserModal({ id, onClose }: { id?: string; onClose: () => void })
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Họ tên *" error={err('name')} className="sm:col-span-2"><input className={inputCls} value={f.name} onChange={(ev) => set('name', ev.target.value)} /></Field>
         <Field label="Email đăng nhập *" error={err('email')}><input className={inputCls} type="email" value={f.email} onChange={(ev) => set('email', ev.target.value)} /></Field>
-        <Field label="Điện thoại (nhận Zalo ZNS)"><input className={inputCls} value={f.phone ?? ''} onChange={(ev) => set('phone', ev.target.value)} /></Field>
+        <Field label="Điện thoại (nhận Zalo ZNS)"><input type="tel" autoComplete="tel" className={inputCls} inputMode="tel" value={f.phone ?? ''} onChange={(ev) => set('phone', ev.target.value)} /></Field>
         <Field label="Chức danh"><input className={inputCls} placeholder="VD: Kế toán trưởng" value={f.title ?? ''} onChange={(ev) => set('title', ev.target.value || undefined)} /></Field>
         <Field label="Ngày sinh"><input className={inputCls} type="date" value={f.birthday ?? ''} onChange={(ev) => set('birthday', ev.target.value || undefined)} /></Field>
         <Field label="Vai trò">

@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowDown, ArrowUp, Building2, Coins, Download, History, Pencil, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download, History, Pencil, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { removeWithUndo } from '../../app/context';
 import { useIntent } from '../../components/command-palette';
 import { Pagination, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { Chip, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { bizMode, btnBase, btnGhost, btnPrimary, btnSm, C, CASH_ACCOUNT, CASH_IN_CATS, CASH_OUT_CATS, compact, fmtDate, inputCls, iso, jobCustName, kpiGrid, nextCode, rangeBounds, rowCls, tdCls, tdFirst, tdLast, tipStyle, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSticky } from '../../components/ui';
+import { bizMode, btnGhost, btnPrimary, btnSm, C, CASH_ACCOUNT, CASH_IN_CATS, CASH_OUT_CATS, compact, fmtDate, inputCls, iso, jobCustName, kpiGrid, nextCode, rangeBounds, rowCls, tdCls, tdFirst, tdLast, tipStyle, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import type { CashAccount, CashEntry, CashLine, ConfirmState } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -120,13 +120,18 @@ export function CashbookModule() {
   };
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="tablist" aria-label="Sổ quỹ">
-        {([['CASH', 'Quỹ tiền mặt', Wallet], ['BANK', 'Tài khoản ngân hàng', Building2], ['ALL', 'Tổng hợp 2 sổ', Coins]] as const).map(([k, label, Icon]) => (
-          <button key={k} role="tab" aria-selected={acc === k} onClick={() => { setAcc(k); paged.setPage(1); }}
-            className={cn('flex items-center gap-3 rounded-md border p-3 text-left transition-colors', acc === k ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.1)]' : 'border-[rgb(var(--line))] bg-[rgb(var(--surface))] hover:bg-[rgb(var(--raised))]')}>
-            <Icon className={cn('h-5 w-5 shrink-0', acc === k ? 'text-[rgb(var(--accent))]' : 'text-[rgb(var(--muted))]')} aria-hidden />
-            <span className="min-w-0 flex-1"><span className="block text-sm font-medium">{label}</span><span className="block text-xs text-[rgb(var(--muted))]">Số dư hiện tại</span></span>
-            <b className="tabular-nums">{compact(balance(k))}</b>
+      <Tabs tabs={[{ id: 'book', label: 'Sổ chi tiết' }, { id: 'summary', label: mode === 'TRADING' ? 'Tổng hợp' : 'Tổng hợp & theo đơn hàng' }]} value={tab} onChange={setTab}
+        aside={<>
+          <button className={cn(btnGhost, btnSm, 'border-0')} disabled={!can} onClick={() => setModal({ kind: 'TRANSFER' })}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Chuyển quỹ</button>
+          <button className={cn(btnGhost, btnSm, 'border-0')} disabled={!can} onClick={() => setOpening({ cash: mfgConfig.openingCash, bank: mfgConfig.openingBank })}><Pencil className="h-3.5 w-3.5" aria-hidden />Số dư đầu</button>
+          <button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setModal({ kind: 'IN' })}><Plus className="h-3.5 w-3.5" aria-hidden />Phiếu thu</button>
+          <button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setModal({ kind: 'OUT' })}><Plus className="h-3.5 w-3.5" aria-hidden />Phiếu chi</button>
+        </>} />
+      <div className="flex w-fit max-w-full overflow-x-auto rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-0.5" role="radiogroup" aria-label="Sổ quỹ">
+        {([['CASH', 'Tiền mặt'], ['BANK', 'Ngân hàng'], ['ALL', 'Cả 2 sổ']] as const).map(([k, label]) => (
+          <button key={k} role="radio" aria-checked={acc === k} onClick={() => { setAcc(k); paged.setPage(1); }}
+            className={cn('flex items-baseline gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px]', acc === k ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>
+            {label}<span className="font-mono text-[12px] text-[rgb(var(--muted))]">{compact(balance(k))}</span>
           </button>
         ))}
       </div>
@@ -136,31 +141,23 @@ export function CashbookModule() {
         <StatCard label="Tổng chi" value={compact(sumOut)} icon={ArrowUp} color={C.red} sub={`${period.filter((l) => l.kind === 'OUT').length} phiếu trong kỳ`} />
         <StatCard label="Số dư cuối kỳ" value={compact(openBal + sumIn - sumOut)} icon={Wallet} color={openBal + sumIn - sumOut < 0 ? C.red : C.orange} sub={`Thu − chi trong kỳ ${compact(sumIn - sumOut)}`} />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Tabs variant="pill" tabs={[{ id: 'book', label: 'Sổ chi tiết' }, { id: 'summary', label: mode === 'TRADING' ? 'Tổng hợp' : 'Tổng hợp & theo đơn hàng' }]} value={tab} onChange={setTab} />
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')} disabled={!can} onClick={() => setModal({ kind: 'IN' })}><Plus className="h-3.5 w-3.5" aria-hidden />Phiếu thu</button>
-          <button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setModal({ kind: 'OUT' })}><Plus className="h-3.5 w-3.5" aria-hidden />Phiếu chi</button>
-          <button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setModal({ kind: 'TRANSFER' })}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Chuyển quỹ</button>
-          <button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setOpening({ cash: mfgConfig.openingCash, bank: mfgConfig.openingBank })}><Pencil className="h-3.5 w-3.5" aria-hidden />Số dư đầu</button>
-        </div>
-      </div>
       {tab === 'book' ? (
-        <Panel>
-          <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_150px_200px_200px_auto]">
+        <>
+          <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
             <SearchBox value={q} onChange={(v) => { setQ(v); paged.setPage(1); }} placeholder="Tìm số phiếu, diễn giải, chứng từ gốc" />
-            <select className={inputCls} value={kind} onChange={(e) => { setKind(e.target.value as 'ALL' | 'IN' | 'OUT'); paged.setPage(1); }} aria-label="Loại"><option value="ALL">Thu và chi</option><option value="IN">Chỉ thu</option><option value="OUT">Chỉ chi</option></select>
-            <select className={inputCls} value={cat} onChange={(e) => { setCat(e.target.value); paged.setPage(1); }} aria-label="Khoản mục"><option value="ALL">Mọi khoản mục</option>{cats.map((c) => <option key={c} value={c}>{c}</option>)}</select>
-            <select className={inputCls} value={partner} onChange={(e) => { setPartner(e.target.value); paged.setPage(1); }} aria-label="Đối tượng"><option value="ALL">Mọi đối tượng nộp / nhận</option>{partners.map((c) => <option key={c} value={c}>{c}</option>)}</select>
-            <button className={cn(btnGhost, 'justify-center')} onClick={() => downloadCsv(`so-quy-${acc}-${fromISO}-${toISO}.csv`, [['Ngày', 'Số phiếu', 'Sổ', 'Khoản mục', 'Đối tượng', 'Diễn giải', 'Chứng từ gốc', 'Thu', 'Chi', 'Tồn'], ...list.map((l) => [l.date, l.code, CASH_ACCOUNT[l.account], l.category, l.partner ?? '', l.note ?? '', l.ref ?? '', l.kind === 'IN' ? l.amount : '', l.kind === 'OUT' ? l.amount : '', acc === 'ALL' ? '' : running.get(l.id) ?? ''])])}><Download className="h-4 w-4" aria-hidden />CSV</button>
+            <select className={cn(inputCls, 'py-1.5 text-[13px] lg:w-36')} value={kind} onChange={(e) => { setKind(e.target.value as 'ALL' | 'IN' | 'OUT'); paged.setPage(1); }} aria-label="Loại"><option value="ALL">Thu và chi</option><option value="IN">Chỉ thu</option><option value="OUT">Chỉ chi</option></select>
+            <select className={cn(inputCls, 'py-1.5 text-[13px] lg:w-44')} value={cat} onChange={(e) => { setCat(e.target.value); paged.setPage(1); }} aria-label="Khoản mục"><option value="ALL">Mọi khoản mục</option>{cats.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+            <select className={cn(inputCls, 'py-1.5 text-[13px] lg:w-48')} value={partner} onChange={(e) => { setPartner(e.target.value); paged.setPage(1); }} aria-label="Đối tượng"><option value="ALL">Mọi đối tượng nộp / nhận</option>{partners.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+            <button className={cn(btnGhost, btnSm, 'justify-center border-0 lg:ml-auto')} onClick={() => downloadCsv(`so-quy-${acc}-${fromISO}-${toISO}.csv`, [['Ngày', 'Số phiếu', 'Sổ', 'Khoản mục', 'Đối tượng', 'Diễn giải', 'Chứng từ gốc', 'Thu', 'Chi', 'Tồn'], ...list.map((l) => [l.date, l.code, CASH_ACCOUNT[l.account], l.category, l.partner ?? '', l.note ?? '', l.ref ?? '', l.kind === 'IN' ? l.amount : '', l.kind === 'OUT' ? l.amount : '', acc === 'ALL' ? '' : running.get(l.id) ?? ''])])}><Download className="h-4 w-4" aria-hidden />CSV</button>
           </div>
-          <Table head={['STT', 'Ngày', 'Số phiếu', 'Diễn giải', 'Đối tượng', ...(acc === 'ALL' ? ['Sổ'] : []), <span key="t" className="block text-right">Thu</span>, <span key="c" className="block text-right">Chi</span>, ...(acc === 'ALL' ? [] : [<span key="b" className="block text-right">Tồn</span>])]} minW={1040}>
+          <Panel>
+          <Table head={['STT', 'Ngày', 'Số phiếu', 'Khoản mục', 'Diễn giải', 'Đối tượng', ...(acc === 'ALL' ? ['Sổ'] : []), <span key="t" className="block text-right">Thu</span>, <span key="c" className="block text-right">Chi</span>, ...(acc === 'ALL' ? [] : [<span key="b" className="block text-right">Tồn</span>])]} minW={1040}>
             {paged.page === 1 && !filtered && (
               <tr className="border-b border-[rgb(var(--line)/0.6)] bg-[rgb(var(--raised)/0.5)]">
-                <td className={tdFirst} /><td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{fmtDate(fromISO)}</td><td className={tdCls} />
+                <td className={tdFirst} /><td className={cn(tdCls, 'font-mono text-xs')}>{fmtDate(fromISO)}</td><td className={tdCls} />
                 {acc === 'ALL'
-                  ? <td className={cn(tdLast, 'font-medium')} colSpan={5}>Số dư đầu kỳ hai sổ: <span className="tabular-nums">{openBal.toLocaleString('vi-VN')}</span></td>
-                  : <><td className={cn(tdCls, 'font-medium')} colSpan={4}>Số dư đầu kỳ</td><td className={cn(tdLast, 'text-right font-semibold tabular-nums')}>{openBal.toLocaleString('vi-VN')}</td></>}
+                  ? <td className={cn(tdLast, 'font-medium')} colSpan={6}>Số dư đầu kỳ hai sổ: <span className="tabular-nums">{openBal.toLocaleString('vi-VN')}</span></td>
+                  : <><td className={cn(tdCls, 'font-medium')} colSpan={5}>Số dư đầu kỳ</td><td className={cn(tdLast, 'text-right font-semibold tabular-nums')}>{openBal.toLocaleString('vi-VN')}</td></>}
               </tr>
             )}
             {paged.slice.map((l, i) => {
@@ -169,11 +166,12 @@ export function CashbookModule() {
               return (
                 <tr key={l.id} className={cn(rowCls, (editable || l.jobId) && 'cursor-pointer')} onClick={() => (editable && e ? setModal({ kind: e.kind, entry: e }) : l.jobId && openJob(l.jobId))}>
                   <td className={cn(tdFirst, 'w-12 tabular-nums text-[rgb(var(--muted))]')}>{(paged.page - 1) * 25 + i + 1}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{fmtDate(l.date)}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap')}><span className="font-mono text-xs">{l.code}</span>{l.auto && <span className="mt-0.5 block text-[10px] text-[rgb(var(--success-fg))]">Tự sinh{l.ref && l.ref !== l.code ? ` từ ${l.ref}` : ''}</span>}</td>
-                  <td className={cn(tdCls, 'max-w-[300px]')}><p className="text-sm">{l.category}</p>{l.note && <p className="line-clamp-1 text-xs text-[rgb(var(--muted))]">{l.note}</p>}</td>
-                  <td className={cn(tdCls, 'max-w-[200px] text-xs')}><p className="line-clamp-2">{l.partner ?? '—'}</p></td>
-                  {acc === 'ALL' && <td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{l.account === 'CASH' ? 'Tiền mặt' : 'Ngân hàng'}</td>}
+                  <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(l.date)}</td>
+                  <td className={tdCls} title={l.auto ? `Phiếu tự sinh${l.ref && l.ref !== l.code ? ` từ ${l.ref}` : ''}` : undefined}><Code>{l.code}</Code>{l.auto && <span className="ml-1.5 text-[11px] text-[rgb(var(--muted))]">tự sinh</span>}</td>
+                  <td className={tdCls}><span className="font-medium">{l.category}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[260px] truncate" title={l.note}>{l.note || '—'}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[200px] truncate" title={l.partner}>{l.partner ?? '—'}</span></td>
+                  {acc === 'ALL' && <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{l.account === 'CASH' ? 'Tiền mặt' : 'Ngân hàng'}</td>}
                   <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums text-[rgb(var(--success-fg))]')}>{l.kind === 'IN' ? l.amount.toLocaleString('vi-VN') : ''}</td>
                   <td className={cn(acc === 'ALL' ? tdLast : tdCls, 'whitespace-nowrap text-right tabular-nums text-[rgb(var(--danger-fg))]')}>{l.kind === 'OUT' ? l.amount.toLocaleString('vi-VN') : ''}</td>
                   {acc !== 'ALL' && <td className={cn(tdLast, 'whitespace-nowrap text-right tabular-nums', (running.get(l.id) ?? 0) < 0 && 'text-[rgb(var(--danger-fg))]')}>{(running.get(l.id) ?? 0).toLocaleString('vi-VN')}</td>}
@@ -182,7 +180,7 @@ export function CashbookModule() {
             })}
             {list.length > 0 && (
               <tr className="border-t border-[rgb(var(--line))] font-semibold">
-                <td className={tdFirst} colSpan={acc === 'ALL' ? 6 : 5}>{filtered ? 'Cộng các dòng đang lọc' : 'Cộng phát sinh trong kỳ'}</td>
+                <td className={tdFirst} colSpan={acc === 'ALL' ? 7 : 6}>{filtered ? 'Cộng các dòng đang lọc' : 'Cộng phát sinh trong kỳ'}</td>
                 <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--success-fg))]')}>{list.filter((l) => l.kind === 'IN').reduce((s, l) => s + l.amount, 0).toLocaleString('vi-VN')}</td>
                 <td className={cn(acc === 'ALL' ? tdLast : tdCls, 'text-right tabular-nums text-[rgb(var(--danger-fg))]')}>{list.filter((l) => l.kind === 'OUT').reduce((s, l) => s + l.amount, 0).toLocaleString('vi-VN')}</td>
                 {acc !== 'ALL' && <td className={cn(tdLast, 'text-right tabular-nums')}>{filtered ? '' : (openBal + sumIn - sumOut).toLocaleString('vi-VN')}</td>}
@@ -193,6 +191,7 @@ export function CashbookModule() {
           <Pagination paged={paged} unit="dòng" />
           <p className="mt-3 text-xs text-[rgb(var(--muted))]">Phiếu tự sinh: thu tiền khách khi kế toán xác nhận phiếu thu, chi công tác phí / triển khai sự kiện khi kế toán xác nhận thanh toán, hoa hồng khi quyết toán, thặng dư quỹ MDF khi hạch toán. Phiếu tự sinh không sửa trực tiếp, điều chỉnh bằng phiếu thu / chi bù.</p>
         </Panel>
+        </>
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <Panel title={`Thu chi 6 tháng (${accLabel})`}>

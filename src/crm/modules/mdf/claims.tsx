@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { AlertTriangle, Camera, CheckCircle2, Clock, Download, FileCheck2, FileText, MapPin, Pencil, Plus, Receipt as ReceiptIcon, Scale, ShieldCheck, Trash2, Upload, XCircle } from 'lucide-react';
+import { useState } from 'react';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
 import { ChipFilter, claimDate, FilterBar, useInRange } from '../../components/filters';
@@ -22,18 +22,19 @@ import { BudgetStrip, ClaimTable } from '../messages/messenger';
 // =====================================================================
 
 export function ClaimsModule() {
-  const { role } = useApp();
+  const { role, canDo, openProgramForm } = useApp();
   const [tab, setTab] = useSticky<'programs' | 'claims' | 'accounting'>('ClaimsModule.tab', role === 'ACCOUNTANT' ? 'accounting' : 'claims');
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <Tabs
         tabs={[
-          { id: 'programs', label: 'Kế hoạch quỹ' },
           { id: 'claims', label: 'Claim & POP' },
+          { id: 'programs', label: 'Kế hoạch quỹ' },
           { id: 'accounting', label: 'Đối soát' },
         ]}
         value={tab}
         onChange={setTab}
+        aside={tab === 'programs' && canDo('program.create') ? <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => openProgramForm()}><Plus className="h-3.5 w-3.5" aria-hidden />Đề xuất chương trình</button> : undefined}
  />
       {tab === 'programs' && <ProgramsTab />}
       {tab === 'claims' && <ClaimsTab />}
@@ -120,7 +121,6 @@ export function ProgramsTab() {
         action={
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-xs text-[rgb(var(--muted))]"><input type="checkbox" className="accent-[rgb(var(--accent))]" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />Hiện cả chương trình đã đóng</label>
-            <button className={btnPrimary} disabled={!canDo('program.create')} onClick={() => openProgramForm()}><Plus className="h-4 w-4" aria-hidden />Đề xuất chương trình</button>
           </div>
         }
       >
@@ -252,12 +252,12 @@ export function PhotoTile({ p, onVerify, onRemove, canVerify }: { p: Proof; onVe
           </button>
         )}
         {p.watermark ? (
-          <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[10px] leading-tight text-[rgb(var(--fg)/0.85)]">
+          <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[11px] leading-tight text-[rgb(var(--fg)/0.85)]">
             <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" aria-hidden />{p.gps ?? 'Chưa đọc được GPS'}</span>
             <span>{p.capturedAt}</span>
           </div>
         ) : (
-          <div className="absolute inset-x-0 bottom-0 bg-[rgb(var(--danger)/0.8)] px-2 py-1 text-[10px] font-medium text-white">Không có watermark</div>
+          <div className="absolute inset-x-0 bottom-0 bg-[rgb(var(--danger)/0.8)] px-2 py-1 text-[11px] font-medium text-white">Không có watermark</div>
         )}
       </div>
       <div className="flex items-center justify-between gap-1 bg-[rgb(var(--raised))] px-2 py-1.5">
@@ -474,7 +474,7 @@ export function ClaimDrawer({ id, onClose }: { id: string; onClose: () => void }
           </label>
         </div>
         <FilePicker accept="image/*" multiple disabled={!canUpload || busy} onFiles={(f) => addFiles(f, 'SITE_PHOTO')} className="mb-3 flex items-center justify-center gap-2 rounded border border-dashed border-[rgb(var(--line))] px-4 py-4 text-sm text-[rgb(var(--muted))] hover:border-[rgb(var(--accent)/0.6)] hover:text-[rgb(var(--fg))]">
-          <Camera className="h-4 w-4" aria-hidden />{busy ? 'Đang xử lý file...' : 'Chọn ảnh từ máy tính hoặc kéo thả vào đây'}
+          <Camera className="h-4 w-4" aria-hidden />{busy ? 'Đang xử lý file…' : 'Chọn ảnh từ máy tính hoặc kéo thả vào đây'}
         </FilePicker>
         {photos.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

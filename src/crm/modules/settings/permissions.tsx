@@ -100,7 +100,7 @@ export function PermissionsSettings() {
               {users.filter((u) => !q || fold(`${u.name} ${u.email}`).includes(fold(q))).map((u) => (
                 <li key={u.id}><button onClick={() => setUid0(u.id)} className={cn('flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left', u.id === uid0 ? 'bg-[rgb(var(--secondary)/0.12)]' : 'hover:bg-[rgb(var(--ink)/0.04)]')}>
                   <Avatar name={u.name} size={30} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{u.name}</span><span className="block truncate text-[11px] text-[rgb(var(--muted))]">{ROLE_LABEL[u.role]}{!u.active ? ' · đã khóa' : ''}</span></span>
-                  {overrides(u) > 0 && <span className="rounded-full bg-[rgb(var(--accent)/0.15)] px-1.5 text-[10px] font-bold text-[rgb(var(--accent-fg))]">{overrides(u)}</span>}
+                  {overrides(u) > 0 && <span className="rounded-full bg-[rgb(var(--accent)/0.15)] px-1.5 text-[11px] font-semibold text-[rgb(var(--accent-fg))]">{overrides(u)}</span>}
                 </button></li>
               ))}
             </ul>

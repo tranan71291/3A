@@ -37,36 +37,37 @@ export const LOGO_3A = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHAAAABiCA
  */
 export const THEME_CSS = `
 :root{
-  --bg:16 24 39; --sunken:11 18 32; --surface:23 33 52; --raised:31 43 66; --line:43 56 80;
-  --fg:241 245 249; --fg2:203 213 225; --muted:148 163 184; --faint:107 122 144; --ink:255 255 255;
-  --primary:37 99 235; --on-primary:255 255 255; --navy:23 43 73;
-  --secondary:37 99 235; --secondary-fg:96 165 250;
-  --accent:242 140 40; --accent-fg:249 168 82; --on-accent:16 24 39;
-  --success:16 185 129; --success-fg:52 211 153; --danger:239 68 68; --danger-fg:248 113 113; --warn:245 176 66;
-  --radius-sm:4px; --radius:6px; --radius-lg:10px;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.25); --shadow:0 8px 24px rgba(0,0,0,.28); --shadow-lg:0 24px 60px rgba(0,0,0,.45);
+  --bg:11 13 20; --sunken:7 8 13; --surface:17 20 28; --raised:26 30 40; --line:40 45 58;
+  --fg:238 240 245; --fg2:163 169 184; --muted:127 135 154; --faint:98 106 124; --ink:255 255 255;
+  --primary:242 140 40; --on-primary:27 18 5; --navy:19 34 59;
+  --secondary:96 140 230; --secondary-fg:147 180 245;
+  --accent:242 140 40; --accent-fg:246 169 59; --on-accent:27 18 5;
+  --success:76 195 138; --success-fg:76 195 138; --danger:229 72 77; --danger-fg:239 107 111; --warn:224 160 70;
+  --radius-sm:4px; --radius:8px; --radius-lg:12px;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --shadow-sm:none; --shadow:0 8px 24px rgba(0,0,0,.35); --shadow-lg:0 20px 50px rgba(0,0,0,.45);
   color-scheme:dark;
 }
 .light{
-  --bg:245 247 250; --sunken:255 255 255; --surface:255 255 255; --raised:239 243 248; --line:221 227 236;
-  --fg:15 23 42; --fg2:51 65 85; --muted:91 107 130; --faint:138 150 168; --ink:23 43 73;
-  --primary:23 43 73; --on-primary:255 255 255;
-  --secondary-fg:29 78 216; --accent-fg:194 65 12; --success-fg:4 120 87; --danger-fg:220 38 38; --warn:180 83 9;
-  --shadow-sm:0 1px 2px rgba(23,43,73,.06); --shadow:0 6px 20px rgba(23,43,73,.08); --shadow-lg:0 20px 50px rgba(23,43,73,.16);
+  --bg:245 246 248; --sunken:255 255 255; --surface:255 255 255; --raised:238 240 244; --line:228 231 236;
+  --fg:17 24 39; --fg2:75 85 101; --muted:107 116 135; --faint:146 153 168; --ink:17 24 39;
+  --primary:242 140 40; --on-primary:27 18 5;
+  --secondary:37 99 235; --secondary-fg:29 78 216; --accent-fg:180 87 15; --success:22 163 74; --success-fg:21 128 61; --danger:220 38 38; --danger-fg:196 43 43; --warn:180 83 9;
+  --shadow-sm:0 1px 2px rgba(17,24,39,.04); --shadow:0 6px 20px rgba(17,24,39,.08); --shadow-lg:0 20px 50px rgba(17,24,39,.14);
   color-scheme:light;
 }
 body{background:rgb(var(--bg));color:rgb(var(--fg))}
-/* v27: menu trái luôn nền tối Navy (cả 2 chế độ), vùng nội dung sáng/tối theo lựa chọn */
+/* v40: menu trái nền navy 3A (#13223b) ở nền sáng, gần đen ở nền tối */
 .side-dark{
-  --sunken:23 43 73; --surface:30 54 90; --raised:38 64 104; --line:52 78 118;
-  --fg:241 245 249; --fg2:214 222 235; --muted:160 176 200; --faint:128 146 172; --ink:255 255 255;
-  --secondary-fg:147 197 253; --accent-fg:251 176 96;
+  --sunken:19 34 59; --surface:26 44 73; --raised:32 52 84; --line:43 60 88;
+  --fg:232 236 243; --fg2:201 209 222; --muted:141 153 174; --faint:120 132 154; --ink:255 255 255;
+  --secondary-fg:147 197 253; --accent-fg:246 169 59;
   color:rgb(var(--fg)); color-scheme:dark;
 }
-:root:not(.light) .side-dark{ --sunken:12 20 36; --surface:23 33 52; --raised:31 43 66; --line:36 48 70; }
-/* v27: khối KPI có nền + viền rõ ràng như các thẻ khác */
-div.kpi-row{background:rgb(var(--surface));border:1px solid rgb(var(--line));border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow-sm)}
-.light .glass-card, .light section.rounded-md.border{box-shadow:var(--shadow-sm)}
+:root:not(.light) .side-dark{ --sunken:7 8 13; --surface:17 20 28; --raised:26 30 40; --line:34 38 50; }
+
+div.kpi-row{background:rgb(var(--surface));border:1px solid rgb(var(--line));border-radius:var(--radius-lg);padding:12px 16px}
+
 `;
 
 /** Gradient thương hiệu dùng trong style inline (thanh tiến độ, biểu đồ) */
@@ -197,7 +198,7 @@ export const MODULE_LABEL: Record<Module, string> = {
 };
 
 /** Nhãn ngắn cho thanh điều hướng dưới (mobile) */
-export const MODULE_SHORT: Partial<Record<Module, string>> = { zalo: 'Zalo', marketing: 'Marketing', home: 'Bàn LV', contacts: 'Danh bạ', warehouse: 'Kho', tasks: 'Công việc', leads: 'Lead', customers: 'Khách', projects: 'Dự án', messages: 'Tin nhắn', products: 'Sản phẩm', supply: 'Đặt hàng', claims: 'MDF', jobs: 'Đơn hàng', production: 'Sản xuất', install: 'Lắp đặt', inventory: 'Kho', cashbook: 'Thu chi', staff: 'Công tác' };
+export const MODULE_SHORT: Partial<Record<Module, string>> = { zalo: 'Zalo', marketing: 'Marketing', home: 'Bàn làm việc', contacts: 'Danh bạ', warehouse: 'Kho', tasks: 'Công việc', leads: 'Lead', customers: 'Khách hàng', projects: 'Dự án', messages: 'Tin nhắn', products: 'Sản phẩm', supply: 'Đặt hàng', claims: 'Quỹ MDF', jobs: 'Đơn hàng', production: 'Sản xuất', install: 'Lắp đặt', inventory: 'Vật tư', cashbook: 'Thu chi', staff: 'Lịch công tác', reports: 'Công nợ', docs: 'Tài liệu', settings: 'Cài đặt', overview: 'Tổng quan' };
 
 export const MODULE_DESC: Record<Module, string> = {
   home: 'Bảng tin nội bộ: thông báo, tin tức, sáng kiến, bình chọn, sinh nhật và việc của tôi hôm nay',
@@ -820,7 +821,7 @@ export const useApp = () => {
 // =====================================================================
 
 export const btnBase =
-  'inline-flex items-center justify-center gap-1.5 rounded text-sm font-medium transition-[color,background-color,border-color,filter] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--secondary-fg))] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--bg))] disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg text-sm font-medium transition-[color,background-color,border-color,filter] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--fg)/0.6)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--bg))] disabled:cursor-not-allowed disabled:opacity-40';
 
 /**
  * BUTTON (Design System v26) — mỗi màn hình chỉ 1 nút Primary.
@@ -829,11 +830,11 @@ export const btnBase =
  * - btnGhost: hành động phụ (viền mảnh)
  * - btnDanger: hành động nguy hiểm (luôn đi kèm xác nhận)
  */
-export const btnPrimary = cn(btnBase, 'bg-[rgb(var(--primary))] px-3.5 py-2 font-semibold text-[rgb(var(--on-primary))] shadow-[var(--shadow-sm)] hover:bg-[rgb(var(--primary)/0.88)]');
+export const btnPrimary = cn(btnBase, 'bg-[rgb(var(--accent))] px-3.5 py-2 font-medium text-[rgb(var(--on-accent))] hover:brightness-105');
 
-export const btnAccent = cn(btnBase, 'bg-[rgb(var(--accent))] px-3.5 py-2 font-semibold text-[rgb(var(--on-accent))] shadow-[var(--shadow-sm)] hover:brightness-105');
+export const btnAccent = cn(btnBase, 'bg-[rgb(var(--accent))] px-3.5 py-2 font-medium text-[rgb(var(--on-accent))] hover:brightness-105');
 
-export const btnGhost = cn(btnBase, 'border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-3 py-1.5 text-[rgb(var(--fg))] hover:border-[rgb(var(--secondary)/0.7)] hover:bg-[rgb(var(--secondary)/0.08)]');
+export const btnGhost = cn(btnBase, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] px-3 py-1.5 text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]');
 
 export const btnDanger = cn(btnBase, 'bg-[rgb(var(--danger))] px-3.5 py-2 font-semibold text-white hover:bg-[rgb(var(--danger)/0.88)]');
 
@@ -841,7 +842,7 @@ export const btnSm = 'px-2.5 py-1 text-xs';
 
 /** Ô nhập không cố định chiều rộng (dùng khi cần w-auto / w-16 / flex-1...) */
 export const inputBase =
-  'rounded border border-[rgb(var(--line))] bg-[rgb(var(--sunken))] px-3 py-2 text-sm max-md:min-h-11 max-md:text-base text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted)/0.6)] focus:border-[rgb(var(--secondary))] focus:outline-none focus:ring-1 focus:ring-[rgb(var(--secondary)/0.6)] disabled:opacity-50 [&>option]:bg-[rgb(var(--surface))]';
+  'rounded-lg border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--sunken))] px-3 py-2 text-sm max-md:min-h-11 max-md:text-base text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted)/0.7)] focus:border-[rgb(var(--fg)/0.5)] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--fg)/0.12)] disabled:opacity-50 [&>option]:bg-[rgb(var(--surface))]';
 
 export const inputCls = `w-full ${inputBase}`;
 
@@ -909,14 +910,14 @@ export const VIEW_META: Record<ViewKind, { label: string; icon: typeof Wallet }>
   gantt: { label: 'Gantt', icon: CalendarRange },
 };
 
-export const tdCls = 'px-3 py-3 align-middle';
+export const tdCls = 'px-3 py-2.5 align-middle';
 
-export const tdFirst = 'pl-5 pr-3 py-3 align-middle';
+export const tdFirst = 'pl-5 pr-3 py-2.5 align-middle';
 
-export const tdLast = 'pl-3 pr-5 py-3 align-middle';
+export const tdLast = 'pl-3 pr-5 py-2.5 align-middle';
 
 /** Dòng bảng: chỉ kẻ ngang mờ 10%, zebra rất nhẹ (class .dt trong <style>), hover ánh xanh dương */
-export const rowCls = 'border-b border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--secondary)/0.1)]';
+export const rowCls = 'border-b border-[rgb(var(--ink)/0.06)]';
 
 export const EVENT_LABEL: Record<NotifyEvent, string> = {
   LEAD_ROUTED: 'Lead mới chia về phòng (gửi Trưởng phòng)',
@@ -1013,8 +1014,6 @@ export const inRangeOf = (r: DateRange) => (d: Date | string | null | undefined)
   const { start, end } = rangeBounds(r);
   return t >= start && t <= end;
 };
-
-export const pctDelta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null);
 
 export const leadDate = (l: Lead) => new Date(Date.now() - l.receivedDaysAgo * 864e5);
 
@@ -1396,8 +1395,6 @@ export const ST_BRIEF_FIELDS: readonly FieldDef[] = [
 
 export const ST_INTENTS = [{ value: 'info', label: 'Thông tin', hint: 'hướng dẫn, giải thích' }, { value: 'compare', label: 'Cân nhắc', hint: 'so sánh, đánh giá, chọn mua' }, { value: 'buy', label: 'Giao dịch', hint: 'mua, báo giá, đặt hàng' }, { value: 'local', label: 'Địa phương', hint: 'nơi bán, đại lý gần' }] as const;
 
-export const ST_LENGTHS = [{ value: '800', label: '800–1.200 từ' }, { value: '1200', label: '1.200–1.800 từ' }, { value: '1800', label: '1.800–2.500 từ' }] as const;
-
 export const stOutlinePrompt = (p: PlatformStrategy, a: StArticle, c: StCompany) => p.outlinePrompt(a, c) + stBriefText(a.settings, p.id, 'outline');
 
 export const stSectionPrompt = (p: PlatformStrategy, a: StArticle, id: string, c: StCompany) => p.sectionPrompt(a, id, c) + stBriefText(a.settings, p.id, 'section');
@@ -1659,7 +1656,7 @@ export const OutlinePanel = memo(function OutlinePanel({ headings = true }: { he
 
   return (
     <nav aria-label="Dàn ý" className="flex h-full flex-col">
-      <p className="px-3 pb-2 pt-3 text-xs font-semibold uppercase tracking-wider text-[rgb(var(--muted))]">Dàn ý · {rows.length} mục</p>
+      <p className="px-3 pb-2 pt-3 text-xs font-semibold text-[rgb(var(--muted))]">Dàn ý · {rows.length} mục</p>
       <ol className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2" onDragOver={(e) => e.preventDefault()}>
         {rows.map((r, i) => (
           <li key={r.id} draggable
@@ -1670,10 +1667,10 @@ export const OutlinePanel = memo(function OutlinePanel({ headings = true }: { he
             <span className="cursor-grab select-none text-[rgb(var(--faint))]" aria-hidden>⋮⋮</span>
             {headings && (
               <button type="button" title="Đổi cấp H2 / H3" onClick={() => patchSection(r.id, { level: r.level === 2 ? 3 : 2 })}
-                className="w-7 shrink-0 rounded bg-[rgb(var(--sunken))] text-[10px] font-bold text-[rgb(var(--muted))]">H{r.level}</button>
+                className="w-7 shrink-0 rounded bg-[rgb(var(--sunken))] text-[11px] font-semibold text-[rgb(var(--muted))]">H{r.level}</button>
             )}
             <button type="button" onClick={() => jump(r.id)} className="min-w-0 flex-1 truncate text-left" aria-current={active === r.id}>{r.title || 'Chưa đặt tiêu đề'}</button>
-            {r.img && <span className="text-[10px] text-[rgb(var(--success-fg))]" title="Đã có ảnh">●</span>}
+            {r.img && <span className="text-[11px] text-[rgb(var(--success-fg))]" title="Đã có ảnh">●</span>}
             <span className="sr-only">Kéo để đổi vị trí; hoặc dùng nút lên xuống</span>
             <button type="button" aria-label={`Đưa "${r.title}" lên`} disabled={i === 0} onClick={() => moveSection(r.id, i - 1)} className="hidden text-xs text-[rgb(var(--muted))] disabled:opacity-30 group-hover:block group-focus-within:block">↑</button>
             <button type="button" aria-label={`Đưa "${r.title}" xuống`} disabled={i === rows.length - 1} onClick={() => moveSection(r.id, i + 1)} className="hidden text-xs text-[rgb(var(--muted))] disabled:opacity-30 group-hover:block group-focus-within:block">↓</button>
@@ -1727,7 +1724,7 @@ export const SeoSidebar = memo(function SeoSidebar() {
       <ul className="space-y-2">
         {report.items.map((i) => (
           <li key={i.id} className="flex gap-2 text-sm">
-            <span className={`w-4 shrink-0 text-center font-bold ${TONE[i.status]}`} aria-hidden>{ICON[i.status]}</span>
+            <span className={`w-4 shrink-0 text-center font-semibold ${TONE[i.status]}`} aria-hidden>{ICON[i.status]}</span>
             <span className="min-w-0"><span className="block leading-snug">{i.label}</span><span className={`block text-xs ${TONE[i.status]}`}>{i.detail}</span></span>
           </li>
         ))}
@@ -2215,9 +2212,7 @@ export const salesFunnel = (ls: Lead[]) => {
 /** Kênh marketing của một lead (theo nguồn) */
 export const channelOfSource = (src: Source): MktChannel | 'OTHER' => (Object.keys(MKT_CH) as MktChannel[]).find((ch) => MKT_CH[ch].sources.includes(src)) ?? 'OTHER';
 
-export const overdueCls = 'border-[rgb(var(--danger))] motion-safe:animate-[blinkBorder_1.2s_ease-in-out_infinite]';
-
-export const STEP_COLORS = [C.orange, '#F6B533', C.blue, C.teal];
+export const overdueCls = 'shadow-[inset_3px_0_0_rgb(var(--danger))]';
 
 export const EMPTY_CUSTOMER: CustomerForm = {
   name: '', taxCode: '', segment: 'OTHER', tier: 'NEW', region: 'SOUTH', dept: 'FACTORY_SALES', amId: undefined, sourceId: 'SELF', status: 'PROSPECT', createdAt: '',
@@ -2473,7 +2468,7 @@ export const partyOf = (c?: Customer, l?: Lead): ComposerForm['party'] => ({
   rep: c?.contactName ?? l?.contact ?? '', repTitle: c?.contactTitle ?? '', phone: c?.contactPhone ?? l?.phone ?? '', email: c?.contactEmail ?? l?.email ?? '',
 });
 
-export const secHead = (n: number, title: string) => <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--accent))] text-xs font-bold text-[rgb(var(--on-accent))]">{n}</span>{title}</h3>;
+export const secHead = (n: number, title: string) => <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--accent))] text-xs font-semibold text-[rgb(var(--on-accent))]">{n}</span>{title}</h3>;
 
 export const UNIT_WORDS = new Set(['cai', 'chiec', 'bo', 'm', 'met', 'md', 'm2', 'm3', 'cuon', 'kg', 'g', 'tan', 'hop', 'thung', 'cay', 'ong', 'tu', 'lo', 'goi', 'doi', 'cap', 'tam', 'thanh', 'soi', 'lit', 'l', 'set', 'pcs', 'pc', 'ea', 'roll', 'box', 'unit', 'he', 'he thong', 'diem', 'con', 'qua', 'vien', 'bao', 'can', 'lon', 'km', 'chai', 'to', 'quyen', 'ram', 'bich', 'khoi', 'ht', 'tb', 'thiet bi', 'mat', 'canh', 'o', 'cum', 'module', 'lot', 'gio', 'cong', 'ngay', 'thang', 'nam', 'lan', 'chuyen', 'xe']);
 
@@ -2737,8 +2732,6 @@ export const FIELD_MAP: [string, string, string][] = [
 // =====================================================================
 //  PHÂN HỆ 6: KHO TÀI LIỆU & QUY CHẾ NỘI BỘ (lọc theo phân quyền hiển thị)
 // =====================================================================
-
-export const FORMAT_COLOR: Record<DocItem['format'], string> = { PDF: C.red, DOCX: C.blue, XLSX: C.teal, PPTX: C.orange };
 
 export const slug = (s: string) =>
   s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '');
@@ -3580,12 +3573,12 @@ export const sourceFromChannel = (src: Source): string =>
 export const DATE_PAGES: Module[] = ['warehouse', 'overview', 'leads', 'customers', 'projects', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'staff', 'reports'];
 
 /** Nhóm menu sidebar: Vận hành bán hàng · Chuỗi cung ứng & xưởng · Kế toán tài chính · Hệ thống */
+/** v40: Tổng quan đứng riêng trên cùng; 4 nhóm Làm việc · Bán hàng · Hàng hóa (Xưởng) · Tài chính; Tài liệu, Cài đặt ở cuối không tiêu đề */
 export const NAV_GROUPS: { id: string; title: string; list: Module[] }[] = [
-  { id: 'work', title: 'Không gian làm việc', list: ['home', 'tasks', 'messages', 'zalo', 'contacts'] },
-  { id: 'sales', title: 'Kinh doanh', list: ['overview', 'leads', 'customers', 'projects', 'jobs', 'staff'] },
-  { id: 'mkt', title: 'Marketing & Quỹ Hãng', list: ['marketing', 'claims'] },
-  { id: 'supply', title: 'Hàng hóa & Sản xuất', list: ['products', 'warehouse', 'supply', 'inventory', 'production', 'install'] },
-  { id: 'finance', title: 'Tài chính', list: ['cashbook', 'reports'] },
-  { id: 'system', title: 'Hệ thống', list: ['docs', 'settings'] },
+  { id: 'work', title: 'Làm việc', list: ['home', 'tasks', 'staff', 'messages', 'zalo', 'contacts'] },
+  { id: 'sales', title: 'Bán hàng', list: ['leads', 'customers', 'projects', 'jobs', 'marketing'] },
+  { id: 'supply', title: 'Hàng hóa', list: ['products', 'warehouse', 'supply', 'production', 'install', 'inventory'] },
+  { id: 'finance', title: 'Tài chính', list: ['cashbook', 'reports', 'claims'] },
+  { id: 'system', title: '', list: ['docs', 'settings'] },
 ];
 

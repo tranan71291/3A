@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { Coins, Copy, Download, Eye, FileSpreadsheet, Pencil, Phone, Plus, Trash2, Upload } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { CommentButton } from '../../components/comments';
-import { Avatar, BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
+import { BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
-import { FilterBar } from '../../components/filters';
+import { ChipFilter, FilterBar } from '../../components/filters';
 import { ImportModal } from '../../components/import-csv';
-import { Chip, EmptyState, Field, Modal, MoneyInput, Panel, ProgressBar, Table, Tabs, useSort, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, ProgressBar, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { claimState, roiRating } from '../../lib/business';
 import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, compact, CUSTOMER_SOURCE, CUSTOMER_STATUS, digits, EMAIL_RE, EMPTY_CUSTOMER, inputBase, inputCls, LEAD_STATUS, mdfOfCustomer, MST_RE, nextCode, progName, PROGRAM_STATUS, quotesOfCustomer, REGION_LABEL, REVENUE_BAND, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, tierFor, tierInfo, TIERS, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv, matchEnum } from '../../lib/csv';
@@ -104,7 +104,7 @@ export function CustomerFormModal({ id, onClose }: { id?: string; onClose: () =>
         <Field label="Địa chỉ" className="sm:col-span-2"><input className={inputCls} value={f.address} onChange={(e) => set('address', e.target.value)} /></Field>
         <Field label="Người liên hệ *" error={err('contactName')}><input className={inputCls} value={f.contactName} onChange={(e) => set('contactName', e.target.value)} /></Field>
         <Field label="Chức vụ"><input className={inputCls} value={f.contactTitle} onChange={(e) => set('contactTitle', e.target.value)} /></Field>
-        <Field label="Điện thoại liên hệ"><input className={inputCls} inputMode="tel" value={f.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} /></Field>
+        <Field label="Điện thoại liên hệ"><input type="tel" autoComplete="tel" className={inputCls} inputMode="tel" value={f.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} /></Field>
         <Field label="Email liên hệ" error={err('contactEmail')}><input className={inputCls} type="email" value={f.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></Field>
         <Field label="Phòng ban quản lý">
           <select className={inputCls} value={f.dept} onChange={(e) => setF((p) => ({ ...p, dept: e.target.value, amId: undefined }))}>
@@ -162,7 +162,7 @@ export function TradingCustomersList() {
         && (adv.roiMin <= 0 || (roiOf(c) ?? 0) >= adv.roiMin);
     })
     .sort((a, b) => b.ytdRevenue - a.ytdRevenue);
-  const srt = useSort('TradingCustomersList', list, { 1: (c) => c.name, 3: (c) => c.ytdRevenue, 4: (c) => c.debt, 5: (c) => c.status });
+  const srt = useSort('TradingCustomers40', list, { 1: (c) => c.code, 2: (c) => c.name, 6: (c) => c.ytdRevenue, 7: (c) => c.debt, 8: (c) => c.creditLimit, 9: (c) => c.status });
   const paged = usePaged(srt.rows, 10);
   const sel = useSelection(list.map((c) => c.id));
 
@@ -243,19 +243,20 @@ export function TradingCustomersList() {
       onConfirm: () => { setCustomers((p) => p.filter((c) => !ok.some((x) => x.id === c.id))); sel.clear(); notify(`Đã xóa ${ok.length} khách hàng`, 'orange'); },
     });
   };
-  const debtPill = (c: Customer) => (
-    <span className={cn('inline-block rounded-md px-2 py-0.5 text-xs tabular-nums', c.creditLimit && c.debt > c.creditLimit * 0.9 ? 'bg-[rgb(var(--danger)/0.15)] text-[rgb(var(--danger-fg))]' : 'bg-[rgb(var(--success)/0.15)] text-[rgb(var(--success-fg))]')}>
-      {compact(c.debt)}<span className="block text-[10px] opacity-70">/ {compact(c.creditLimit)}</span>
-    </span>
-  );
+  const over = (c: Customer) => !!c.creditLimit && c.debt > c.creditLimit * 0.9;
 
   return (
     <div className="space-y-4">
       <FilterBar
-        q={q} onQ={setQ} placeholder="Tìm MST, tên khách hàng, mã đơn, SĐT..."
+        q={q} onQ={setQ} placeholder="Tìm MST, tên khách hàng, mã đơn, SĐT…"
         dept={dp} onDept={setDp} status={status} onStatus={setStatus}
         statusOptions={(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((x) => ({ value: x, label: CUSTOMER_STATUS[x].label }))}
         onAdvanced={() => setAdvOpen(true)} advancedCount={advCount} extraActive={region !== 'ALL' ? 1 : 0}
+        chips={<ChipFilter total={customers.length} value={status as CustomerStatus | 'ALL'} onChange={(v) => setStatus(v)} options={(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((x) => ({ value: x, label: CUSTOMER_STATUS[x].label, count: customers.filter((c) => c.status === x).length })).filter((o) => o.count > 0)} />}
+        actions={<>
+          <RowMenu text="Nhập / xuất" icon={FileSpreadsheet} items={[{ label: 'Xuất CSV', icon: Download, onClick: () => exportRows(list) }, { label: 'Nhập từ file', icon: Upload, onClick: () => setImporting(true), disabled: !canEdit }]} />
+          <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} disabled={!canEdit} onClick={() => openCustomerForm()}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm khách hàng</button>
+        </>}
       >
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={region} onChange={(e) => setRegion(e.target.value as 'ALL' | Region)} aria-label="Khu vực">
           <option value="ALL">Tất cả khu vực</option>
@@ -266,25 +267,17 @@ export function TradingCustomersList() {
       <BulkBar count={sel.ids.length} onClear={sel.clear}>
         <button className={cn(btnGhost, btnSm)} onClick={() => exportRows(customers.filter((c) => sel.has(c.id)))}><Download className="h-3.5 w-3.5" aria-hidden />Xuất CSV</button>
         <select className={cn(inputBase, 'w-auto py-1 text-xs')} disabled={!canEdit} value="" onChange={(e) => { const v = e.target.value as CustomerStatus; if (!v) return; setCustomers((p) => p.map((c) => (sel.has(c.id) ? { ...c, status: v } : c))); notify(`Đã chuyển ${sel.ids.length} khách sang ${CUSTOMER_STATUS[v].label}`, 'teal'); }} aria-label="Đổi trạng thái">
-          <option value="">Đổi trạng thái...</option>
+          <option value="">Đổi trạng thái…</option>
           {(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((x) => <option key={x} value={x}>{CUSTOMER_STATUS[x].label}</option>)}
         </select>
         <select className={cn(inputBase, 'w-auto py-1 text-xs')} disabled={!canEdit} value="" onChange={(e) => { const u = users.find((x) => x.id === e.target.value); if (!u) return; setCustomers((p) => p.map((c) => (sel.has(c.id) ? { ...c, amId: u.id, dept: u.dept ?? c.dept } : c))); notify(`Đã giao ${sel.ids.length} khách cho ${u.name}`, 'teal'); }} aria-label="Giao phụ trách">
-          <option value="">Giao phụ trách...</option>
+          <option value="">Giao phụ trách…</option>
           {users.filter((u) => u.active && (u.role === 'SALES_REP' || u.role === 'DEPT_HEAD')).map((u) => <option key={u.id} value={u.id}>{u.name} ({dept(u.dept)?.short})</option>)}
         </select>
         <button className={cn(btnGhost, btnSm, 'hover:text-[rgb(var(--danger-fg))]')} disabled={!canEdit} onClick={bulkDelete}><Trash2 className="h-3.5 w-3.5" aria-hidden />Xóa</button>
       </BulkBar>
 
-      <Panel
-        title={`${list.length} khách hàng`}
-        action={
-          <div className="flex gap-2">
-            <RowMenu text="Dữ liệu" icon={FileSpreadsheet} items={[{ label: 'Xuất CSV', icon: Download, onClick: () => exportRows(list) }, { label: 'Nhập từ file', icon: Upload, onClick: () => setImporting(true), disabled: !canEdit }]} />
-            <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} disabled={!canEdit} onClick={() => openCustomerForm()}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm khách hàng</button>
-          </div>
-        }
-      >
+      <Panel>
         {/* Mobile: danh sách thẻ */}
         <div className="space-y-2 md:hidden">
           {paged.slice.map((c) => (
@@ -302,28 +295,23 @@ export function TradingCustomersList() {
         </div>
         {/* Desktop / tablet: bảng */}
         <div className="hidden md:block">
-          <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Khách hàng', 'Ngành hàng / AM', 'Doanh số', 'Công nợ', 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>]} minW={1000} sort={srt.th}>
+          <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Mã KH', 'Khách hàng', 'Điện thoại', 'Ngành hàng', 'AM', <span key="r" className="block text-right">Doanh số</span>, <span key="d" className="block text-right">Công nợ</span>, <span key="l" className="block text-right">Hạn mức</span>, 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>]} minW={1000} sort={srt.th}>
             {paged.slice.map((c) => {
               return (
                 <tr key={c.id} className={cn(rowCls, 'cursor-pointer', sel.has(c.id) && 'bg-[rgb(var(--accent)/0.05)]')} onClick={() => openCustomer(c.id)}>
                   <td className={cn(tdFirst, 'w-10')} onClick={(e) => e.stopPropagation()}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.has(c.id)} onChange={() => sel.toggle(c.id)} aria-label={`Chọn ${c.name}`} /></td>
-                  <td className={tdCls}>
-                    <div className="flex items-center gap-3">
-                      <Avatar name={c.name} size={30} />
-                      <div className="min-w-0">
-                        <p className="max-w-[220px] truncate font-medium text-[rgb(var(--fg))]">{c.name}</p>
-                        <p className="max-w-[220px] truncate text-xs text-[rgb(var(--muted))]" title={`MST ${c.taxCode} · ${c.contactPhone || 'Chưa có SĐT'}`}><span className="font-mono">{c.code}</span> · {c.contactPhone || `MST ${c.taxCode}`}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className={tdCls}><p className="text-[rgb(var(--secondary-fg))]">{dept(c.dept)?.short}</p><p className="text-xs text-[rgb(var(--muted))]">{userName(c.amId)}</p></td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums text-[rgb(var(--fg))]')}>{compact(c.ytdRevenue)}</td>
-                  <td className={tdCls}>{debtPill(c)}</td>
+                  <td className={tdCls}><Code>{c.code}</Code></td>
+                  <td className={tdCls}><button className="block max-w-[260px] truncate text-left font-medium hover:underline" title={c.name} onClick={(e) => { e.stopPropagation(); openCustomer(c.id); }}>{c.name}</button></td>
+                  <td className={cn(tdCls, 'tabular-nums text-[rgb(var(--fg2))]')}>{c.contactPhone || <span className="text-[rgb(var(--faint))]">—</span>}</td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{dept(c.dept)?.short}</td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[150px] truncate">{userName(c.amId)}</span></td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(c.ytdRevenue)}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums', over(c) && 'text-[rgb(var(--danger-fg))]')} title={over(c) ? 'Gần / vượt hạn mức công nợ' : undefined}>{compact(c.debt)}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{c.creditLimit ? compact(c.creditLimit) : '—'}</td>
                   <td className={tdCls}><Chip tone={CUSTOMER_STATUS[c.status].tone}>{CUSTOMER_STATUS[c.status].label}</Chip></td>
                   <td className={cn(tdLast, 'whitespace-nowrap text-right')} onClick={(e) => e.stopPropagation()}>
                     <span className="mr-1 inline-block align-middle"><CommentButton entity="customer" entityId={c.id} title={c.name} module="customers" /></span>
-                    <button className={cn(btnGhost, 'mr-1 p-1.5')} disabled={!canEdit} onClick={() => openCustomerForm(c.id)} aria-label={`Sửa ${c.name}`}><Pencil className="h-4 w-4" /></button>
-                    <RowMenu items={menuFor(c)} />
+                    <RowMenu items={[{ label: 'Sửa', icon: Pencil, disabled: !canEdit, onClick: () => openCustomerForm(c.id) }, ...menuFor(c)]} />
                   </td>
                 </tr>
               );

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Database, Download, HardDrive, History, KeyRound, Lock, Pencil, Plus, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { Pagination, usePaged } from '../../components/controls';
 import { Collapse, ConfirmDialog } from '../../components/crud';
-import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, useSticky } from '../../components/ui';
 import { AGING, AUDIT_LABEL, bizMode, btnGhost, btnPrimary, btnSm, C, CLOUD_ON, DATA_VERSION, dataKey, fmtN, inputBase, inputCls, kpiGrid, orgOf, ORGS, rowCls, SESSION_KEY, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd, whQty } from '../../lib/core';
 import { decryptBackup, encryptBackup } from '../../lib/security';
 import { takeSnapshot } from '../../lib/storage';
@@ -174,7 +174,7 @@ export function SecurityDataSettings() {
             <Table stt={Math.max(0, paged.from - 1)} head={['Thời gian', 'Người thực hiện', 'Thao tác', 'Chi tiết']} minW={720}>
               {paged.slice.map((x) => (
                 <tr key={x.id} className={rowCls}>
-                  <td className={cn(tdFirst, 'whitespace-nowrap text-xs tabular-nums')}>{new Date(x.at).toLocaleString('vi-VN')}</td>
+                  <td className={cn(tdFirst, 'font-mono text-xs text-[rgb(var(--muted))]')}>{new Date(x.at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}</td>
                   <td className={cn(tdCls, 'text-xs')}>{x.userId ? userName(x.userId) : 'Chưa đăng nhập'}</td>
                   <td className={tdCls}><Chip tone={x.level === 'SECURITY' ? 'red' : x.level === 'WARN' ? 'orange' : 'muted'}>{AUDIT_LABEL[x.action] ?? x.action}</Chip></td>
                   <td className={cn(tdLast, 'text-xs text-[rgb(var(--muted))]')}>{x.detail}</td>
@@ -216,11 +216,13 @@ export function WarehouseSettings() {
   return (
     <Panel title={`Danh mục kho (${warehouses.length})`} action={<button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setEdit({ ...blank })}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm kho</button>}>
       <p className="mb-3 text-sm text-[rgb(var(--muted))]">Tồn kho mỗi SKU được phân bổ theo kho. Kho tổng nhận phần còn lại (hàng về từ PO, giải phóng giữ chỗ…). Điều chuyển giữa các kho ở Sản phẩm › bấm vào số tồn.</p>
-      <Table head={['Mã kho', 'Tên kho / địa chỉ', 'Quản lý kho', 'SKU có tồn', 'Tổng số lượng', 'Trạng thái', '']} minW={820}>
+      <Table head={['Mã kho', 'Loại', 'Tên kho', 'Địa chỉ', 'Quản lý kho', <span key="s" className="block text-right">SKU có tồn</span>, <span key="q" className="block text-right">Tổng số lượng</span>, 'Trạng thái', '']} minW={1100}>
         {warehouses.map((w) => (
           <tr key={w.id} className={rowCls}>
-            <td className={cn(tdFirst, 'font-mono text-xs font-semibold text-[rgb(var(--accent-fg))]')}>{w.code}{w.main && <span className="ml-2 font-sans"><Chip tone="blue">Kho tổng</Chip></span>}</td>
-            <td className={tdCls}><p className="font-medium">{w.name}</p><p className="text-xs text-[rgb(var(--muted))]">{w.address || '—'}</p></td>
+            <td className={tdFirst}><Code>{w.code}</Code></td>
+            <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{w.main ? 'Kho tổng' : 'Kho thường'}</td>
+            <td className={tdCls}><span className="font-medium">{w.name}</span></td>
+            <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[260px] truncate" title={w.address}>{w.address || '—'}</span></td>
             <td className={tdCls}>{w.managerId ? userName(w.managerId) : '—'}</td>
             <td className={cn(tdCls, 'text-right tabular-nums')}>{skuIn(w.id)}</td>
             <td className={cn(tdCls, 'text-right tabular-nums')}>{fmtN(qtyIn(w.id))}</td>
@@ -253,13 +255,13 @@ export function SettingsModule() {
   // Tích hợp do 3A cấp phép theo hợp đồng: tắt ở Console thì ẩn tab cấu hình tương ứng
   const feat = platform.tenants.find((t) => t.id === org.id)?.features;
   const all: { id: SettingsTab; label: string; show: boolean; group: string }[] = [
-    { id: 'company', label: 'Thông tin doanh nghiệp', show: true, group: 'Tổ chức' },
+    { id: 'company', label: 'Doanh nghiệp', show: true, group: 'Tổ chức' },
     { id: 'org', label: 'Phòng ban & nhân sự', show: true, group: 'Tổ chức' },
     { id: 'perms', label: 'Phân quyền', show: true, group: 'Tổ chức' },
     { id: 'accounting', label: 'Kế toán & công nợ', show: true, group: 'Nghiệp vụ' },
     { id: 'pricing', label: 'Bảng đơn giá & thanh toán', show: mode !== 'TRADING', group: 'Nghiệp vụ' },
     { id: 'warehouses', label: 'Kho hàng', show: mode !== 'MFG', group: 'Nghiệp vụ' },
-    { id: 'segments', label: mode === 'MFG' ? 'Loại & nguồn khách' : 'Phân loại khách hàng', show: true, group: 'Nghiệp vụ' },
+    { id: 'segments', label: mode === 'MFG' ? 'Loại & nguồn khách' : 'Phân loại khách', show: true, group: 'Nghiệp vụ' },
     { id: 'fund', label: 'Quỹ Hãng 3M', show: mode !== 'MFG', group: 'Marketing & quỹ' },
     { id: 'mkt', label: 'Ngân sách Marketing', show: true, group: 'Marketing & quỹ' },
     { id: 'hub', label: 'AI, Zalo OA & ZNS', show: true, group: 'Tích hợp' },
@@ -274,16 +276,16 @@ export function SettingsModule() {
   return (
     <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
       {/* Điều hướng dọc: danh sách mục cài đặt (màn nhỏ: ô chọn) */}
-      <nav aria-label="Mục cài đặt" className="lg:sticky lg:top-20 lg:w-56 lg:shrink-0">
+      <nav aria-label="Mục cài đặt" className="lg:sticky lg:top-20 lg:w-52 lg:shrink-0">
         <select className={cn(inputBase, 'lg:hidden')} value={cur} onChange={(e) => setTab(e.target.value as SettingsTab)} aria-label="Mục cài đặt">
           {tabs.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
         </select>
-        <ul className="hidden rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1.5 lg:block">
+        <ul className="hidden lg:block">
           {tabs.map((x, i) => (
             <li key={x.id}>
-              {(i === 0 || tabs[i - 1].group !== x.group) && <p className={cn('px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]', i > 0 ? 'mt-2 border-t border-[rgb(var(--line))] pt-3' : 'pt-1')}>{x.group}</p>}
+              {(i === 0 || tabs[i - 1].group !== x.group) && <p className={cn('px-3 pb-1 text-[12px] text-[rgb(var(--faint))]', i > 0 ? 'mt-4' : '')}>{x.group}</p>}
               <button
-                className={cn('flex w-full items-center rounded border-l-2 px-3 py-2 text-left text-sm transition-colors', cur === x.id ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.1)] font-semibold text-[rgb(var(--fg))]' : 'border-transparent text-[rgb(var(--muted))] hover:bg-[rgb(var(--raised))] hover:text-[rgb(var(--fg))]')}
+                className={cn('flex w-full items-center rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors', cur === x.id ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--ink)/0.06)]' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}
                 aria-current={cur === x.id ? 'page' : undefined}
                 onClick={() => setTab(x.id)}
               >{x.label}</button>

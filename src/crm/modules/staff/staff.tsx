@@ -5,7 +5,7 @@ import { CalendarDays, CheckCircle2, ChevronRight, FileSpreadsheet, MapPin, Penc
 import { useIntent } from '../../components/command-palette';
 import { Fab } from '../../components/controls';
 import { Drawer } from '../../components/drawer';
-import { FilterBar, useInRange } from '../../components/filters';
+import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
 import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, Tabs, useSticky } from '../../components/ui';
 import { actDays, ACTIVITY_STATUS, ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, compact, DECISION_LABEL, digits, EXPENSE_STATUS, fmtDate, fmtDT, inputCls, LEAVE_KIND, needsApproval, pad2, rowCls, tdCls, tdFirst, tdLast, todayISO, toLocal, TRANSPORTS, uid, useApp, vnd, WEEKDAY } from '../../lib/core';
 import type { Activity, ActivityStatus, ActivityType, ApprovalDecision, LeaveKind } from '../../lib/types';
@@ -118,7 +118,7 @@ export function ActivityFormModal({ activity, preset, onClose }: { activity?: Ac
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Cột trái: lịch trình */}
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[rgb(var(--muted))]">Lịch trình</p>
+          <p className="text-xs font-semibold text-[rgb(var(--muted))]">Lịch trình</p>
           <Field label="Loại công việc">
             <select className={inputCls} value={f.type} onChange={(ev) => changeType(ev.target.value as ActivityType)}>
               {(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => <option key={t} value={t}>{ACTIVITY_TYPE[t].label}</option>)}
@@ -145,20 +145,20 @@ export function ActivityFormModal({ activity, preset, onClose }: { activity?: Ac
 
         {/* Cột phải: liên kết, chi phí, mục tiêu */}
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[rgb(var(--muted))]">{isLeave ? 'Lý do' : 'Liên kết & chi phí'}</p>
+          <p className="text-xs font-semibold text-[rgb(var(--muted))]">{isLeave ? 'Lý do' : 'Liên kết & chi phí'}</p>
           {isLeave ? (
             <Field label="Lý do cá nhân *" error={err('note')} hint="Dùng để đối soát trừ phép / trừ công"><textarea className={cn(inputCls, 'min-h-28')} value={f.note} onChange={(ev) => set('note', ev.target.value)} placeholder={f.leaveKind === 'LATE' ? 'VD: Đưa con đi khám, đến văn phòng lúc 9h15' : f.leaveKind === 'NO_CHECKIN' ? 'VD: Máy chấm công lỗi, có mặt từ 7h55' : 'VD: Việc gia đình'} /></Field>
           ) : (
             <>
               <Field label={f.type === 'MEETING' ? 'Khách hàng *' : 'Khách hàng'} error={err('customerId')}>
                 <select className={inputCls} value={f.customerId ?? ''} onChange={(ev) => { const c = customers.find((x) => x.id === ev.target.value); setF((p) => ({ ...p, customerId: c?.id, location: p.location || c?.address || '' })); }}>
-                  <option value="" disabled={f.type === 'MEETING'}>{f.type === 'MEETING' ? 'Chọn khách hàng trong CRM...' : 'Không gắn khách hàng'}</option>
+                  <option value="" disabled={f.type === 'MEETING'}>{f.type === 'MEETING' ? 'Chọn khách hàng trong CRM…' : 'Không gắn khách hàng'}</option>
                   {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </Field>
               <Field label={f.type === 'SURVEY' ? 'Dự án M&E *' : 'Dự án'} error={err('leadId')}>
                 <select className={inputCls} value={f.leadId ?? ''} onChange={(ev) => { const l = leads.find((x) => x.id === ev.target.value); setF((p) => ({ ...p, leadId: l?.id, customerId: p.customerId ?? l?.customerId, location: p.location || l?.province || '' })); }}>
-                  <option value="" disabled={f.type === 'SURVEY'}>{f.type === 'SURVEY' ? 'Chọn dự án...' : 'Không gắn dự án'}</option>
+                  <option value="" disabled={f.type === 'SURVEY'}>{f.type === 'SURVEY' ? 'Chọn dự án…' : 'Không gắn dự án'}</option>
                   {projects.map((l) => <option key={l.id} value={l.id}>{l.company}: {l.boqNote}</option>)}
                 </select>
               </Field>
@@ -173,7 +173,7 @@ export function ActivityFormModal({ activity, preset, onClose }: { activity?: Ac
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Phương tiện *" error={err('transport')}>
                     <select className={inputCls} value={f.transport ?? ''} onChange={(ev) => set('transport', ev.target.value)}>
-                      <option value="">Chọn...</option>
+                      <option value="">Chọn…</option>
                       {TRANSPORTS.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </Field>
@@ -279,7 +279,7 @@ export function ActivityDrawer({ id, onClose, onEdit }: { id: string; onClose: (
           ) : <p className="text-sm text-[rgb(var(--muted))]">Chưa check-in.</p>}
           {mine && active && (
             <FilePicker accept="image/*" multiple disabled={busy} onFiles={doCheckin} className={cn(btnPrimary, btnSm, 'mt-2 inline-flex')}>
-              <MapPin className="h-3.5 w-3.5" aria-hidden />{busy ? 'Đang lấy vị trí...' : a.checkin ? 'Thêm ảnh hiện trường' : 'Check-in hiện trường (chụp ảnh)'}
+              <MapPin className="h-3.5 w-3.5" aria-hidden />{busy ? 'Đang lấy vị trí…' : a.checkin ? 'Thêm ảnh hiện trường' : 'Check-in hiện trường (chụp ảnh)'}
             </FilePicker>
           )}
           {mine && active && !a.checkin && <button className={cn(btnGhost, btnSm, 'ml-2 mt-2')} disabled={busy} onClick={() => doCheckin([])}>Check-in không ảnh</button>}
@@ -290,7 +290,7 @@ export function ActivityDrawer({ id, onClose, onEdit }: { id: string; onClose: (
         <section>
           <h3 className="mb-2 text-sm font-semibold">Kết quả buổi làm việc & Next Action</h3>
           <div className="space-y-2">
-            <textarea className={cn(inputCls, 'min-h-16')} disabled={!mine} value={result} onChange={(e) => setResult(e.target.value)} placeholder="Kết quả: khách đồng ý khảo sát, cần báo giá trong tuần..." />
+            <textarea className={cn(inputCls, 'min-h-16')} disabled={!mine} value={result} onChange={(e) => setResult(e.target.value)} placeholder="Kết quả: khách đồng ý khảo sát, cần báo giá trong tuần…" />
             <input className={inputCls} disabled={!mine} value={next} onChange={(e) => setNext(e.target.value)} placeholder="Việc tiếp theo: gửi báo giá v2 trước thứ 6" />
             {mine && (
               <div className="flex flex-wrap gap-2">
@@ -321,7 +321,7 @@ export function ActivityDrawer({ id, onClose, onEdit }: { id: string; onClose: (
           {a.expenseNote && <p className="mt-1 text-xs text-[rgb(var(--danger-fg))]">{a.expenseNote}</p>}
           {mine && (!a.expenseStatus || a.expenseStatus === 'REJECTED') && (
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px_auto]">
-              <input className={cn(inputCls, 'py-1.5 text-xs')} value={exp.name} onChange={(e) => setExp({ ...exp, name: e.target.value })} placeholder="Nội dung: vé xe, khách sạn, tiếp khách..." />
+              <input className={cn(inputCls, 'py-1.5 text-xs')} value={exp.name} onChange={(e) => setExp({ ...exp, name: e.target.value })} placeholder="Nội dung: vé xe, khách sạn, tiếp khách…" />
               <input className={cn(inputCls, 'py-1.5 text-xs tabular-nums')} inputMode="numeric" value={exp.amount ? exp.amount.toLocaleString('vi-VN') : ''} onChange={(e) => setExp({ ...exp, amount: digits(e.target.value) })} placeholder="Số tiền" />
               <FilePicker accept="image/*,.pdf" onFiles={addExpense} className={cn(btnGhost, btnSm, 'inline-flex justify-center')}><Upload className="h-3.5 w-3.5" aria-hidden />Tải hóa đơn / vé</FilePicker>
             </div>
@@ -331,13 +331,13 @@ export function ActivityDrawer({ id, onClose, onEdit }: { id: string; onClose: (
           )}
           {a.expenseStatus === 'SUBMITTED' && canApprove(a) && (
             <div className="mt-2 flex gap-2">
-              <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')} onClick={() => patch({ expenseStatus: 'HEAD_APPROVED' })}>Duyệt chi</button>
+              <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]')} onClick={() => patch({ expenseStatus: 'HEAD_APPROVED' })}>Duyệt chi</button>
               <button className={cn(btnGhost, btnSm, 'text-[rgb(var(--danger-fg))]')} onClick={() => patch({ expenseStatus: 'REJECTED', expenseNote: 'Trưởng phòng từ chối chi phí' })}>Từ chối</button>
             </div>
           )}
           {a.expenseStatus === 'HEAD_APPROVED' && canDo('claim.accounting') && (
             <div className="mt-2 flex gap-2">
-              <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')} onClick={() => { patch({ expenseStatus: 'PAID' }); postCash(expenseCash(a, users, cashEntries)); notify('Đã thanh toán, tự sinh phiếu quyết toán công tác phí vào sổ quỹ', 'teal'); }}>Kế toán xác nhận thanh toán</button>
+              <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]')} onClick={() => { patch({ expenseStatus: 'PAID' }); postCash(expenseCash(a, users, cashEntries)); notify('Đã thanh toán, tự sinh phiếu quyết toán công tác phí vào sổ quỹ', 'teal'); }}>Kế toán xác nhận thanh toán</button>
               <button className={cn(btnGhost, btnSm, 'text-[rgb(var(--danger-fg))]')} onClick={() => patch({ expenseStatus: 'REJECTED', expenseNote: 'Kế toán từ chối: chứng từ chưa hợp lệ' })}>Từ chối</button>
             </div>
           )}
@@ -361,7 +361,7 @@ export function ApprovalButtons({ a }: { a: Activity }) {
   return (
     <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
       <div className="flex flex-wrap gap-1.5">
-        <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} onClick={() => { patch({ status: 'APPROVED', approvedBy: me.id }); record('APPROVED'); const adv = advanceCash(a, users); if (adv) postCash(adv); notify(adv ? `Đã duyệt, tự sinh phiếu chi tạm ứng ${vnd(adv.amount)}` : 'Đã duyệt', 'teal'); }}>Duyệt hợp lệ</button>
+        <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]')} onClick={() => { patch({ status: 'APPROVED', approvedBy: me.id }); record('APPROVED'); const adv = advanceCash(a, users); if (adv) postCash(adv); notify(adv ? `Đã duyệt, tự sinh phiếu chi tạm ứng ${vnd(adv.amount)}` : 'Đã duyệt', 'teal'); }}>Duyệt hợp lệ</button>
         <button className={cn(btnGhost, btnSm)} onClick={() => setMode(mode === 'need' ? null : 'need')}>Yêu cầu bổ sung</button>
         <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--danger)/0.15)] text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--danger)/0.25)]')} onClick={() => setMode(mode === 'reject' ? null : 'reject')}>Từ chối</button>
       </div>
@@ -445,9 +445,21 @@ export function StaffModule() {
 
   return (
     <div className="space-y-4">
-      <Tabs tabs={[{ id: 'list', label: 'Lịch' }, { id: 'approval', label: waiting ? `Chờ duyệt (${waiting})` : 'Chờ duyệt' }, { id: 'summary', label: 'Tổng hợp' }]} value={tab} onChange={setTab} />
+      <Tabs tabs={[{ id: 'list', label: 'Lịch' }, { id: 'approval', label: 'Chờ duyệt', count: waiting || undefined }, { id: 'summary', label: 'Tổng hợp' }]} value={tab} onChange={setTab}
+        aside={<button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => setForm({})}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm lịch</button>} />
 
-      <FilterBar q={q} onQ={setQ} placeholder="Tìm tiêu đề, khách hàng, địa điểm..." status={type} onStatus={setType} statusLabel="Mọi loại" statusOptions={(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => ({ value: t, label: ACTIVITY_TYPE[t].label }))} extraActive={who !== 'ALL' ? 1 : 0}>
+      <FilterBar q={q} onQ={setQ} placeholder="Tìm tiêu đề, khách hàng, địa điểm…" status={type} onStatus={setType} statusLabel="Mọi loại" statusOptions={(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => ({ value: t, label: ACTIVITY_TYPE[t].label }))} extraActive={who !== 'ALL' ? 1 : 0}
+        chips={<ChipFilter total={mine.filter((a) => inR(a.from.slice(0, 10))).length} value={type as ActivityType | 'ALL'} onChange={(v) => setType(v)} options={(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => ({ value: t, label: ACTIVITY_TYPE[t].label, count: mine.filter((a) => a.type === t && inR(a.from.slice(0, 10))).length, color: ACTIVITY_TYPE[t].color })).filter((o) => o.count > 0 || o.value === type)} />}
+        actions={tab === 'list' ? <>
+          <select className={cn(inputCls, 'w-auto py-1.5 text-[13px]')} value={who} onChange={(e) => setWho(e.target.value)} aria-label="Nhân sự">
+            <option value="ALL">Mọi nhân sự</option>
+            {people.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+          <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Kiểu xem">
+            <button role="radio" aria-checked={view === 'table'} onClick={() => setView('table')} className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px]', view === 'table' ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))]')}><FileSpreadsheet className="h-3.5 w-3.5" aria-hidden />Bảng</button>
+            <button role="radio" aria-checked={view === 'calendar'} onClick={() => setView('calendar')} className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px]', view === 'calendar' ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))]')}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Tuần</button>
+          </div>
+        </> : undefined}>
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={who} onChange={(e) => setWho(e.target.value)} aria-label="Nhân sự">
           <option value="ALL">Tất cả nhân sự</option>
           {people.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -455,33 +467,29 @@ export function StaffModule() {
       </FilterBar>
 
       {tab === 'list' && (
-        <Panel
-          title={view === 'table' ? `${list.length} lịch trong khoảng đang lọc` : `Tuần ${fmtDate(dayKey(days[0]))} – ${fmtDate(dayKey(days[6]))}`}
-          action={
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded bg-[rgb(var(--bg))] p-0.5" role="radiogroup" aria-label="Kiểu xem">
-                <button role="radio" aria-checked={view === 'table'} onClick={() => setView('table')} className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium', view === 'table' ? 'bg-[rgb(var(--surface))] font-semibold text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--line))]' : 'text-[rgb(var(--muted))]')}><FileSpreadsheet className="h-3.5 w-3.5" aria-hidden />Dạng bảng</button>
-                <button role="radio" aria-checked={view === 'calendar'} onClick={() => setView('calendar')} className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium', view === 'calendar' ? 'bg-[rgb(var(--surface))] font-semibold text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--line))]' : 'text-[rgb(var(--muted))]')}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Lịch tuần</button>
-              </div>
-              <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => setForm({})}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm lịch</button>
-            </div>
-          }
-        >
+        <Panel title={view === 'table' ? undefined : `Tuần ${fmtDate(dayKey(days[0]))} – ${fmtDate(dayKey(days[6]))}`}>
           {view === 'table' ? (
             <>
               <div className="space-y-2 md:hidden">{list.map((a) => <ActivityRowCard key={a.id} a={a} onOpen={() => setOpen(a.id)} />)}</div>
               <div className="hidden md:block">
-                <Table head={['Thời gian', 'Nhân sự', 'Loại', 'Nội dung / khách hàng', 'Chi phí', 'Check-in', 'Trạng thái']} minW={980}>
+                <Table head={['Ngày', 'Giờ', 'Nhân sự', 'Loại', 'Nội dung', 'Khách hàng / địa điểm', <span key="c" className="block text-right">Chi phí</span>, 'Duyệt chi', 'Check-in', 'Trạng thái']} minW={1000}>
                   {list.map((a) => {
                     const cust = customers.find((c) => c.id === a.customerId);
                     const lead = leads.find((l) => l.id === a.leadId);
+                    const f = new Date(a.from), t2 = new Date(a.to);
+                    const dd = (d: Date) => d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+                    const hh = (d: Date) => d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    const sameDay = dd(f) === dd(t2);
                     return (
                       <tr key={a.id} className={cn(rowCls, 'cursor-pointer')} onClick={() => setOpen(a.id)}>
-                        <td className={cn(tdFirst, 'whitespace-nowrap tabular-nums')}>{fmtDT(a.from)}<p className="text-xs text-[rgb(var(--muted))]">đến {fmtDT(a.to)}</p></td>
+                        <td className={cn(tdFirst, 'font-mono text-xs')}>{dd(f)}{sameDay ? '' : `–${dd(t2)}`}</td>
+                        <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{hh(f)}–{hh(t2)}</td>
                         <td className={tdCls}>{users.find((u) => u.id === a.userId)?.name}</td>
-                        <td className={tdCls}><span className="flex items-center gap-1.5 text-xs"><i className="h-2 w-2 shrink-0 rounded-full" style={{ background: ACTIVITY_TYPE[a.type].color }} />{a.type === 'LEAVE' ? LEAVE_KIND[a.leaveKind ?? 'LEAVE'] : ACTIVITY_TYPE[a.type].label}</span></td>
-                        <td className={tdCls}><p className="max-w-[280px] truncate">{a.title}</p><p className="max-w-[280px] truncate text-xs text-[rgb(var(--muted))]">{cust?.name ?? lead?.company ?? a.location}</p></td>
-                        <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{a.cost ? compact(a.cost) : '—'}{a.expenseStatus && <p className="text-[11px] text-[rgb(var(--muted))]">{EXPENSE_STATUS[a.expenseStatus].label}</p>}</td>
+                        <td className={tdCls}><span className="flex max-w-[170px] items-center gap-1.5 text-[13px] text-[rgb(var(--fg2))]"><i className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: ACTIVITY_TYPE[a.type].color }} /><span className="truncate">{a.type === 'LEAVE' ? LEAVE_KIND[a.leaveKind ?? 'LEAVE'] : ACTIVITY_TYPE[a.type].label}</span></span></td>
+                        <td className={tdCls}><span className="block max-w-[280px] truncate font-medium" title={a.title}>{a.title}</span></td>
+                        <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[220px] truncate">{cust?.name ?? lead?.company ?? a.location ?? '—'}</span></td>
+                        <td className={cn(tdCls, 'text-right tabular-nums')}>{a.cost ? compact(a.cost) : '—'}</td>
+                        <td className={cn(tdCls, 'text-[13px] text-[rgb(var(--muted))]')}><span className="block max-w-[150px] truncate" title={a.expenseStatus ? EXPENSE_STATUS[a.expenseStatus].label : undefined}>{a.expenseStatus ? EXPENSE_STATUS[a.expenseStatus].label : '—'}</span></td>
                         <td className={tdCls}>{a.checkin ? <Chip tone={a.checkin.lateMinutes > 0 ? 'orange' : 'teal'}>{a.checkin.lateMinutes > 0 ? `Trễ ${a.checkin.lateMinutes} phút` : 'Đúng giờ'}</Chip> : <span className="text-xs text-[rgb(var(--muted))]">—</span>}</td>
                         <td className={tdLast}><Chip tone={ACTIVITY_STATUS[a.status].tone}>{ACTIVITY_STATUS[a.status].label}</Chip></td>
                       </tr>

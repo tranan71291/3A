@@ -145,8 +145,8 @@ export function ForecastWidget() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-[rgb(var(--muted))]">Dự báo 3 tháng tới</p>
-          <p className="font-display g-brand-text text-3xl font-extrabold tabular-nums">{compact(f.next3)}</p>
+          <p className="text-xs text-[rgb(var(--muted))]">Dự báo 3 tháng tới</p>
+          <p className="font-display g-brand-text text-3xl font-semibold tabular-nums">{compact(f.next3)}</p>
           <p className="text-xs text-[rgb(var(--muted))]">Khoảng {compact(f.low3)} – {compact(f.high3)}</p>
         </div>
         <dl className="grid grid-cols-3 gap-x-6 gap-y-1 text-xs">
@@ -161,7 +161,7 @@ export function ForecastWidget() {
           const v = isF ? m.forecast ?? 0 : m.actual ?? 0;
           return (
             <div key={m.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5" title={isF ? `${m.label}: dự báo ${compact(v)} (từ pipeline ${compact(m.pipeline ?? 0)}, khoảng ${compact(m.low ?? 0)} – ${compact(m.high ?? 0)})` : `${m.label}: thực tế ${compact(v)}`}>
-              <span className="font-num text-[10px] text-[rgb(var(--muted))]">{v ? compact(v).replace(' ', '') : ''}</span>
+              <span className="font-num text-[11px] text-[rgb(var(--muted))]">{v ? compact(v).replace(' ', '') : ''}</span>
               <div className="relative flex min-h-0 w-full max-w-[44px] flex-1 items-end">
                 {isF && <div className="absolute inset-x-0 rounded-sm border border-dashed border-[rgb(var(--accent)/0.5)]" style={{ bottom: `${((m.low ?? 0) / max) * 100}%`, height: `${(((m.high ?? 0) - (m.low ?? 0)) / max) * 100}%` }} />}
                 <div className={cn('w-full rounded-t-sm', isF ? 'g-brand opacity-90' : 'bg-[rgb(var(--secondary))]')} style={{ height: `${Math.max(2, (v / max) * 100)}%` }} />
@@ -265,7 +265,7 @@ export function FunnelWidget() {
         <div className="rounded border border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--ink)/0.02)] p-2 motion-safe:animate-[popIn_.14s_ease-out]">
           <p className="mb-1 flex items-center justify-between px-1 text-[11px] text-[rgb(var(--muted))]"><span>{cur[0]} · {cur[1].length} hồ sơ · {compact(cur[1].reduce((a, r) => a + r.value, 0))}</span><button className="hover:text-[rgb(var(--fg))]" onClick={() => setSel(null)} aria-label="Đóng danh sách"><X className="h-3.5 w-3.5" /></button></p>
           <ul className="max-h-48 overflow-y-auto">
-            {cur[1].slice(0, 30).map((r) => <li key={r.key}><button className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-[rgb(var(--secondary)/0.15)]" onClick={r.open}><span className="min-w-0 flex-1"><span className="block truncate text-[rgb(var(--fg2))]">{r.title}</span><span className="block truncate text-[10px] text-[rgb(var(--faint))]">{r.sub}</span></span><span className="font-num shrink-0 text-[rgb(var(--fg2))]">{r.value ? compact(r.value) : ''}</span></button></li>)}
+            {cur[1].slice(0, 30).map((r) => <li key={r.key}><button className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-[rgb(var(--secondary)/0.15)]" onClick={r.open}><span className="min-w-0 flex-1"><span className="block truncate text-[rgb(var(--fg2))]">{r.title}</span><span className="block truncate text-[11px] text-[rgb(var(--faint))]">{r.sub}</span></span><span className="font-num shrink-0 text-[rgb(var(--fg2))]">{r.value ? compact(r.value) : ''}</span></button></li>)}
             {!cur[1].length && <li className="px-1.5 py-2 text-xs text-[rgb(var(--faint))]">Không có hồ sơ ở tầng này.</li>}
           </ul>
         </div>

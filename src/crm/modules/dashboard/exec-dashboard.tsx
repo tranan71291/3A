@@ -2,9 +2,9 @@
 
 import { type ReactNode, useState } from 'react';
 import { Printer, Target } from 'lucide-react';
-import { Chip, EmptyState, Field, MoneyInput, ProgressBar, SideSheet, Sparkline, Table, Tabs, useSticky } from '../../components/ui';
+import { Chip, EmptyState, Field, MoneyInput, ProgressBar, SideSheet, Table, Tabs, useSticky } from '../../components/ui';
 import { claimState, scoreLead } from '../../lib/business';
-import { agoText, bizMode, boqTotal, BRAND, btnAccent, btnGhost, btnPrimary, btnSm, channelOfSource, compact, daysInMonth, deltaPct, inputCls, inScope, isoMs, KPI_CFG_DEFAULT, kpiId, kpiMonthKey, LEAD_STATUS, leadAt, LOST_REASON, median, MKT_CH, MQL_THRESHOLD, paceStatus, PROGRAM_LABEL, ROLE_LABEL, rowCls, salesFunnel, SOURCE_LABEL, splitUnit, ST_NONE, ST_OK, ST_SLOW, ST_WATCH, tdCls, tdFirst, tdLast, TONE_RGB, useApp } from '../../lib/core';
+import { agoText, bizMode, boqTotal, btnGhost, btnPrimary, btnSm, channelOfSource, compact, daysInMonth, deltaPct, inputCls, inScope, isoMs, KPI_CFG_DEFAULT, kpiId, kpiMonthKey, LEAD_STATUS, leadAt, LOST_REASON, median, MKT_CH, MQL_THRESHOLD, paceStatus, PROGRAM_LABEL, ROLE_LABEL, rowCls, salesFunnel, SOURCE_LABEL, splitUnit, ST_NONE, ST_OK, ST_SLOW, ST_WATCH, tdCls, tdFirst, tdLast, TONE_RGB, useApp } from '../../lib/core';
 import type { DashData, DashPeriod, DashRange, DashScope, DashTab, DeptCode, KpiCfg, KpiStatus, KpiTarget, Lead, LostReason, MktChannel, User } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { mdfForecast, slaRisks } from '../ai/ai-core';
@@ -107,28 +107,26 @@ export function useDashData(period: DashPeriod, scope: DashScope) {
 export function KpiTile({ label, tag, value, delta, deltaGood = 'up', deltaText, deltaPts, progress, marker, foot, status, spark, onClick }: {
   label: string; tag: string; value: string; delta?: number | null; /** delta là điểm phần trăm (tỷ lệ), không phải % thay đổi */ deltaPts?: boolean; deltaGood?: 'up' | 'down'; deltaText?: string; progress?: number; marker?: number; foot?: ReactNode; status: KpiStatus; spark?: number[]; onClick?: () => void;
 }) {
+  void spark;
   const [num, unit] = splitUnit(value);
   const good = delta == null ? null : deltaGood === 'up' ? delta >= 0 : delta <= 0;
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag onClick={onClick} className={cn('glass-card relative flex min-w-0 flex-col gap-2 overflow-hidden rounded-md p-4 text-left', onClick && 'transition-shadow hover:shadow-[var(--shadow-md)]')}>
-      <span className="absolute inset-y-0 left-0 w-1" style={{ background: `rgb(${TONE_RGB[status.tone]})` }} aria-hidden />
-      <div className="flex items-baseline justify-between gap-2"><p className="truncate text-[13px] font-semibold text-[rgb(var(--fg2))]">{label}</p><span className="shrink-0 text-[11px] text-[rgb(var(--faint))]">{tag}</span></div>
-      <p className="font-display truncate text-[28px] font-extrabold leading-8 tracking-tight tabular-nums text-[rgb(var(--fg))]">{num}{unit && <span className="ml-1 text-base font-semibold text-[rgb(var(--muted))]">{unit}</span>}</p>
-      <div className="min-h-[22px]">
-        {deltaText ? <span className={cn('inline-flex rounded-sm px-1.5 py-0.5 text-xs font-semibold', status.tone === 'red' ? 'bg-[rgb(var(--danger)/0.12)] text-[rgb(var(--danger-fg))]' : 'bg-[rgb(var(--accent)/0.12)] text-[rgb(var(--accent-fg))]')}>{deltaText}</span>
-          : delta != null && Number.isFinite(delta) ? <span className={cn('inline-flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-xs font-semibold tabular-nums', good ? 'bg-[rgb(var(--success)/0.12)] text-[rgb(var(--success-fg))]' : 'bg-[rgb(var(--danger)/0.12)] text-[rgb(var(--danger-fg))]')}>{delta >= 0 ? '▲' : '▼'} {Math.abs(delta).toLocaleString('vi-VN', { maximumFractionDigits: delta > -10 && delta < 10 ? 1 : 0 })}{deltaPts ? ' điểm' : '%'}</span>
-            : <span className="text-xs text-[rgb(var(--faint))]">Chưa có kỳ trước</span>}
-      </div>
+    <Tag onClick={onClick} className={cn('relative flex min-w-0 flex-col gap-1 px-4 py-3 text-left', onClick && 'transition-colors hover:bg-[rgb(var(--ink)/0.03)]')}>
+      <div className="flex items-baseline justify-between gap-2"><p className="truncate text-[12.5px] text-[rgb(var(--muted))]">{label}</p><span className="shrink-0 font-mono text-[11px] text-[rgb(var(--faint))]">{tag}</span></div>
+      <p className={cn('truncate text-[26px] font-medium leading-8 tabular-nums', status.tone === 'red' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--fg))]')}>{num}{unit && <span className="ml-1 text-sm font-normal text-[rgb(var(--muted))]">{unit}</span>}</p>
+      <p className="min-h-[18px] truncate text-xs tabular-nums">
+        {deltaText ? <span className={status.tone === 'red' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--warn))]'}>{deltaText}</span>
+          : delta != null && Number.isFinite(delta) ? <><span className={good ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]'}>{delta >= 0 ? '+' : '−'}{Math.abs(delta).toLocaleString('vi-VN', { maximumFractionDigits: delta > -10 && delta < 10 ? 1 : 0 })}{deltaPts ? ' điểm' : '%'}</span> <span className="text-[rgb(var(--muted))]">so với kỳ trước</span></>
+            : <span className="text-[rgb(var(--faint))]">Chưa có kỳ trước</span>}
+      </p>
       {progress !== undefined && (
-        <div className="relative h-1.5 w-full rounded-full bg-[rgb(var(--line))]" role="img" aria-label={`Đạt ${Math.round(progress)}%${marker !== undefined ? `, kỳ vọng ${Math.round(marker)}%` : ''}`}>
-          <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, progress))}%`, background: `rgb(${TONE_RGB[status.tone]})` }} />
-          {marker !== undefined && <span className="absolute -top-1 h-3.5 w-0.5 rounded bg-[rgb(var(--fg))]" style={{ left: `calc(${Math.min(100, Math.max(0, marker))}% - 1px)` }} aria-hidden />}
+        <div className="relative mt-1 h-1 w-full rounded-full bg-[rgb(var(--ink)/0.08)]" role="img" aria-label={`Đạt ${Math.round(progress)}%${marker !== undefined ? `, kỳ vọng ${Math.round(marker)}%` : ''}`}>
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, progress))}%`, background: status.tone === 'red' ? 'rgb(var(--danger))' : 'rgb(var(--fg2))' }} />
+          {marker !== undefined && <span className="absolute -top-1 h-3 w-0.5 rounded bg-[rgb(var(--danger))]" style={{ left: `calc(${Math.min(100, Math.max(0, marker))}% - 1px)` }} aria-hidden />}
         </div>
       )}
       {foot && <p className="truncate text-xs text-[rgb(var(--muted))]">{foot}</p>}
-      {spark && spark.length > 1 && <Sparkline data={spark} color={BRAND.blueHi} height={20} />}
-      <p className="mt-auto flex items-center gap-1.5 text-xs font-medium" style={{ color: status.tone === 'muted' ? 'rgb(var(--muted))' : `rgb(${TONE_RGB[status.tone]})` }}><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />{status.label}</p>
     </Tag>
   );
 }
@@ -136,12 +134,12 @@ export function KpiTile({ label, tag, value, delta, deltaGood = 'up', deltaText,
 /** Khung tiêu đề + "Chi tiết →" dùng cho mọi khối */
 export function DashPanel({ title, sub, more, onMore, children, className, badge }: { title: string; sub?: string; more?: string; onMore?: () => void; children: ReactNode; className?: string; badge?: number }) {
   return (
-    <section className={cn('glass-card min-w-0 rounded-md p-5', className)}>
+    <section className={cn('glass-card min-w-0 rounded-xl p-5', className)}>
       <div className="mb-4 flex items-baseline gap-2">
-        <h2 className="font-display text-[15px] font-bold tracking-tight">{title}</h2>
-        {badge !== undefined && badge > 0 && <span className="rounded-full bg-[rgb(var(--danger)/0.15)] px-1.5 text-xs font-semibold text-[rgb(var(--danger-fg))]">{badge}</span>}
+        <h2 className="text-[15px] font-medium">{title}</h2>
+        {badge !== undefined && badge > 0 && <span className="font-mono text-xs text-[rgb(var(--danger-fg))]">{badge}</span>}
         {sub && <span className="truncate text-xs text-[rgb(var(--muted))]">{sub}</span>}
-        {onMore && <button className="ml-auto shrink-0 text-xs font-semibold text-[rgb(var(--secondary-fg))] hover:underline" onClick={onMore}>{more ?? 'Chi tiết'} →</button>}
+        {onMore && <button className="ml-auto shrink-0 text-[13px] text-[rgb(var(--accent-fg))] hover:underline" onClick={onMore}>{more ?? 'Chi tiết'} →</button>}
       </div>
       {children}
     </section>
@@ -188,9 +186,10 @@ export function RevenueKpiChart({ d }: { d: DashData }) {
   return (
     <div>
       <div className="mb-2 flex flex-wrap gap-4 text-xs text-[rgb(var(--muted))]">
-        <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-[rgb(var(--accent))]" />Thực tế</span>
-        <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm border border-dashed border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.18)]" />Dự báo</span>
-        <span className="flex items-center gap-1.5"><i className="h-0.5 w-4 bg-[rgb(var(--secondary))]" />Chỉ tiêu</span>
+        <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-[rgb(var(--ink)/0.18)]" />Thực tế</span>
+        <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-[rgb(var(--accent))]" />Tháng này</span>
+        <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm border border-dashed border-[rgb(var(--ink)/0.3)]" />Dự báo</span>
+        <span className="flex items-center gap-1.5"><i className="h-0.5 w-4 bg-[rgb(var(--fg)/0.7)]" />Chỉ tiêu</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="h-[220px] w-full" role="img" aria-label="Doanh thu theo tháng so với chỉ tiêu">
         {ticks.map((t) => <g key={t}><line x1={L} x2={W} y1={y(t)} y2={y(t)} stroke="rgb(var(--ink) / 0.06)" /><text x={L - 6} y={y(t) + 3} textAnchor="end" fontSize="10" fill="rgb(var(--faint))">{t ? compact(t) : '0'}</text></g>)}
@@ -198,14 +197,14 @@ export function RevenueKpiChart({ d }: { d: DashData }) {
           const x = L + i * cw + cw * 0.2, w = cw * 0.6;
           return (
             <g key={c.key}>
-              {c.fc > c.actual && <rect x={x} y={y(c.fc)} width={w} height={Math.max(0, y(c.actual) - y(c.fc))} rx="2" fill="rgb(var(--accent) / 0.18)" stroke="rgb(var(--accent))" strokeDasharray="3 3" />}
-              {c.actual > 0 && <rect x={x} y={y(c.actual)} width={w} height={H - B - y(c.actual)} rx="2" fill="rgb(var(--accent))"><title>{`${c.label}: ${compact(c.actual)}${c.target ? ` / chỉ tiêu ${compact(c.target)}` : ''}`}</title></rect>}
-              <text x={x + w / 2} y={H - 8} textAnchor="middle" fontSize="10.5" fontWeight={c.off === 0 ? 700 : 400} fill={c.off === 0 ? 'rgb(var(--fg))' : 'rgb(var(--muted))'}>{c.label}</text>
+              {c.fc > c.actual && <rect x={x} y={y(c.fc)} width={w} height={Math.max(0, y(c.actual) - y(c.fc))} rx="2" fill="rgb(var(--ink) / 0.04)" stroke="rgb(var(--ink) / 0.3)" strokeDasharray="3 3" />}
+              {c.actual > 0 && <rect x={x} y={y(c.actual)} width={w} height={H - B - y(c.actual)} rx="3" fill={c.off === 0 ? 'rgb(var(--accent))' : 'rgb(var(--ink) / 0.18)'}><title>{`${c.label}: ${compact(c.actual)}${c.target ? ` / chỉ tiêu ${compact(c.target)}` : ''}`}</title></rect>}
+              <text x={x + w / 2} y={H - 8} textAnchor="middle" fontSize="11" fontFamily="'JetBrains Mono', monospace" fontWeight={c.off === 0 ? 500 : 400} fill={c.off === 0 ? 'rgb(var(--fg))' : 'rgb(var(--muted))'}>{c.label}</text>
             </g>
           );
         })}
-        {tl.length > 1 && <polyline fill="none" stroke="rgb(var(--secondary))" strokeWidth="2" points={tl.map((c) => `${L + cols.indexOf(c) * cw + cw / 2},${y(c.target)}`).join(' ')} />}
-        {tl.length === 1 && <line x1={L + cols.indexOf(tl[0]) * cw + cw * 0.1} x2={L + cols.indexOf(tl[0]) * cw + cw * 0.9} y1={y(tl[0].target)} y2={y(tl[0].target)} stroke="rgb(var(--secondary))" strokeWidth="2" />}
+        {tl.length > 1 && <polyline fill="none" stroke="rgb(var(--fg) / 0.7)" strokeWidth="1.5" points={tl.map((c) => `${L + cols.indexOf(c) * cw + cw / 2},${y(c.target)}`).join(' ')} />}
+        {tl.length === 1 && <line x1={L + cols.indexOf(tl[0]) * cw + cw * 0.1} x2={L + cols.indexOf(tl[0]) * cw + cw * 0.9} y1={y(tl[0].target)} y2={y(tl[0].target)} stroke="rgb(var(--fg) / 0.7)" strokeWidth="1.5" />}
       </svg>
       <p className="sr-only">{cols.map((c) => `${c.label}: ${compact(c.actual)}`).join(', ')}</p>
     </div>
@@ -223,7 +222,7 @@ export function FunnelBars({ steps, compactView }: { steps: { label: string; n: 
         return (
           <li key={s.label} className="grid grid-cols-[84px_1fr_auto] items-center gap-2 text-sm">
             <span className="truncate text-[rgb(var(--fg2))]">{s.label}</span>
-            <div className="h-5 rounded-sm bg-[rgb(var(--ink)/0.04)]"><div className="h-full rounded-sm" style={{ width: `${Math.max(2, (s.n / max) * 100)}%`, background: last ? 'rgb(var(--success))' : 'rgb(var(--accent) / 0.55)' }} /></div>
+            <div className="h-1.5 rounded-full bg-[rgb(var(--ink)/0.06)]"><div className="h-full rounded-full" style={{ width: `${Math.max(2, (s.n / max) * 100)}%`, background: last ? 'rgb(var(--accent))' : 'rgb(var(--fg) / 0.75)' }} /></div>
             <span className="w-16 text-right font-num text-xs tabular-nums"><b>{s.n}</b>{!compactView && prev ? <span className="ml-1 text-[rgb(var(--muted))]">{Math.round((s.n / prev) * 100)}%</span> : null}</span>
           </li>
         );
@@ -236,23 +235,29 @@ export function FunnelBars({ steps, compactView }: { steps: { label: string; n: 
 export function DashFilterBar({ period, setPeriod, scope, setScope, r, onTargets }: { period: DashPeriod; setPeriod: (p: DashPeriod) => void; scope: DashScope; setScope: (s: DashScope) => void; r: DashRange; onTargets: () => void }) {
   const { departments, role, me } = useApp();
   const now = new Date();
-  const opts: { id: DashPeriod; label: string }[] = [{ id: 'WEEK', label: 'Tuần' }, { id: 'MONTH', label: `Tháng ${now.getMonth() + 1}` }, { id: 'QUARTER', label: `Quý ${Math.floor(now.getMonth() / 3) + 1}` }, { id: 'YEAR', label: `Năm ${now.getFullYear()}` }];
+  const opts: { id: DashPeriod; label: string }[] = [{ id: 'WEEK', label: 'Tuần' }, { id: 'MONTH', label: 'Tháng' }, { id: 'QUARTER', label: 'Quý' }, { id: 'YEAR', label: 'Năm' }];
   const lockDept = role !== 'BOD' && role !== 'ACCOUNTANT' && role !== 'MKT_LEAD';
+  const heading = period === 'MONTH' ? `Tháng ${now.getMonth() + 1}/${now.getFullYear()}` : period === 'QUARTER' ? `Quý ${Math.floor(now.getMonth() / 3) + 1}/${now.getFullYear()}` : period === 'YEAR' ? `Năm ${now.getFullYear()}` : 'Tuần này';
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="flex rounded-md bg-[rgb(var(--ink)/0.05)] p-0.5" role="radiogroup" aria-label="Kỳ báo cáo">
-        {opts.map((o) => <button key={o.id} role="radio" aria-checked={period === o.id} onClick={() => setPeriod(o.id)} className={cn('rounded px-3 py-1.5 text-sm', period === o.id ? 'bg-[rgb(var(--surface))] font-semibold text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>{o.label}</button>)}
+    <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+      <div className="mr-auto min-w-0">
+        <h2 className="text-[22px] font-medium leading-7">{heading}</h2>
+        <p className="text-[12.5px] text-[rgb(var(--muted))]">Cập nhật {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · kỳ vọng {Math.round(r.elapsed * 100)}% · còn {r.daysLeft} ngày</p>
       </div>
-      <span className="rounded-md border border-[rgb(var(--line))] px-2.5 py-1.5 text-sm text-[rgb(var(--muted))]">So với {r.prevTag}</span>
+      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Kỳ báo cáo">
+        {opts.map((o) => <button key={o.id} role="radio" aria-checked={period === o.id} onClick={() => setPeriod(o.id)} className={cn('rounded-md px-2.5 py-1 text-[13px]', period === o.id ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>{o.label}</button>)}
+      </div>
+      <span className="rounded-lg border border-[rgb(var(--line))] px-2.5 py-1 text-[13px] text-[rgb(var(--fg2))]">So với {r.prevTag}</span>
       {role === 'SALES_REP' ? <span className="rounded-md border border-[rgb(var(--line))] px-2.5 py-1.5 text-sm">Của tôi</span> : (
-        <select aria-label="Phòng ban" disabled={lockDept} className={cn(inputCls, 'h-9 w-auto py-0 text-sm')} value={scope.dept} onChange={(e) => setScope({ dept: e.target.value as DeptCode | 'ALL' })}>
+        <select aria-label="Phòng ban" disabled={lockDept} className={cn(inputCls, 'h-8 w-auto py-0 text-[13px]')} value={scope.dept} onChange={(e) => setScope({ dept: e.target.value as DeptCode | 'ALL' })}>
           {!lockDept && <option value="ALL">Mọi phòng</option>}
           {departments.filter((d) => d.active && (!lockDept || d.code === me.dept)).map((d) => <option key={d.code} value={d.code}>{d.short || d.name}</option>)}
         </select>
       )}
-      <button className={cn(btnGhost, 'h-9')} onClick={onTargets}><Target className="h-4 w-4" aria-hidden />Chỉ tiêu</button>
-      <span className="ml-auto text-xs text-[rgb(var(--muted))]">{new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · kỳ vọng {Math.round(r.elapsed * 100)}% · còn {r.daysLeft} ngày</span>
-      <button className={cn(btnGhost, 'h-9')} onClick={() => window.print()} title="In hoặc lưu PDF"><Printer className="h-4 w-4" aria-hidden />PDF</button>
+      <button className={cn(btnGhost, btnSm)} onClick={onTargets}><Target className="h-4 w-4" aria-hidden />Chỉ tiêu</button>
+      <button className={cn(btnGhost, btnSm, 'border-0')} onClick={() => window.print()} title="In hoặc lưu PDF"><Printer className="h-4 w-4" aria-hidden />PDF</button>
+      </div>
     </div>
   );
 }
@@ -268,18 +273,18 @@ export function ExecDashboard() {
   const scope: DashScope = role === 'SALES_REP' ? { dept: 'ALL', userId: me.id } : { dept: lockDept ? me.dept ?? 'ALL' : deptPick };
   const d = useDashData(period, scope);
   const mode = bizMode(company);
-  const tabs: { id: DashTab; label: string }[] = [{ id: 'all', label: 'Tổng Quan' }, { id: 'sales', label: 'Kinh doanh' }, { id: 'mkt', label: 'Marketing' }, { id: 'fin', label: 'Tài chính' }, ...(mode !== 'TRADING' ? [{ id: 'mfg' as const, label: 'Xưởng & công trình' }] : [])];
+  const tabs: { id: DashTab; label: string }[] = [{ id: 'all', label: 'Tổng quan' }, { id: 'sales', label: 'Kinh doanh' }, { id: 'mkt', label: 'Marketing' }, { id: 'fin', label: 'Tài chính' }, ...(mode !== 'TRADING' ? [{ id: 'mfg' as const, label: 'Xưởng & công trình' }] : [])];
   const noTargets = !kpiTargets.some((k) => k.scope !== 'CFG');
   return (
     <div className="space-y-5">
       <Tabs tabs={tabs} value={tabs.some((t) => t.id === tab) ? tab : 'all'} onChange={setTab} />
       {tab !== 'mfg' && <DashFilterBar period={period} setPeriod={setPeriod} scope={scope} setScope={(s) => setDeptPick(s.dept)} r={d.r} onTargets={() => setSheet(true)} />}
       {tab !== 'mfg' && noTargets && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-dashed border-[rgb(var(--accent)/0.5)] bg-[rgb(var(--accent)/0.05)] px-4 py-3 text-sm">
-          <Target className="h-4 w-4 text-[rgb(var(--accent))]" aria-hidden />
-          <span className="flex-1">Chưa có chỉ tiêu tháng: thẻ KPI chỉ so với kỳ trước. {role === 'BOD' ? 'Giám đốc nhập chỉ tiêu phòng ban, Trưởng phòng nhập chỉ tiêu nhân viên.' : 'Giám đốc nhập chỉ tiêu phòng ban trước.'}</span>
-          <button className={cn(btnAccent, btnSm)} onClick={() => setSheet(true)}>{role === 'BOD' || role === 'DEPT_HEAD' ? 'Nhập chỉ tiêu' : 'Xem chỉ tiêu'}</button>
-        </div>
+        <p className="flex flex-wrap items-center gap-2 text-sm text-[rgb(var(--fg2))]">
+          <Target className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />
+          Chưa có chỉ tiêu tháng, các số đang so với kỳ trước
+          <button className="font-medium text-[rgb(var(--accent-fg))] hover:underline" onClick={() => setSheet(true)}>{role === 'BOD' || role === 'DEPT_HEAD' ? 'Nhập chỉ tiêu' : 'Xem chỉ tiêu'}</button>
+        </p>
       )}
       {(tabs.some((t) => t.id === tab) ? tab : 'all') === 'all' && <DashOverviewTab d={d} setTab={setTab} />}
       {tab === 'sales' && <DashSalesTab d={d} />}
@@ -338,18 +343,18 @@ export function DashOverviewTab({ d, setTab }: { d: DashData; setTab: (t: DashTa
   const firstTiles = [T.revenue, T.pipeline, T.winRate, T.leads, d.trade ? T.mdf : T.cash, T.debt];
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">{firstTiles}</div>
+      <div className="kpi-strip grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6">{firstTiles}</div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <DashPanel className="xl:col-span-2" title="Doanh thu & chỉ tiêu" sub="theo tháng" onMore={() => setTab('sales')}>
           <RevenueKpiChart d={d} />
           <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-[rgb(var(--line))] pt-3">
-            <div><dt className="text-xs text-[rgb(var(--muted))]">Còn thiếu</dt><dd className="font-display text-lg font-bold tabular-nums">{d.target ? compact(remain) : '—'}</dd></div>
-            <div><dt className="text-xs text-[rgb(var(--muted))]">Cần mỗi ngày</dt><dd className="font-display text-lg font-bold tabular-nums">{d.target && d.r.daysLeft ? compact(remain / d.r.daysLeft) : '—'}</dd></div>
-            <div><dt className="text-xs text-[rgb(var(--muted))]">Dự báo cuối kỳ</dt><dd className="font-display text-lg font-bold tabular-nums text-[rgb(var(--accent-fg))]">{projected != null ? <>{compact(projected)}{d.target ? ` · ${Math.round((projected / d.target) * 100)}%` : ''}</> : '—'}</dd></div>
+            <div><dt className="text-xs text-[rgb(var(--muted))]">Còn thiếu</dt><dd className="text-lg font-medium tabular-nums">{d.target ? compact(remain) : '—'}</dd></div>
+            <div><dt className="text-xs text-[rgb(var(--muted))]">Cần mỗi ngày</dt><dd className="text-lg font-medium tabular-nums">{d.target && d.r.daysLeft ? compact(remain / d.r.daysLeft) : '—'}</dd></div>
+            <div><dt className="text-xs text-[rgb(var(--muted))]">Dự báo cuối kỳ</dt><dd className="text-lg font-medium tabular-nums text-[rgb(var(--accent-fg))]">{projected != null ? <>{compact(projected)}{d.target ? ` · ${Math.round((projected / d.target) * 100)}%` : ''}</> : '—'}</dd></div>
           </dl>
         </DashPanel>
-        <DashPanel title="Cần duyệt" badge={todo.length} more="Tất cả" onMore={() => go('tasks')} className="border border-[rgb(var(--accent)/0.35)]">
+        <DashPanel title="Cần duyệt" badge={todo.length} more="Tất cả" onMore={() => go('tasks')}>
           {todo.length === 0 && alerts.length === 0 ? <EmptyState text={<>Không có việc chờ duyệt</>} hint={<>Yêu cầu duyệt giá, hợp đồng, chi quỹ sẽ hiện ở đây.</>} art="inbox" compact /> : (
             <ul className="divide-y divide-[rgb(var(--line))]">
               {todo.slice(0, 5).map((t) => (
@@ -375,27 +380,27 @@ export function DashOverviewTab({ d, setTab }: { d: DashData; setTab: (t: DashTa
         <DashPanel title="Kinh doanh" onMore={() => setTab('sales')}>
           <FunnelBars steps={salesFunnel(d.sl.filter((l) => leadAt(l) >= d.r.from - 90 * 864e5))} compactView />
           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[rgb(var(--line))] pt-3 text-sm">
-            <div><p className={cn('font-display text-lg font-bold', risks.length ? 'text-[rgb(var(--danger-fg))]' : '')}>{risks.length}</p><p className="text-xs text-[rgb(var(--muted))]">Rủi ro SLA</p></div>
-            <div><p className="font-display text-lg font-bold">{Number.isFinite(d.cycle) ? `${Math.round(d.cycle)} ngày` : '—'}</p><p className="text-xs text-[rgb(var(--muted))]">Chu kỳ chốt</p></div>
+            <div><p className={cn('font-display text-lg font-semibold', risks.length ? 'text-[rgb(var(--danger-fg))]' : '')}>{risks.length}</p><p className="text-xs text-[rgb(var(--muted))]">Rủi ro SLA</p></div>
+            <div><p className="font-display text-lg font-semibold">{Number.isFinite(d.cycle) ? `${Math.round(d.cycle)} ngày` : '—'}</p><p className="text-xs text-[rgb(var(--muted))]">Chu kỳ chốt</p></div>
           </div>
         </DashPanel>
         <DashPanel title="Marketing" onMore={() => setTab('mkt')}>
           <MiniBars data={weeks} labels={weeks.map((_, i) => (i === 7 ? 'Tuần này' : i === 0 ? '8 tuần trước' : ''))} />
           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[rgb(var(--line))] pt-3 text-sm">
-            <div><p className="font-display text-lg font-bold">{d.cpl != null ? compact(d.cpl) : '—'}</p><p className="text-xs text-[rgb(var(--muted))]">Chi phí / lead</p></div>
-            <div><p className="font-display text-lg font-bold">{d.sl.filter((l) => l.status === 'NEW' || l.status === 'NURTURE').length}</p><p className="text-xs text-[rgb(var(--muted))]">Chờ phân bổ</p></div>
+            <div><p className="font-display text-lg font-semibold">{d.cpl != null ? compact(d.cpl) : '—'}</p><p className="text-xs text-[rgb(var(--muted))]">Chi phí / lead</p></div>
+            <div><p className="font-display text-lg font-semibold">{d.sl.filter((l) => l.status === 'NEW' || l.status === 'NURTURE').length}</p><p className="text-xs text-[rgb(var(--muted))]">Chờ phân bổ</p></div>
           </div>
         </DashPanel>
         <DashPanel title="Tài chính" onMore={() => setTab('fin')}>
           {d.trade ? (
             <div className="flex items-center gap-4">
               <DashGauge pct={d.mdfUsedPct} mark={d.fyElapsed} />
-              <div><p className="font-display text-2xl font-bold tabular-nums">{compact(d.mdfAvail)}</p><p className="text-xs text-[rgb(var(--muted))]">Quỹ Hãng còn lại · đã dùng {Math.round(d.mdfUsedPct)}%</p></div>
+              <div><p className="font-display text-2xl font-semibold tabular-nums">{compact(d.mdfAvail)}</p><p className="text-xs text-[rgb(var(--muted))]">Quỹ Hãng còn lại · đã dùng {Math.round(d.mdfUsedPct)}%</p></div>
             </div>
-          ) : <div><p className="font-display text-2xl font-bold tabular-nums">{compact(d.cashNow)}</p><p className="text-xs text-[rgb(var(--muted))]">Tiền thu {d.r.label.toLowerCase()}</p></div>}
+          ) : <div><p className="font-display text-2xl font-semibold tabular-nums">{compact(d.cashNow)}</p><p className="text-xs text-[rgb(var(--muted))]">Tiền thu {d.r.label.toLowerCase()}</p></div>}
           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[rgb(var(--line))] pt-3 text-sm">
-            <div><p className={cn('font-display text-lg font-bold', claimsDue.length ? 'text-[rgb(var(--accent-fg))]' : '')}>{claimsDue.length} · {compact(claimsDue.reduce((s, c) => s + c.claimed, 0))}</p><p className="text-xs text-[rgb(var(--muted))]">Claim hạn ≤ 14 ngày</p></div>
-            <div><p className={cn('font-display text-lg font-bold', d.overLimit.length ? 'text-[rgb(var(--danger-fg))]' : '')}>{d.overLimit.length}</p><p className="text-xs text-[rgb(var(--muted))]">Khách vượt hạn mức</p></div>
+            <div><p className={cn('font-display text-lg font-semibold', claimsDue.length ? 'text-[rgb(var(--accent-fg))]' : '')}>{claimsDue.length} · {compact(claimsDue.reduce((s, c) => s + c.claimed, 0))}</p><p className="text-xs text-[rgb(var(--muted))]">Claim hạn ≤ 14 ngày</p></div>
+            <div><p className={cn('font-display text-lg font-semibold', d.overLimit.length ? 'text-[rgb(var(--danger-fg))]' : '')}>{d.overLimit.length}</p><p className="text-xs text-[rgb(var(--muted))]">Khách vượt hạn mức</p></div>
           </div>
         </DashPanel>
       </div>
@@ -436,7 +441,7 @@ export function MiniBars({ data, labels }: { data: number[]; labels?: string[] }
       <div className="flex h-20 items-end gap-1.5" role="img" aria-label={`Lead theo tuần: ${data.join(', ')}`}>
         {data.map((v, i) => <div key={i} className="flex-1 rounded-t-sm" title={String(v)} style={{ height: `${Math.max(4, (v / max) * 100)}%`, background: i === data.length - 1 ? 'rgb(var(--accent))' : 'rgb(var(--ink) / 0.14)' }} />)}
       </div>
-      {labels && <div className="mt-1 flex justify-between text-[10px] text-[rgb(var(--faint))]"><span>{labels[0]}</span><span>{labels[labels.length - 1]}</span></div>}
+      {labels && <div className="mt-1 flex justify-between text-[11px] text-[rgb(var(--faint))]"><span>{labels[0]}</span><span>{labels[labels.length - 1]}</span></div>}
     </div>
   );
 }
@@ -480,7 +485,7 @@ export function DashSalesTab({ d }: { d: DashData }) {
   const top = [...myCustomers].filter((c) => inScope(d.scope, c.dept, c.amId)).sort((a, b) => b.ytdRevenue - a.ytdRevenue).slice(0, 5);
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{[T.revenue, T.pipeline, T.winRate, T.cycle]}</div>
+      <div className="kpi-strip grid grid-cols-2 xl:grid-cols-4">{[T.revenue, T.pipeline, T.winRate, T.cycle]}</div>
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <DashPanel title="Phễu bán hàng" sub="lead nhận 90 ngày gần nhất" more="Dự án" onMore={() => go('projects')}>
           <FunnelBars steps={salesFunnel(d.sl.filter((l) => leadAt(l) >= d.now - 90 * 864e5))} />
@@ -574,7 +579,7 @@ export function DashMktTab({ d }: { d: DashData }) {
   const running = app.campaigns.filter((c) => c.status === 'RUNNING');
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="kpi-strip grid grid-cols-2 xl:grid-cols-4">
         {T.leads}
         <KpiTile label="Tỷ lệ MQL" tag={d.r.tag} value={mqlRate == null ? '—' : `${Math.round(mqlRate)} %`} delta={mqlRate != null && mqlPrev != null ? mqlRate - mqlPrev : null} deltaPts foot={<>{mql}/{ls.length} lead đạt ≥ {MQL_THRESHOLD} điểm</>} status={mqlRate == null ? { label: 'Chưa có lead', tone: 'muted' } : mqlRate >= 50 ? ST_OK : ST_WATCH} onClick={() => go('leads')} />
         <KpiTile label="Chi phí / lead" tag={d.r.tag} value={d.cpl != null ? compact(d.cpl) : '—'} progress={d.cpl != null ? Math.min(100, (d.cpl / d.cfg.cplMax) * 100) : undefined} marker={d.cpl != null ? 100 * (1 / 1) : undefined} foot={<>Trần {compact(d.cfg.cplMax)} · {Math.round(d.campLeads)} lead chiến dịch</>} status={d.cpl == null ? { label: 'Chưa có chiến dịch', tone: 'muted' } : d.cpl <= d.cfg.cplMax ? ST_OK : ST_SLOW} onClick={() => go('marketing')} />
@@ -590,7 +595,7 @@ export function DashMktTab({ d }: { d: DashData }) {
               </div>
             ))}
           </div>
-          <div className="mt-1 flex justify-between text-[10px] text-[rgb(var(--faint))]"><span>8 tuần trước</span><span>Tuần này</span></div>
+          <div className="mt-1 flex justify-between text-[11px] text-[rgb(var(--faint))]"><span>8 tuần trước</span><span>Tuần này</span></div>
         </DashPanel>
         <DashPanel className="xl:col-span-2" title="Phễu data MKT" sub={d.r.label}>
           <FunnelBars steps={[{ label: 'Lead', n: ls.length }, { label: 'MQL', n: mql }, { label: 'SQL', n: sql }, { label: 'Báo giá', n: ls.filter((l) => l.status === 'QUOTED' || l.status === 'WON').length }, { label: 'Chốt', n: ls.filter((l) => l.status === 'WON').length }]} />
@@ -645,7 +650,7 @@ export function DashFinTab({ d }: { d: DashData }) {
   const roiByType = [...new Set(programs.map((p) => p.type))].map((t) => { const ps = programs.filter((p) => p.type === t && p.held > 0); return { t, spent: ps.reduce((s, p) => s + p.held, 0), n: ps.length }; }).filter((x) => x.spent > 0).sort((a, b) => b.spent - a.spent);
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{d.trade ? [T.mdf, T.reimb, T.cash, T.debt] : [T.cash, T.debt, T.revenue, T.pipeline]}</div>
+      <div className="kpi-strip grid grid-cols-2 xl:grid-cols-4">{d.trade ? [T.mdf, T.reimb, T.cash, T.debt] : [T.cash, T.debt, T.revenue, T.pipeline]}</div>
       {d.trade && (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
           <DashPanel className="xl:col-span-3" title="Dòng tiền quỹ Hãng" sub="6 tháng tới · chi ra và Hãng hoàn về" more="Hồ sơ MDF" onMore={() => go('claims')}>
@@ -655,7 +660,7 @@ export function DashFinTab({ d }: { d: DashData }) {
               <div className="h-3 rounded-sm bg-[rgb(var(--ink)/0.04)]"><div className="h-full rounded-sm bg-[rgb(var(--success)/0.75)]" style={{ width: `${(r.inflow / Math.max(1, ...f.rows.map((x) => Math.max(x.out, x.inflow)))) * 100}%` }} title={`Hoàn ${compact(r.inflow)}`} /></div>
               <span className={cn('text-right font-num tabular-nums', r.balanceEnd < 0 ? 'text-[rgb(var(--danger-fg))]' : '')}>{compact(r.balanceEnd)}</span>
             </div>)}</div>
-            <div className="mt-2 grid grid-cols-[48px_1fr_1fr_90px] gap-2 text-[10px] text-[rgb(var(--faint))]"><span /><span className="text-right">Chi ra</span><span>Hãng hoàn</span><span className="text-right">Quỹ khả dụng</span></div>
+            <div className="mt-2 grid grid-cols-[48px_1fr_1fr_90px] gap-2 text-[11px] text-[rgb(var(--faint))]"><span /><span className="text-right">Chi ra</span><span>Hãng hoàn</span><span className="text-right">Quỹ khả dụng</span></div>
           </DashPanel>
           <DashPanel className="xl:col-span-2" title="Claim sắp hạn" badge={due.length} more="Hồ sơ MDF" onMore={() => go('claims')}>
             {due.length ? <ul className="divide-y divide-[rgb(var(--line))]">{due.slice(0, 5).map((c) => (
@@ -675,7 +680,7 @@ export function DashFinTab({ d }: { d: DashData }) {
                   <div className="w-1/3 rounded-t-sm bg-[rgb(var(--danger)/0.75)]" style={{ height: `${Math.max(2, (x.out / fmax) * 100)}%` }} title={`Chi ${compact(x.out)}`} />
                 </div>)}
               </div>
-              <div className="mt-1 flex gap-3 text-[10px] text-[rgb(var(--faint))]">{flows.map((x) => <span key={x.label} className="flex-1 text-center">{x.label}</span>)}</div>
+              <div className="mt-1 flex gap-3 text-[11px] text-[rgb(var(--faint))]">{flows.map((x) => <span key={x.label} className="flex-1 text-center">{x.label}</span>)}</div>
             </>
           ) : <EmptyState text={<>Chưa có phiếu thu chi</>} hint={<>Ghi thu chi ở mục Thu chi để theo dõi dòng tiền.</>} art="ledger" compact />}
         </DashPanel>

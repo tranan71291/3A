@@ -95,7 +95,7 @@ export function MentionComposer({ onSend, placeholder = 'Viết bình luận, g�
     <div className="relative">
       {opts.length > 0 && (
         <ul className="absolute bottom-full left-0 z-10 mb-1.5 w-full overflow-hidden rounded-md border border-[rgb(var(--ink)/0.1)] bg-[rgb(var(--raised))] py-1 shadow-2xl" role="listbox" aria-label={trig === '@' ? 'Nhắc tên' : 'Chèn liên kết dữ liệu'}>
-          <li className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-[rgb(var(--faint))]">{trig === '@' ? 'Nhắc đồng nghiệp' : 'Liên kết tới dự án / đơn / báo cáo'}</li>
+          <li className="px-3 pb-1 pt-0.5 text-[11px] font-semibold text-[rgb(var(--faint))]">{trig === '@' ? 'Nhắc đồng nghiệp' : 'Liên kết tới dự án / đơn / báo cáo'}</li>
           {opts.map((o, i) => (
             <li key={o.key} role="option" aria-selected={i === hi}>
               <button type="button" className={cn('flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm', i === hi ? 'bg-[rgb(var(--secondary)/0.3)]' : 'hover:bg-[rgb(var(--ink)/0.05)]')} onMouseDown={(e) => { e.preventDefault(); choose(o); }}>
@@ -117,7 +117,7 @@ export function MentionComposer({ onSend, placeholder = 'Viết bình luận, g�
           <textarea
             ref={ref}
             rows={rows}
-            className="block min-h-[44px] w-full flex-1 resize-none bg-transparent py-2 text-[15px] leading-relaxed text-[rgb(var(--fg))] placeholder:text-[rgb(var(--faint))] focus:outline-none"
+            className="block min-h-[44px] w-full flex-1 resize-none bg-transparent py-2 text-[15px] leading-relaxed text-[rgb(var(--fg))] placeholder:text-[rgb(var(--faint))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--fg)/0.4)]"
             value={text}
             placeholder={placeholder}
             aria-label="Nội dung bình luận"
@@ -134,7 +134,7 @@ export function MentionComposer({ onSend, placeholder = 'Viết bình luận, g�
           />
           {/* Nút gửi dạng icon: chỉ nổi bật khi đã có nội dung */}
           <button type="button" onClick={send} disabled={!text.trim() && !canSendEmpty} aria-label="Gửi" title="Gửi (Enter)"
-            className={cn('mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-200', text.trim() || canSendEmpty ? 'g-brand text-[rgb(var(--on-accent))] shadow-[0_6px_18px_-6px_rgba(242,140,51,.8)] hover:brightness-110' : 'text-[rgb(var(--faint))]')}>
+            className={cn('mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200', text.trim() || canSendEmpty ? 'g-brand text-[rgb(var(--on-accent))] shadow-[0_6px_18px_-6px_rgba(242,140,51,.8)] hover:brightness-110' : 'text-[rgb(var(--faint))]')}>
             <Send className="h-4 w-4" aria-hidden />
           </button>
         </div>

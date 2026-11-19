@@ -116,14 +116,6 @@ export function stBriefText(s: StSettings, pid?: string, mode: 'outline' | 'sect
   return (L.length ? `\n\nBrief nội dung:\n- ${L.join('\n- ')}` : '') + (v ? `\n\nYêu cầu soạn bài:\n- ${v}` : '');
 }
 
-/** Mô tả mức bám ảnh gốc để hiển thị dưới thanh trượt */
-export function strengthLabel(v: number): string {
-  if (v <= 0.25) return 'Giữ nguyên sản phẩm và bố cục, chỉ chỉnh ánh sáng, nền';
-  if (v <= 0.5) return 'Giữ sản phẩm, đổi bối cảnh và góc chụp';
-  if (v <= 0.75) return 'Giữ ý tưởng chính, sáng tạo bố cục mới';
-  return 'Chỉ lấy cảm hứng từ ảnh tham chiếu';
-}
-
 // ---- studio/image/canvas.ts ----
 
 /** Thu nhỏ ảnh tải lên về cạnh dài `max`, xuất JPEG (giảm dung lượng gửi máy chủ) */
@@ -498,7 +490,7 @@ export function StudioShell({ base, onClose }: { base: MktContent; onClose: () =
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <button className={cn(btnGhost, btnSm)} onClick={onClose}><ArrowLeft className="h-4 w-4" aria-hidden />Danh sách</button>
-        <p className="min-w-0 flex-1 truncate font-display text-[15px] font-bold">{title || 'Nội dung mới'}</p>
+        <p className="min-w-0 flex-1 truncate font-display text-[15px] font-semibold">{title || 'Nội dung mới'}</p>
         <Chip tone={CONTENT_STATUS[status].tone}>{CONTENT_STATUS[status].label}</Chip>
         {!ro && step >= 3 && status === 'DRAFT' && <button className={cn(btnPrimary, btnSm)} onClick={() => act('REVIEW', 'Đã gửi duyệt')}>Gửi duyệt</button>}
         {!ro && status === 'REVIEW' && returning === null && <>

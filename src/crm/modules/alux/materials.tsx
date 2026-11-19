@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { AlertTriangle, ArrowDown, ArrowUp, ClipboardCheck, Download, Pencil, Plus, Trash2, Warehouse } from 'lucide-react';
 import { Pagination, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { Chip, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { btnBase, btnGhost, btnPrimary, btnSm, C, compact, digits, fmtDate, inputCls, iso, jobCustName, kpiGrid, nextCode, rangeBounds, rowCls, STOCK_MOVE, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSticky } from '../../components/ui';
+import { btnGhost, btnPrimary, btnSm, C, compact, digits, fmtDate, inputCls, iso, jobCustName, kpiGrid, nextCode, rangeBounds, rowCls, STOCK_MOVE, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import type { CashAccount, ConfirmState, InvMove, InvMoveType, StockItem, VoucherLine } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -83,7 +83,7 @@ export function StockVoucherModal({ type, preset, onClose }: { type: InvMoveType
               <li key={l.key} className="rounded bg-[rgb(var(--raised))] p-2 sm:bg-transparent sm:p-0">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_96px_120px_32px] sm:items-center">
                   <select className={cn(inputCls, 'col-span-2 py-1.5 text-sm sm:col-span-1')} value={l.itemId} onChange={(e) => pick(l.key, e.target.value)} aria-label="Vật tư">
-                    <option value="">Chọn vật tư...</option>
+                    <option value="">Chọn vật tư…</option>
                     {Array.from(new Set(items.map((s) => s.category))).map((c) => <optgroup key={c} label={c}>{items.filter((s) => s.category === c).map((s) => <option key={s.id} value={s.id}>{s.code}: {s.name}</option>)}</optgroup>)}
                   </select>
                   {type === 'ADJUST'
@@ -129,7 +129,7 @@ export function StockItemModal({ item, onClose }: { item?: StockItem; onClose: (
         <Field label="Mã *"><input className={inputCls} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} placeholder="NH-XF55" /></Field>
         <Field label="Nhóm"><input className={inputCls} list="si-cats" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /><datalist id="si-cats">{cats.map((c) => <option key={c} value={c} />)}</datalist></Field>
         <Field label="Tên vật tư *" className="col-span-2"><input className={inputCls} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label="Đơn vị tính *"><input className={inputCls} value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} placeholder="cây, m², tấm..." /></Field>
+        <Field label="Đơn vị tính *"><input className={inputCls} value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} placeholder="cây, m², tấm…" /></Field>
         <Field label="Tồn tối thiểu"><input className={inputCls} type="number" min={0} value={f.minStock} onChange={(e) => setF({ ...f, minStock: Math.max(0, Number(e.target.value) || 0) })} /></Field>
         <Field label="Giá nhập tham khảo" className="col-span-2"><MoneyInput value={f.cost} onChange={(n) => setF({ ...f, cost: n })} /></Field>
       </div>
@@ -176,40 +176,40 @@ export function InventoryModule() {
   const target = (m: InvMove) => { const w = workOrders.find((x) => x.id === m.woId); const j = jobs.find((x) => x.id === (m.jobId ?? w?.jobId)); return j ? `${w?.code ?? j.code}: ${jobCustName(j, customers)}` : m.partner ?? ''; };
   return (
     <div className="space-y-4">
+      <Tabs tabs={[{ id: 'stock', label: 'Tồn kho' }, { id: 'moves', label: 'Phiếu nhập / xuất' }, { id: 'report', label: 'Nhập xuất tồn' }, { id: 'items', label: 'Danh mục' }]} value={tab} onChange={setTab} 
+        aside={<>
+          <button className={cn(btnGhost, btnSm, 'border-0')} disabled={!can} onClick={() => setVoucher('ADJUST')}><ClipboardCheck className="h-3.5 w-3.5" aria-hidden />Kiểm kê</button>
+          <button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setVoucher('IN')}><ArrowDown className="h-3.5 w-3.5" aria-hidden />Nhập kho</button>
+          <button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setVoucher('OUT')}><ArrowUp className="h-3.5 w-3.5" aria-hidden />Xuất kho</button>
+        </>} />
       <div className={kpiGrid('lg:grid-cols-4')}>
         <StatCard label="Giá trị tồn kho" value={compact(balances.reduce((s, b) => s + b.value, 0))} icon={Warehouse} color={C.blue} sub={`${balances.filter((b) => b.qty > 0).length} mặt hàng còn tồn`} />
         <StatCard label="Dưới tồn tối thiểu" value={String(low.length)} icon={AlertTriangle} color={low.length ? C.red : C.teal} sub={low.slice(0, 2).map((b) => b.s.name).join(', ') || 'Đủ hàng'} />
         <StatCard label="Nhập trong kỳ" value={compact(val(inPeriod, 'IN'))} icon={ArrowDown} color={C.teal} sub={`${new Set(inPeriod.filter((m) => m.type === 'IN').map((m) => m.code)).size} phiếu nhập`} />
         <StatCard label="Xuất trong kỳ" value={compact(val(inPeriod, 'OUT'))} icon={ArrowUp} color={C.orange} sub={`${new Set(inPeriod.filter((m) => m.type === 'OUT').map((m) => m.code)).size} phiếu xuất`} />
       </div>
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-0 flex-1"><Tabs tabs={[{ id: 'stock', label: 'Tồn kho' }, { id: 'moves', label: 'Phiếu nhập / xuất' }, { id: 'report', label: 'Báo cáo nhập xuất tồn' }, { id: 'items', label: 'Danh mục vật tư' }]} value={tab} onChange={setTab} /></div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')} disabled={!can} onClick={() => setVoucher('IN')}><ArrowDown className="h-3.5 w-3.5" aria-hidden />Nhập kho</button>
-          <button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setVoucher('OUT')}><ArrowUp className="h-3.5 w-3.5" aria-hidden />Xuất kho</button>
-          <button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setVoucher('ADJUST')}><ClipboardCheck className="h-3.5 w-3.5" aria-hidden />Kiểm kê</button>
-        </div>
-      </div>
-      <Panel>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
           <SearchBox value={q} onChange={setQ} placeholder={tab === 'moves' ? 'Tìm số phiếu, nhà cung cấp' : 'Tìm mã, tên vật tư'} />
           {tab === 'report' && <button className={cn(btnGhost, btnSm)} onClick={() => downloadCsv(`nhap-xuat-ton-${fromISO}-${toISO}.csv`, [['Mã', 'Tên', 'ĐVT', 'Tồn đầu SL', 'Tồn đầu GT', 'Nhập SL', 'Nhập GT', 'Xuất SL', 'Xuất GT', 'Tồn cuối SL', 'Tồn cuối GT'], ...report.map((r) => [r.s.code, r.s.name, r.s.unit, r.open.qty, r.open.value, r.inQ, Math.round(r.inV), r.outQ, Math.round(r.outV), r.close.qty, r.close.value])])}><Download className="h-3.5 w-3.5" aria-hidden />Xuất CSV</button>}
           {tab === 'items' && <button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setEdit('new')}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm vật tư</button>}
         </div>
+      <Panel>
 
         {tab === 'stock' && (
           <>
-            <Table head={['STT', 'Mã', 'Tên vật tư', 'ĐVT', 'Tồn', 'Giá bình quân', 'Giá trị', 'Tối thiểu']} minW={900}>
+            <Table head={['STT', 'Mã', 'Tên vật tư', 'Nhóm', 'ĐVT', <span key="q" className="block text-right">Tồn</span>, <span key="m" className="block text-right">Tối thiểu</span>, 'Mức tồn', <span key="a" className="block text-right">Giá bình quân (đ)</span>, <span key="v" className="block text-right">Giá trị (đ)</span>]} minW={1120}>
               {pagedStock.slice.map((b, i) => (
                 <tr key={b.s.id} className={cn(rowCls, !b.s.active && 'opacity-50')}>
                   <td className={cn(tdFirst, 'w-12 tabular-nums text-[rgb(var(--muted))]')}>{(pagedStock.page - 1) * 20 + i + 1}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap font-mono text-xs')}>{b.s.code}</td>
-                  <td className={tdCls}>{b.s.name}<p className="text-xs text-[rgb(var(--muted))]">{b.s.category}</p></td>
-                  <td className={cn(tdCls, 'text-xs')}>{b.s.unit}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums font-semibold', b.qty < b.s.minStock && 'text-[rgb(var(--danger-fg))]')}>{n(b.qty)}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums text-xs')}>{b.avg ? vnd(b.avg) : '—'}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{compact(b.value)}</td>
-                  <td className={cn(tdLast, 'tabular-nums text-xs text-[rgb(var(--muted))]')}>{n(b.s.minStock)}{b.qty < b.s.minStock && <Chip tone="red">Cần nhập</Chip>}</td>
+                  <td className={tdCls}><Code>{b.s.code}</Code></td>
+                  <td className={tdCls}><span className="block max-w-[280px] truncate font-medium">{b.s.name}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{b.s.category}</td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{b.s.unit}</td>
+                  <td className={cn(tdCls, 'text-right font-medium tabular-nums', b.qty < b.s.minStock && 'text-[rgb(var(--danger-fg))]')}>{n(b.qty)}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{n(b.s.minStock)}</td>
+                  <td className={tdCls}>{b.qty < b.s.minStock ? <Chip tone="red">Dưới tối thiểu</Chip> : <Chip tone="teal">Đủ</Chip>}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{b.avg ? Math.round(b.avg).toLocaleString('vi-VN') : '—'}</td>
+                  <td className={cn(tdLast, 'text-right tabular-nums')}>{Math.round(b.value).toLocaleString('vi-VN')}</td>
                 </tr>
               ))}
             </Table>
@@ -219,17 +219,17 @@ export function InventoryModule() {
 
         {tab === 'moves' && (
           <>
-            <Table head={['STT', 'Số phiếu', 'Ngày', 'Loại', 'Đối tượng', 'Số dòng', 'Giá trị', 'Người lập']} minW={900}>
+            <Table head={['STT', 'Số phiếu', 'Loại', 'Ngày', 'Đối tượng', <span key="d" className="block text-right">Số dòng</span>, <span key="v" className="block text-right">Giá trị</span>, 'Người lập']} minW={980}>
               {pagedV.slice.map((v, i) => (
                 <tr key={v.code} className={cn(rowCls, 'cursor-pointer')} onClick={() => setView(v.code)}>
                   <td className={cn(tdFirst, 'w-12 tabular-nums text-[rgb(var(--muted))]')}>{(pagedV.page - 1) * 20 + i + 1}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap font-mono text-xs text-[rgb(var(--accent-fg))]')}>{v.code}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{fmtDate(v.first.date)}</td>
+                  <td className={tdCls}><Code>{v.code}</Code></td>
                   <td className={tdCls}><Chip tone={STOCK_MOVE[v.first.type].tone}>{STOCK_MOVE[v.first.type].label}</Chip></td>
-                  <td className={cn(tdCls, 'max-w-[240px] text-xs')}><p className="line-clamp-2">{target(v.first) || '—'}</p></td>
-                  <td className={cn(tdCls, 'tabular-nums')}>{v.ms.length}</td>
+                  <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(v.first.date)}</td>
+                  <td className={tdCls}><span className="block max-w-[320px] truncate font-medium" title={target(v.first)}>{target(v.first) || '—'}</span></td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{v.ms.length}</td>
                   <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{compact(Math.abs(v.value))}</td>
-                  <td className={cn(tdLast, 'text-xs')}>{userName(v.first.by)}</td>
+                  <td className={cn(tdLast, 'text-[rgb(var(--fg2))]')}>{userName(v.first.by)}</td>
                 </tr>
               ))}
             </Table>
@@ -241,25 +241,30 @@ export function InventoryModule() {
         {tab === 'report' && (
           <>
             <p className="mb-2 text-xs text-[rgb(var(--muted))]">Kỳ {fmtDate(fromISO)} – {fmtDate(toISO)} (đổi kỳ ở bộ chọn thời gian trên cùng). Giá trị tính theo giá bình quân gia quyền.</p>
-            <Table head={['STT', 'Vật tư', 'ĐVT', 'Tồn đầu kỳ', 'Nhập trong kỳ', 'Xuất trong kỳ', 'Tồn cuối kỳ', 'Giá trị cuối kỳ']} minW={980}>
+            <Table head={['STT', 'Mã', 'Vật tư', 'ĐVT', <span key="a" className="block text-right">Tồn đầu</span>, <span key="b" className="block text-right">Nhập SL</span>, <span key="c" className="block text-right">Nhập GT</span>, <span key="d" className="block text-right">Xuất SL</span>, <span key="e" className="block text-right">Xuất GT</span>, <span key="f" className="block text-right">Tồn cuối</span>, <span key="g" className="block text-right">Giá trị cuối</span>]} minW={1240}>
               {report.map((r, i) => (
                 <tr key={r.s.id} className={rowCls}>
                   <td className={cn(tdFirst, 'w-12 tabular-nums text-[rgb(var(--muted))]')}>{i + 1}</td>
-                  <td className={tdCls}>{r.s.name}<p className="font-mono text-[11px] text-[rgb(var(--muted))]">{r.s.code}</p></td>
-                  <td className={cn(tdCls, 'text-xs')}>{r.s.unit}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{n(r.open.qty)}<p className="text-[11px] text-[rgb(var(--muted))]">{compact(r.open.value)}</p></td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums text-[rgb(var(--success-fg))]')}>{n(r.inQ)}<p className="text-[11px] text-[rgb(var(--muted))]">{compact(r.inV)}</p></td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums text-[rgb(var(--accent-fg))]')}>{n(r.outQ)}<p className="text-[11px] text-[rgb(var(--muted))]">{compact(r.outV)}</p></td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums font-semibold')}>{n(r.close.qty)}</td>
+                  <td className={tdCls}><Code>{r.s.code}</Code></td>
+                  <td className={tdCls}><span className="block max-w-[260px] truncate font-medium">{r.s.name}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{r.s.unit}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')} title={compact(r.open.value)}>{n(r.open.qty)}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{n(r.inQ)}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{compact(r.inV)}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{n(r.outQ)}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{compact(r.outV)}</td>
+                  <td className={cn(tdCls, 'text-right font-medium tabular-nums')}>{n(r.close.qty)}</td>
                   <td className={cn(tdLast, 'whitespace-nowrap text-right tabular-nums')}>{compact(r.close.value)}</td>
                 </tr>
               ))}
               {report.length > 0 && (
                 <tr className="border-t border-[rgb(var(--line))] font-semibold">
-                  <td className={tdFirst} /><td className={tdCls}>Cộng</td><td className={tdCls} />
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{compact(report.reduce((s, r) => s + r.open.value, 0))}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{compact(report.reduce((s, r) => s + r.inV, 0))}</td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{compact(report.reduce((s, r) => s + r.outV, 0))}</td>
+                  <td className={tdFirst} /><td className={tdCls}>Cộng</td><td className={tdCls} /><td className={tdCls} />
+                  <td className={cn(tdCls, 'text-right tabular-nums')} title="Giá trị tồn đầu">{compact(report.reduce((s, r) => s + r.open.value, 0))}</td>
+                  <td className={tdCls} />
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(report.reduce((s, r) => s + r.inV, 0))}</td>
+                  <td className={tdCls} />
+                  <td className={cn(tdCls, 'text-right tabular-nums')}>{compact(report.reduce((s, r) => s + r.outV, 0))}</td>
                   <td className={tdCls} />
                   <td className={cn(tdLast, 'whitespace-nowrap text-right tabular-nums')}>{compact(report.reduce((s, r) => s + r.close.value, 0))}</td>
                 </tr>

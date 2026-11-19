@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, Eye, Pencil, Trash2, Upload } from 'lucide-react';
+import { Download, Eye, FileText, Pencil, Trash2, Upload } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
-import { Chip, EmptyState, Field, FilePicker, Modal, Panel, Table, useSort, useSticky } from '../../components/ui';
-import { btnGhost, btnPrimary, btnSm, canViewDoc, DOC_CATEGORY, docVisibility, fmtDate, FORMAT_COLOR, inputCls, rowCls, slug, tdCls, tdFirst, tdLast, todayISO, uid, useApp, visibilityOptions } from '../../lib/core';
+import { Chip, Code, EmptyState, Field, FilePicker, Modal, Panel, Table, useSort, useSticky } from '../../components/ui';
+import { btnGhost, btnPrimary, btnSm, canViewDoc, DOC_CATEGORY, docVisibility, fmtDate, inputCls, rowCls, slug, tdCls, tdFirst, tdLast, todayISO, uid, useApp, visibilityOptions } from '../../lib/core';
 import type { ConfirmState, Department, DocCategory, DocItem, DocVisibility } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
@@ -114,7 +114,7 @@ export function DocsPage() {
     return (!t || [d.title, d.summary, ...d.tags].some((v) => v.toLowerCase().includes(t))) && (cat === 'ALL' || d.category === cat) && (vis === 'ALL_VIS' || d.visibility === vis) && inR(d.updatedAt);
   });
 
-  const srt = useSort('DocsPage', list, { 0: (d) => d.title, 1: (d) => d.category, 4: (d) => d.updatedAt, 5: (d) => d.sizeKb });
+  const srt = useSort('Docs40', list, { 0: (d) => d.title, 2: (d) => d.category, 6: (d) => d.updatedAt, 7: (d) => d.sizeKb });
   const paged = usePaged(srt.rows, 12);
   const sizeOf = (kb: number) => (kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`);
   return (
@@ -123,7 +123,7 @@ export function DocsPage() {
         q={q} onQ={setQ} placeholder="Tìm tên tài liệu, nội dung, từ khóa"
         status={cat} onStatus={setCat} statusLabel="Danh mục" extraActive={vis !== 'ALL_VIS' ? 1 : 0}
         statusOptions={(Object.keys(DOC_CATEGORY) as DocCategory[]).map((c) => ({ value: c, label: DOC_CATEGORY[c] }))}
-        actions={<button className={cn(btnPrimary, 'py-2')} disabled={!canDo('docs.manage')} onClick={() => setUploading(true)}><Upload className="h-4 w-4" aria-hidden />Tải lên tài liệu</button>}
+        actions={<button className={cn(btnPrimary, btnSm)} disabled={!canDo('docs.manage')} onClick={() => setUploading(true)}><Upload className="h-3.5 w-3.5" aria-hidden />Tải lên</button>}
         chips={<ChipFilter value={cat === 'ALL' ? 'ALL' : (cat as DocCategory)} onChange={(v) => setCat(v)} total={visible.length} options={(Object.keys(DOC_CATEGORY) as DocCategory[]).map((c) => ({ value: c, label: DOC_CATEGORY[c], count: visible.filter((d) => d.category === c).length }))} />}
       >
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={vis} onChange={(e) => setVis(e.target.value as 'ALL_VIS' | DocVisibility)} aria-label="Phạm vi hiển thị">
@@ -133,24 +133,26 @@ export function DocsPage() {
       </FilterBar>
 
       <Panel>
-        <Table stt={Math.max(0, paged.from - 1)} minW={1000} sort={srt.th} head={['Tài liệu', 'Danh mục', 'Phạm vi', 'Người phụ trách', 'Phiên bản / cập nhật', <span key="s" className="block text-right">Dung lượng</span>, <span key="a" className="block text-right">Thao tác</span>]}>
+        <Table stt={Math.max(0, paged.from - 1)} minW={1180} sort={srt.th} head={['Tài liệu', 'Loại', 'Danh mục', 'Phạm vi', 'Phụ trách', 'Phiên bản', 'Cập nhật', <span key="s" className="block text-right">Dung lượng</span>, <span key="a" className="block text-right">Thao tác</span>]}>
           {paged.slice.map((d) => (
             <tr key={d.id} className={rowCls}>
-              <td className={cn(tdFirst, 'max-w-[300px]')}>
-                <button className="flex max-w-full items-start gap-3 text-left" onClick={() => setView(d)}>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded text-[10px] font-bold" style={{ background: `${FORMAT_COLOR[d.format]}22`, color: FORMAT_COLOR[d.format] }}>{d.format}</span>
-                  <span className="min-w-0"><span className="block truncate font-medium text-[rgb(var(--fg))] hover:text-[rgb(var(--accent-fg))]">{d.title}</span><span className="block truncate text-xs text-[rgb(var(--muted))]">{d.summary}</span></span>
+              <td className={tdFirst}>
+                <button className="flex max-w-[320px] items-center gap-2 text-left" onClick={() => setView(d)} title={d.summary}>
+                  <FileText className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />
+                  <span className="block truncate font-medium text-[rgb(var(--fg))] hover:underline">{d.title}</span>
                 </button>
               </td>
-              <td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{DOC_CATEGORY[d.category]}</td>
-              <td className={cn(tdCls, 'whitespace-nowrap')}><Chip tone={docVisibility(d.visibility, departments).tone}>{docVisibility(d.visibility, departments).label}</Chip></td>
-              <td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{userName(d.ownerId)}</td>
-              <td className={cn(tdCls, 'whitespace-nowrap text-xs tabular-nums')}>{d.version}<span className="block text-[rgb(var(--muted))]">{fmtDate(d.updatedAt)}</span></td>
-              <td className={cn(tdCls, 'whitespace-nowrap text-right text-xs tabular-nums')}>{sizeOf(d.sizeKb)}</td>
+              <td className={tdCls}><Code>{d.format}</Code></td>
+              <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{DOC_CATEGORY[d.category]}</td>
+              <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{docVisibility(d.visibility, departments).label}</td>
+              <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{userName(d.ownerId)}</td>
+              <td className={cn(tdCls, 'font-mono text-xs')}>{d.version}</td>
+              <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(d.updatedAt)}</td>
+              <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{sizeOf(d.sizeKb)}</td>
               <td className={tdLast}>
-                <div className="flex items-center justify-end gap-1.5">
-                  <button className={cn(btnGhost, btnSm)} onClick={() => setView(d)} aria-label={`Xem ${d.title}`}><Eye className="h-3.5 w-3.5" aria-hidden /></button>
-                  <button className={cn(btnGhost, btnSm)} onClick={() => downloadDoc(d, userName(d.ownerId), departments)} aria-label={`Tải ${d.title}`}><Download className="h-3.5 w-3.5" aria-hidden /></button>
+                <div className="flex items-center justify-end gap-1">
+                  <button className={cn(btnGhost, 'h-8 w-8 border-0 p-0')} onClick={() => setView(d)} aria-label={`Xem ${d.title}`}><Eye className="h-4 w-4" aria-hidden /></button>
+                  <button className={cn(btnGhost, 'h-8 w-8 border-0 p-0')} onClick={() => downloadDoc(d, userName(d.ownerId), departments)} aria-label={`Tải ${d.title}`}><Download className="h-4 w-4" aria-hidden /></button>
                   <RowMenu items={[
                     { label: 'Sửa / cập nhật phiên bản', icon: Pencil, onClick: () => setEditDoc(d), disabled: !canDo('docs.manage') },
                     { label: 'Xóa tài liệu', icon: Trash2, danger: true, disabled: !canDo('docs.manage'), onClick: () => setConfirm({ title: 'Xóa tài liệu', message: <>Xóa <b>{d.title}</b> khỏi kho tài liệu?</>, onConfirm: () => removeWithUndo(setDocs, d, notify, `Đã xóa ${d.title}`) }) },

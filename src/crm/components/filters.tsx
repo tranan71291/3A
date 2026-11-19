@@ -3,7 +3,7 @@
 import { type ReactNode, useState } from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { Field, SideSheet } from './ui';
-import { btnGhost, btnPrimary, inputCls, inRangeOf, iso, rangeBounds, useApp } from '../lib/core';
+import { btnGhost, btnPrimary, inputCls, inRangeOf, iso, useApp } from '../lib/core';
 import type { Claim, DateRange, Opt, Period } from '../lib/types';
 import { cn } from '../lib/utils';
 
@@ -11,13 +11,6 @@ export function periodRange(p: Period, fy: number): DateRange {
   if (p === 'YEAR') return { from: `${fy}-01-01`, to: `${fy}-12-31` };
   const q = Number(p[1]) - 1;
   return { from: iso(new Date(fy, q * 3, 1)), to: iso(new Date(fy, q * 3 + 3, 0)) };
-}
-
-/** Kỳ liền trước có cùng độ dài — dùng tính % biến động trên thẻ KPI */
-export function prevRange(r: DateRange): DateRange {
-  const { start, end } = rangeBounds(r);
-  const len = end - start;
-  return { from: iso(new Date(start - len - 1000)), to: iso(new Date(start - 1000)) };
 }
 
 export function useInRange() {
@@ -53,22 +46,22 @@ export function FilterBar({
   const sel = cn(inputCls, 'w-full py-2.5');
   // Thanh công cụ tối giản: [Tìm kiếm ........][Bộ lọc (n)][thao tác]; mọi ô lọc nằm trong khung trượt cạnh phải
   return (
-    <div className="space-y-2">
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <div className="flex min-w-[200px] flex-1 gap-2">
-        <div className="relative flex-1">
+    <div>
+    <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+      <div className={cn('flex min-w-[200px] gap-2', chips ? 'lg:contents' : 'flex-1')}>
+        <div className={cn('relative', chips ? 'flex-1 lg:w-[240px] lg:flex-none xl:w-[280px]' : 'flex-1')}>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden />
-          <input className={cn(inputCls, 'border-[rgb(var(--ink)/0.08)] bg-[rgb(var(--surface)/0.7)] py-2.5 pl-9')} value={q} onChange={(e) => onQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
+          <input className={cn(inputCls, 'bg-[rgb(var(--surface))] py-1.5 pl-9 text-[13.5px]')} value={q} onChange={(e) => onQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
         </div>
+        {chips && <div className="min-w-0 lg:flex-1">{chips}</div>}
         {hasFilters && (
-          <button className={cn(btnGhost, 'relative shrink-0 px-3.5 py-2', active > 0 && 'border-[rgb(var(--accent)/0.6)] text-[rgb(var(--accent-fg))]')} onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`Bộ lọc${active ? `, ${active} đang bật` : ''}`}>
+          <button className={cn(btnGhost, 'relative shrink-0 px-3 py-1.5 text-[13px]', active > 0 && 'border-[rgb(var(--fg)/0.4)] font-medium')} onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`Bộ lọc${active ? `, ${active} đang bật` : ''}`}>
             <SlidersHorizontal className="h-4 w-4" aria-hidden /><span>Bộ lọc{active > 0 ? ` (${active})` : ''}</span>
           </button>
         )}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2 sm:ml-auto">{actions}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2 lg:ml-auto">{actions}</div>}
     </div>
-    {chips && <div>{chips}</div>}
     {open && (
       <SideSheet title="Bộ lọc" sub={active ? `${active} điều kiện đang áp dụng, kết quả cập nhật ngay` : 'Chọn điều kiện, kết quả cập nhật ngay'} onClose={() => setOpen(false)}
         footer={<>
@@ -114,8 +107,8 @@ export function FilterBar({
 export function ChipFilter<T extends string>({ options, value, onChange, allLabel = 'Tất cả', total }: { options: { value: T; label: string; count?: number; color?: string }[]; value: T | 'ALL'; onChange: (v: T | 'ALL') => void; allLabel?: string; total?: number }) {
   const chip = (on: boolean, label: string, count: number | undefined, color: string | undefined, onClick: () => void, key: string) => (
     <button key={key} type="button" onClick={onClick} aria-pressed={on}
-      className={cn('flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium transition-colors', on ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent-fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))] hover:border-[rgb(var(--muted)/0.4)] hover:text-[rgb(var(--fg))]')}>
-      <i className="h-1.5 w-1.5 rounded-full" style={{ background: color ?? (on ? '#F28C33' : '#94A3B8') }} />{label}{count !== undefined && <span className="tabular-nums opacity-80">{count}</span>}
+      className={cn('flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-[13px] transition-colors', on ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'border-transparent text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>
+      {color && <i className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />}{label}{count !== undefined && <span className="font-mono text-[11.5px] font-normal text-[rgb(var(--muted))]">{count}</span>}
     </button>
   );
   return (

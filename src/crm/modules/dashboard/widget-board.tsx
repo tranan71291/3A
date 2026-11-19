@@ -17,7 +17,7 @@ export function WidgetCard({ title, period, unit, asOf, onReload, action, childr
     <section className={cn('glass-card flex min-w-0 flex-col rounded-md p-5', className)}>
       <header className="mb-4">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="font-display mr-auto text-[15px] font-bold tracking-tight">{title}</h2>
+          <h2 className="font-display mr-auto text-[15px] font-semibold tracking-normal">{title}</h2>
           {action}
           {edit}
         </div>
@@ -102,7 +102,7 @@ export function WidgetBoard({ widgets, storeKey, canEdit }: { widgets: WidgetDef
                     <button className="rounded p-1 text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.1)] disabled:opacity-30" disabled={idx === 0} onClick={() => shift(p.id, -1)} aria-label={`Đưa ${w.title} lên trước`}><ArrowUp className="h-3.5 w-3.5" /></button>
                     <button className="rounded p-1 text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.1)] disabled:opacity-30" disabled={idx === visible.length - 1} onClick={() => shift(p.id, 1)} aria-label={`Đưa ${w.title} ra sau`}><ArrowDown className="h-3.5 w-3.5" /></button>
                     <div className="flex rounded border border-[rgb(var(--ink)/0.1)] p-0.5" role="radiogroup" aria-label="Kích thước">
-                      {([4, 6, 8, 12] as const).map((z) => <button key={z} role="radio" aria-checked={p.size === z} className={cn('rounded-sm px-1.5 py-0.5 text-[10px] font-semibold', p.size === z ? 'g-brand text-[rgb(var(--on-accent))]' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')} onClick={() => save(prefs.map((x) => (x.id === p.id ? { ...x, size: z } : x)))}>{SIZE_LABEL[z]}</button>)}
+                      {([4, 6, 8, 12] as const).map((z) => <button key={z} role="radio" aria-checked={p.size === z} className={cn('rounded-sm px-1.5 py-0.5 text-[11px] font-semibold', p.size === z ? 'g-brand text-[rgb(var(--on-accent))]' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')} onClick={() => save(prefs.map((x) => (x.id === p.id ? { ...x, size: z } : x)))}>{SIZE_LABEL[z]}</button>)}
                     </div>
                     <button className="rounded p-1 text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.1)] hover:text-[rgb(var(--fg))]" onClick={() => save(prefs.map((x) => (x.id === p.id ? { ...x, hidden: true } : x)))} aria-label={`Ẩn ${w.title}`}><EyeOff className="h-3.5 w-3.5" /></button>
                   </div>

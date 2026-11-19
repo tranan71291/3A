@@ -2,7 +2,8 @@
 
 import { Fragment, useState } from 'react';
 import { ChevronDown, ChevronRight, Download, FileText } from 'lucide-react';
-import { Chip, EmptyState, Panel, Table } from '../../components/ui';
+import { ChipFilter } from '../../components/filters';
+import { Chip, Code, EmptyState, Panel, Table } from '../../components/ui';
 import { addDaysISO, AGING, bizMode, btnGhost, btnSm, compact, esc, fmtDate, jobCustName, jobPhone, overdueDays, pct, rowCls, tdCls, tdFirst, tdLast, todayISO, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import type { ArBucketDef, ArItem, CompanyInfo, Customer, GeneratedDoc, GetflyOrderRec, InstallJob, Job, MfgConfig, PayTrigger, Receipt } from '../../lib/types';
@@ -106,43 +107,39 @@ export function ArAgingPanel() {
   const grand = total();
   return (
     <div className="space-y-4">
-      <div className={cn('grid grid-cols-2 gap-3', bks.length === 3 ? 'lg:grid-cols-4' : 'lg:grid-cols-5')}>
-        <button className={cn('rounded-md border p-4 text-left', bucket === 'ALL' ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.1)]' : 'border-[rgb(var(--line))] bg-[rgb(var(--surface))] hover:bg-[rgb(var(--raised))]')} onClick={() => setBucket('ALL')}>
-          <p className="text-xs text-[rgb(var(--muted))]">Tổng phải thu</p><p className="mt-1 text-xl font-semibold tabular-nums">{compact(grand)}</p><p className="text-xs text-[rgb(var(--muted))]">{withAge.length} khoản, {new Set(withAge.map((x) => x.customerId)).size} khách</p>
-        </button>
-        {bks.map((b) => (
-          <button key={b} className={cn('rounded-md border p-4 text-left', bucket === b ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.1)]' : 'border-[rgb(var(--line))] bg-[rgb(var(--surface))] hover:bg-[rgb(var(--raised))]')} onClick={() => setBucket(bucket === b ? 'ALL' : b)}>
-            <p className="flex items-center gap-1.5 text-xs text-[rgb(var(--muted))]"><i className="h-2 w-2 rounded-full" style={{ background: bkm[b].color }} />{bkm[b].label}</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: b === bks[0] ? undefined : bkm[b].color }}>{compact(total(b))}</p>
-            <p className="text-xs text-[rgb(var(--muted))]">{pct(total(b), grand)} tổng nợ</p>
-          </button>
-        ))}
-      </div>
-      {grand > 0 && (
-        <div className="flex h-3 overflow-hidden rounded-full bg-[rgb(var(--raised))]" aria-label="Cơ cấu tuổi nợ">
-          {bks.map((b) => <div key={b} style={{ width: `${(total(b) / grand) * 100}%`, background: bkm[b].color }} title={`${bkm[b].label}: ${vnd(total(b))}`} />)}
+      <section className="glass-card rounded-xl px-5 py-4">
+        <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span className="text-[15px] font-medium">Tuổi nợ</span><span className="text-[13px] text-[rgb(var(--muted))]">Tổng phải thu <b className="font-medium tabular-nums text-[rgb(var(--fg))]">{compact(grand)}</b> · {withAge.length} khoản · {new Set(withAge.map((x) => x.customerId)).size} khách</span></p>
+        <div className="mt-3 flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-[rgb(var(--raised))]" aria-label="Cơ cấu tuổi nợ">
+          {grand > 0 && bks.map((b) => <div key={b} style={{ width: `${(total(b) / grand) * 100}%`, background: bkm[b].color }} title={`${bkm[b].label}: ${vnd(total(b))}`} />)}
         </div>
-      )}
-      <Panel>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="mt-2.5 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
+          {bks.map((b) => <span key={b} className="flex items-center gap-1.5 text-[rgb(var(--fg2))]"><i className="h-2 w-2 rounded-sm" style={{ background: bkm[b].color }} />{bkm[b].label}<b className="font-medium tabular-nums text-[rgb(var(--fg))]">{compact(total(b))}</b><span className="font-mono text-[12px] text-[rgb(var(--muted))]">{pct(total(b), grand)}</span></span>)}
+        </div>
+      </section>
+      <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
           <SearchBox value={q} onChange={setQ} placeholder="Tìm khách hàng, số điện thoại" />
-          <button className={cn(btnGhost, btnSm)} onClick={() => downloadCsv(`tuoi-no-${today}.csv`, [['Khách hàng', 'SĐT', 'Chứng từ', 'Diễn giải', 'Ngày', 'Hạn', 'Giá trị', 'Đã thu', 'Còn nợ', 'Tuổi nợ (ngày)', 'Quá hạn (ngày)', 'Nhóm'], ...withAge.map((x) => [x.customer, x.phone ?? '', x.docCode, x.docLabel, x.docDate, x.dueDate, x.amount, x.paid, x.outstanding, x.age, Math.max(0, x.days), bkm[x.bucket].label])])}><Download className="h-3.5 w-3.5" aria-hidden />Xuất CSV</button>
-        </div>
-        <Table head={['Khách hàng', <span key="t" className="block text-right">Tổng còn nợ</span>, ...bks.map((b) => <span key={b} className="block text-right">{bkm[b].short}</span>), sch.basis === 'doc' ? 'Tuổi nợ lớn nhất' : 'Quá hạn lâu nhất', '']} minW={1080}>
+          <ChipFilter total={new Set(withAge.map((x) => x.customerId)).size} value={bucket as never} onChange={(v) => setBucket(v as never)} options={bks.map((b) => ({ value: b, label: bkm[b].label, color: bkm[b].color, count: new Set(withAge.filter((x) => x.bucket === b).map((x) => x.customerId)).size }))} />
+          <button className={cn(btnGhost, btnSm, 'border-0 lg:ml-auto')} onClick={() => downloadCsv(`tuoi-no-${today}.csv`, [['Khách hàng', 'SĐT', 'Chứng từ', 'Diễn giải', 'Ngày', 'Hạn', 'Giá trị', 'Đã thu', 'Còn nợ', 'Tuổi nợ (ngày)', 'Quá hạn (ngày)', 'Nhóm'], ...withAge.map((x) => [x.customer, x.phone ?? '', x.docCode, x.docLabel, x.docDate, x.dueDate, x.amount, x.paid, x.outstanding, x.age, Math.max(0, x.days), bkm[x.bucket].label])])}><Download className="h-3.5 w-3.5" aria-hidden />CSV</button>
+      </div>
+      <Panel>
+        <Table head={['Khách hàng', 'Điện thoại', <span key="k" className="block text-right">Khoản</span>, <span key="t" className="block text-right">Tổng còn nợ</span>, ...bks.map((b) => <span key={b} className="block text-right">{bkm[b].short}</span>), sch.basis === 'doc' ? 'Tuổi nợ lớn nhất' : 'Quá hạn lâu nhất', '']} minW={1180}>
           {byCust.map((r) => (
             <Fragment key={r.id}>
               <tr className={cn(rowCls, 'cursor-pointer')} onClick={() => setOpen(open === r.id ? null : r.id)}>
-                <td className={tdFirst}><p className="flex items-center gap-1.5 font-medium">{open === r.id ? <ChevronDown className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /> : <ChevronRight className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />}{r.name}</p><p className="pl-5 text-xs text-[rgb(var(--muted))]">{r.phone} · {r.xs.length} khoản</p></td>
-                <td className={cn(tdCls, 'text-right font-semibold tabular-nums')}>{r.total.toLocaleString('vi-VN')}</td>
+                <td className={tdFirst}><span className="flex items-center gap-1.5 font-medium">{open === r.id ? <ChevronDown className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden /> : <ChevronRight className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />}<span className="block max-w-[240px] truncate">{r.name}</span></span></td>
+                <td className={cn(tdCls, 'tabular-nums text-[rgb(var(--fg2))]')}>{r.phone || '—'}</td>
+                <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{r.xs.length}</td>
+                <td className={cn(tdCls, 'text-right font-medium tabular-nums')}>{r.total.toLocaleString('vi-VN')}</td>
                 {bks.map((b) => <td key={b} className={cn(tdCls, 'text-right tabular-nums')} style={{ color: r.sums[b] && b !== bks[0] ? bkm[b].color : undefined }}>{r.sums[b] ? r.sums[b].toLocaleString('vi-VN') : '—'}</td>)}
-                <td className={cn(tdCls, 'whitespace-nowrap text-xs')}>{sch.basis === 'doc' ? <Chip tone={bucketOf(r.maxAge).tone}>{r.maxAge} ngày{r.maxDays > 0 ? `, quá hạn ${r.maxDays}` : ''}</Chip> : r.maxDays > 0 ? <Chip tone={bucketOf(r.maxDays).tone}>{r.maxDays} ngày</Chip> : <span className="text-[rgb(var(--success-fg))]">Trong hạn</span>}</td>
-                <td className={tdLast}><button className={cn(btnGhost, btnSm, 'whitespace-nowrap')} onClick={(e) => { e.stopPropagation(); print(r); }}><FileText className="h-3.5 w-3.5" aria-hidden />In biên bản đối chiếu công nợ</button></td>
+                <td className={tdCls}>{sch.basis === 'doc' ? <Chip tone={bucketOf(r.maxAge).tone}>{r.maxAge} ngày{r.maxDays > 0 ? ` · quá ${r.maxDays}` : ''}</Chip> : r.maxDays > 0 ? <Chip tone={bucketOf(r.maxDays).tone}>{r.maxDays} ngày</Chip> : <Chip tone="teal">Trong hạn</Chip>}</td>
+                <td className={tdLast}><button className={cn(btnGhost, btnSm)} onClick={(e) => { e.stopPropagation(); print(r); }} title="In biên bản đối chiếu công nợ"><FileText className="h-3.5 w-3.5" aria-hidden />Đối chiếu</button></td>
               </tr>
               {open === r.id && r.xs.map((x) => (
                 <tr key={x.key} className="border-b border-[rgb(var(--line)/0.4)] bg-[rgb(var(--raised)/0.4)] text-xs">
-                  <td className={cn(tdFirst, 'pl-12')}><button className="text-left hover:text-[rgb(var(--accent-fg))]" onClick={() => x.jobId && openJob(x.jobId)}><b className="font-mono">{x.docCode}</b><span className="block text-[rgb(var(--muted))]">{x.docLabel}</span></button></td>
-                  <td className={cn(tdCls, 'text-right tabular-nums')}>{x.outstanding.toLocaleString('vi-VN')}<span className="block text-[rgb(var(--muted))]">/ {x.amount.toLocaleString('vi-VN')}</span></td>
-                  <td className={tdCls} colSpan={4}>Ngày {fmtDate(x.docDate)}, hạn {fmtDate(x.dueDate)}</td>
+                  <td className={cn(tdFirst, 'pl-10')}><button className="flex items-center gap-2 text-left hover:underline" onClick={() => x.jobId && openJob(x.jobId)} title={x.docLabel}><Code>{x.docCode}</Code><span className="max-w-[180px] truncate text-[rgb(var(--muted))]">{x.docLabel}</span></button></td>
+                  <td className={cn(tdCls, 'font-mono text-[rgb(var(--muted))]')} colSpan={2}>{fmtDate(x.docDate)} · hạn {fmtDate(x.dueDate)}</td>
+                  <td className={cn(tdCls, 'text-right tabular-nums')} title={`trên ${x.amount.toLocaleString('vi-VN')}`}>{x.outstanding.toLocaleString('vi-VN')}</td>
+                  <td className={tdCls} colSpan={bks.length} />
                   <td className={tdCls}><Chip tone={bkm[x.bucket].tone}>{sch.basis === 'doc' ? `${x.age} ngày tuổi` : ''}{sch.basis === 'doc' ? ', ' : ''}{x.days > 0 ? `quá hạn ${x.days} ngày` : x.days === 0 ? 'đến hạn hôm nay' : `còn ${-x.days} ngày`}</Chip></td>
                   <td className={tdLast} />
                 </tr>

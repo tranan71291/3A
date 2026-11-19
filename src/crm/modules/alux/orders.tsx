@@ -7,7 +7,8 @@ import { CommentButton } from '../../components/comments';
 import { Fab, Pagination, usePaged } from '../../components/controls';
 import { Drawer } from '../../components/drawer';
 import { useInRange } from '../../components/filters';
-import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
+import { Sla } from '../../components/sla';
+import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { btnBase, btnGhost, btnPrimary, btnSm, C, compact, DESIGN_STATUS, digits, esc, fmtDate, fmtDT, holdingOverdue, inputCls, iso, JOB_LOST, JOB_STAGE, JOB_STAGES, jobCustName, jobPhone, kpiGrid, lineAmount, lineDims, needsCare, nextCode, PAY_TRIGGER, pct, phoneKey, PRICE_UNIT, RECEIPT_STATUS, rowCls, secHead, tdCls, tdFirst, tdLast, techUsers, todayISO, toLocal, uid, useApp, vnd, WO_STAGE } from '../../lib/core';
 import type { CompanyInfo, Customer, InstallJob, Job, JobCare, JobFile, JobFilter, JobLine, JobLostReason, JobQuote, MfgConfig, PayStage, PriceItem, PriceUnit, Receipt, Tone, User, WorkOrder } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -133,7 +134,7 @@ export function ReceiptActions({ r, job }: { r: Receipt; job?: Job }) {
       )}
       {(r.status === 'SUBMITTED' || r.status === 'HOLDING') && canDo('receipt.confirm') && r.collectedBy !== me.id && (
         <>
-          <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))]')} onClick={confirm}>Xác nhận đã nhận</button>
+          <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]')} onClick={confirm}>Xác nhận đã nhận</button>
           <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--danger)/0.15)] text-[rgb(var(--danger-fg))]')} onClick={reject}>Từ chối</button>
         </>
       )}
@@ -220,11 +221,11 @@ export function MiniStat({ label, value, tone }: { label: string; value: string;
 /** Thanh chọn trạng thái dạng viên, có số đếm */
 export function StagePills<T extends string>({ items, value, onChange }: { items: { id: T; label: string; count?: number }[]; value: T; onChange: (v: T) => void }) {
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]" role="tablist">
+    <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="tablist">
       {items.map((s) => (
         <button key={s.id} role="tab" aria-selected={value === s.id} onClick={() => onChange(s.id)}
-          className={cn('flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium', value === s.id ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent-fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>
-          {s.label}{s.count !== undefined && <span className="tabular-nums opacity-80">{s.count}</span>}
+          className={cn('flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-[13px]', value === s.id ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'border-transparent text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>
+          {s.label}{s.count !== undefined && <span className="font-mono text-[11.5px] font-normal text-[rgb(var(--muted))]">{s.count}</span>}
         </button>
       ))}
     </div>
@@ -236,7 +237,7 @@ export function SearchBox({ value, onChange, placeholder }: { value: string; onC
   return (
     <div className="relative min-w-[200px] flex-1">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden />
-      <input className={cn(inputCls, 'pl-9')} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
+      <input className={cn(inputCls, 'bg-[rgb(var(--surface))] py-1.5 pl-9 text-[13.5px]')} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
     </div>
   );
 }
@@ -301,7 +302,7 @@ export function MfgLeadForm({ job, onClose }: { job?: Job; onClose: () => void }
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Tên khách hàng *" error={err('name')}><input className={inputCls} value={f.name} onChange={(e) => set({ name: e.target.value })} placeholder="VD: Anh Nguyễn Văn A" autoFocus /></Field>
         <Field label="Số điện thoại *" error={err('phone')} hint={match ? `Khách cũ: ${match.name}, ${matchJobs} đơn trước. Đơn mới gắn vào khách này.` : undefined}>
-          <input className={inputCls} inputMode="tel" value={f.phone} onChange={(e) => set({ phone: e.target.value })} placeholder="09xx xxx xxx" />
+          <input type="tel" autoComplete="tel" className={inputCls} inputMode="tel" value={f.phone} onChange={(e) => set({ phone: e.target.value })} placeholder="09xx xxx xxx" />
         </Field>
         <Field label="Địa chỉ công trình *" error={err('address')} className="sm:col-span-2"><input className={inputCls} value={f.address} onChange={(e) => set({ address: e.target.value })} placeholder="Số nhà, đường, phường, quận" /></Field>
         <Field label="Hạng mục *" error={err('title')} className="sm:col-span-2"><input className={inputCls} value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="VD: Cửa nhôm Xingfa, lan can kính, tủ bếp" /></Field>
@@ -315,7 +316,7 @@ export function MfgLeadForm({ job, onClose }: { job?: Job; onClose: () => void }
         <Field label="Loại khách">
           <select className={inputCls} value={f.segment} onChange={(e) => set({ segment: e.target.value })}>{segments.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}</select>
         </Field>
-        <Field label="Ghi chú" className="sm:col-span-2"><input className={inputCls} value={f.note} onChange={(e) => set({ note: e.target.value })} placeholder="Người giới thiệu, yêu cầu riêng của khách..." /></Field>
+        <Field label="Ghi chú" className="sm:col-span-2"><input className={inputCls} value={f.note} onChange={(e) => set({ note: e.target.value })} placeholder="Người giới thiệu, yêu cầu riêng của khách…" /></Field>
       </div>
       {!job && <p className="mt-4 rounded bg-[rgb(var(--raised))] px-3 py-2 text-xs text-[rgb(var(--muted))]">Lưu xong, lead vào ngay Đơn hàng công trình với trạng thái "Đang chờ khảo sát" và báo cho kỹ thuật được giao.</p>}
     </Modal>
@@ -479,11 +480,11 @@ export function QuoteEditorModal({ job, onClose, onWin }: { job: Job; onClose: (
                       ) : l.unit === 'MD' ? (
                         <input data-r={i} data-c={2} className={num} type="number" min={0} step={0.1} value={l.length || ''} onChange={(e) => setLine(i, { length: Number(e.target.value) })} aria-label="Dài (m)" placeholder="Dài m" />
                       ) : <p className="py-1 text-right text-[rgb(var(--muted))]">—</p>}
-                      <p className={cn('mt-0.5 text-right text-[10px] tabular-nums', small ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]')}>{lineMeasure(l, pi?.minMeasure).toLocaleString('vi-VN')} {PRICE_UNIT[l.unit].short}{small ? ' (tối thiểu)' : ''}</p>
+                      <p className={cn('mt-0.5 text-right text-[11px] tabular-nums', small ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]')}>{lineMeasure(l, pi?.minMeasure).toLocaleString('vi-VN')} {PRICE_UNIT[l.unit].short}{small ? ' (tối thiểu)' : ''}</p>
                     </td>
                     <td className="px-1 py-1.5"><input data-r={i} data-c={4} className={num} type="number" min={0} value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} aria-label="Số lượng" /></td>
                     <td className="px-1 py-1.5"><input data-r={i} data-c={5} className={num} type="number" min={0} max={100} value={l.discountPct} onChange={(e) => setLine(i, { discountPct: Number(e.target.value) })} aria-label="Chiết khấu %" /></td>
-                    <td className="px-2 py-1.5 text-right tabular-nums"><p className="font-medium text-[rgb(var(--fg))]">{lineAmount(l, pi?.minMeasure).toLocaleString('vi-VN')}</p><p className="text-[10px] text-[rgb(var(--muted))]">{l.unitPrice.toLocaleString('vi-VN')}/{PRICE_UNIT[l.unit].short}</p></td>
+                    <td className="px-2 py-1.5 text-right tabular-nums"><p className="font-medium text-[rgb(var(--fg))]">{lineAmount(l, pi?.minMeasure).toLocaleString('vi-VN')}</p><p className="text-[11px] text-[rgb(var(--muted))]">{l.unitPrice.toLocaleString('vi-VN')}/{PRICE_UNIT[l.unit].short}</p></td>
                     <td className="py-1.5 text-center"><button tabIndex={-1} className="rounded p-1 text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => setLines((ls) => ls.filter((_, k) => k !== i))} aria-label="Xóa dòng"><Trash2 className="h-3.5 w-3.5" /></button></td>
                   </tr>
                 );
@@ -499,9 +500,9 @@ export function QuoteEditorModal({ job, onClose, onWin }: { job: Job; onClose: (
             </select>
           </div>
           <div className="grid grid-cols-3 gap-px rounded-b-xl border-t border-[rgb(var(--line))] bg-[rgb(var(--line))] text-xs tabular-nums">
-            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right"><span className="block text-[10px] text-[rgb(var(--muted))]">Cộng</span>{t.subtotal.toLocaleString('vi-VN')}</p>
-            <label className="flex flex-col items-end bg-[rgb(var(--surface))] px-2 py-1.5"><span className="flex items-center gap-1 text-[10px] text-[rgb(var(--muted))]">VAT<input className="w-9 rounded border border-[rgb(var(--line))] bg-[rgb(var(--bg))] px-1 text-right text-[10px]" type="number" min={0} max={10} value={vatPct} onChange={(e) => setVatPct(Number(e.target.value))} aria-label="VAT %" />%</span>{t.vat.toLocaleString('vi-VN')}</label>
-            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right font-semibold text-[rgb(var(--accent-fg))]"><span className="block text-[10px] font-normal text-[rgb(var(--muted))]">Tổng cộng (đ)</span>{t.total.toLocaleString('vi-VN')}</p>
+            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right"><span className="block text-[11px] text-[rgb(var(--muted))]">Cộng</span>{t.subtotal.toLocaleString('vi-VN')}</p>
+            <label className="flex flex-col items-end bg-[rgb(var(--surface))] px-2 py-1.5"><span className="flex items-center gap-1 text-[11px] text-[rgb(var(--muted))]">VAT<input className="w-9 rounded border border-[rgb(var(--line))] bg-[rgb(var(--bg))] px-1 text-right text-[11px]" type="number" min={0} max={10} value={vatPct} onChange={(e) => setVatPct(Number(e.target.value))} aria-label="VAT %" />%</span>{t.vat.toLocaleString('vi-VN')}</label>
+            <p className="bg-[rgb(var(--surface))] px-2 py-1.5 text-right font-semibold text-[rgb(var(--accent-fg))]"><span className="block text-[11px] font-normal text-[rgb(var(--muted))]">Tổng cộng (đ)</span>{t.total.toLocaleString('vi-VN')}</p>
           </div>
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[rgb(var(--muted))]">
@@ -516,8 +517,8 @@ export function QuoteEditorModal({ job, onClose, onWin }: { job: Job; onClose: (
           {job.schedule.map((st) => <li key={st.id} className="flex justify-between gap-2"><span>{st.label} <span className="text-[rgb(var(--muted))]">({PAY_TRIGGER[st.trigger].toLowerCase()})</span></span><span className="tabular-nums">{st.pct}% · {Math.round((t.total * st.pct) / 100).toLocaleString('vi-VN')} đ</span></li>)}
           <li className="pt-1 text-[11px] text-[rgb(var(--muted))]">Hiệu lực {mfgConfig.quoteValidDays} ngày, bảo hành {job.warrantyMonths ?? mfgConfig.warrantyMonths} tháng. Sửa lịch thanh toán khi nhận cọc.</li>
         </ul>
-        <div className="mt-2"><Fold title="Ghi chú trên báo giá" summary={note.trim() || 'Màu nhôm, loại kính, thời gian thi công...'} open={!!note}>
-          <textarea className={cn(inputCls, 'min-h-[72px] text-sm')} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Màu nhôm, loại kính, thời gian thi công dự kiến..." />
+        <div className="mt-2"><Fold title="Ghi chú trên báo giá" summary={note.trim() || 'Màu nhôm, loại kính, thời gian thi công…'} open={!!note}>
+          <textarea className={cn(inputCls, 'min-h-[72px] text-sm')} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Màu nhôm, loại kính, thời gian thi công dự kiến…" />
         </Fold></div>
       </section>
     </>
@@ -590,7 +591,7 @@ export function DepositModal({ job, onClose }: { job: Job; onClose: () => void }
   };
   return (
     <Modal title={`Nhận cọc & chuyển sản xuất: ${job.code}`} onClose={onClose} wide
-      footer={<><button className={btnGhost} onClick={onClose}>Hủy</button><button className={cn(btnBase, 'bg-[rgb(var(--success))] px-3.5 py-2 font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} disabled={busy} onClick={save}><CheckCircle2 className="h-4 w-4" aria-hidden />Nhận cọc, chuyển sản xuất</button></>}>
+      footer={<><button className={btnGhost} onClick={onClose}>Hủy</button><button className={cn(btnBase, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] px-3.5 py-2 font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]')} disabled={busy} onClick={save}><CheckCircle2 className="h-4 w-4" aria-hidden />Nhận cọc, chuyển sản xuất</button></>}>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <Field label="Báo giá khách chốt">
@@ -617,7 +618,7 @@ export function DepositModal({ job, onClose }: { job: Job; onClose: () => void }
           <div className="grid grid-cols-2 gap-3">
             <Field label="Số ngày sản xuất"><input className={inputCls} type="number" min={1} value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 1))} /></Field>
             <Field label="Phụ trách xưởng"><select className={inputCls} value={leader} onChange={(e) => setLeader(e.target.value)}><option value="">Chưa giao</option>{(xuong.length ? xuong : users.filter((u) => u.active)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
-            <Field label="Ghi chú cho xưởng" className="col-span-2"><input className={inputCls} value={woNote} onChange={(e) => setWoNote(e.target.value)} placeholder="Màu sơn, ưu tiên hạng mục..." /></Field>
+            <Field label="Ghi chú cho xưởng" className="col-span-2"><input className={inputCls} value={woNote} onChange={(e) => setWoNote(e.target.value)} placeholder="Màu sơn, ưu tiên hạng mục…" /></Field>
           </div>
         </div>
         <div className="space-y-4">
@@ -702,7 +703,7 @@ export function JobDrawer({ id, onClose }: { id: string; onClose: () => void }) 
   const actions = (
     <>
       {stage === 'SURVEY' && can && <button className={cn(btnPrimary, btnSm)} onClick={() => setModal('quote')}><FileText className="h-3.5 w-3.5" aria-hidden />Tạo báo giá</button>}
-      {stage === 'QUOTED' && can && <button className={cn(btnBase, btnSm, 'bg-[rgb(var(--success))] font-semibold text-[rgb(var(--on-accent))] hover:bg-[rgb(var(--success-fg))]')} onClick={() => setModal('deposit')}><Banknote className="h-3.5 w-3.5" aria-hidden />Nhận cọc & chuyển sản xuất</button>}
+      {stage === 'QUOTED' && can && <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] hover:bg-[rgb(var(--ink)/0.04)]')} onClick={() => setModal('deposit')}><Banknote className="h-3.5 w-3.5" aria-hidden />Nhận cọc & chuyển sản xuất</button>}
       {stage === 'QUOTED' && can && <button className={cn(btnGhost, btnSm)} onClick={() => setModal('quote')}><Pencil className="h-3.5 w-3.5" aria-hidden />Sửa báo giá</button>}
       {stage === 'INSTALL' && !scheduled && canDo('install.manage') && <button className={cn(btnPrimary, btnSm)} onClick={() => setModal('schedule')}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Hẹn lắp đặt</button>}
       {j.wonAt && remaining > 0 && can && <button className={cn(btnGhost, btnSm)} onClick={() => setCollect(Math.max(0, due - money.collected) || remaining)}><Banknote className="h-3.5 w-3.5" aria-hidden />Thu tiền</button>}
@@ -721,10 +722,10 @@ export function JobDrawer({ id, onClose }: { id: string; onClose: () => void }) 
             <li key={s} className="flex flex-col items-center text-center">
               <div className="flex w-full items-center">
                 <span className={cn('h-0.5 flex-1', i === 0 ? 'opacity-0' : i <= stepIdx ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--line))]')} />
-                <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold', done ? 'bg-[rgb(var(--success))] text-[rgb(var(--on-accent))]' : i === stepIdx ? 'g-brand font-semibold text-[rgb(var(--on-accent))]' : 'border border-[rgb(var(--line))] bg-[rgb(var(--raised))] text-[rgb(var(--muted))]')}>{done ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> : i + 1}</span>
+                <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold', done ? 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] text-[rgb(var(--fg))]' : i === stepIdx ? 'g-brand font-semibold text-[rgb(var(--on-accent))]' : 'border border-[rgb(var(--line))] bg-[rgb(var(--raised))] text-[rgb(var(--muted))]')}>{done ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> : i + 1}</span>
                 <span className={cn('h-0.5 flex-1', i === JOB_STAGES.length - 1 ? 'opacity-0' : i < stepIdx ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--line))]')} />
               </div>
-              <p className={cn('mt-1 px-0.5 text-[10px] leading-tight', i === stepIdx ? 'font-semibold text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]')}>{JOB_STAGE[s].short}</p>
+              <p className={cn('mt-1 px-0.5 text-[11px] leading-tight', i === stepIdx ? 'font-semibold text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]')}>{JOB_STAGE[s].short}</p>
             </li>
           );
         })}
@@ -788,7 +789,7 @@ export function JobDrawer({ id, onClose }: { id: string; onClose: () => void }) 
                   <a key={f.id} href={f.url} target="_blank" rel="noreferrer" className="relative block overflow-hidden rounded border border-[rgb(var(--line))] bg-[rgb(var(--raised))]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     {f.url.startsWith('data:image') ? <img src={f.url} alt={f.name} className="aspect-square w-full object-cover" /> : <span className="flex aspect-square flex-col items-center justify-center p-2 text-center text-[11px] text-[rgb(var(--muted))]"><FileText className="mb-1 h-5 w-5" aria-hidden />{f.name}</span>}
-                    <span className={cn('absolute left-1 top-1 rounded px-1.5 py-0.5 text-[10px] font-semibold', f.kind === 'DRAWING' ? 'g-brand font-semibold text-[rgb(var(--on-accent))]' : 'bg-black/60 text-white')}>{f.kind === 'DRAWING' ? 'Bản vẽ' : 'Ảnh'}</span>
+                    <span className={cn('absolute left-1 top-1 rounded px-1.5 py-0.5 text-[11px] font-semibold', f.kind === 'DRAWING' ? 'g-brand font-semibold text-[rgb(var(--on-accent))]' : 'bg-black/60 text-white')}>{f.kind === 'DRAWING' ? 'Bản vẽ' : 'Ảnh'}</span>
                   </a>
                 ))}
               </div>
@@ -833,7 +834,7 @@ export function JobDrawer({ id, onClose }: { id: string; onClose: () => void }) 
                 <h3 className="mb-2 text-sm font-semibold">Sản xuất</h3>
                 {wo ? (
                   <button className="grid w-full grid-cols-[1fr_auto] items-center gap-2 rounded border border-[rgb(var(--line))] bg-[rgb(var(--raised))] p-3 text-left text-sm hover:border-[rgb(var(--muted)/0.4)]" onClick={() => { onClose(); go('production'); }}>
-                    <span className="min-w-0"><b className="font-mono text-[rgb(var(--accent-fg))]">{wo.code}</b><span className="block text-xs text-[rgb(var(--muted))]">Hạn {fmtDate(wo.dueDate)}, phụ trách {userName(wo.leaderId)}, {wo.items.length} hạng mục</span></span>
+                    <span className="min-w-0"><b className="code-chip">{wo.code}</b><span className="block text-xs text-[rgb(var(--muted))]">Hạn {fmtDate(wo.dueDate)}, phụ trách {userName(wo.leaderId)}, {wo.items.length} hạng mục</span></span>
                     <Chip tone={WO_STAGE[wo.stage].tone}>{WO_STAGE[wo.stage].label}</Chip>
                   </button>
                 ) : <p className="text-sm text-[rgb(var(--muted))]">Chưa có lệnh sản xuất.</p>}
@@ -845,7 +846,7 @@ export function JobDrawer({ id, onClose }: { id: string; onClose: () => void }) 
                     {installs.map((i) => (
                       <li key={i.id}>
                         <button className="grid w-full grid-cols-[1fr_auto] items-center gap-2 rounded bg-[rgb(var(--raised))] px-3 py-2 text-left text-sm" onClick={() => { onClose(); go('install'); }}>
-                          <span><b className="font-mono text-xs text-[rgb(var(--accent-fg))]">{i.code}</b> <span className="text-xs text-[rgb(var(--muted))]">{i.from ? fmtDT(i.from) : ''}, {userName(i.leaderId)}</span></span>
+                          <span><b className="code-chip">{i.code}</b> <span className="text-xs text-[rgb(var(--muted))]">{i.from ? fmtDT(i.from) : ''}, {userName(i.leaderId)}</span></span>
                           <Chip tone={i.status === 'ACCEPTED' ? 'teal' : i.status === 'IN_PROGRESS' ? 'orange' : 'blue'}>{i.status === 'ACCEPTED' ? 'Đã nghiệm thu' : i.status === 'IN_PROGRESS' ? 'Đang lắp' : 'Đã hẹn lắp'}</Chip>
                         </button>
                       </li>
@@ -905,12 +906,13 @@ export function JobDrawer({ id, onClose }: { id: string; onClose: () => void }) 
 }
 
 export function JobsModule() {
-  const { canDo, role } = useApp();
+  const { canDo, role, setIntent } = useApp();
   const [tab, setTab] = useSticky<'jobs' | 'commission'>('JobsModule.tab', 'jobs');
   const finance = canDo('cash.manage') || canDo('receipt.confirm') || role === 'BOD';
   return (
     <div className="space-y-5">
-      <Tabs tabs={[{ id: 'jobs', label: 'Đơn hàng' }, { id: 'commission', label: finance ? 'Kế toán: quyết toán hoa hồng' : 'Hoa hồng của tôi' }]} value={tab} onChange={setTab} />
+      <Tabs tabs={[{ id: 'jobs', label: 'Đơn hàng' }, { id: 'commission', label: finance ? 'Quyết toán hoa hồng' : 'Hoa hồng của tôi' }]} value={tab} onChange={setTab}
+        aside={canDo('job.manage') || canDo('lead.create') ? <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => { setTab('jobs'); setIntent('job.create'); }}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm đơn</button> : undefined} />
       {tab === 'jobs' ? <JobsList /> : <CommissionPanel />}
     </div>
   );
@@ -933,7 +935,7 @@ export function JobsList() {
     .filter((r) => (st === 'ALL' || (st === 'ACTIVE' ? !['DONE', 'LOST'].includes(r.stage) : r.stage === st)) && (!['DONE', 'LOST'].includes(r.stage) || inR(r.j.wonAt ?? r.j.lostAt ?? r.j.createdAt)))
     .filter((r) => !t || `${r.j.code} ${r.j.title} ${r.j.siteAddress} ${jobCustName(r.j, customers)} ${jobPhone(r.j, customers)}`.toLowerCase().includes(t))
     .sort((a, b) => (a.stage === 'SURVEY' && b.stage === 'SURVEY' ? (a.j.appointmentAt ?? '').localeCompare(b.j.appointmentAt ?? '') : JOB_STAGES.indexOf(a.stage) - JOB_STAGES.indexOf(b.stage) || b.j.createdAt.localeCompare(a.j.createdAt)));
-  const srt = useSort('JobsList', list, { 1: (r) => jobCustName(r.j, customers), 4: (r) => r.j.appointmentAt });
+  const srt = useSort('Jobs40', list, { 1: (r) => r.j.code, 2: (r) => jobCustName(r.j, customers), 7: (r) => r.j.appointmentAt });
   const paged = usePaged(srt.rows, 20);
   const startIdx = (paged.page - 1) * 20;
   const today = todayISO();
@@ -952,13 +954,12 @@ export function JobsList() {
         <StatCard label="Sản xuất & lắp đặt" value={String(count('PRODUCTION') + count('INSTALL'))} icon={Factory} color={C.orange} sub={`${count('PRODUCTION')} sản xuất, ${count('INSTALL')} lắp đặt`} />
         <StatCard label="Còn phải thu" value={compact(rows.filter((r) => r.j.wonAt && !r.j.lostAt).reduce((s, r) => s + r.money.receivable, 0))} icon={Banknote} color={C.red} sub={`${holding.length} phiếu chờ nộp / xác nhận`} />
       </div>
+      <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
+        <SearchBox value={q} onChange={setQ} placeholder="Tìm tên, số điện thoại, địa chỉ, mã đơn" />
+        <div className="min-w-0 flex-1"><StagePills items={pills} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} /></div>
+      </div>
       <Panel>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <SearchBox value={q} onChange={setQ} placeholder="Tìm tên, số điện thoại, địa chỉ, mã đơn" />
-          <button className={cn(btnPrimary, 'max-md:hidden')} disabled={!canDo('job.manage') && !canDo('lead.create')} onClick={() => setForm(true)}><Plus className="h-4 w-4" aria-hidden />Thêm lead</button>
-        </div>
-        <StagePills items={pills} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} />
-        <div className="mt-3 space-y-2 md:hidden">
+        <div className="space-y-2 md:hidden">
           {paged.slice.map(({ j, stage, detail }, i) => (
             <button key={j.id} className="w-full rounded bg-[rgb(var(--raised))] p-3 text-left" onClick={() => openJob(j.id)}>
               <div className="flex items-start justify-between gap-2"><p className="text-sm font-medium">{startIdx + i + 1}. {jobCustName(j, customers)}</p><Chip tone={JOB_STAGE[stage].tone}>{JOB_STAGE[stage].short}</Chip></div>
@@ -968,19 +969,23 @@ export function JobsList() {
             </button>
           ))}
         </div>
-        <div className="mt-3 hidden md:block">
-          <Table head={['STT', 'Khách hàng', 'Số điện thoại', 'Địa chỉ', 'Thời gian hẹn', 'Hạng mục', 'Trạng thái']} minW={1040} sort={srt.th}>
+        <div className="hidden md:block">
+          <Table head={['STT', 'Mã đơn', 'Khách hàng', 'Điện thoại', 'Địa chỉ', 'Hạng mục', 'Phụ trách', 'Hẹn khảo sát', 'Trạng thái', 'Tiến độ', '']} minW={1360} sort={srt.th}>
             {paged.slice.map(({ j, stage, detail }, i) => {
               const late = stage === 'SURVEY' && j.appointmentAt && j.appointmentAt < nowLocal;
               return (
                 <tr key={j.id} className={cn(rowCls, 'cursor-pointer')} onClick={() => openJob(j.id)}>
                   <td className={cn(tdFirst, 'w-12 tabular-nums text-[rgb(var(--muted))]')}>{startIdx + i + 1}</td>
-                  <td className={tdCls}><p className="font-medium text-[rgb(var(--fg))]">{jobCustName(j, customers)}</p><p className="text-xs text-[rgb(var(--muted))]">{j.code}{j.ownerId ? `, ${userName(j.ownerId)}` : ''}</p></td>
-                  <td className={cn(tdCls, 'whitespace-nowrap tabular-nums')}>{jobPhone(j, customers)}</td>
-                  <td className={cn(tdCls, 'max-w-[240px]')}><p className="line-clamp-2 text-xs">{j.siteAddress}</p></td>
-                  <td className={cn(tdCls, 'whitespace-nowrap text-xs tabular-nums', late && 'text-[rgb(var(--danger-fg))]')}>{j.appointmentAt ? fmtDT(j.appointmentAt) : '—'}{late && <p className="text-[11px]">Quá hẹn</p>}</td>
-                  <td className={cn(tdCls, 'max-w-[220px]')}><p className="line-clamp-2 text-xs">{j.title}</p></td>
-                  <td className={tdLast}><div className="flex items-start justify-between gap-2"><div><Chip tone={JOB_STAGE[stage].tone}>{JOB_STAGE[stage].label}</Chip><p className="mt-1 text-[11px] text-[rgb(var(--muted))]">{stage === 'SURVEY' ? '' : detail}</p></div><span onClick={(e) => e.stopPropagation()}><CommentButton entity="job" entityId={j.id} title={`${j.code} · ${jobCustName(j, customers)}`} module="jobs" /></span></div></td>
+                  <td className={cn(tdCls, late && 'shadow-[inset_3px_0_0_rgb(var(--danger))]')}><Code>{j.code}</Code></td>
+                  <td className={tdCls}><span className="block max-w-[220px] truncate font-medium">{jobCustName(j, customers)}</span></td>
+                  <td className={cn(tdCls, 'tabular-nums')}>{jobPhone(j, customers)}</td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[220px] truncate" title={j.siteAddress}>{j.siteAddress}</span></td>
+                  <td className={tdCls}><span className="block max-w-[220px] truncate" title={j.title}>{j.title}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{j.ownerId ? userName(j.ownerId) : '—'}</td>
+                  <td className={tdCls}>{j.appointmentAt ? (late ? <Sla tone="over">{fmtDT(j.appointmentAt)} · quá hẹn</Sla> : <span className="font-mono text-xs text-[rgb(var(--fg2))]">{fmtDT(j.appointmentAt)}</span>) : '—'}</td>
+                  <td className={tdCls}><Chip tone={JOB_STAGE[stage].tone}>{JOB_STAGE[stage].label}</Chip></td>
+                  <td className={cn(tdCls, 'text-[13px] text-[rgb(var(--muted))]')}><span className="block max-w-[200px] truncate">{stage === 'SURVEY' ? '—' : detail || '—'}</span></td>
+                  <td className={tdLast}><div className="flex justify-end"><span onClick={(e) => e.stopPropagation()}><CommentButton entity="job" entityId={j.id} title={`${j.code} · ${jobCustName(j, customers)}`} module="jobs" /></span></div></td>
                 </tr>
               );
             })}
@@ -1033,9 +1038,9 @@ export function MfgLeadsPage() {
         <StatCard label="Tỷ lệ chốt (kỳ)" value={pct(won, quotedIn)} icon={Target} color={C.teal} sub={`${won} chốt / ${quotedIn} báo giá`} />
       </div>
       <div className="flex flex-wrap items-center gap-3 rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-4 py-3 text-sm text-[rgb(var(--muted))]">
-        <span className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--accent))] text-xs font-bold text-[rgb(var(--on-accent))]">1</span>Thêm lead: tên, SĐT, địa chỉ, hạng mục, giờ hẹn</span>
+        <span className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--accent))] text-xs font-semibold text-[rgb(var(--on-accent))]">1</span>Thêm lead: tên, SĐT, địa chỉ, hạng mục, giờ hẹn</span>
         <ArrowRight className="h-4 w-4 max-sm:hidden" aria-hidden />
-        <span className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--success))] text-xs font-bold text-[rgb(var(--on-accent))]">2</span>Tự chuyển "Đang chờ khảo sát", kỹ thuật nhận lịch</span>
+        <span className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] text-xs font-medium text-[rgb(var(--fg))]">2</span>Tự chuyển "Đang chờ khảo sát", kỹ thuật nhận lịch</span>
       </div>
       <Panel>
         <div className="mb-3 flex flex-wrap items-center gap-2">
