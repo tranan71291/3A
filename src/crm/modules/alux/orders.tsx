@@ -9,8 +9,8 @@ import { Drawer } from '../../components/drawer';
 import { useInRange } from '../../components/filters';
 import { Sla } from '../../components/sla';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
-import { btnBase, btnGhost, btnPrimary, btnSm, C, compact, DESIGN_STATUS, digits, esc, fmtDate, fmtDT, holdingOverdue, inputCls, iso, JOB_LOST, JOB_STAGE, JOB_STAGES, jobCustName, jobPhone, kpiGrid, lineAmount, lineDims, needsCare, nextCode, PAY_TRIGGER, pct, phoneKey, PRICE_UNIT, RECEIPT_STATUS, rowCls, secHead, tdCls, tdFirst, tdLast, techUsers, todayISO, toLocal, uid, useApp, vnd, WO_STAGE } from '../../lib/core';
-import type { CompanyInfo, Customer, InstallJob, Job, JobCare, JobFile, JobFilter, JobLine, JobLostReason, JobQuote, MfgConfig, PayStage, PriceItem, PriceUnit, Receipt, Tone, User, WorkOrder } from '../../lib/types';
+import { btnBase, btnGhost, btnPrimary, btnSm, C, compact, DESIGN_STATUS, digits, esc, fmtDate, fmtDT, holdingOverdue, inputCls, iso, JOB_LOST, JOB_STAGE, JOB_STAGES, jobCustName, jobPhone, kpiGrid, lineAmount, lineDims, needsCare, nextCode, PAY_TRIGGER, pct, phoneKey, PRICE_UNIT, RECEIPT_STATUS, rowCls, secHead, tdCls, tdFirst, tdLast, techUsers, todayISO, toLocal, uid, useApp, vnd, wfNeeds, wfReasons, WO_STAGE } from '../../lib/core';
+import type { CompanyInfo, Customer, InstallJob, Job, JobCare, JobFile, JobFilter, JobLine, JobLostReason, JobQuote, MfgConfig, PayStage, PriceItem, PriceUnit, Receipt, Tone, User, WfSubject, WorkOrder } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { compressImage, dueByStage, jobActualCost, jobDetailOf, jobMoney, jobStageOf, lineMeasure, quoteTotalsOf, receiptCash } from '../../lib/workshop';
 import { InstallScheduleModal } from './install';
@@ -356,7 +356,7 @@ export function CareModal({ job, onClose }: { job: Job; onClose: () => void }) {
 
 /** Báo giá xưởng dạng Split-View: trái 38% đo đạc / hạng mục (bàn phím Tab, Enter), phải 62% bản A4 xem trước trực tiếp */
 export function QuoteEditorModal({ job, onClose, onWin }: { job: Job; onClose: () => void; onWin?: () => void }) {
-  const { me, setJobs, priceItems, canDo, notify, audit, company, customers, users, mfgConfig, dispatch } = useApp();
+  const { me, setJobs, priceItems, canDo, notify, audit, company, customers, users, mfgConfig, dispatch, wfDef, wfFirstApprovers } = useApp();
   const last = job.quotes[job.quotes.length - 1];
   const [lines, setLines] = useState<JobLine[]>(job.draft.length ? job.draft : last ? last.lines.map((l) => ({ ...l, id: uid('jl') })) : []);
   const [vatPct, setVatPct] = useState(job.draft.length || !last ? job.vatPct : last.vatPct);
@@ -402,6 +402,10 @@ export function QuoteEditorModal({ job, onClose, onWin }: { job: Job; onClose: (
     if (current) return current;
     if (err) { notify(err, 'red'); return null; }
     const q: JobQuote = { id: uid('jq'), version: nextV, at: new Date().toISOString(), by: me.id, lines: lines.map((l) => ({ ...l })), subtotal: t.subtotal, vatPct, total: t.total, cost: t.cost, note: note.trim() || undefined };
+    // v48: lãi gộp thấp (theo quy trình "Báo giá xưởng lãi gộp thấp") thì chờ duyệt, chưa in / chốt
+    const jdef = wfDef('JOB_QUOTE');
+    const jS: WfSubject = { requesterId: me.id, dept: job.dept, amount: t.total, vals: { gm, amount: t.total } };
+    if (jdef && wfNeeds(jdef, jS)) q.approval = { status: 'PENDING', reasons: wfReasons(jdef, jS), requestedAt: Date.now(), requestedBy: me.id, gm: gm ?? undefined };
     const nj = { ...job, quotes: [...job.quotes, q], draft: [], vatPct };
     patch({ quotes: nj.quotes, draft: [], vatPct });
     audit('JOB_QUOTE', `${job.code} báo giá v${nextV}: ${vnd(t.total)}`);
@@ -411,6 +415,8 @@ export function QuoteEditorModal({ job, onClose, onWin }: { job: Job; onClose: (
   const exportAs = (format: 'PDF' | 'WORD') => {
     const r = persist();
     if (!r) return;
+    const ap = r.nj.quotes.find((x) => x.id === r.q.id)?.approval ?? r.q.approval;
+    if (ap && ap.status !== 'APPROVED') return notify(`Báo giá v${r.q.version} ${ap.status === 'PENDING' ? 'đang chờ duyệt giá' : 'chưa được duyệt'}: chưa in / gửi khách`, 'orange');
     const title = `Báo giá ${job.code} v${r.q.version}`;
     const body = jobQuoteHtml(r.nj, r.q, company, cust, owner, mfgConfig);
     if (format === 'PDF') printHtml(docShell(title, body)); else downloadWord(`${job.code}-BG${r.q.version}`, title, body);
@@ -420,14 +426,14 @@ export function QuoteEditorModal({ job, onClose, onWin }: { job: Job; onClose: (
   const submit = () => {
     const r = persist();
     if (!r) return;
-    if (lowMargin) {
-      const to = users.filter((u) => u.active && (u.role === 'BOD' || (u.role === 'DEPT_HEAD' && u.dept === owner?.dept)));
-      dispatch('QUOTE_APPROVAL', { toAll: to, module: 'jobs', title: `Báo giá cần xem lại giá: ${jobCustName(job, customers)}`, body: `${job.code} v${r.q.version}, ${vnd(r.q.total)}, lãi gộp dự toán ${gm!.toFixed(1)}% (dưới 25%)` });
+    if (r.q.approval?.status === 'PENDING') {
+      const to = wfFirstApprovers('JOB_QUOTE', { requesterId: me.id, dept: job.dept, amount: r.q.total, vals: { gm, amount: r.q.total } }).filter((u) => u.id !== me.id);
+      dispatch('QUOTE_APPROVAL', { toAll: to, module: 'tasks', title: `Báo giá cần xem lại giá: ${jobCustName(job, customers)}`, body: `${job.code} v${r.q.version}, ${vnd(r.q.total)}, lãi gộp dự toán ${gm!.toFixed(1)}% (dưới 25%)` });
       notify(`Đã lưu báo giá v${r.q.version} và gửi Giám đốc xem lại (lãi gộp ${gm!.toFixed(1)}%)`, 'orange');
     } else notify(`Đã lưu báo giá v${r.q.version}: ${vnd(r.q.total)}. Đơn chuyển "Đã báo giá".`, 'teal');
     onClose();
   };
-  const win = () => { if (!persist()) return; onClose(); onWin?.(); };
+  const win = () => { const r = persist(); if (!r) return; const ap = r.q.approval; if (ap && ap.status !== 'APPROVED') return notify(`Báo giá v${r.q.version} chưa được duyệt giá, chưa nhận cọc được`, 'orange'); onClose(); onWin?.(); };
   const cats = Array.from(new Set(priceItems.filter((p) => p.active).map((p) => p.category)));
   const previewQ: JobQuote = current?.q ?? { id: 'preview', version: nextV, at: new Date().toISOString(), by: me.id, lines, subtotal: t.subtotal, vatPct, total: t.total, cost: t.cost, note: note.trim() || undefined };
   const html = jobQuoteHtml({ ...job, vatPct }, previewQ, company, cust, owner, mfgConfig);

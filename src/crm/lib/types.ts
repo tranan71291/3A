@@ -41,7 +41,7 @@ export type ProgramStatus = 'PENDING_INTERNAL' | 'PENDING_VENDOR' | 'APPROVED' |
 
 export type Verification = 'PENDING' | 'VERIFIED' | 'REJECTED';
 
-export type Module = 'home' | 'contacts' | 'warehouse' | 'overview' | 'tasks' | 'leads' | 'customers' | 'jobs' | 'projects' | 'products' | 'supply' | 'claims' | 'production' | 'install' | 'inventory' | 'cashbook' | 'staff' | 'docs' | 'reports' | 'settings' | 'messages' | 'zalo' | 'marketing';
+export type Module = 'home' | 'contacts' | 'warehouse' | 'overview' | 'tasks' | 'leads' | 'customers' | 'jobs' | 'projects' | 'products' | 'supply' | 'claims' | 'production' | 'install' | 'inventory' | 'cashbook' | 'staff' | 'docs' | 'reports' | 'settings' | 'messages' | 'zalo' | 'marketing' | 'sales';
 
 export type Action =
   | 'lead.create' | 'lead.route' | 'lead.assign' | 'lead.accept' | 'customer.edit' | 'docs.manage'
@@ -208,6 +208,36 @@ export type StockMoveType = 'RECEIVE_FREE' | 'RECEIVE_RESERVED' | 'DELIVER' | 'R
 export type StockMove = { id: string; at: string; sku: string; type: StockMoveType; qty: number; kind?: PoAllocation['kind']; refId?: string; poId?: string; by?: string; note: string; fromWh?: string; toWh?: string };
 
 export type PoPurpose = 'PROJECT' | 'STOCK' | 'MIXED';
+
+/** v46: đơn bán. SKU: hàng trong kho hàng hóa; ITEM: vật tư (xưởng); MAKE: hàng cần gia công (tạo lệnh sản xuất); FREE: dòng tự nhập, không trừ kho */
+export type SaleLineKind = 'SKU' | 'ITEM' | 'MAKE' | 'FREE';
+
+export type SaleLine = { id: string; kind: SaleLineKind; ref?: string; name: string; unit: string; qty: number; price: number; discountPct: number; vat: number; note?: string };
+
+export type SalePay = 'CASH' | 'BANK' | 'PARTIAL' | 'CREDIT';
+
+export type SaleDelivery = 'PICKUP' | 'DELIVER' | 'CARRIER';
+
+export type SaleStatus = 'PENDING' | 'SHIPPING' | 'DONE' | 'CANCELLED';
+
+/** Tiền khách trả cho đơn: chỉ tính vào công nợ khi kế toán đã xác nhận (tự sinh phiếu thu quỹ) */
+export type SalePayment = { id: string; amount: number; method: 'CASH' | 'BANK'; at: number; by?: string; confirmed?: boolean; confirmedBy?: string; confirmedAt?: number };
+
+export type SalesOrder = {
+  id: string; code: string; createdAt: number; date: string;
+  /** COUNTER: lên đơn trực tiếp; QUOTE: tự tạo khi báo giá được ghi nhận chốt */
+  source: 'COUNTER' | 'QUOTE'; quoteId?: string; leadId?: string;
+  customerId?: string; customer: string; phone?: string; taxCode?: string; address?: string;
+  lines: SaleLine[]; pay: SalePay; creditDays: number; payments: SalePayment[];
+  delivery: SaleDelivery; whId: string; deliverAt?: string; invoice: boolean; shipFee?: number; note?: string;
+  status: SaleStatus; by?: string;
+  issuedAt?: number; issuedBy?: string; issueRefs?: string[]; doneAt?: number; cancelReason?: string; cancelledAt?: number;
+  /** Phiếu đặt hàng / lệnh sản xuất sinh từ đơn; đơn tách phần giao sau */
+  poIds?: string[]; woId?: string; splitFrom?: string;
+  /** v48: duyệt đơn (giảm giá / vượt hạn mức nợ) và yêu cầu xuất kho chờ Thủ kho / Kế toán */
+  approval?: { status: 'PENDING' | ApprovalDecision; reasons: string[]; requestedAt: number; requestedBy?: string; decidedBy?: string; decidedAt?: number; note?: string };
+  issueRequest?: { by: string; at: number };
+};
 
 export type VendorPO = { id: string; code: string; vendor: string; orderDate: string; expectedDate: string; purpose: PoPurpose; note: string; lines: PoLine[]; shipments: Shipment[]; createdBy?: string; cancelled?: boolean };
 
@@ -506,9 +536,81 @@ export type CompanyBranch = { name: string; address: string; print: boolean };
 export type CompanyInfo = { branches?: CompanyBranch[]; appName: string; legalName: string; shortName: string; taxCode: string; address: string; phone: string; email: string; website: string; logo?: string; representative: string; representativeTitle: string; bankAccount: string; bankName: string; stamp?: string; profile?: BusinessProfile; enabledModules?: Partial<Record<Module, boolean>> };
 
 // ---------------- Trung tâm phê duyệt ----------------
-export type ApprovalKind = 'QUOTE' | 'CONTRACT' | 'ACTIVITY' | 'EXPENSE' | 'PROGRAM' | 'CLAIM' | 'LEAD_ASSIGN' | 'STOCK' | 'RECEIPT' | 'CASH' | 'CONTENT';
+export type ApprovalKind = 'QUOTE' | 'CONTRACT' | 'ACTIVITY' | 'EXPENSE' | 'PROGRAM' | 'CLAIM' | 'LEAD_ASSIGN' | 'STOCK' | 'RECEIPT' | 'CASH' | 'CONTENT' | 'VOUCHER' | 'SALE' | 'SALE_PAY' | 'JOB_QUOTE' | 'DESIGN' | 'REQUEST';
 
 export type ApprovalDecision = 'APPROVED' | 'REJECTED' | 'NEED_INFO';
+
+// ---------------- v48: QUY TRÌNH & PHÊ DUYỆT (kiểu dữ liệu) ----------------
+export type WfOp = 'lt' | 'gt' | 'eq' | 'ne' | 'empty';
+
+export type WfCond = { field: string; op: WfOp; value?: number | string };
+
+/** Người duyệt của một bước: trưởng phòng của khách / dự án / người gửi, quản lý trực tiếp, vai trò, người cụ thể, thủ kho */
+export type WfWhoKind = 'DEPT_HEAD' | 'MANAGER' | 'ROLE' | 'USER' | 'WH_MANAGER';
+
+export type WfWho = { kind: WfWhoKind; role?: Role; userId?: string };
+
+export type WfStep = {
+  id: string; name: string; who: WfWho;
+  /** Chỉ chạy khi khớp một trong các điều kiện (trống = luôn chạy) */
+  when?: WfCond[];
+  /** Cần 1 người trong nhóm hay tất cả */
+  mode?: 'ANY' | 'ALL';
+  slaMin: number;
+  /** Hạn mức của bước: vượt thì tự thêm bước Giám đốc */
+  limit?: number;
+  /** Người duyệt phải có hạn mức duyệt cá nhân (Phòng ban & nhân sự) không nhỏ hơn giá trị */
+  userLimit?: boolean;
+  /** Quyền phải có (theo vai trò) để duyệt bước; người cụ thể thì không xét */
+  perm?: Action;
+  overdue?: 'REMIND' | 'ESCALATE';
+  allowNeedInfo?: boolean;
+};
+
+export type WfFieldType = 'TEXT' | 'LONG' | 'NUMBER' | 'MONEY' | 'DATE' | 'SELECT' | 'MULTI' | 'FILE' | 'USER' | 'LINK';
+
+export type WfField = { id: string; label: string; type: WfFieldType; required?: boolean; options?: string[] };
+
+export type WfAfter = 'NOTIFY' | 'CASH_OUT' | 'NOTIFY_USER';
+
+export type WfDef = {
+  key: string; name: string; group: string; desc?: string;
+  /** Quy trình có sẵn của hệ thống (không xóa được); lockSteps: số bước cố định theo nghiệp vụ; lockEnable: luôn bật */
+  builtin?: boolean; lockSteps?: boolean; lockEnable?: boolean; mode?: 'TRADING' | 'MFG';
+  enabled: boolean; version: number;
+  /** Cần duyệt khi khớp một trong các điều kiện (trống = mọi yêu cầu); triggerText: điều kiện cố định của quy trình có sẵn */
+  trigger: WfCond[]; triggerText?: string; skipText?: string;
+  steps: WfStep[];
+  /** Đề nghị tự tạo: biểu mẫu, tiền tố mã, ai được gửi, việc làm sau khi duyệt */
+  form?: WfField[]; prefix?: string; submitRoles?: Role[]; after?: WfAfter[]; notifyUserId?: string;
+  updatedAt?: number; updatedBy?: string;
+  history?: { version: number; at: number; by?: string; note: string; steps: WfStep[]; trigger: WfCond[] }[];
+};
+
+export type WfPolicy = {
+  /** Không ai tự duyệt yêu cầu của mình */ noSelf: boolean;
+  /** Doanh nghiệp chỉ có 1 Giám đốc: Giám đốc tự duyệt, ghi nhật ký */ soleBodSelf: boolean;
+  /** Giám đốc duyệt thay được mọi bước */ bodOverride: boolean;
+  /** Quá SLA thì chuyển thêm cho cấp trên (trưởng phòng của người duyệt hoặc Giám đốc) */ escalate: boolean;
+  /** Người duyệt nghỉ phép cả ngày (đã duyệt): tự chuyển cho người thay */ leaveDelegate: boolean;
+};
+
+export type WfDelegation = { id: string; fromId: string; toId: string; from: string; to: string; note?: string; by?: string; at: number };
+
+export type WfDecision = { step: number; by: string; decision: ApprovalDecision; note?: string; at: number; onBehalf?: string; self?: boolean };
+
+export type WfRunStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEED_INFO' | 'CANCELLED';
+
+/** Tiến trình duyệt: với quy trình có sẵn lưu các bước đã duyệt (giữ phiên bản lúc bắt đầu); với đề nghị tự tạo là chính bản ghi đề nghị */
+export type WfRun = {
+  id: string; key: string; refId: string; version: number; steps: WfStep[]; decisions: WfDecision[]; status: WfRunStatus; startedAt: number;
+  code?: string; title?: string; requesterId?: string; dept?: string; amount?: number; form?: Record<string, string>; files?: Record<string, { name: string; url: string }[]>;
+  doneAt?: number; cashId?: string;
+};
+
+export type WfSubject = { requesterId?: string; dept?: string; amount?: number; whId?: string; vals: Record<string, number | string | null | undefined> };
+
+export type WfCtx = { users: User[]; departments: Department[]; warehouses: WarehouseInfo[]; activities: Activity[]; delegations: WfDelegation[]; policy: WfPolicy; perms: Perms; me?: User; now: number };
 
 /** Duyệt giá báo giá theo GM% / giá trị đơn */
 export type QuoteApproval = { status: 'PENDING' | ApprovalDecision; level: 'HEAD' | 'BOD'; reasons: string[]; requestedAt: number; requestedBy?: string; decidedBy?: string; decidedAt?: number; note?: string };
@@ -554,7 +656,9 @@ export type PriceItem = { id: string; code: string; name: string; category: stri
 /** Dòng khảo sát / báo giá: kích thước mm, chiều dài m */
 export type JobLine = { id: string; priceItemId?: string; name: string; location: string; unit: PriceUnit; width: number; height: number; length: number; qty: number; unitPrice: number; unitCost: number; discountPct: number; note?: string };
 
-export type JobQuote = { id: string; version: number; at: string; by?: string; lines: JobLine[]; subtotal: number; vatPct: number; total: number; cost: number; note?: string };
+export type JobQuote = { id: string; version: number; at: string; by?: string; lines: JobLine[]; subtotal: number; vatPct: number; total: number; cost: number; note?: string;
+  /** v48: duyệt báo giá lãi gộp thấp (theo quy trình) */
+  approval?: { status: 'PENDING' | ApprovalDecision; reasons: string[]; requestedAt: number; requestedBy?: string; decidedBy?: string; decidedAt?: number; note?: string; gm?: number } };
 
 /** Đợt thanh toán: mốc kích hoạt khi chốt (cọc), khi giao / lắp đặt, khi nghiệm thu */
 export type PayTrigger = 'SIGN' | 'DELIVERY' | 'ACCEPT';
@@ -610,7 +714,7 @@ export type InvMove = { id: string; code: string; type: InvMoveType; date: strin
 export type CashAccount = 'CASH' | 'BANK';
 
 /** Phiếu thu / chi / chuyển quỹ (tiền thu khách đã xác nhận lấy tự động từ phiếu thu đơn hàng) */
-export type CashSource = 'MANUAL' | 'RECEIPT' | 'EXPENSE' | 'ADVANCE' | 'STOCK' | 'MDF_SURPLUS' | 'COMMISSION';
+export type CashSource = 'MANUAL' | 'RECEIPT' | 'EXPENSE' | 'ADVANCE' | 'STOCK' | 'MDF_SURPLUS' | 'COMMISSION' | 'SALE' | 'REQUEST';
 
 export type CashEntry = {
   id: string; code: string; kind: 'IN' | 'OUT' | 'TRANSFER'; date: string; account: CashAccount; toAccount?: CashAccount; category: string; amount: number;
@@ -730,6 +834,8 @@ export type Perms = { modules: Record<Role, Record<Module, boolean>>; actions: R
 
 export type Catalog = { segments: SegmentDef[]; tiers: TierRule[]; categories: BudgetCategory[]; popDocs: PopDocDef[]; sources: CustomerSource[] };
 
+export type SaleStockData = { skus: SkuItem[]; warehouses: WarehouseInfo[]; reservations: StockReservation[]; stockMoves: InvMove[]; orders: SalesOrder[] };
+
 export type XlsxSheet = { name: string; rows: (string | number | null | undefined)[][]; widths?: number[] };
 
 // =====================================================================
@@ -740,6 +846,8 @@ export type XlsxSheet = { name: string; rows: (string | number | null | undefine
 export type ToastT = { msg: string; tone: 'teal' | 'orange' | 'red'; action?: { label: string; run: () => void }; id?: number };
 
 export type CashDraft = Omit<CashEntry, 'id' | 'code' | 'at' | 'by' | 'date'> & { date?: string; by?: string };
+
+export type WfDecideArgs = { key: string; kind: ApprovalKind; refId: string; title: string; subject: WfSubject; steps: WfStep[]; idx: number; decision: ApprovalDecision; note?: string; onBehalf?: string; self?: boolean; final?: () => void; reject?: (n: string) => void; needInfo?: (n: string) => void };
 
 export type AppCtx = {
   /** Ghi phiếu thu / chi vào sổ quỹ (phiếu tự sinh có source + sourceId thì không ghi trùng) */
@@ -949,6 +1057,49 @@ export type AppCtx = {
   winLead: (id: string, quoteId: string) => void;
   /** v44: chốt báo giá nháp (khách lẻ), tự thêm khách vào CRM */
   winDraftQuote: (quoteId: string) => void;
+  /** v48: quy trình & phê duyệt */
+  wfAll: WfDef[];
+  setWfDefs: Dispatch<SetStateAction<WfDef[]>>;
+  wfRuns: WfRun[];
+  setWfRuns: Dispatch<SetStateAction<WfRun[]>>;
+  wfPolicy: WfPolicy;
+  setWfPolicy: Dispatch<SetStateAction<WfPolicy>>;
+  wfDelegations: WfDelegation[];
+  setWfDelegations: Dispatch<SetStateAction<WfDelegation[]>>;
+  wfCtx: () => WfCtx;
+  wfDef: (key: string) => WfDef | undefined;
+  /** Một bước duyệt: chưa phải bước cuối thì ghi tiến trình và báo người duyệt bước sau; bước cuối thì chạy hành động duyệt của nghiệp vụ */
+  wfDecide: (o: WfDecideArgs) => void;
+  /** Đề nghị tự tạo: gửi mới / gửi lại sau khi bổ sung; hoàn tất khi duyệt bước cuối */
+  wfSubmit: (key: string, title: string, form: Record<string, string>, files: Record<string, { name: string; url: string }[]>, runId?: string) => WfRun | null;
+  wfFinishRequest: (runId: string) => void;
+  openRequest: (runId: string) => void;
+  reqOpen: string | null;
+  setReqOpen: (id: string | null) => void;
+  /** Duyệt phiếu kho: cập nhật tồn, ghi thẻ kho */
+  approveVoucher: (id: string) => boolean;
+  /** Người duyệt bước đầu của quy trình (để gửi thông báo khi tạo yêu cầu) */
+  wfFirstApprovers: (key: string, s: WfSubject) => User[];
+  /** v46: đơn bán */
+  salesOrders: SalesOrder[];
+  setSalesOrders: Dispatch<SetStateAction<SalesOrder[]>>;
+  /** Lưu đơn mới (tự cấp mã), trả về đơn đã lưu */
+  saveSale: (o: Omit<SalesOrder, 'id' | 'code' | 'createdAt'> & { id?: string; code?: string; createdAt?: number }) => SalesOrder;
+  /** Xuất kho đơn: dùng hàng đã giữ chỗ cho khách / dự án trước, phần còn lại lập phiếu xuất kho */
+  issueSale: (id: string, given?: SalesOrder) => boolean;
+  /** Đơn vừa lưu: thu tiền và / hoặc xuất kho ngay */
+  completeSale: (o: SalesOrder, pay: { amount: number; method: 'CASH' | 'BANK' } | null, issue: boolean) => void;
+  /** Giao trước phần có sẵn: tách phần thiếu sang đơn giao sau */
+  splitSale: (id: string) => void;
+  /** Đề xuất mua phần thiếu: lập phiếu đặt hàng nhà cung cấp, hàng về tự giữ chỗ cho khách */
+  purchaseForSale: (id: string) => void;
+  /** Ghi nhận tiền khách trả; kế toán xác nhận mới vào sổ quỹ */
+  addSalePayment: (id: string, amount: number, method: 'CASH' | 'BANK', given?: SalesOrder) => void;
+  confirmSalePayment: (id: string, payId: string) => void;
+  setSaleStatus: (id: string, status: SaleStatus, reason?: string) => void;
+  /** Bán hàng › mở đơn (từ báo giá / khách hàng) */
+  openSale: string | null;
+  setOpenSale: (id: string | null) => void;
   /** Mở hộp chọn phiên bản báo giá để chốt đơn */
   openWin: (leadId: string) => void;
   syncLeadToGetfly: (leadId: string) => void;
@@ -996,6 +1147,9 @@ export type SortVal = string | number | undefined | null;
 export type SortState = { col: number; dir: 1 | -1 } | null;
 
 export type TableSort = { sort: SortState; sortable: number[]; onSort: (col: number) => void };
+
+/** Thao tác hàng loạt riêng của bảng (nhận khóa các dòng đã chọn) */
+export type TableBulk = { label: string; icon?: typeof Wallet; danger?: boolean; run: (keys: string[]) => void };
 
 // =====================================================================
 //  IMPORT CSV — dùng chung cho Lead và Khách hàng
@@ -1053,7 +1207,7 @@ export type RowComment = {
 /** Nhóm chat (kênh dự án / phòng ban). Tin nhắn trực tiếp không cần bản ghi: mã kênh dm:<id1>:<id2> */
 export type ChatChannel = { id: string; name: string; desc?: string; members: string[]; createdBy: string; at: number };
 
-export type Notice = { id: string; at: number; kind: NoticeKind; title: string; body: string; read: boolean; module?: Module; to?: string };
+export type Notice = { id: string; at: number; kind: NoticeKind; title: string; body: string; read: boolean; module?: Module; to?: string; /** v48: mã người nhận */ toIds?: string[] };
 
 export type MsgLog = { id: string; at: number; channel: 'ZNS' | 'EMAIL'; to: string; subject: string; ok: boolean; detail: string };
 
@@ -1794,7 +1948,7 @@ export type CommissionRow = {
 //  chi & claim quỹ MDF, phân lead; duyệt nhanh ngay trên thẻ, đếm ngược SLA
 // =====================================================================
 
-export type HubGroup = 'PRICE' | 'WORK' | 'MDF' | 'LEAD' | 'CASH' | 'STOCK' | 'MKT';
+export type HubGroup = 'PRICE' | 'WORK' | 'MDF' | 'LEAD' | 'CASH' | 'STOCK' | 'MKT' | 'OPS' | 'REQ';
 
 export type HubItem = {
   key: string; kind: ApprovalKind; refId: string; title: string; sub: string; reason?: string;
@@ -1817,7 +1971,14 @@ export type InvoiceDraft = { serial: string; number: string; date: string; suppl
 
 export type ReportView = 'mfg' | 'trade' | 'aging' | 'commission' | 'mdf';
 
-export type SettingsTab = 'overview' | 'ai' | 'zalo' | 'perms' | 'hub' | 'platform' | 'company' | 'org' | 'fund' | 'mkt' | 'segments' | 'pricing' | 'accounting' | 'getfly' | 'email' | 'zns' | 'security' | 'warehouses';
+// =====================================================================
+// BÁN HÀNG: ĐƠN BÁN (v46) trực tiếp và đơn tự tạo khi chốt báo giá
+// =====================================================================
+export type SaleTab = 'ALL' | SaleStatus | 'QUOTE';
+
+export type SalePick = { kind: SaleLineKind; ref?: string; name: string; unit: string; price: number; sub: string; vat: number };
+
+export type SettingsTab = 'overview' | 'ai' | 'zalo' | 'perms' | 'workflow' | 'hub' | 'platform' | 'company' | 'org' | 'fund' | 'mkt' | 'segments' | 'pricing' | 'accounting' | 'getfly' | 'email' | 'zns' | 'security' | 'warehouses';
 
 // =====================================================================
 //  3A PLATFORM CONSOLE — quản trị nền tảng: doanh nghiệp, cấp phép module, dữ liệu & nâng cấp an toàn

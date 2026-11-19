@@ -42,7 +42,9 @@ export function PermAiReview({ summary }: { summary: string }) {
   );
 }
 
-/** Ô tích của trang Phân quyền: 16px, bo 4px; khóa = ổ khóa trên nền xám */
+// =====================================================================
+// PHÂN QUYỀN CHI TIẾT (tiếp)
+// =====================================================================
 export function PermTick({ on, locked, partial }: { on: boolean; locked?: boolean; partial?: boolean }) {
   if (locked) return <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-[rgb(var(--ink)/0.1)]"><Lock className="h-2.5 w-2.5 text-[rgb(var(--muted))]" aria-hidden /></span>;
   if (on && partial) return <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-[rgb(var(--ink)/0.14)]"><span className="h-0.5 w-2 rounded-full bg-[rgb(var(--fg))]" /></span>;

@@ -1,7 +1,48 @@
 'use client';
 
-import { boqIsEstimate, boqTotal, latestQuote, lineNet } from './core';
-import type { GetflyOrderPayload, GetflyOrderRec, Lead, Quote, QuoteLine } from './types';
+import { boqIsEstimate, boqTotal, latestQuote, lineNet, saleLineNet, saleResOf, whQty } from './core';
+import type { GetflyOrderPayload, GetflyOrderRec, Lead, Quote, QuoteLine, SaleLineKind, SalesOrder, SaleStockData } from './types';
+import { stockOf } from './workshop';
+
+/** Tiền hàng, chiết khấu, thuế theo từng mức, phí giao, tổng phải trả */
+export function saleTotals(o: Pick<SalesOrder, 'lines' | 'shipFee'>) {
+  const gross = o.lines.reduce((s, l) => s + Math.round(l.qty * l.price), 0);
+  const net = o.lines.reduce((s, l) => s + saleLineNet(l), 0);
+  const rates = Array.from(new Set(o.lines.map((l) => l.vat))).sort((a, b) => a - b);
+  const groups = rates.map((r) => { const base = o.lines.filter((l) => l.vat === r).reduce((s, l) => s + saleLineNet(l), 0); return { rate: r, base, vat: Math.round((base * r) / 100) }; });
+  const vat = groups.reduce((s, g) => s + g.vat, 0);
+  const ship = o.shipFee ?? 0;
+  return { gross, discount: gross - net, net, groups, vat, ship, grand: net + vat + ship };
+}
+
+/** Số lượng đang giữ cho các đơn bán chưa xuất kho (giữ mềm: chưa trừ tồn). before: chỉ tính đơn lên trước (đơn trước được ưu tiên hàng) */
+export function saleHeld(orders: SalesOrder[], kind: SaleLineKind, ref: string, exceptId?: string, before = Infinity) {
+  return orders.filter((o) => o.status === 'PENDING' && o.id !== exceptId && o.createdAt < before).reduce((s, o) => s + o.lines.filter((l) => l.kind === kind && l.ref === ref).reduce((a, l) => a + l.qty, 0), 0);
+}
+
+/** Từng dòng: giữ chỗ sẵn, tồn tự do (đã trừ phần các đơn khác đang giữ), số có thể giao, số thiếu */
+export function saleStock(o: Pick<SalesOrder, 'id' | 'lines' | 'whId' | 'customerId' | 'leadId' | 'createdAt'>, d: SaleStockData) {
+  const since = o.createdAt || Infinity;
+  const used = new Map<string, number>();
+  return o.lines.map((l) => {
+    const key = `${l.kind}:${l.ref ?? ''}`;
+    const before = used.get(key) ?? 0;
+    used.set(key, before + l.qty);
+    if (l.kind === 'SKU' && l.ref) {
+      const k = d.skus.find((x) => x.sku === l.ref);
+      const res = saleResOf(o, l.ref, d.reservations).reduce((s, r) => s + r.qty, 0);
+      const free = k ? Math.max(0, whQty(k, o.whId, d.warehouses) - saleHeld(d.orders, 'SKU', l.ref, o.id, since)) : 0;
+      const have = Math.max(0, Math.min(l.qty, res + free - before));
+      return { l, track: true, res, free, have, short: l.qty - have };
+    }
+    if (l.kind === 'ITEM' && l.ref) {
+      const free = Math.max(0, stockOf(l.ref, d.stockMoves).qty - saleHeld(d.orders, 'ITEM', l.ref, o.id, since));
+      const have = Math.max(0, Math.min(l.qty, free - before));
+      return { l, track: true, res: 0, free, have, short: l.qty - have };
+    }
+    return { l, track: false, res: 0, free: 0, have: l.qty, short: 0 };
+  });
+}
 
 export function quoteTotals(lines: QuoteLine[], vatPct: number) {
   const sub = lines.reduce((a, l) => a + l.qty * lineNet(l), 0);

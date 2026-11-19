@@ -5,7 +5,7 @@ import { ClipboardPaste, Maximize2, Minimize2, PackagePlus, Plus, RefreshCw, Sca
 import { removeWithUndo } from '../../app/context';
 import { Pagination, usePaged } from '../../components/controls';
 import { EmptyState, FilePicker, Table } from '../../components/ui';
-import { AI_NAME, aiErrText, btnGhost, btnSm, catalogSkus, digits, fileB64, fold, HEAD_RULES, inputBase, isUnitWord, lineNet, liveDrafts, netOf, nextCode, normKey, rowCls, shrinkImage, tdCls, tdLast, tierPrice, uid, useApp } from '../../lib/core';
+import { aiErrText, btnGhost, btnSm, catalogSkus, digits, fileB64, fold, HEAD_RULES, inputBase, isUnitWord, lineNet, liveDrafts, netOf, nextCode, normKey, rowCls, shrinkImage, tdCls, tdLast, tierPrice, uid, useApp } from '../../lib/core';
 import type { DocLine, DraftProduct, PasteRow, PastSale, PriceTier, Quote, SkuItem, SmartCatalog, SmartSuggest } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { apiPost, useAi } from '../ai/ai-core';
@@ -20,6 +20,77 @@ export function parseVnNum(raw: string): number | null {
   else t = t.replace(',', '.');
   const n = Number(t);
   return Number.isFinite(n) ? n : null;
+}
+
+/** v48: đọc file .xlsx (gói zip + XML) và .csv thành bảng ô, chạy trên trình duyệt, không cần thư viện ngoài */
+export async function unzipText(buf: Uint8Array, want: (name: string) => boolean): Promise<Record<string, string>> {
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('not_zip');
+  const n = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  const out: Record<string, string> = {};
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+    const name = dec.decode(buf.subarray(p + 46, p + 46 + nlen));
+    p += 46 + nlen + xlen + clen;
+    if (!want(name)) continue;
+    const start = lho + 30 + dv.getUint16(lho + 26, true) + dv.getUint16(lho + 28, true);
+    const data = new Uint8Array(buf.subarray(start, start + csize));
+    if (method === 0) out[name] = dec.decode(data);
+    else if (method === 8) out[name] = dec.decode(new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw' as CompressionFormat))).arrayBuffer()));
+  }
+  return out;
+}
+
+export function csvCells(text: string): string[][] {
+  const delim = (text.split('\n')[0].match(/;/g)?.length ?? 0) > (text.split('\n')[0].match(/,/g)?.length ?? 0) ? ';' : text.includes('\t') ? '\t' : ',';
+  const rows: string[][] = []; let row: string[] = []; let cur = ''; let q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; continue; }
+    if (c === '"') q = true; else if (c === delim) { row.push(cur); cur = ''; } else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; } else if (c !== '\r') cur += c;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows.map((r) => r.map((x) => x.replace(/\s+/g, ' ').trim())).filter((r) => r.some(Boolean));
+}
+
+/** Trang tính đầu tiên của file .xlsx / .csv */
+export async function readSheetFile(f: File): Promise<string[][]> {
+  const lower = f.name.toLowerCase();
+  if (lower.endsWith('.csv') || f.type === 'text/csv') return csvCells(await f.text());
+  const files = await unzipText(new Uint8Array(await f.arrayBuffer()), (n) => n === 'xl/sharedStrings.xml' || /^xl\/worksheets\/sheet\d+\.xml$/.test(n));
+  const xml = (s: string) => new DOMParser().parseFromString(s, 'application/xml');
+  const shared = files['xl/sharedStrings.xml'] ? Array.from(xml(files['xl/sharedStrings.xml']).getElementsByTagName('si')).map((si) => Array.from(si.getElementsByTagName('t')).map((t) => t.textContent ?? '').join('')) : [];
+  const sheet = Object.keys(files).filter((k) => k.includes('worksheets/')).sort((a, b) => Number(a.match(/(\d+)\.xml$/)?.[1]) - Number(b.match(/(\d+)\.xml$/)?.[1]))[0];
+  if (!sheet) return [];
+  const colOf = (ref: string) => { const m = ref.match(/^[A-Z]+/)?.[0] ?? 'A'; let n = 0; for (const ch of m) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+  const rows: string[][] = [];
+  for (const r of Array.from(xml(files[sheet]).getElementsByTagName('row'))) {
+    const row: string[] = [];
+    for (const c of Array.from(r.getElementsByTagName('c'))) {
+      const t = c.getAttribute('t');
+      const v = c.getElementsByTagName('v')[0]?.textContent ?? '';
+      const val = t === 's' ? shared[Number(v)] ?? '' : t === 'inlineStr' ? Array.from(c.getElementsByTagName('t')).map((x) => x.textContent ?? '').join('') : v;
+      row[colOf(c.getAttribute('r') ?? '')] = val;
+    }
+    rows.push(Array.from(row, (x) => (x ?? '').replace(/\s+/g, ' ').trim()));
+  }
+  return rows.filter((r) => r.some(Boolean)).slice(0, 1000);
+}
+
+/** Tên hàng ngắt nhiều dòng (dòng sau không có số lượng, đơn giá, ĐVT): nối vào dòng trên */
+export function mergeWrapped<T extends { name: string; unit?: string; qty?: number | null; price?: number | null }>(rows: T[]): T[] {
+  const out: T[] = [];
+  for (const r of rows) {
+    const bare = !(Number(r.qty) > 0) && !(Number(r.price) > 0) && !(r.unit ?? '').trim();
+    if (bare && out.length && !/^\d+[.)]\s/.test(r.name)) { const p = out[out.length - 1]; out[out.length - 1] = { ...p, name: `${p.name} ${r.name}`.replace(/\s+/g, ' ').trim() }; continue; }
+    out.push(r);
+  }
+  return out;
 }
 
 /** Ô từ bộ nhớ tạm: ưu tiên dạng tab (Excel, Word đều có), sau đó bảng HTML, cuối cùng là từng dòng chữ */
@@ -258,7 +329,25 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, cu
   const extract = async (files: File[]) => {
     const f = files[0];
     if (!f) return;
-    if (!ai.available) return notify('Chưa bật phân tích tài liệu: quản trị viên bật ở Cài đặt › AI & trợ lý (cần khóa ANTHROPIC_API_KEY hoặc OPENAI_API_KEY trên máy chủ)', 'orange');
+    const lower = f.name.toLowerCase();
+    const sheet = lower.endsWith('.xlsx') || lower.endsWith('.csv') || f.type === 'text/csv' || f.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    if (lower.endsWith('.xls')) return notify('File Excel .xls đời cũ: mở bằng Excel, lưu lại dạng .xlsx hoặc .csv rồi tải lên', 'orange');
+    // ---- Excel / CSV: đọc bảng ngay trên máy, gửi nội dung bảng cho CRM 3A phân tích; chưa bật phân tích thì tự nhận cột
+    if (sheet) {
+      let cells: string[][] = [];
+      try { cells = await readSheetFile(f); } catch { return notify('Không đọc được file Excel (cần .xlsx hoặc .csv)', 'red'); }
+      if (!cells.length) return notify('File Excel không có dữ liệu', 'orange');
+      if (!ai.available) { insert(mergeWrapped(mapPastedRows(cells)), items.length, false, `Đọc từ ${f.name}`); return; }
+      const text = cells.slice(0, 600).map((r) => r.join('\t')).join('\n').slice(0, 120_000);
+      setBusy(`CRM 3A đang phân tích ${f.name}…`);
+      const r = await apiPost<{ items: { name: string; unit?: string; qty?: number | null; price?: number | null }[]; provider: 'ANTHROPIC' | 'OPENAI'; model: string }>('/api/ai/extract', { tenant: org.id, provider: ai.provider, text });
+      setBusy('');
+      if (!r.ok) { insert(mergeWrapped(mapPastedRows(cells)), items.length, false, `Đọc từ ${f.name}`); return; }
+      const parsed: PasteRow[] = mergeWrapped(r.items ?? []).map((x) => ({ name: String(x.name ?? '').trim(), unit: String(x.unit ?? '').trim(), qty: Number(x.qty) > 0 ? Number(x.qty) : 1, ...(Number(x.price) > 0 ? { price: Number(x.price) } : {}) })).filter((x) => x.name.length >= 2);
+      insert(parsed, items.length, true, 'CRM 3A đọc được');
+      return;
+    }
+    if (!ai.available) return notify('Chưa bật phân tích tài liệu: quản trị viên bật ở Cài đặt › AI & trợ lý (cần khóa ANTHROPIC_API_KEY hoặc OPENAI_API_KEY trên máy chủ). File Excel vẫn nhập được.', 'orange');
     let mediaType = f.type; let data = '';
     try {
       if (f.type === 'application/pdf') {
@@ -266,14 +355,14 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, cu
         if (f.size > 3 * 1024 * 1024) return notify('PDF tối đa 3 MB (giới hạn gói tin của máy chủ). Tách bớt trang hoặc chụp ảnh trang danh sách.', 'red');
         data = await fileB64(f);
       } else if (f.type.startsWith('image/')) { const url = await shrinkImage(f, 2000); mediaType = 'image/jpeg'; data = url.split(',')[1] ?? ''; }
-      else return notify('Chọn ảnh (JPG, PNG) hoặc file PDF', 'red');
+      else return notify('Chọn ảnh (JPG, PNG), file PDF hoặc Excel (.xlsx, .csv)', 'red');
     } catch { return notify('Không đọc được file', 'red'); }
     setBusy(`CRM 3A đang phân tích ${f.name}…`);
-    const r = await apiPost<{ items: { name: string; unit?: string; qty?: number; price?: number }[]; provider: 'ANTHROPIC' | 'OPENAI'; model: string }>('/api/ai/extract', { tenant: org.id, provider: ai.provider, file: { mediaType, data } });
+    const r = await apiPost<{ items: { name: string; unit?: string; qty?: number | null; price?: number | null }[]; provider: 'ANTHROPIC' | 'OPENAI'; model: string }>('/api/ai/extract', { tenant: org.id, provider: ai.provider, file: { mediaType, data } });
     setBusy('');
     if (!r.ok) return notify(`Chưa bóc tách được: ${r.error === 'pdf_needs_claude' ? 'đọc PDF cần Claude' : r.error === 'no_items' ? 'không thấy bảng vật tư trong file' : aiErrText(r.error)}`, 'red');
-    const parsed: PasteRow[] = (r.items ?? []).map((x) => ({ name: String(x.name ?? '').trim(), unit: String(x.unit ?? '').trim(), qty: Number(x.qty) > 0 ? Number(x.qty) : 1, ...(Number(x.price) > 0 ? { price: Number(x.price) } : {}) })).filter((x) => x.name.length >= 2);
-    insert(parsed, items.length, true, `${AI_NAME[r.provider]} đọc được`);
+    const parsed: PasteRow[] = mergeWrapped(r.items ?? []).map((x) => ({ name: String(x.name ?? '').trim(), unit: String(x.unit ?? '').trim(), qty: Number(x.qty) > 0 ? Number(x.qty) : 1, ...(Number(x.price) > 0 ? { price: Number(x.price) } : {}) })).filter((x) => x.name.length >= 2);
+    insert(parsed, items.length, true, 'CRM 3A đọc được');
   };
 
   const onKey = (e: RKeyboardEvent<HTMLInputElement>, r: number, c: number, sugg: SmartSuggest[]) => {
@@ -293,8 +382,8 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, cu
     <div className="space-y-2">
       {!locked && (
         <div className="flex flex-wrap items-center gap-2">
-          <FilePicker accept="image/*,application/pdf" onFiles={(fs) => void extract(fs)} disabled={!!busy} className={cn(btnGhost, btnSm)}>
-            {busy ? <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden /> : <ScanText className="h-3.5 w-3.5" aria-hidden />}{busy ? 'CRM 3A đang phân tích…' : 'Nhập từ ảnh / PDF'}
+          <FilePicker accept="image/*,application/pdf,.xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onFiles={(fs) => void extract(fs)} disabled={!!busy} className={cn(btnGhost, btnSm)}>
+            {busy ? <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden /> : <ScanText className="h-3.5 w-3.5" aria-hidden />}{busy ? 'CRM 3A đang phân tích…' : 'Nhập từ ảnh / PDF / Excel'}
           </FilePicker>
           {typeof navigator !== 'undefined' && !!navigator.clipboard?.readText && <button className={cn(btnGhost, btnSm)} onClick={() => void pasteButton()}><ClipboardPaste className="h-3.5 w-3.5" aria-hidden />Dán từ Excel</button>}
           <button className={cn(btnGhost, btnSm, 'hidden lg:inline-flex')} onClick={() => onWide(!wide)} aria-pressed={wide}>{wide ? <Minimize2 className="h-3.5 w-3.5" aria-hidden /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden />}{wide ? 'Thu gọn bảng' : 'Mở rộng bảng'}</button>

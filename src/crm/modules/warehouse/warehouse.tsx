@@ -57,8 +57,11 @@ export function useWarehouseData() {
 
 /** Lập / xem / duyệt phiếu kho */
 export function VoucherModal({ type, voucher, preset, onClose }: { type: VoucherType; voucher?: StockVoucher; preset?: Partial<StockVoucher>; onClose: () => void }) {
-  const { skus, setSkus, warehouses, stockVouchers, setStockVouchers, addMoves, me, userName, notify, canDo, customers, pos, company } = useApp();
-  const { canApprove } = useWarehouseData();
+  const app = useApp();
+  const { skus, setSkus, warehouses, stockVouchers, setStockVouchers, addMoves, me, userName, notify, canDo, customers, pos, company } = app;
+  const { canApprove: canApprove0 } = useWarehouseData();
+  /** v48: không tự duyệt phiếu chờ của mình (Giám đốc duy nhất thì được); "Lập & duyệt" khi tự lập vẫn giữ */
+  const canApprove = (v: StockVoucher) => canApprove0(v) && !(!!voucher && voucher.status === 'PENDING' && voucher.requestedBy === me?.id && (app.wfPolicy.noSelf && !(app.me?.role === 'BOD' && app.wfPolicy.soleBodSelf && app.users.filter((u) => u.active && u.role === 'BOD').length === 1)));
   const act = warehouses.filter((w) => w.active);
   const meta = VOUCHER_META[type];
   const ro = !!voucher && voucher.status !== 'PENDING';
@@ -77,7 +80,16 @@ export function VoucherModal({ type, voucher, preset, onClose }: { type: Voucher
   if ((type === 'OUT' || type === 'TRANSFER') && !ro) f.lines.forEach((l) => { const s = skuOf(l.sku); if (s && l.qty > whQty(s, f.whId, warehouses)) errs.push(`${l.sku} vượt tồn kho (${whQty(s, f.whId, warehouses)})`); });
   const total = f.lines.reduce((a, l) => a + l.qty * (l.price ?? 0), 0);
   const persist = (v: StockVoucher) => setStockVouchers((all) => (all.some((x) => x.id === v.id) ? all.map((x) => (x.id === v.id ? v : x)) : [v, ...all]));
-  const submit = () => { if (errs.length) return notify(errs[0], 'red'); const v = { ...f, id: f.id || uid('sv') }; persist(v); notify(`Đã lập ${v.code}, chờ duyệt`, 'teal'); onClose(); };
+  const submit = () => {
+    if (errs.length) return notify(errs[0], 'red');
+    const v = { ...f, id: f.id || uid('sv') };
+    persist(v);
+    const amount = v.lines.reduce((s, l) => s + l.qty * (l.price ?? 0), 0);
+    const who = app.wfFirstApprovers('VOUCHER', { requesterId: me?.id, whId: v.whId, amount, vals: { amount } }).filter((u) => u.id !== me?.id);
+    who.forEach((u) => app.dispatch('APPROVAL_RESULT', { to: u, title: `Phiếu kho chờ duyệt: ${v.code}`, body: `${meta.label}, ${v.reason}${v.partner ? `, ${v.partner}` : ''}`, module: 'tasks' }));
+    notify(`Đã lập ${v.code}, chờ ${who.length ? who.map((u) => u.name).join(', ') : 'Thủ kho / Kế toán'} duyệt`, 'teal');
+    onClose();
+  };
   const approve = () => {
     if (errs.length) return notify(errs[0], 'red');
     const v: StockVoucher = { ...f, id: f.id || uid('sv'), lines: f.lines.map((l) => ({ ...l })) };

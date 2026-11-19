@@ -16,6 +16,9 @@ import { MdfSettlementReport } from '../mdf/settlement';
 import { MdfMarginPanel } from '../mdf/surplus';
 import { MarketingMetrics } from '../settings/settings';
 
+// =====================================================================
+// PHÂN HỆ 6: BÁO CÁO (tiếp)
+// =====================================================================
 export function ReportsPage() {
   const { company, canDo, role } = useApp();
   const mode = bizMode(company);

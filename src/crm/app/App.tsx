@@ -1,6 +1,6 @@
 'use client';
 
-import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useRef, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Building2, Camera, CheckCircle2, ChevronDown, Command, Factory, Globe, LogOut, Menu, MessageSquare, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Sparkles, Sun, Wallet, X, XCircle } from 'lucide-react';
 import { ChangePasswordModal, Logo3A, NotificationBell, SyncChip, TenantSwitcher, UserMenu } from './header';
 import { CommandPalette } from '../components/command-palette';
@@ -9,14 +9,15 @@ import { periodRange } from '../components/filters';
 import { Skeleton } from '../components/ui';
 import { fundUsage, scoreLead, shipmentAllocation } from '../lib/business';
 import { canon, cloudMessage, statsOf } from '../lib/cloud';
-import { AVATARS, bizMode, blockersOf, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, fold, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, znsPhone } from '../lib/core';
-import { buildGetflyPayload, financialsFromOrders } from '../lib/getfly';
+import { addDaysISO, AVATARS, bizMode, blockersOf, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, fmtN, fold, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MAIN_WH, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, nextVoucherCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, saleIssued, salePaid, saleResOf, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, WF_POLICY, wfAmountOf, wfFormVals, wfNeeds, wfReasons, znsPhone } from '../lib/core';
+import { buildGetflyPayload, financialsFromOrders, saleStock, saleTotals } from '../lib/getfly';
 import { LoginScreen, orgDefaults, pathOrgOf, registerOrgs, regsFromStored, setPathOrg } from '../lib/modules';
 import { initialNotices } from '../lib/notify';
 import { encryptBackup, hashPassword, verifyPassword } from '../lib/security';
 import { listSnapshots, migrateData, takeSnapshot, withDefaults } from '../lib/storage';
-import type { Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, Job, KbItem, KpiTarget, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
-import { cn, initialLeads, initialMoves, initialPOs, initialQuotes, initialReservations, syncCatalog } from '../lib/utils';
+import type { Action, Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, InvMoveType, Job, KbItem, KpiTarget, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SaleDelivery, SaleLine, SalePay, SalePayment, SalesOrder, SaleStatus, SaleStockData, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WfCtx, WfDecideArgs, WfDecision, WfDef, WfDelegation, WfPolicy, WfRun, WfRunStatus, WfSubject, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
+import { cn, initialLeads, initialMoves, initialPOs, initialQuotes, initialReservations, syncCatalog, wfApprovers, wfMerge, wfPath } from '../lib/utils';
+import { stockOf } from '../lib/workshop';
 import { AiChatBot } from '../modules/ai/copilot-plus';
 import { InstallModule } from '../modules/alux/install';
 import { InventoryModule } from '../modules/alux/materials';
@@ -40,6 +41,7 @@ import { PlatformConsole } from '../modules/platform/console';
 import { SkuCatalog } from '../modules/products/catalog';
 import { ProjectsPage } from '../modules/projects/projects';
 import { ReportsPage } from '../modules/reports/reports';
+import { SalesModule } from '../modules/sales/orders';
 import { DocComposerModal, DocsModule } from '../modules/sales/quote';
 import { WinModal } from '../modules/sales/sales-flow';
 import { initialDocTemplates } from '../modules/sales/templates';
@@ -48,7 +50,7 @@ import { SettingsModule } from '../modules/settings/security-data';
 import { StaffModule } from '../modules/staff/staff';
 import { SupplyModule } from '../modules/supply/purchase-orders';
 import { TaskBadge, TasksModule } from '../modules/tasks/tasks';
-import { WarehouseModule } from '../modules/warehouse/warehouse';
+import { applyVoucher, WarehouseModule } from '../modules/warehouse/warehouse';
 import { ZaloHubPage } from '../modules/zalo/zalo-hub';
 
 export default function DashboardApp() {
@@ -124,6 +126,11 @@ export default function DashboardApp() {
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [stockMoves, setStockMoves] = useState<InvMove[]>([]);
   const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
+  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [wfDefs, setWfDefs] = useState<WfDef[]>([]);
+  const [wfRuns, setWfRuns] = useState<WfRun[]>([]);
+  const [wfPolicy, setWfPolicy] = useState<WfPolicy>(WF_POLICY);
+  const [wfDelegations, setWfDelegations] = useState<WfDelegation[]>([]);
   const [priceItems, setPriceItems] = useState<PriceItem[]>([]);
   const [mfgConfig, setMfgConfig] = useState<MfgConfig>(DEFAULT_MFG_CONFIG);
   const [approvalLogs, setApprovalLogs] = useState<ApprovalLog[]>([]);
@@ -190,7 +197,7 @@ export default function DashboardApp() {
     popDocs: [popDocs, setPopDocs, INITIAL_POP_DOCS], sources: [sources, setSources, INITIAL_SOURCES], mktItems: [mktItems, setMktItems, INITIAL_MKT_ITEMS],
     company: [company, setCompany, INITIAL_COMPANY], quotes: [quotes, setQuotes, initialQuotes], skus: [skus, setSkus, INITIAL_SKUS], pos: [pos, setPos, initialPOs],
     reservations: [reservations, setReservations, initialReservations], moves: [moves, setMoves, initialMoves], warehouses: [warehouses, setWarehouses, INITIAL_WAREHOUSES], stockVouchers: [stockVouchers, setStockVouchers, []], zaloConvs: [zaloConvs, setZaloConvs, []], zaloMsgs: [zaloMsgs, setZaloMsgs, []], campaigns: [campaigns, setCampaigns, []], contents: [contents, setContents, []], banners: [banners, setBanners, []], audiences: [audiences, setAudiences, []], automations: [automations, setAutomations, []], autoRuns: [autoRuns, setAutoRuns, []], kb: [kb, setKb, []], mktTasks: [mktTasks, setMktTasks, []], briefs: [briefs, setBriefs, []], draftProducts: [draftProducts, setDraftProducts, []], socialPosts: [socialPosts, setSocialPosts, []], kpiTargets: [kpiTargets, setKpiTargets, []], contentVersions: [contentVersions, setContentVersions, []], mktImages: [mktImages, setMktImages, []], aiQuota: [aiQuota, setAiQuota, INITIAL_AI_QUOTA], hubCfg: [hubCfg, setHubCfg, INITIAL_HUB_CFG], docTemplates: [docTemplates, setDocTemplates, []],
-    genDocs: [genDocs, setGenDocs, []], tierRules: [tierRules, setTierRules, INITIAL_TIER_RULES], getflyOrders: [getflyOrders, setGetflyOrders, INITIAL_GETFLY_ORDERS],
+    genDocs: [genDocs, setGenDocs, []], salesOrders: [salesOrders, setSalesOrders, []], wfDefs: [wfDefs, setWfDefs, []], wfRuns: [wfRuns, setWfRuns, []], wfPolicy: [wfPolicy, setWfPolicy, WF_POLICY], wfDelegations: [wfDelegations, setWfDelegations, []], tierRules: [tierRules, setTierRules, INITIAL_TIER_RULES], getflyOrders: [getflyOrders, setGetflyOrders, INITIAL_GETFLY_ORDERS],
     getfly: [getfly, setGetfly, INITIAL_GETFLY], notices: [notices, setNotices, initialNotices], emailCfg: [emailCfg, setEmailCfg, INITIAL_EMAIL], zns: [zns, setZns, INITIAL_ZNS],
     notifyRules: [notifyRules, setNotifyRules, INITIAL_NOTIFY_RULES], docs: [docs, setDocs, INITIAL_DOCS], comments: [comments, setComments, []], channels: [channels, setChannels, []], posts: [posts, setPosts, []], approvalLogs: [approvalLogs, setApprovalLogs, []],
     auditLogs: [auditLogs, setAuditLogs, []], security: [security, setSecurity, INITIAL_SECURITY], workOrders: [workOrders, setWorkOrders, []], installJobs: [installJobs, setInstallJobs, []],
@@ -518,7 +525,7 @@ export default function DashboardApp() {
     try { new Notification(`${allUsers.find((u) => u.id === c.authorId)?.name ?? 'Đồng nghiệp'} nhắn bạn`, { body: c.text.slice(0, 140) || 'Đã gửi file', tag: 'chat' }); } catch { /* bỏ qua */ }
   }, [comments, me?.id]);
   /** Thông báo: BOD & Marketing xem tất cả, người khác chỉ xem thông báo gửi tới mình */
-  const myNotices = !me || role === 'BOD' || role === 'MKT_LEAD' ? notices : notices.filter((n) => !n.to || n.to.split(', ').includes(me.name));
+  const myNotices = !me ? notices : notices.filter((n) => (n.toIds ? n.toIds.includes(me.id) : !n.to || role === 'BOD' || n.to.split(', ').includes(me.name)));
 
   useEffect(() => {
     if (sessionId && me && !me.active) { if (CLOUD_ON) { logout(); setToast({ msg: 'Tài khoản đã bị khóa. Liên hệ Giám đốc.', tone: 'red' }); } else setSessionId(null); }
@@ -572,11 +579,11 @@ export default function DashboardApp() {
     } else if (event === 'ACTIVITY_APPROVAL') {
       module = 'tasks';
       const bods = users.filter((u) => u.active && u.role === 'BOD');
-      to = [p.to, ...bods].filter((u, i, arr): u is User => !!u && arr.findIndex((x) => x?.id === u.id) === i);
+      to = (p.toAll ?? [p.to, ...bods]).filter((u, i, arr): u is User => !!u && arr.findIndex((x) => x?.id === u.id) === i);
       kind = 'SYSTEM'; module = 'tasks';
     } else if (event === 'CONTRACT_APPROVAL') {
       const bods = users.filter((u) => u.active && u.role === 'BOD');
-      to = [head, ...bods].filter((u, i, arr): u is User => !!u && arr.findIndex((x) => x?.id === u.id) === i);
+      to = (p.toAll ?? [head, ...bods]).filter((u, i, arr): u is User => !!u && arr.findIndex((x) => x?.id === u.id) === i);
       kind = 'DOC'; module = 'tasks';
     } else if (event === 'STOCK_RELEASE') {
       const bods = users.filter((u) => u.active && u.role === 'BOD');
@@ -595,7 +602,7 @@ export default function DashboardApp() {
     }
 
     if (channels.includes('INAPP')) {
-      setNotices((n) => [{ id: uid('n'), at: Date.now(), kind, title, body, read: false, module, to: to.map((u) => u.name).join(', ') || undefined }, ...n].slice(0, 80));
+      setNotices((n) => [{ id: uid('n'), at: Date.now(), kind, title, body, read: false, module, to: to.map((u) => u.name).join(', ') || undefined, toIds: to.length ? to.map((u) => u.id) : undefined }, ...n].slice(0, 80));
       setRingKey((k) => k + 1);
     }
     const sent: string[] = [];
@@ -702,7 +709,8 @@ export default function DashboardApp() {
     const won: Lead = { ...l, status: 'WON', customerId: cust.id, boqStatus: 'DONE', lostReason: undefined, lostNote: undefined, wonQuoteId: q.id, wonAt: todayISO(), wonAmount: q.amount, getflySync: l.getflySync?.status === 'SYNCED' ? l.getflySync : { status: 'QUEUED', at: Date.now(), quoteId: q.id } };
     setLeads((p) => p.map((x) => (x.id === id ? won : x)));
     setQuotes((p) => p.map((x) => (x.leadId !== id ? x : x.id === q.id ? { ...x, status: 'ACCEPTED' } : x.status === 'SENT' ? { ...x, status: 'REVISED' } : x)));
-    notify(`Chốt đơn ${l.company} theo ${q.code}: ghi nhận doanh số ${compact(q.amount)} (trước VAT)${existing ? '' : `, tạo khách hàng ${cust.code}`}. Tạo hợp đồng ở tab Hợp đồng & Doanh số khi cần.`, 'teal');
+    const so = saleFromQuote(q, cust, l.id);
+    notify(`Chốt đơn ${l.company} theo ${q.code}: ghi nhận doanh số ${compact(q.amount)} (trước VAT)${existing ? '' : `, tạo khách hàng ${cust.code}`}${saleWord(so)}`, 'teal', so ? { label: 'Xem đơn bán', run: () => { setOpenSale(so.o.id); setPage('sales'); } } : undefined);
   };
 
   /** Báo giá nháp của khách lẻ: khi khách đồng ý thì tạo khách hàng trong CRM (hoặc dùng khách trùng tên + điện thoại) */
@@ -726,7 +734,285 @@ export default function DashboardApp() {
     }
     setQuotes((all) => all.map((x) => (x.id === q.id ? { ...x, status: 'ACCEPTED' as QuoteStatus, customerId: cust.id, draft: false } : x)));
     if (me) writeAudit('QUOTE_WIN', `Chốt báo giá nháp ${q.code}: ${p.name}${existing ? '' : `, thêm khách ${cust.code}`}`, 'INFO', realUserId ?? me.id);
-    notify(`Đã ghi nhận chốt ${q.code}: ${compact(q.amount)} trước VAT${existing ? `, khách ${cust.code} đã có trong CRM` : `, đã thêm khách ${cust.code} vào CRM`}`, 'teal');
+    const so = saleFromQuote(q, cust, q.leadId || undefined);
+    notify(`Đã ghi nhận chốt ${q.code}: ${compact(q.amount)} trước VAT${existing ? `, khách ${cust.code} đã có trong CRM` : `, đã thêm khách ${cust.code} vào CRM`}${saleWord(so)}`, 'teal', so ? { label: 'Xem đơn bán', run: () => { setOpenSale(so.o.id); setPage('sales'); } } : undefined);
+  };
+
+  // ---------------- v48: quy trình & phê duyệt ----------------
+  const wfAll = useMemo(() => wfMerge(wfDefs), [wfDefs]);
+  const wfDef = (key: string) => wfAll.find((d) => d.key === key);
+  const wfCtx = (): WfCtx => ({ users, departments, warehouses, activities, delegations: wfDelegations, policy: wfPolicy, perms, me: me ?? undefined, now: Date.now() });
+  const wfDecide = (o: WfDecideArgs) => {
+    if (!me) return;
+    const def = wfDef(o.key);
+    const step = o.steps[o.idx];
+    const last = o.idx >= o.steps.length - 1;
+    const dec: WfDecision = { step: o.idx, by: me.id, decision: o.decision, note: o.note, at: Date.now(), onBehalf: o.onBehalf, self: o.self };
+    const run = wfRuns.find((r) => r.key === o.key && r.refId === o.refId && r.status === 'PENDING');
+    const status: WfRunStatus = o.decision === 'APPROVED' ? (last ? 'APPROVED' : 'PENDING') : o.decision;
+    if (run) setWfRuns((all) => all.map((r) => (r.id === run.id ? { ...r, decisions: [...r.decisions, dec], status, doneAt: status === 'PENDING' ? undefined : Date.now() } : r)));
+    else if (!last || o.steps.length > 1) setWfRuns((all) => [{ id: uid('wr'), key: o.key, refId: o.refId, version: def?.version ?? 1, steps: o.steps, decisions: [dec], status, startedAt: Date.now() }, ...all].slice(0, 3000));
+    const behalf = o.onBehalf ? ` (thay ${users.find((u) => u.id === o.onBehalf)?.name ?? ''})` : '';
+    if (o.self) writeAudit('WF_SELF_APPROVE', `Tự duyệt (Giám đốc duy nhất): ${o.title}`, 'WARN', realUserId ?? me.id);
+    if (o.decision === 'APPROVED' && !last) {
+      setApprovalLogs((p) => [{ id: uid('al'), kind: o.kind, refId: o.refId, title: o.title, requesterId: o.subject.requesterId, deciderId: me.id, decision: 'APPROVED' as ApprovalDecision, note: `Bước ${o.idx + 1}/${o.steps.length}: ${step?.name ?? ''}${behalf}`, at: Date.now(), amount: o.subject.amount }, ...p].slice(0, 2000));
+      const next = o.steps[o.idx + 1];
+      const who = next ? wfApprovers(next, o.subject, wfCtx()).map((x) => x.u) : [];
+      who.filter((u) => u.id !== me.id).forEach((u) => dispatch('APPROVAL_RESULT', { to: u, title: `Chờ bạn duyệt bước ${o.idx + 2}: ${o.title}`, body: `${next?.name ?? ''}. Bước ${o.idx + 1} đã duyệt bởi ${me.name}${behalf}`, module: 'tasks' }));
+      notify(`Đã duyệt bước ${o.idx + 1}/${o.steps.length}${behalf}, chuyển ${next?.name ?? 'bước sau'}${who.length ? `: ${who.map((u) => u.name).join(', ')}` : ''}`, 'teal');
+      return;
+    }
+    if (o.decision === 'APPROVED') o.final?.();
+    else if (o.decision === 'REJECTED') o.reject?.(o.note ?? '');
+    else o.needInfo?.(o.note ?? '');
+  };
+
+  const [reqOpen, setReqOpen] = useState<string | null>(null);
+  useEffect(() => { setReqOpen(null); setOpenSale(null); }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const wfFirstApprovers = (key: string, s: WfSubject) => { const d = wfDef(key); const st = d ? wfPath(d, s)[0] : undefined; return st ? wfApprovers(st, s, wfCtx()).map((x) => x.u) : []; };
+  const tellApprovers = (who: User[], title: string, body: string) => who.filter((u) => u.id !== me?.id).forEach((u) => dispatch('APPROVAL_RESULT', { to: u, title, body, module: 'tasks' }));
+  const wfSubmit: AppCtx['wfSubmit'] = (key, title, form, files, runId) => {
+    const d = wfDef(key);
+    if (!d || !me) return null;
+    const s: WfSubject = { requesterId: me.id, dept: me.dept, amount: wfAmountOf(d, form), vals: wfFormVals(d, form) };
+    const steps = wfPath(d, s);
+    const auto = d.trigger.length > 0 && !wfNeeds(d, s);
+    const old = runId ? wfRuns.find((r) => r.id === runId) : undefined;
+    const year = new Date().getFullYear();
+    const prefix = `${(d.prefix || 'DN').toUpperCase()}-${year}-`;
+    const code = old?.code ?? nextCode(wfRuns.filter((r) => r.code?.startsWith(prefix)).map((r) => r.code!), prefix, 4);
+    const rid = old?.id ?? uid('wr');
+    const run: WfRun = { id: rid, key, refId: rid, version: d.version, steps, decisions: [], status: auto ? 'APPROVED' : 'PENDING', startedAt: Date.now(), code, title: title.trim() || d.name, requesterId: me.id, dept: me.dept, amount: s.amount, form, files, doneAt: auto ? Date.now() : undefined };
+    setWfRuns((all) => (old ? all.map((r) => (r.id === old.id ? run : r)) : [run, ...all]));
+    if (auto) { setTimeout(() => wfAfter(run, d), 0); notify(`${code}: không cần duyệt theo điều kiện của quy trình, đã hoàn tất`, 'teal'); return run; }
+    tellApprovers(wfApprovers(steps[0], s, wfCtx()).map((x) => x.u), `Đề nghị chờ duyệt: ${run.title}`, `${code} của ${me.name}${s.amount ? `, ${vnd(s.amount)}` : ''}. ${steps[0].name}`);
+    notify(`${old ? 'Đã gửi lại' : 'Đã gửi'} ${code}: ${steps.map((x) => x.name).join(' → ')}`, 'teal');
+    return run;
+  };
+  const wfAfter = (r: WfRun, d: WfDef) => {
+    const after = d.after ?? ['NOTIFY'];
+    const req = users.find((u) => u.id === r.requesterId);
+    if (after.includes('NOTIFY') && req && req.id !== me?.id) dispatch('APPROVAL_RESULT', { to: req, title: `Đã duyệt: ${r.code} ${r.title ?? ''}`, body: `${d.name} đã duyệt xong`, module: 'tasks' });
+    if (after.includes('NOTIFY_USER') && d.notifyUserId) { const u = users.find((x) => x.id === d.notifyUserId && x.active); if (u) dispatch('APPROVAL_RESULT', { to: u, title: `Đề nghị đã duyệt: ${r.code} ${r.title ?? ''}`, body: `${req?.name ?? ''}${r.amount ? `, ${vnd(r.amount)}` : ''}`, module: 'tasks' }); }
+    if (after.includes('CASH_OUT') && r.amount) postCash({ kind: 'OUT', account: 'BANK', category: 'Chi theo đề nghị', amount: r.amount, partner: req?.name, ref: r.code, note: `${d.name}: ${r.title ?? ''}`, source: 'REQUEST', sourceId: r.id });
+  };
+  const wfFinishRequest = (runId: string) => {
+    const r = wfRuns.find((x) => x.id === runId);
+    const d = r ? wfDef(r.key) : undefined;
+    if (!r || !d) return;
+    setWfRuns((all) => all.map((x) => (x.id === runId ? { ...x, status: 'APPROVED', doneAt: Date.now() } : x)));
+    setApprovalLogs((p) => [{ id: uid('al'), kind: 'REQUEST' as ApprovalKind, refId: r.id, title: `${r.code}: ${r.title ?? ''}`, requesterId: r.requesterId, deciderId: me?.id ?? '', decision: 'APPROVED' as ApprovalDecision, at: Date.now(), amount: r.amount }, ...p].slice(0, 2000));
+    wfAfter(r, d);
+    notify(`Đã duyệt xong ${r.code}${(d.after ?? []).includes('CASH_OUT') && r.amount ? `, tự sinh phiếu chi ${vnd(r.amount)}` : ''}`, 'teal');
+  };
+  const approveVoucher = (id: string) => {
+    const v0 = stockVouchers.find((x) => x.id === id);
+    if (!v0 || v0.status !== 'PENDING') return false;
+    const v: StockVoucher = { ...v0, lines: v0.lines.map((l) => ({ ...l })) };
+    const r = applyVoucher(v, 1, skus, warehouses, me?.id);
+    if (r.error) { notify(r.error, 'red'); return false; }
+    setSkus(r.skus); addMoves(r.moves);
+    setStockVouchers((all) => all.map((x) => (x.id === id ? { ...v, status: 'DONE', approvedBy: me?.id, approvedAt: Date.now() } : x)));
+    return true;
+  };
+
+  // ---------------- v46: đơn bán ----------------
+  const [openSale, setOpenSale] = useState<string | null>(null);
+  const canAct = (a: Action) => myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role);
+  const saleCode = (all: SalesOrder[]) => {
+    const d = new Date();
+    const p = `DB-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}-`;
+    return nextCode(all.filter((x) => x.code.startsWith(p)).map((x) => x.code), p, 4);
+  };
+  const mainWhId = () => warehouses.find((w) => w.main)?.id ?? MAIN_WH;
+  const saveSale: AppCtx['saveSale'] = (o) => {
+    let approval = o.approval;
+    if (!o.id && o.source === 'COUNTER' && !approval) {
+      const d = wfDef('SALE');
+      const grand = saleTotals(o).grand;
+      const cust = customers.find((c) => c.id === o.customerId);
+      const owe = salesOrders.filter((x) => !!o.customerId && x.customerId === o.customerId && saleIssued(x)).reduce((s, x) => s + saleTotals(x).grand - salePaid(x), 0);
+      const credit = o.pay === 'CREDIT' || o.pay === 'PARTIAL';
+      const overLimit = cust && cust.creditLimit > 0 && credit ? Math.max(0, owe + grand - cust.creditLimit) : 0;
+      const s: WfSubject = { requesterId: me?.id, dept: cust?.dept, amount: grand, vals: { maxDisc: Math.max(0, ...o.lines.map((l) => l.discountPct)), overLimit, amount: grand } };
+      if (d && wfNeeds(d, s)) {
+        approval = { status: 'PENDING', reasons: wfReasons(d, s), requestedAt: Date.now(), requestedBy: me?.id };
+        tellApprovers(wfApprovers(wfPath(d, s)[0], s, wfCtx()).map((x) => x.u), `Đơn bán chờ duyệt: ${o.customer}`, `${fmtN(grand)} sau VAT. ${approval.reasons.join('; ')}`);
+      }
+    }
+    const rec: SalesOrder = { ...o, approval, id: o.id ?? uid('so'), code: o.code ?? saleCode(salesOrders), createdAt: o.createdAt ?? Date.now() };
+    setSalesOrders((all) => (all.some((x) => x.id === rec.id) ? all.map((x) => (x.id === rec.id ? rec : x)) : [rec, ...all]));
+    return rec;
+  };
+  const stockData = (): SaleStockData => ({ skus, warehouses, reservations, stockMoves, orders: salesOrders });
+  /** Báo giá được chốt: tạo đơn bán (giữ hàng mềm cho mã đủ tồn, báo phần thiếu để đề xuất mua) */
+  const saleFromQuote = (q: Quote, cust: Customer, leadId?: string) => {
+    if (salesOrders.some((o) => o.quoteId === q.id && o.status !== 'CANCELLED')) return null;
+    const f = q.quoteForm;
+    const mfg = bizMode(company) === 'MFG';
+    const lines: SaleLine[] = q.lines.filter((l) => l.qty > 0).map((l) => {
+      const k = l.sku ? skus.find((x) => x.sku === l.sku) : undefined;
+      const it = !k && mfg ? stockItems.find((x) => x.active && ((!!l.sku && x.code === l.sku) || fold(x.name) === fold(l.name))) : undefined;
+      return { id: uid('sl'), kind: k ? 'SKU' : it ? 'ITEM' : 'FREE', ref: k?.sku ?? it?.id, name: l.name, unit: l.unit, qty: l.qty, price: l.listPrice, discountPct: l.discountPct, vat: l.vat ?? q.vatPct, note: l.note };
+    });
+    const credit = f?.creditDays ?? 0;
+    const draft = { date: todayISO(), source: 'QUOTE' as const, quoteId: q.id, leadId, customerId: cust.id, customer: cust.name, phone: cust.contactPhone || f?.party.phone || undefined, taxCode: cust.taxCode || f?.party.taxCode || undefined,
+      address: f?.party.address || cust.address || undefined, lines, pay: (credit > 0 ? 'CREDIT' : 'BANK') as SalePay, creditDays: credit, payments: [], delivery: 'DELIVER' as SaleDelivery, whId: mainWhId(),
+      invoice: !!(cust.taxCode || f?.party.taxCode), note: `Tự tạo khi chốt ${q.code}`, status: 'PENDING' as SaleStatus, by: me?.id };
+    const o = saveSale(draft);
+    const short = saleStock(o, stockData()).filter((x) => x.short > 0).length;
+    return { o, short };
+  };
+  const saleWord = (r: ReturnType<typeof saleFromQuote>) => (r ? `. Đã tạo đơn bán ${r.o.code}${r.short ? `, ${r.short} mã thiếu hàng cần đề xuất mua` : ', hàng đủ, đang giữ trong kho'}` : '');
+
+  const issueSale = (id: string, given?: SalesOrder) => {
+    const o = given ?? salesOrders.find((x) => x.id === id);
+    if (!o || o.status !== 'PENDING') return false;
+    if (o.approval && o.approval.status !== 'APPROVED') { notify(o.approval.status === 'PENDING' ? `${o.code} đang chờ duyệt (${o.approval.reasons.join('; ')}), chưa xuất kho được` : `${o.code} không được duyệt`, 'red'); return false; }
+    const direct = bizMode(company) === 'MFG' ? canAct('stock.manage') : canAct('stock.approve') || warehouses.find((w) => w.id === o.whId)?.managerId === me?.id;
+    if (!direct) {
+      if (!canAct('stock.deliver') && !canAct('stock.voucher') && !canAct('job.manage')) { notify('Bạn chưa có quyền xuất kho, báo Thủ kho hoặc Kế toán', 'red'); return false; }
+      if (o.issueRequest) { notify(`${o.code} đã gửi yêu cầu xuất kho, đang chờ duyệt`, 'orange'); return false; }
+      const lack0 = saleStock(o, stockData()).find((x) => x.short > 0);
+      if (lack0) { notify(`${lack0.l.name} còn thiếu ${lack0.short.toLocaleString('vi-VN')} ${lack0.l.unit}: chọn Giao trước phần có sẵn hoặc Đề xuất mua`, 'red'); return false; }
+      setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, issueRequest: { by: me?.id ?? '', at: Date.now() } } : x)));
+      const s: WfSubject = { requesterId: me?.id, whId: o.whId, amount: saleTotals(o).grand, vals: { amount: saleTotals(o).grand } };
+      const who = wfFirstApprovers('VOUCHER', s);
+      tellApprovers(who, `Yêu cầu xuất kho: ${o.code}`, `${o.customer}, ${o.lines.length} dòng hàng`);
+      notify(`Đã gửi yêu cầu xuất kho ${o.code}${who.length ? ` cho ${who.map((u) => u.name).join(', ')}` : ''}`, 'teal');
+      return false;
+    }
+    const st = saleStock(o, stockData());
+    const lack = st.find((x) => x.short > 0);
+    if (lack) { notify(`${lack.l.name} còn thiếu ${lack.short.toLocaleString('vi-VN')} ${lack.l.unit}: chọn Giao trước phần có sẵn hoặc Đề xuất mua`, 'red'); return false; }
+    const wo = o.woId ? workOrders.find((w) => w.id === o.woId) : undefined;
+    if (wo && wo.stage !== 'DONE') { notify(`Chờ xưởng hoàn thành ${wo.code} rồi mới xuất giao`, 'red'); return false; }
+    const at = todayISO();
+    const refs: string[] = [];
+    let resNext = reservations;
+    const resMoves: Omit<StockMove, 'id'>[] = [];
+    const fromFree = new Map<string, { qty: number; price: number }>();
+    for (const x of st) {
+      if (x.l.kind !== 'SKU' || !x.l.ref) continue;
+      let need = x.l.qty;
+      for (const r of saleResOf(o, x.l.ref, resNext)) {
+        if (need <= 0) break;
+        const q = Math.min(need, r.qty);
+        need -= q;
+        resNext = resNext.map((y) => (y.id === r.id ? { ...y, qty: y.qty - q, delivered: y.delivered + q, status: y.qty - q === 0 ? 'DELIVERED' : y.status } : y));
+        resMoves.push({ at, sku: r.sku, type: 'DELIVER', qty: q, kind: r.kind, refId: r.refId, poId: r.poId, by: me?.id, note: `Xuất bán ${o.code}` });
+      }
+      if (need > 0) { const c = fromFree.get(x.l.ref); fromFree.set(x.l.ref, { qty: (c?.qty ?? 0) + need, price: x.l.price }); }
+    }
+    let voucher: StockVoucher | null = null;
+    let nextSkus = skus;
+    let vMoves: Omit<StockMove, 'id'>[] = [];
+    if (fromFree.size) {
+      voucher = { id: uid('sv'), code: nextVoucherCode('OUT', stockVouchers), type: 'OUT', status: 'DONE', date: at, whId: o.whId, reason: 'Xuất bán', partner: o.customer, ref: o.code, note: `Đơn bán ${o.code}`,
+        lines: [...fromFree.entries()].map(([sku, v]) => ({ sku, qty: v.qty, price: v.price })), requestedBy: me?.id, approvedBy: me?.id, approvedAt: Date.now(), createdAt: Date.now() };
+      const r = applyVoucher(voucher, 1, skus, warehouses, me?.id);
+      if (r.error) { notify(r.error, 'red'); return false; }
+      nextSkus = r.skus; vMoves = r.moves; refs.push(voucher.code);
+    }
+    const items = st.filter((x) => x.l.kind === 'ITEM' && x.l.ref);
+    let inv: InvMove[] = [];
+    if (items.length) {
+      const code = nextCode(stockMoves.filter((m) => m.type === 'OUT').map((m) => m.code), `PX-${at.slice(0, 4)}-`, 4);
+      inv = items.map((x) => ({ id: uid('sm'), code, type: 'OUT' as InvMoveType, date: at, itemId: x.l.ref!, qty: x.l.qty, unitCost: stockOf(x.l.ref!, stockMoves).avg || (stockItems.find((i) => i.id === x.l.ref)?.cost ?? 0), partner: o.customer, note: `Xuất bán ${o.code}`, by: me?.id, at: Date.now() }));
+      refs.push(code);
+    }
+    if (resMoves.length) { setReservations(resNext); refs.push('hàng giữ chỗ'); }
+    if (voucher) { const v = voucher; setSkus(nextSkus); setStockVouchers((p) => [v, ...p]); }
+    if (resMoves.length || vMoves.length) addMoves([...resMoves, ...vMoves]);
+    if (inv.length) setStockMoves((p) => [...inv, ...p]);
+    const status: SaleStatus = o.delivery === 'PICKUP' ? 'DONE' : 'SHIPPING';
+    setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, status, issuedAt: Date.now(), issuedBy: me?.id, issueRefs: refs, issueRequest: undefined, doneAt: status === 'DONE' ? Date.now() : x.doneAt } : x)));
+    if (me) writeAudit('SALE_ISSUE', `Xuất kho đơn bán ${o.code}${refs.length ? ` (${refs.join(', ')})` : ''}`, 'INFO', realUserId ?? me.id);
+    const due = o.creditDays > 0 ? `, ghi công nợ hạn ${fmtDate(addDaysISO(at, o.creditDays))}` : '';
+    notify(`Đã xuất kho ${o.code}${voucher ? ` theo ${voucher.code}` : ''}${status === 'DONE' ? ', đơn hoàn thành' : ', chuyển Đang giao'}${due}`, 'teal');
+    return true;
+  };
+
+  const splitSale = (id: string) => {
+    const o = salesOrders.find((x) => x.id === id);
+    if (!o || o.status !== 'PENDING') return;
+    const st = saleStock(o, stockData());
+    const now = st.filter((x) => x.have > 0).map((x) => ({ ...x.l, qty: x.have }));
+    const later = st.filter((x) => x.short > 0).map((x) => ({ ...x.l, id: uid('sl'), qty: x.short }));
+    if (!later.length) return notify('Đơn đủ hàng, không cần tách', 'teal');
+    if (!now.length) return notify('Chưa có mặt hàng nào sẵn để giao trước', 'orange');
+    const code = saleCode(salesOrders);
+    const rest: SalesOrder = { ...o, id: uid('so'), code, createdAt: Date.now(), lines: later, payments: [], shipFee: 0, splitFrom: o.id, poIds: o.poIds, note: `Phần giao sau của ${o.code}` };
+    setSalesOrders((all) => [rest, ...all.map((x) => (x.id === id ? { ...x, lines: now, note: [x.note, `Tách phần thiếu sang ${code}`].filter(Boolean).join(' · ') } : x))]);
+    if (me) writeAudit('SALE_SPLIT', `Tách đơn bán ${o.code}: giao trước ${now.length} dòng, phần thiếu sang ${code}`, 'INFO', realUserId ?? me.id);
+    notify(`Đã tách: ${o.code} giao phần có sẵn, ${code} chờ hàng về`, 'teal');
+  };
+
+  const purchaseForSale = (id: string) => {
+    const o = salesOrders.find((x) => x.id === id);
+    if (!o || !me) return;
+    if (!canAct('po.manage')) return notify('Bạn chưa có quyền lập phiếu đặt hàng, báo Trưởng phòng hoặc Kế toán', 'red');
+    const short = saleStock(o, stockData()).filter((x) => x.short > 0 && x.l.kind === 'SKU' && x.l.ref);
+    if (!short.length) return notify(saleStock(o, stockData()).some((x) => x.short > 0) ? 'Vật tư thiếu: lập phiếu nhập ở phân hệ Vật tư' : 'Đơn đủ hàng, không cần đặt thêm', 'orange');
+    const byVendor = new Map<string, { k: SkuItem; qty: number }[]>();
+    for (const x of short) {
+      const k = skus.find((s) => s.sku === x.l.ref);
+      if (!k) continue;
+      const v = (k.supplier || k.brand || 'Nhà cung cấp').trim();
+      byVendor.set(v, [...(byVendor.get(v) ?? []), { k, qty: x.short }]);
+    }
+    let seq = Math.max(0, ...pos.map((p) => Number(p.code.match(/(\d+)$/)?.[1] ?? 0)));
+    const d = todayISO();
+    const made: VendorPO[] = [...byVendor.entries()].map(([vendor, ls]) => {
+      seq += 1;
+      const prefix = fold(vendor).replace(/[^a-z0-9]/g, '').slice(0, 6).toUpperCase() || 'NCC';
+      const lead = Math.max(0, ...ls.map((x) => x.k.leadTimeDays || 0));
+      return {
+        id: uid('po'), code: `PO-${prefix}-${d.slice(0, 4)}-${String(seq).padStart(4, '0')}`, vendor, orderDate: d, expectedDate: addDaysISO(d, lead), purpose: o.customerId || o.leadId ? 'MIXED' : 'STOCK',
+        note: `Đề xuất từ đơn bán ${o.code} (${o.customer})`, shipments: [], createdBy: me.id,
+        lines: ls.map((x) => ({ sku: x.k.sku, qty: x.qty, unitPrice: x.k.costPrice || x.k.dealerPrice || x.k.basePrice, allocations: o.leadId ? [{ kind: 'LEAD' as const, refId: o.leadId, qty: x.qty }] : o.customerId ? [{ kind: 'CUSTOMER' as const, refId: o.customerId, qty: x.qty }] : [] })),
+      };
+    });
+    if (!made.length) return;
+    setPos((all) => [...made, ...all]);
+    setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, poIds: [...(x.poIds ?? []), ...made.map((p) => p.id)] } : x)));
+    writeAudit('SALE_PO', `Đơn bán ${o.code}: lập ${made.map((p) => p.code).join(', ')} cho phần thiếu`, 'INFO', realUserId ?? me.id);
+    notify(`Đã lập ${made.map((p) => p.code).join(', ')}. Hàng về sẽ tự giữ chỗ cho ${o.customer}`, 'teal');
+  };
+
+  const saleCash = (o: SalesOrder, p: SalePayment): CashDraft => ({ kind: 'IN', account: p.method === 'CASH' ? 'CASH' : 'BANK', category: 'Thu tiền bán hàng', amount: p.amount, partner: o.customer, ref: o.code, note: `Đơn bán ${o.code}`, source: 'SALE', sourceId: p.id });
+  const addSalePayment = (id: string, amount: number, method: 'CASH' | 'BANK', given?: SalesOrder) => {
+    const o = given ?? salesOrders.find((x) => x.id === id);
+    if (!o || !(amount > 0)) return;
+    const ok = canAct('cash.manage') || canAct('receipt.confirm');
+    const p: SalePayment = { id: uid('sp'), amount: Math.round(amount), method, at: Date.now(), by: me?.id, confirmed: ok, confirmedBy: ok ? me?.id : undefined, confirmedAt: ok ? Date.now() : undefined };
+    setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, payments: [...x.payments, p] } : x)));
+    if (ok) postCash(saleCash(o, p));
+    notify(ok ? `Đã thu ${vnd(p.amount)} cho ${o.code}, tự sinh phiếu thu quỹ` : `Đã ghi nhận ${vnd(p.amount)}, chờ Kế toán xác nhận`, 'teal');
+  };
+  const confirmSalePayment = (id: string, payId: string) => {
+    const o = salesOrders.find((x) => x.id === id);
+    const p = o?.payments.find((x) => x.id === payId);
+    if (!o || !p || p.confirmed) return;
+    if (!canAct('cash.manage') && !canAct('receipt.confirm')) return notify('Chỉ Kế toán xác nhận tiền thu', 'red');
+    setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, payments: x.payments.map((y) => (y.id === payId ? { ...y, confirmed: true, confirmedBy: me?.id, confirmedAt: Date.now() } : y)) } : x)));
+    postCash(saleCash(o, p));
+    notify(`Đã xác nhận ${vnd(p.amount)} của ${o.code}, tự sinh phiếu thu quỹ`, 'teal');
+  };
+  const setSaleStatus = (id: string, status: SaleStatus, reason?: string) => {
+    const o = salesOrders.find((x) => x.id === id);
+    if (!o) return;
+    if (status === 'CANCELLED' && o.status !== 'PENDING') return notify('Đơn đã xuất kho: lập phiếu nhập trả hàng ở Kho thay vì hủy', 'red');
+    if (status === 'DONE' && o.status !== 'SHIPPING') return;
+    setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, status, doneAt: status === 'DONE' ? Date.now() : x.doneAt, cancelReason: status === 'CANCELLED' ? reason : x.cancelReason, cancelledAt: status === 'CANCELLED' ? Date.now() : x.cancelledAt } : x)));
+    if (me) writeAudit(status === 'CANCELLED' ? 'SALE_CANCEL' : 'SALE_DONE', `${status === 'CANCELLED' ? 'Hủy' : 'Hoàn thành'} đơn bán ${o.code}${reason ? `: ${reason}` : ''}`, status === 'CANCELLED' ? 'WARN' : 'INFO', realUserId ?? me.id);
+    notify(status === 'CANCELLED' ? `Đã hủy ${o.code}, nhả hàng đang giữ` : `${o.code} đã giao xong`, status === 'CANCELLED' ? 'orange' : 'teal');
+  };
+
+  /** Hoàn tất đơn vừa lưu: thu tiền và xuất kho ngay (đơn truyền trực tiếp, không chờ cập nhật danh sách) */
+  const completeSale: AppCtx['completeSale'] = (o, pay, issue) => {
+    if (pay && pay.amount > 0) addSalePayment(o.id, pay.amount, pay.method, o);
+    if (issue) issueSale(o.id, o);
   };
 
   const syncLeadToGetfly = (leadId: string) => {
@@ -1459,6 +1745,8 @@ export default function DashboardApp() {
         table.dt-cards tbody td[colspan] { text-align: center; }
         table.dt-cards tbody td:first-child { font-weight: 500; }
         table.dt-cards.dt-stt > tbody > tr::before { display: none; }
+        table.dt-cards tbody td[data-sel] { display: none !important; }
+        table.dt-cards tbody td[data-sel] + td { font-weight: 500; }
       }
       .kpi-row > .kpi:first-child { border-left-color: transparent; padding-left: 0; }
       .glass-card > .\\-mx-5:first-child, .glass-card > .md\\:hidden:first-child + div > .\\-mx-5:first-child, .glass-card > .md\\:hidden:first-child + div > div:first-child > .\\-mx-5:first-child { margin-top: -1.25rem; }
@@ -1518,7 +1806,7 @@ export default function DashboardApp() {
     openHub: (t) => setHub(t),
     notify,
     intent, setIntent,
-    go: (m, query = '') => { setPresetQuery(query); setPage(m); setOpenCustomerId(null); setOpenClaimId(null); setDrawerOpen(false); window.scrollTo({ top: 0 }); },
+    go: (m, query = '') => { setPresetQuery(query); setPage(m); setOpenSale(null); setOpenCustomerId(null); setOpenClaimId(null); setDrawerOpen(false); window.scrollTo({ top: 0 }); },
     presetQuery,
     openClaim: (id) => setOpenClaimId(id),
     openCustomer: (id) => setOpenCustomerId(id),
@@ -1561,6 +1849,8 @@ export default function DashboardApp() {
     canDo: (a) => myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role),
     userName, dept, routableDepts, routeLeads, acceptLead,
     getflyOrders, setGetflyOrders, getfly, setGetfly, getflyLogs, addGetflyLog, winLead, winDraftQuote, syncLeadToGetfly, recomputeLinked,
+    wfAll, setWfDefs, wfRuns, setWfRuns, wfPolicy, setWfPolicy, wfDelegations, setWfDelegations, wfCtx, wfDef, wfDecide, wfSubmit, wfFinishRequest, openRequest: (id) => { setReqOpen(id); setPage('tasks'); }, reqOpen, setReqOpen, approveVoucher, wfFirstApprovers,
+    salesOrders, setSalesOrders, saveSale, issueSale, completeSale, splitSale, purchaseForSale, addSalePayment, confirmSalePayment, setSaleStatus, openSale, setOpenSale,
     assignLead, submitQuote, markLost,
     notices: myNotices,
     markNoticeRead: (id) => setNotices((p) => p.map((n) => (!id || n.id === id ? { ...n, read: true } : n))),
@@ -1813,6 +2103,7 @@ export default function DashboardApp() {
                   {page === 'staff' && <StaffModule />}
                   {page === 'docs' && <DocsModule />}
                   {page === 'reports' && <ReportsPage />}
+                  {page === 'sales' && <SalesModule />}
                   {page === 'settings' && <SettingsModule />}
                   {page === 'messages' && <MessengerPage />}
                   {page === 'zalo' && <ZaloHubPage />}
