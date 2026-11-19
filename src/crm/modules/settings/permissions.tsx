@@ -1,10 +1,10 @@
 'use client';
 
 import { Fragment, useState } from 'react';
-import { RefreshCw, Sparkles } from 'lucide-react';
+import { Lock, RefreshCw, Sparkles } from 'lucide-react';
 import { Avatar } from '../../components/controls';
 import { EmptyState, Panel, useSticky } from '../../components/ui';
-import { ACTION_LABEL, ACTION_MODULE, btnGhost, btnSm, DEFAULT_SCOPE, fold, INITIAL_PERMS, inputBase, inputCls, LOCKED, MODULE_DESC, MODULE_ICON, MODULE_LABEL, moduleEnabled, MODULES, NAV_GROUPS, ROLE_LABEL, ROLES, SCOPE_LABEL, useApp } from '../../lib/core';
+import { ACTION_LABEL, ACTION_MODULE, btnGhost, btnSm, DEFAULT_SCOPE, fold, INITIAL_PERMS, inputBase, inputCls, LOCKED, MODULE_DESC, MODULE_LABEL, moduleEnabled, MODULES, NAV_GROUPS, ROLE_LABEL, ROLES, SCOPE_LABEL, useApp } from '../../lib/core';
 import type { Action, DataScope, Module, Role, User, UserPerm } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { parseAiJson, useAi } from '../ai/ai-core';
@@ -42,6 +42,14 @@ export function PermAiReview({ summary }: { summary: string }) {
   );
 }
 
+/** Ô tích của trang Phân quyền: 16px, bo 4px; khóa = ổ khóa trên nền xám */
+export function PermTick({ on, locked }: { on: boolean; locked?: boolean }) {
+  if (locked) return <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-[rgb(var(--ink)/0.1)]"><Lock className="h-2.5 w-2.5 text-[rgb(var(--muted))]" aria-hidden /></span>;
+  return on
+    ? <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-[rgb(var(--fg))]"><svg viewBox="0 0 16 16" className="h-4 w-4 text-[rgb(var(--bg))]" aria-hidden><path d="M4.5 8.2l2.3 2.3 4.7-4.8" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
+    : <span className="block h-4 w-4 rounded-[4px] border-[1.5px] border-[rgb(var(--ink)/0.25)] bg-[rgb(var(--surface))]" />;
+}
+
 export function PermissionsSettings() {
   const { perms, setPerms, users, canDo, audit, company, me } = useApp();
   const canEdit = canDo('settings.edit');
@@ -76,22 +84,25 @@ export function PermissionsSettings() {
           {([['ROLE', 'Theo vai trò'], ['USER', 'Ngoại lệ từng tài khoản']] as const).map(([v, l]) => <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className={cn('rounded px-3 py-1.5 text-xs font-semibold', view === v ? 'bg-[rgb(var(--surface))] text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))]')}>{l}</button>)}
         </div>
       }>
-        <p className="text-sm text-[rgb(var(--muted))]">{view === 'ROLE' ? 'Mỗi tài khoản nhận quyền theo vai trò. Bật / tắt phân hệ và từng thao tác bên trong, chọn phạm vi dữ liệu được xem.' : 'Cấp thêm hoặc chặn riêng một quyền cho từng tài khoản, ưu tiên hơn quyền của vai trò. Mọi thay đổi ghi nhật ký bảo mật.'}</p>
+        <p className="text-sm text-[rgb(var(--muted))]">{view === 'ROLE' ? 'Mỗi tài khoản nhận quyền theo vai trò. Bật / tắt phân hệ và từng thao tác, chọn phạm vi dữ liệu được xem' : 'Cấp thêm hoặc chặn riêng một quyền cho từng tài khoản, ưu tiên hơn quyền của vai trò. Mọi thay đổi ghi nhật ký bảo mật.'}</p>
       </Panel>
 
       {view === 'ROLE' ? (
         <>
           <section className="glass-card overflow-hidden rounded-xl" aria-label="Ma trận phân quyền">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] border-collapse text-[13px]">
+              <table className="w-full min-w-[760px] table-fixed md:min-w-[860px] border-collapse text-[13px]">
+                <colgroup><col className="w-[160px] md:w-[260px] 2xl:w-[300px]" />{ROLES.map((r) => <col key={r} />)}</colgroup>
                 <thead>
-                  <tr className="border-b border-[rgb(var(--ink)/0.08)] text-[12px] text-[rgb(var(--muted))]">
-                    <th className="px-4 py-2.5 text-left font-normal">Phân hệ</th>
+                  <tr className="border-b border-[rgb(var(--ink)/0.08)]">
+                    <th className="sticky left-0 z-10 bg-[rgb(var(--surface))] px-5 pb-3 pt-4 text-left align-bottom text-[12px] font-normal text-[rgb(var(--muted))]">Phân hệ</th>
                     {ROLES.map((r) => (
-                      <th key={r} className="px-2 py-2 text-center font-normal">
-                        <button type="button" onClick={() => setRole(r)} aria-pressed={role === r} className={cn('rounded-md px-2 py-1', role === r ? 'bg-[rgb(var(--raised))] text-[rgb(var(--fg))]' : 'hover:text-[rgb(var(--fg))]')}>
-                          <span className="block font-medium">{ROLE_LABEL[r]}</span>
-                          <span className="block font-mono text-[11px]">{users.filter((u) => u.role === r && u.active).length} tk · {SCOPE_LABEL[roleScope(r)].label}</span>
+                      <th key={r} className={cn('relative p-0 align-bottom font-normal', role === r && 'bg-[rgb(var(--ink)/0.025)]')}>
+                        {role === r && <span className="absolute inset-x-3 top-0 h-0.5 rounded-b-sm bg-[rgb(var(--accent))]" aria-hidden />}
+                        <button type="button" onClick={() => setRole(r)} aria-pressed={role === r} className="block w-full px-2 pb-3 pt-4 text-center transition-colors hover:bg-[rgb(var(--ink)/0.03)]">
+                          <span className="block truncate font-medium text-[rgb(var(--fg))]" title={ROLE_LABEL[r]}>{ROLE_LABEL[r]}</span>
+                          <span className="mt-0.5 block truncate text-[11.5px] text-[rgb(var(--muted))]">{users.filter((u) => u.role === r && u.active).length} tài khoản</span>
+                          <span className="block truncate text-[11.5px] text-[rgb(var(--muted))]" title={SCOPE_LABEL[roleScope(r)].hint}>{SCOPE_LABEL[roleScope(r)].label}</span>
                         </button>
                       </th>
                     ))}
@@ -100,19 +111,23 @@ export function PermissionsSettings() {
                 <tbody>
                   {groups.map((g) => (
                     <Fragment key={g.id}>
-                      <tr><td colSpan={ROLES.length + 1} className="bg-[rgb(var(--sunken))] px-4 py-1.5 text-[12px] text-[rgb(var(--muted))]">{g.title}</td></tr>
+                      {g.title ? <tr><td colSpan={ROLES.length + 1} className="h-9 px-5 pb-1 pt-3 align-bottom text-[12px] text-[rgb(var(--muted))]">{g.title}</td></tr> : <tr aria-hidden><td colSpan={ROLES.length + 1} className="h-3" /></tr>}
                       {g.list.map((m) => (
                         <tr key={m} className="border-t border-[rgb(var(--ink)/0.06)]">
-                          <td className="px-4 py-2"><span className="block font-medium">{MODULE_LABEL[m]}</span><span className="block max-w-[260px] truncate text-[12px] text-[rgb(var(--muted))]">{MODULE_DESC[m]}</span></td>
+                          <td className="sticky left-0 z-10 h-12 bg-[rgb(var(--surface))] px-5"><span className="block truncate font-medium">{MODULE_LABEL[m]}</span><span className="block truncate text-[12px] text-[rgb(var(--muted))]" title={MODULE_DESC[m]}>{MODULE_DESC[m]}</span></td>
                           {ROLES.map((r) => {
                             const on = roleMod(r, m);
+                            const locked = LOCKED(r, m);
                             const acts = actsOf(m);
                             const n = acts.filter((x) => roleAct(r, x)).length;
                             return (
-                              <td key={r} className={cn('px-2 py-2 text-center', role === r && 'bg-[rgb(var(--ink)/0.02)]')}>
-                                <span className="inline-flex items-center gap-2">
-                                  <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={on} disabled={!canEdit || LOCKED(r, m)} onChange={(e) => setMod(r, m, e.target.checked)} aria-label={`${ROLE_LABEL[r]} truy cập ${MODULE_LABEL[m]}`} />
-                                  {acts.length > 0 && <button type="button" className={cn('font-mono text-[11.5px] hover:underline', on ? 'text-[rgb(var(--fg2))]' : 'text-[rgb(var(--faint))]')} onClick={() => { setRole(r); setTimeout(() => document.getElementById(`perm-${m}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }} title={`Xem ${acts.length} thao tác của ${ROLE_LABEL[r]}`}>{n}/{acts.length}</button>}
+                              <td key={r} className={cn('h-12 px-2 text-center', role === r && 'bg-[rgb(var(--ink)/0.025)]')}>
+                                <span className="inline-grid grid-cols-[16px_36px] items-center gap-2">
+                                  <button type="button" role="checkbox" aria-checked={on} disabled={!canEdit || locked} onClick={() => setMod(r, m, !on)} title={locked ? 'Khóa, không đổi được' : undefined}
+                                    aria-label={`${ROLE_LABEL[r]} truy cập ${MODULE_LABEL[m]}`} className="rounded-[4px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))] disabled:cursor-default"><PermTick on={on} locked={locked} /></button>
+                                  {acts.length > 0
+                                    ? <button type="button" className={cn('text-left font-mono text-[11.5px] tabular-nums hover:underline', !on || n === 0 ? 'text-[rgb(var(--faint))]' : n === acts.length ? 'font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--fg2))]')} onClick={() => { setRole(r); setTimeout(() => document.getElementById(`perm-${m}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); }} title={`Xem ${acts.length} thao tác của ${ROLE_LABEL[r]}`}>{n}/{acts.length}</button>
+                                    : <span aria-hidden />}
                                 </span>
                               </td>
                             );
@@ -125,45 +140,54 @@ export function PermissionsSettings() {
               </table>
             </div>
           </section>
-          <p className="text-xs text-[rgb(var(--muted))]">Ô tích = được truy cập phân hệ. Số = thao tác đang bật / tổng; bấm để sửa chi tiết vai trò đó bên dưới</p>
+          <p className="flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-[rgb(var(--muted))]">
+            <span className="inline-flex items-center gap-1.5"><PermTick on />có truy cập</span>
+            <span className="inline-flex items-center gap-1.5"><PermTick on={false} />không</span>
+            <span className="inline-flex items-center gap-1.5"><PermTick on locked />khóa, không đổi được</span>
+            <span className="inline-flex items-center gap-1.5"><span className="font-mono tabular-nums text-[rgb(var(--fg2))]">2/4</span>thao tác đang bật / tổng, bấm để sửa bên dưới</span>
+          </p>
           <PermAiReview summary={ROLES.map((r) => `${ROLE_LABEL[r]} (${users.filter((u) => u.role === r && u.active).length} tài khoản, phạm vi ${SCOPE_LABEL[roleScope(r)].label}): ` + mods.map((m) => `${MODULE_LABEL[m]} ${roleMod(r, m) ? 'có' : 'không'}${actsOf(m).length ? ` [${actsOf(m).filter((x) => roleAct(r, x)).map((x) => ACTION_LABEL[x]).join('; ') || 'không thao tác'}]` : ''}`).join(', ')).join('\n')} />
           <h3 className="pt-2 text-[15px] font-medium">Chi tiết vai trò: {ROLE_LABEL[role]}</h3>
-          <Panel title={`Phạm vi dữ liệu: ${ROLE_LABEL[role]}`}>
-            <div className="grid gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Phạm vi dữ liệu">
-              {(Object.keys(SCOPE_LABEL) as DataScope[]).map((sc) => (
-                <button key={sc} role="radio" aria-checked={roleScope(role) === sc} disabled={!canEdit || role === 'BOD'} onClick={() => { setPerms((p) => ({ ...p, scope: { ...(p.scope ?? {}), [role]: sc } })); audit('PERM_CHANGE', `${ROLE_LABEL[role]}: phạm vi ${SCOPE_LABEL[sc].label}`, 'SECURITY'); }}
-                  className={cn('rounded-md border px-3 py-2 text-left disabled:opacity-60', roleScope(role) === sc ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.06)]' : 'border-[rgb(var(--line))]')}>
-                  <p className="text-sm font-medium">{SCOPE_LABEL[sc].label}</p><p className="text-[11px] text-[rgb(var(--muted))]">{SCOPE_LABEL[sc].hint}</p>
+          <Panel title="Phạm vi dữ liệu">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" role="radiogroup" aria-label={`Phạm vi dữ liệu: ${ROLE_LABEL[role]}`}>
+              {(Object.keys(SCOPE_LABEL) as DataScope[]).map((sc) => { const sel = roleScope(role) === sc; return (
+                <button key={sc} type="button" role="radio" aria-checked={sel} disabled={!canEdit || role === 'BOD'} onClick={() => { setPerms((p) => ({ ...p, scope: { ...(p.scope ?? {}), [role]: sc } })); audit('PERM_CHANGE', `${ROLE_LABEL[role]}: phạm vi ${SCOPE_LABEL[sc].label}`, 'SECURITY'); }}
+                  className={cn('flex items-start gap-2.5 rounded-[10px] border px-3 py-2.5 text-left transition-colors disabled:cursor-default', sel ? 'border-[rgb(var(--fg))]' : 'border-[rgb(var(--ink)/0.1)] hover:border-[rgb(var(--ink)/0.2)]', !sel && role === 'BOD' && 'opacity-60')}>
+                  <span className={cn('mt-px h-4 w-4 shrink-0 rounded-full border-[1.5px]', sel ? 'border-[5px] border-[rgb(var(--fg))]' : 'border-[rgb(var(--ink)/0.25)]')} aria-hidden />
+                  <span className="min-w-0"><span className="block text-[13px] font-medium">{SCOPE_LABEL[sc].label}</span><span className="block text-xs text-[rgb(var(--muted))]">{SCOPE_LABEL[sc].hint}</span></span>
                 </button>
-              ))}
+              ); })}
             </div>
           </Panel>
-          {groups.map((g) => (
-            <Panel key={g.id} title={g.title} action={canEdit && role !== 'BOD' ? (
-              <div className="flex gap-1.5"><button className={cn(btnGhost, btnSm)} onClick={() => g.list.forEach((m) => { setMod(role, m, true); actsOf(m).forEach((a) => setAct(role, a, true)); })}>Cho phép tất cả</button><button className={cn(btnGhost, btnSm)} onClick={() => g.list.forEach((m) => { setMod(role, m, false); actsOf(m).forEach((a) => setAct(role, a, false)); })}>Tắt tất cả</button></div>
-            ) : undefined}>
-              <ul className="divide-y divide-[rgb(var(--line))]">
-                {g.list.map((m) => { const Icon = MODULE_ICON[m]; const on = roleMod(role, m); return (
-                  <li key={m} id={`perm-${m}`} className="scroll-mt-24 py-3 first:pt-0 last:pb-0">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[rgb(var(--ink)/0.05)]"><Icon className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /></span>
-                      <div className="min-w-0 flex-1"><p className="text-sm font-medium">{MODULE_LABEL[m]}</p><p className="truncate text-[11px] text-[rgb(var(--muted))]">{MODULE_DESC[m]}</p></div>
-                      <span className="text-xs text-[rgb(var(--muted))]">Truy cập</span><Switch on={on} disabled={!canEdit || LOCKED(role, m)} onChange={(v) => setMod(role, m, v)} label={`${ROLE_LABEL[role]} truy cập ${MODULE_LABEL[m]}`} />
+          <section className="glass-card overflow-hidden rounded-xl" aria-label={`Phân hệ và thao tác: ${ROLE_LABEL[role]}`}>
+            {groups.map((g) => (
+              <Fragment key={g.id}>
+                <div className={cn('flex items-end gap-3 px-5 text-[12px] text-[rgb(var(--muted))]', g.title ? 'pb-1 pt-4' : 'pt-3')}>
+                  <span>{g.title}</span>
+                  {canEdit && role !== 'BOD' && (
+                    <span className="ml-auto flex gap-3">
+                      <button type="button" className="hover:text-[rgb(var(--fg))] hover:underline" onClick={() => g.list.forEach((m) => { setMod(role, m, true); actsOf(m).forEach((x) => setAct(role, x, true)); })}>Cho phép tất cả</button>
+                      <button type="button" className="hover:text-[rgb(var(--fg))] hover:underline" onClick={() => g.list.forEach((m) => { setMod(role, m, false); actsOf(m).forEach((x) => setAct(role, x, false)); })}>Tắt tất cả</button>
+                    </span>
+                  )}
+                </div>
+                {g.list.map((m) => { const on = roleMod(role, m); const acts = actsOf(m); return (
+                  <div key={m} id={`perm-${m}`} className="grid scroll-mt-24 grid-cols-[1fr_40px] gap-x-4 gap-y-2 border-t border-[rgb(var(--ink)/0.06)] px-5 py-3 md:grid-cols-[240px_1fr_40px]">
+                    <div className="min-w-0"><p className="font-medium">{MODULE_LABEL[m]}</p><p className="text-xs text-[rgb(var(--muted))]">{MODULE_DESC[m]}</p></div>
+                    <div className={cn('order-3 col-span-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2 md:order-none md:col-span-1', !on && 'opacity-40')}>
+                      {acts.map((x) => { const v = roleAct(role, x); const lk = LOCKED(role, undefined, x); return (
+                        <button key={x} type="button" role="checkbox" aria-checked={v} disabled={!canEdit || !on || lk} onClick={() => setAct(role, x, !v)}
+                          className="flex min-w-0 items-start gap-2 rounded-[4px] text-left text-[13px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[rgb(var(--accent))] disabled:cursor-default">
+                          <span className="mt-px shrink-0"><PermTick on={v} locked={lk} /></span><span className="min-w-0">{ACTION_LABEL[x]}</span>
+                        </button>
+                      ); })}
                     </div>
-                    {actsOf(m).length > 0 && (
-                      <div className={cn('mt-2 flex flex-wrap gap-1.5 pl-11', !on && 'opacity-40')}>
-                        {actsOf(m).map((a) => { const v = roleAct(role, a); return (
-                          <label key={a} className={cn('inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs', v ? 'border-[rgb(var(--success)/0.5)] bg-[rgb(var(--success)/0.08)]' : 'border-[rgb(var(--line))]')}>
-                            <input type="checkbox" className="h-3.5 w-3.5 accent-[rgb(var(--success))]" checked={v} disabled={!canEdit || !on || LOCKED(role, undefined, a)} onChange={(e) => setAct(role, a, e.target.checked)} />{ACTION_LABEL[a]}
-                          </label>
-                        ); })}
-                      </div>
-                    )}
-                  </li>
+                    <div className="justify-self-end pt-px"><Switch on={on} disabled={!canEdit || LOCKED(role, m)} onChange={(v) => setMod(role, m, v)} label={`${ROLE_LABEL[role]} truy cập ${MODULE_LABEL[m]}`} /></div>
+                  </div>
                 ); })}
-              </ul>
-            </Panel>
-          ))}
+              </Fragment>
+            ))}
+          </section>
         </>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[280px_1fr] [&>*]:min-w-0">
