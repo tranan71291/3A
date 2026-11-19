@@ -109,7 +109,7 @@ export function TenantSwitcher({ orgId, consoleOn, onConsole, onSwitch, children
   const cur = consoleOn ? '__console' : orgId;
   const curItem = items.find((x) => x.id === cur) ?? items[0];
   return (
-    <div ref={ref} className={cn('relative', children && 'min-w-0 flex-1')}>
+    <div ref={ref} className={cn('relative', !!children && 'min-w-0 flex-1')}>
       {children ? (
         <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={open} aria-label={`Đang ở: ${curItem.label}. Chuyển doanh nghiệp`}
           className={cn('-mx-2 flex w-[calc(100%+1rem)] items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/5', open && 'bg-white/5')}>
