@@ -5,7 +5,9 @@ import type { GetflyOrderPayload, GetflyOrderRec, Lead, Quote, QuoteLine } from 
 
 export function quoteTotals(lines: QuoteLine[], vatPct: number) {
   const sub = lines.reduce((a, l) => a + l.qty * lineNet(l), 0);
-  const vat = Math.round((sub * vatPct) / 100);
+  const by = new Map<number, number>();
+  lines.forEach((l) => { const r = l.vat ?? vatPct; by.set(r, (by.get(r) ?? 0) + l.qty * lineNet(l)); });
+  const vat = [...by.entries()].reduce((a, [r, b]) => a + Math.round((b * r) / 100), 0);
   return { sub, vat, gross: sub + vat };
 }
 

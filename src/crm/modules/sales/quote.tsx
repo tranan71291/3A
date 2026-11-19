@@ -1,31 +1,34 @@
 'use client';
 
 import { Fragment, type ReactNode, useRef, useState } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, Copy, Download, Eye, FileText, History, Mail, Pencil, Plus, RefreshCw, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, Copy, Download, Eye, FileText, History, Info, Mail, Pencil, Plus, RefreshCw, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, XCircle } from 'lucide-react';
 import { Avatar, Pagination, RowMenu, usePaged } from '../../components/controls';
 import { Collapse, ConfirmDialog } from '../../components/crud';
 import { FilterBar, useInRange } from '../../components/filters';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, Panel, StatCard, Table, Tabs, useOverlay, useSticky } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
-import { APPROVAL_LEVEL, approvalOf, approvalReasons, btnBase, btnGhost, btnPrimary, btnSm, C, CHECK_DOT, compact, contractVersions, docGroupOf, docLineToQuote, esc, findByTax, fmtDate, fmtN, GENDOC_STATUS, GM_RULE, GUARANTEE_LABEL, guessTx, inputBase, inputCls, iso, latestQuote, nextCode, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, rowCls, SAMPLE_FORM, tdCls, tdFirst, tdLast, TEMPLATE_FLAGS, TEMPLATE_VARS, tierPrice, todayISO, TX_TYPE, uid, useApp } from '../../lib/core';
+import { APPROVAL_LEVEL, approvalOf, approvalReasons, btnBase, btnGhost, btnPrimary, btnSm, C, CHECK_DOT, compact, contractVersions, digits9, docGroupOf, docLineToQuote, esc, findByTax, fmtDate, fmtN, GENDOC_STATUS, GM_RULE, GUARANTEE_LABEL, guessTx, inputBase, inputCls, iso, latestQuote, nextCode, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, rowCls, SAMPLE_FORM, tdCls, tdFirst, tdLast, TEMPLATE_FLAGS, TEMPLATE_VARS, tierPrice, todayISO, TX_TYPE, uid, useApp } from '../../lib/core';
 import type { ApprovalDecision, ApprovalLevel, CheckItem, ComposerForm, ComposerMode, ConfirmState, DocLine, DocTemplate, GenDocStatus, GeneratedDoc, GuaranteeType, Lead, PayMilestone, PriceTier, Quote, QuoteStatus, SkuItem, TxType, User } from '../../lib/types';
 import { cn } from '../../lib/utils';
-import { parseAiJson, useAi } from '../ai/ai-core';
+import { apiPost, parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
 import { AiWriterSheet } from '../ai/copilot-plus';
 import { DocsPage } from '../docs/docs';
 import { learnDrafts, SmartQuoteGrid } from './smart-quote';
-import { buildDocVars, ComposerShell, DocActionBar, docShell, docTotals, downloadWord, Fold, moneyToWordsVN, PartyFields, printHtml, quoteBody, readDocxParagraphs, renderTemplate, specialTermsOf, TermsFields } from './templates';
+import { buildDocVars, ComposerShell, DocActionBar, docPdfBlob, docShell, docTotals, downloadWord, Fold, moneyToWordsVN, PartyFields, printHtml, quoteBody, readDocxParagraphs, renderTemplate, specialTermsOf, TermsFields } from './templates';
 
 // =====================================================================
 //  MÀN BÁO GIÁ — chỉ ghi khi bấm "Tạo báo giá" / "Lưu thay đổi"; xuất file sau khi đã lưu
 // =====================================================================
 
-export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId?: string; customerId?: string; quoteId?: string; onClose: () => void }) {
+export function QuoteComposer({ leadId, customerId, quoteId, edit, reviseOf, onClose }: { leadId?: string; customerId?: string; quoteId?: string; edit?: boolean; reviseOf?: string; onClose: () => void }) {
   const { winDraftQuote, leads, myLeads, customers, skus, company, users, me, role, docTemplates, quotes, setQuotes, submitQuote, notify, canDo, getfly, openComposer, dispatch, departments, logDecision, winLead, setDraftProducts } = useApp();
   const [wide, setWide] = useSticky('QuoteComposer.wide3', false);
   const editQuote = quotes.find((q) => q.id === quoteId);
+  // v45: báo giá điều chỉnh từ một báo giá bất kỳ (kể cả không gắn dự án); báo giá nháp chưa chốt được sửa đè
+  const reviseSrc = quotes.find((q) => q.id === reviseOf);
+  const draftEdit = !!edit && !!editQuote?.draft && editQuote.status !== 'ACCEPTED';
   // Báo giá đã tạo chỉ xem; muốn thay đổi phải tạo báo giá điều chỉnh (phiên bản mới)
-  const viewOnly = !!editQuote;
+  const viewOnly = !!editQuote && !draftEdit;
   const year = new Date().getFullYear();
   const suggestQuote = (tx: TxType) => docTemplates.find((t) => t.kind === 'QUOTE' && t.txType === tx) ?? docTemplates.find((t) => t.kind === 'QUOTE');
   const itemsOfLead = (l?: Lead): DocLine[] => {
@@ -35,9 +38,10 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
     return (l.boqItems ?? []).map((i) => ({ sku: i.code, name: i.name, unit: i.unit, qty: i.qty, price: Math.round(i.price * (1 - i.discountPct / 100)), listPrice: i.price, discountPct: i.discountPct }));
   };
   const [initial] = useState<ComposerForm>(() => {
-    const l = leads.find((x) => x.id === (editQuote?.leadId || leadId));
-    const c = customers.find((x) => x.id === (editQuote?.customerId ?? customerId ?? l?.customerId)) ?? (l ? findByTax(customers, l.taxCode) : undefined);
+    const l = leads.find((x) => x.id === (editQuote?.leadId || reviseSrc?.leadId || leadId));
+    const c = customers.find((x) => x.id === (editQuote?.customerId ?? reviseSrc?.customerId ?? customerId ?? l?.customerId)) ?? (l ? findByTax(customers, l.taxCode) : undefined);
     if (editQuote?.quoteForm) return { ...editQuote.quoteForm, items: editQuote.lines.map(quoteLineToDoc), vatPct: editQuote.vatPct };
+    if (reviseSrc?.quoteForm) return { ...reviseSrc.quoteForm, items: reviseSrc.lines.map(quoteLineToDoc), vatPct: reviseSrc.vatPct, customHtml: undefined };
     const prev = l ? latestQuote(l.id, quotes) : undefined;
     const tpl = docTemplates.find((t) => t.id === (editQuote?.templateId ?? prev?.templateId)) ?? suggestQuote(guessTx(c?.segment ?? l?.segment));
     const tx = tpl?.txType ?? guessTx(c?.segment ?? l?.segment);
@@ -45,16 +49,17 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
     return {
       txType: tx, quoteTplId: tpl?.id ?? '', contractTplId: tpl?.pairId ?? '', tier: editQuote?.tier ?? prev?.tier ?? (l?.boqItems?.length ? 'BOQ' : TX_TYPE[tx].tier),
       leadId: l?.id, customerId: c?.id, party: base?.party ?? partyOf(c, l), items: editQuote ? editQuote.lines.map(quoteLineToDoc) : itemsOfLead(l), vatPct: editQuote?.vatPct ?? prev?.vatPct ?? (getfly.defaultVatPct || 10),
-      delivery: base?.delivery ?? tpl?.defaultDelivery ?? TX_TYPE[tx].delivery, advancePct: base?.advancePct ?? 0, guaranteeType: 'NONE', guaranteePct: 0, warrantyMonths: base?.warrantyMonths ?? 12,
-      creditDays: base?.creditDays ?? TX_TYPE[tx].credit, paymentMethod: base?.paymentMethod ?? 'Chuyển khoản', validDays: 30, note: editQuote?.note ?? '',
+      delivery: base?.delivery ?? tpl?.defaultDelivery ?? TX_TYPE[tx].delivery, advancePct: base?.advancePct ?? 0, guaranteeType: 'NONE', guaranteePct: 0, warrantyMonths: base?.warrantyMonths ?? 0,
+      creditDays: base?.creditDays ?? 0, paymentMethod: base?.paymentMethod ?? 'Chuyển khoản', validDays: 30, note: editQuote?.note ?? '',
     };
   });
   const [form, setForm] = useState<ComposerForm>(initial);
-  const [savedId, setSavedId] = useState<string | undefined>(editQuote?.id);
+  const [savedId, setSavedId] = useState<string | undefined>(draftEdit ? undefined : editQuote?.id);
   const saved = quotes.find((q) => q.id === savedId);
   const lead = leads.find((x) => x.id === form.leadId);
-  const versions = lead ? quotes.filter((q) => q.leadId === lead.id) : [];
-  const [code] = useState(() => editQuote?.code ?? nextCode(quotes.map((q) => q.code), `BG-${year}-`, 4));
+  const rootKey = reviseSrc ? reviseSrc.rootId ?? reviseSrc.id : undefined;
+  const versions = lead ? quotes.filter((q) => q.leadId === lead.id) : rootKey ? quotes.filter((q) => (q.rootId ?? q.id) === rootKey) : [];
+  const [code] = useState(() => editQuote?.code ?? reviseSrc?.code ?? nextCode(quotes.map((q) => q.code), `BG-${year}-`, 4));
   const version = saved?.version ?? editQuote?.version ?? versions.reduce((m, x) => Math.max(m, x.version), 0) + 1;
   const locked = viewOnly || !!savedId;
 
@@ -99,10 +104,18 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
       id: uid('q'), code, leadId: lead?.id ?? '', version, date: todayISO(), discountPct: 0, status: 'SENT', exports: [],
       lines: form.items.map(docLineToQuote), amount: totals.sub, vatPct: form.vatPct, tier: form.tier, templateId: form.quoteTplId, gmPct: gm ?? undefined, approvalLevel: level,
       validUntil: iso(new Date(Date.now() + form.validDays * 864e5)), note: form.note, customerId: form.customerId, quoteForm: form,
-      createdBy: me.id, createdAt: Date.now(), draft: retail || undefined,
+      createdBy: me.id, createdAt: Date.now(), draft: retail || undefined, rootId: rootKey,
       approval: level === 'AUTO' ? undefined : { status: 'PENDING', level, reasons, requestedAt: Date.now(), requestedBy: me.id },
     };
-    setQuotes((p) => [q, ...p.map((x) => (lead && x.leadId === lead.id && x.status === 'SENT' ? { ...x, status: 'REVISED' as QuoteStatus } : x))]);
+    if (draftEdit && editQuote) {
+      // Báo giá nháp: lưu đè, giữ số và phiên bản
+      const q2: Quote = { ...q, id: editQuote.id, createdAt: editQuote.createdAt ?? q.createdAt, rootId: editQuote.rootId, exports: editQuote.exports ?? [] };
+      setQuotes((p) => p.map((x) => (x.id === editQuote.id ? q2 : x)));
+      setDraftProducts((all) => learnDrafts(all, form.items, skus, { quote: `${code} v${version}`, customer: form.party.name, by: me.id }));
+      setSavedId(editQuote.id);
+      return notify(`Đã lưu thay đổi báo giá nháp ${code}`, 'teal');
+    }
+    setQuotes((p) => [q, ...p.map((x) => ((lead && x.leadId === lead.id) || (rootKey && (x.rootId ?? x.id) === rootKey)) && x.status === 'SENT' ? { ...x, status: 'REVISED' as QuoteStatus } : x)]);
     // Tự học: hàng gõ tự do + đơn giá vào danh mục nháp để lần sau gợi ý kèm giá bán gần nhất
     setDraftProducts((all) => learnDrafts(all, form.items, skus, { quote: `${code} v${version}`, customer: form.party.name, by: me.id }));
     if (lead?.status === 'ACCEPTED') submitQuote(lead.id);
@@ -135,10 +148,11 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
 
   const projectOpts = myLeads.filter((l) => ['ACCEPTED', 'QUOTED', 'WON'].includes(l.status));
   const [stage, setStage] = useState<'edit' | 'send'>('edit');
-  const [editParty0, setEditParty] = useState<boolean | null>(null);
-  const editParty = editParty0 ?? !form.party.name.trim();
+  const [editParty, setEditParty0] = useState(!initial.party.name.trim());
+  /** null = thu gọn sau khi chọn khách / dự án */
+  const setEditParty = (v: boolean | null) => setEditParty0(v ?? false);
   const canSend = !!saved && !exportLocked;
-  const sender = useQuoteSender({ form, code, version, total: totals.grand, sellerName: seller.name, onPdf: () => exportQuote('PDF'), onWord: () => exportQuote('WORD') });
+  const sender = useQuoteSender({ form, code, version, total: totals.grand, sellerName: seller.name, html, onPdf: () => exportQuote('PDF'), onWord: () => exportQuote('WORD'), onClose });
   const tierSel = (
     <select className={cn(inputBase, 'w-auto py-1 text-[13px]')} value={form.tier} onChange={(e) => applyTier(e.target.value as PriceTier)} aria-label="Bảng giá">
       {(Object.keys(PRICE_TIER) as PriceTier[]).map((t) => <option key={t} value={t} disabled={t === 'BOQ' && !lead?.boqItems?.length}>{PRICE_TIER[t]}</option>)}
@@ -155,8 +169,11 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
       {approvalBox}
       {locked && <p className="rounded-[10px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-4 py-3 text-xs text-[rgb(var(--muted))]">Báo giá đã tạo chỉ xem và xuất lại. Muốn đổi giá, số lượng hoặc điều kiện, bấm "Báo giá điều chỉnh" để tạo phiên bản mới.</p>}
       <fieldset disabled={locked} className="min-w-0 space-y-3">
-        <ComposerCard id="qc-1" n={1} title="Khách hàng" right={form.party.name && !editParty && !locked ? <button type="button" className={cn(btnGhost, btnSm)} onClick={() => setEditParty(true)}>Đổi</button> : undefined}>
-          {form.party.name && !editParty ? (
+        <ComposerCard id="qc-1" n={1} title="Khách hàng" right={<button type="button" className={cn(btnGhost, btnSm)} aria-expanded={editParty} aria-controls="qc-1-body" onClick={() => setEditParty0(!editParty)} disabled={locked && !form.party.name}>{editParty ? 'Thu gọn' : locked ? 'Xem' : 'Mở'}<ChevronDown className={cn('h-3.5 w-3.5 transition-transform', editParty && 'rotate-180')} aria-hidden /></button>}>
+          <div id="qc-1-body">
+          {!editParty && !form.party.name.trim() ? (
+            <button type="button" className="w-full rounded-lg border border-dashed border-[rgb(var(--ink)/0.16)] px-3 py-3 text-left text-[13px] text-[rgb(var(--muted))] hover:border-[rgb(var(--ink)/0.3)]" onClick={() => setEditParty0(true)}>Chưa có khách hàng: bấm để chọn khách CRM, dự án hoặc nhập khách lẻ</button>
+          ) : !editParty ? (
             <div className="flex items-center gap-3">
               <Avatar name={form.party.name} size={36} />
               <div className="min-w-0 flex-1">
@@ -166,7 +183,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
               </div>
               <div className="shrink-0 space-y-1 text-right text-[12.5px] text-[rgb(var(--muted))]">
                 <p className="flex items-center justify-end gap-1.5">Bảng giá {tierSel}</p>
-                <p className="flex items-center justify-end gap-1.5">VAT <input className={cn(inputBase, 'w-14 py-1 text-right text-[13px] tabular-nums')} type="number" min={0} max={10} value={form.vatPct} onChange={(e) => set('vatPct', Number(e.target.value))} aria-label="VAT %" />%</p>
+                <p className="flex items-center justify-end gap-1.5">VAT <select className={cn(inputBase, 'w-auto py-1 text-[13px]')} value={form.vatMode === 'LINE' ? 'LINE' : String(form.vatPct)} aria-label="Thuế suất VAT" onChange={(e) => { const v = e.target.value; if (v === 'LINE') setForm((f) => ({ ...f, vatMode: 'LINE' })); else setForm((f) => ({ ...f, vatMode: 'ALL', vatPct: Number(v), items: f.items.map(({ vat: _v, ...l }) => l) })); }}>{[0, 5, 8, 10].map((v) => <option key={v} value={v}>{v}%</option>)}<option value="LINE">Theo từng dòng</option></select></p>
               </div>
             </div>
           ) : (
@@ -188,17 +205,18 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
               <PartyFields form={form} setParty={setParty} />
               <div className="flex flex-wrap items-end gap-3">
                 <Field label="Bảng giá">{tierSel}</Field>
-                <Field label="VAT %"><input className={cn(inputBase, 'w-16 text-right tabular-nums')} type="number" min={0} max={10} value={form.vatPct} onChange={(e) => set('vatPct', Number(e.target.value))} /></Field>
+                <Field label="VAT"><select className={cn(inputBase, 'w-auto py-1 text-[13px]')} value={form.vatMode === 'LINE' ? 'LINE' : String(form.vatPct)} aria-label="Thuế suất VAT" onChange={(e) => { const v = e.target.value; if (v === 'LINE') setForm((f) => ({ ...f, vatMode: 'LINE' })); else setForm((f) => ({ ...f, vatMode: 'ALL', vatPct: Number(v), items: f.items.map(({ vat: _v, ...l }) => l) })); }}>{[0, 5, 8, 10].map((v) => <option key={v} value={v}>{v}%</option>)}<option value="LINE">Theo từng dòng</option></select></Field>
                 {form.party.name.trim().length >= 3 && <button type="button" className={cn(btnGhost, btnSm, 'mb-1 ml-auto')} onClick={() => setEditParty(false)}>Xong</button>}
               </div>
               {retail && <p className="text-xs text-[rgb(var(--muted))]">Khách lẻ chưa có trong CRM (không MST, công nợ 0 ngày): lưu thành báo giá nháp, không cần duyệt giá; khi chốt sẽ tự thêm khách vào CRM.</p>}
             </div>
           )}
+          </div>
         </ComposerCard>
 
         <ComposerCard id="qc-2" n={2} title="Hàng hóa" sub={`${form.items.length} dòng · ${PRICE_TIER[form.tier].toLowerCase()}`}>
           {!locked && <BuyTogether form={form} skus={skus} quotes={quotes} onAdd={(l) => set('items', [...form.items, l])} />}
-          <SmartQuoteGrid items={form.items} onChange={(v) => set('items', v)} locked={locked} tier={form.tier === 'BOQ' ? TX_TYPE[form.txType].tier : form.tier} wide={wide} onWide={setWide} canSeeCost={canSeeCost} />
+          <SmartQuoteGrid items={form.items} onChange={(v) => set('items', v)} locked={locked} tier={form.tier === 'BOQ' ? TX_TYPE[form.txType].tier : form.tier} wide={wide} onWide={setWide} cust={{ id: form.customerId, name: form.party.name }} vatLine={form.vatMode === 'LINE'} vatPct={form.vatPct} />
           {(canSeeCost || level !== 'AUTO') && (
             <p className="mt-2 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs text-[rgb(var(--muted))]">
               {canSeeCost && <span>{gm !== null ? `Lãi gộp cả báo giá ${gm.toFixed(1)}%` : 'Có hàng chưa có giá vốn: chưa tính được lãi gộp'}</span>}
@@ -214,7 +232,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
         }>
           <TermsFields form={form} set={set} contract={false} part="pay" dense />
           <div className="mt-3">
-            <Fold title="Giao hàng, bảo hành, ghi chú" summary={`${form.delivery || 'Chưa nhập giao hàng'} · BH ${form.warrantyMonths} th`}>
+            <Fold title="Giao hàng, bảo hành, ghi chú" summary={`${form.delivery || 'Chưa nhập giao hàng'} · BH ${form.warrantyMonths ? `${form.warrantyMonths} th` : 'theo tiêu chuẩn NSX'}`}>
               <TermsFields form={form} set={set} contract={false} part="other" />
             </Fold>
           </div>
@@ -229,7 +247,16 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
   );
   const left = stage === 'send' && canSend ? <>{sender.body}</> : editLeft;
 
-  const canRevise = !!lead && ['ACCEPTED', 'QUOTED'].includes(lead.status);
+  const canRevise = lead ? ['ACCEPTED', 'QUOTED'].includes(lead.status) : !!saved && saved.status !== 'ACCEPTED' && !saved.draft;
+  const isDraftView = viewOnly && !!editQuote?.draft && editQuote.status !== 'ACCEPTED';
+  const delDraft = () => {
+    if (!editQuote) return;
+    const root = editQuote.rootId ?? editQuote.id;
+    const prev = quotes.filter((x) => (x.rootId ?? x.id) === root);
+    setQuotes((p) => p.filter((x) => (x.rootId ?? x.id) !== root));
+    notify(`Đã xóa báo giá nháp ${editQuote.code}`, 'orange', { label: 'Hoàn tác', run: () => setQuotes((p) => [...prev, ...p]) });
+    onClose();
+  };
   const draftQuote = saved?.draft && !lead;
   const canWin = draftQuote ? saved?.status !== 'ACCEPTED' && canDo('customer.edit') : !!savedId && !exportLocked && !!lead && lead.status === 'QUOTED' && canDo('project.update');
   const winHint = draftQuote ? (saved?.status === 'ACCEPTED' ? 'Đã ghi nhận chốt' : 'Ghi nhận chốt: tự thêm khách vào CRM') : !lead ? 'Gắn báo giá với dự án để chốt đơn' : lead.status === 'WON' ? 'Dự án đã chốt' : !savedId ? 'Gửi duyệt báo giá trước' : exportLocked ? 'Chờ duyệt giá' : !canDo('project.update') ? 'Không có quyền chốt đơn' : `Chốt đơn theo báo giá ${code} v${version}`;
@@ -243,7 +270,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
   const statusText = locked ? (exportLocked ? 'Đã gửi, chờ duyệt giá' : saved?.status === 'ACCEPTED' ? 'Đã chốt' : lead?.status === 'WON' ? 'Đơn đã chốt' : draftQuote ? 'Báo giá nháp, có thể xuất và gửi' : 'Đã duyệt, có thể xuất và gửi') : errs.length ? `Còn thiếu: ${errs[0]}` : retail ? 'Báo giá nháp: lưu là xuất được ngay' : level === 'AUTO' ? 'Giá trong ngưỡng: gửi là tự duyệt' : `${APPROVAL_LEVEL[level].label}: gửi để duyệt giá`;
   return (
     <ComposerShell
-      title={`${locked ? 'Báo giá' : 'Tạo báo giá'} ${code} · v${version}${draftQuote || (!locked && retail) ? ' · nháp' : ''}`}
+      title={`${locked ? 'Báo giá' : draftEdit ? 'Sửa báo giá' : reviseSrc ? 'Báo giá điều chỉnh' : 'Tạo báo giá'} ${code} · v${version}${draftQuote || (!locked && retail) ? ' · nháp' : ''}`}
       wide={wide}
       steps={[
         { label: 'Khách hàng', done: form.party.name.trim().length >= 3 && (!!lead || !!form.customerId || retail), onClick: () => { setStage('edit'); setTimeout(() => document.getElementById('qc-1')?.scrollIntoView({ behavior: 'smooth' }), 30); } },
@@ -267,10 +294,12 @@ export function QuoteComposer({ leadId, customerId, quoteId, onClose }: { leadId
         </>
       ) : (
         <DocActionBar
-          totals={<DocTotals sub={totals.sub} vat={totals.vat} vatPct={form.vatPct} grand={totals.grand} gm={canSeeCost ? gm : undefined} />}
+          totals={<DocTotals sub={totals.sub} vat={totals.vat} vatPct={totals.mixed ? -1 : form.vatPct} grand={totals.grand} gm={canSeeCost ? gm : undefined} />}
           status={<span className={cn('font-medium', locked ? 'text-[rgb(var(--success-fg))]' : errs.length ? 'text-[rgb(var(--danger-fg))]' : level === 'AUTO' ? 'text-[rgb(var(--muted))]' : 'text-[rgb(var(--accent-fg))]')}>{statusText}</span>}
           extra={<>
-            {locked && canRevise && <button className={cn(btnGhost, btnSm)} onClick={() => { onClose(); openComposer({ leadId: lead!.id, mode: 'QUOTE' }); }}><Pencil className="h-3.5 w-3.5" aria-hidden />Báo giá điều chỉnh</button>}
+            {isDraftView && <button className={cn(btnGhost, btnSm)} onClick={() => { onClose(); openComposer({ quoteId: editQuote!.id, edit: true, mode: 'QUOTE' }); }}><Pencil className="h-3.5 w-3.5" aria-hidden />Sửa</button>}
+            {isDraftView && <button className={cn(btnGhost, btnSm, 'hover:text-[rgb(var(--danger-fg))]')} onClick={delDraft}><Trash2 className="h-3.5 w-3.5" aria-hidden />Xóa</button>}
+            {locked && canRevise && <button className={cn(btnGhost, btnSm)} onClick={() => { onClose(); openComposer(lead ? { leadId: lead.id, mode: 'QUOTE' } : { reviseOf: saved?.id ?? editQuote?.id, mode: 'QUOTE' }); }}><Pencil className="h-3.5 w-3.5" aria-hidden />Báo giá điều chỉnh</button>}
             {canDecide && (
               <>
                 <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]')} onClick={() => decideQuote('APPROVED')}>Duyệt giá</button>
@@ -317,7 +346,7 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
       txType: tx, quoteTplId: q?.templateId ?? '', contractTplId: ct?.id ?? '', tier: q?.tier ?? 'PROJECT', leadId: l?.id, customerId: c?.id ?? q?.customerId,
       party: qf?.party ?? partyOf(c, l), items: (q?.lines ?? []).map(quoteLineToDoc), vatPct: q?.vatPct ?? 10,
       delivery: qf?.delivery ?? ct?.defaultDelivery ?? TX_TYPE[tx].delivery, advancePct: qf?.advancePct || (project ? 30 : 0), guaranteeType: project ? 'PERFORMANCE' : 'NONE', guaranteePct: project ? 10 : 0,
-      warrantyMonths: qf?.warrantyMonths ?? 12, creditDays: qf?.creditDays ?? ct?.standardCreditDays ?? TX_TYPE[tx].credit, paymentMethod: qf?.paymentMethod ?? 'Chuyển khoản', validDays: 30, note: '',
+      warrantyMonths: qf?.warrantyMonths ?? 0, creditDays: qf?.creditDays ?? ct?.standardCreditDays ?? TX_TYPE[tx].credit, paymentMethod: qf?.paymentMethod ?? 'Chuyển khoản', validDays: 30, note: '',
     };
   };
   const [form, setForm] = useState<ComposerForm>(() => src?.form ?? formFromQuote(quotes.find((q) => q.id === baseId0)));
@@ -467,7 +496,7 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
               </select>
             </Field>
             <Field label="Phạt chậm thanh toán"><span className="relative block"><input className={cn(inputCls, 'pr-14 tabular-nums')} type="number" min={0} step={0.01} value={form.latePenaltyPct ?? ''} placeholder="0" onChange={(e) => set('latePenaltyPct', e.target.value === '' ? undefined : Number(e.target.value))} /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[rgb(var(--muted))]">%/ngày</span></span></Field>
-            <Field label="Bảo hành"><span className="relative block"><input className={cn(inputCls, 'pr-14 tabular-nums')} type="number" min={0} value={form.warrantyMonths} onChange={(e) => set('warrantyMonths', Number(e.target.value))} /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[rgb(var(--muted))]">tháng</span></span></Field>
+            <Field label="Bảo hành"><span className="relative block"><input className={cn(inputCls, 'pr-14 tabular-nums')} type="number" min={0} value={form.warrantyMonths || ''} placeholder="Theo tiêu chuẩn NSX" onChange={(e) => set('warrantyMonths', Math.max(0, Number(e.target.value) || 0))} /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[rgb(var(--muted))]">tháng</span></span></Field>
           </div>
           <div className="mt-3">
             <Fold title="Tạm ứng, công nợ, giao hàng, ghi chú" summary={`tạm ứng ${form.advancePct}% · công nợ ${form.creditDays} ngày`}>
@@ -546,7 +575,7 @@ export function DocTotals({ sub, vat, vatPct, grand, gm }: { sub: number; vat: n
   return (
     <div className="flex w-full flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-[rgb(var(--fg2))] lg:w-auto">
       {it('Cộng tiền hàng', compact(sub), undefined, true)}
-      {it(`VAT ${vatPct}%`, compact(vat), undefined, true)}
+      {it(vatPct < 0 ? 'VAT' : `VAT ${vatPct}%`, compact(vat), undefined, true)}
       {it('Tổng', `${grand.toLocaleString('vi-VN')} đ`)}
       {gm !== undefined && it('Lãi gộp', gm === null ? (sub ? 'chưa đủ giá vốn' : '—') : `${gm.toFixed(1)}%`, gm === null ? 'font-sans' : gm < GM_RULE.bod ? 'text-[rgb(var(--danger-fg))]' : gm < GM_RULE.head ? 'text-[rgb(var(--accent-fg))]' : undefined)}
     </div>
@@ -641,12 +670,13 @@ export function QuoteChecks({ form, skus, canSeeCost, retail, onSubmit, onNote, 
 }
 
 /** Bước Gửi khách: kênh (Email / Zalo / Tải về), thư soạn sẵn (AI soạn khi đã bật), đính kèm. Trả về phần thân và nút gửi cho chân màn hình */
-export function useQuoteSender({ form, code, version, total, sellerName, onPdf, onWord }: { form: ComposerForm; code: string; version: number; total: number; sellerName: string; onPdf: () => void; onWord: () => void }) {
-  const { company, notify, addMsgLog, me } = useApp();
+export function useQuoteSender({ form, code, version, total, sellerName, html, onPdf, onWord, onClose }: { form: ComposerForm; code: string; version: number; total: number; sellerName: string; html: string; onPdf: () => void; onWord: () => void; onClose: () => void }) {
+  const { company, notify, addMsgLog, me, org, zaloConvs, setZaloMsgs, go, canDo } = useApp();
+  const [srv] = useServerStatus();
   const ai = useAi('writer');
   const seller = company.shortName || company.legalName;
   const greet = form.party.rep ? `Kính gửi ${form.party.repTitle ? `${form.party.repTitle} ` : ''}${form.party.rep},` : `Kính gửi Quý ${form.party.name},`;
-  const plain = `${greet}\n\n${seller} xin gửi báo giá số ${code}${version > 1 ? ` (bản ${version})` : ''}, tổng giá trị ${total.toLocaleString('vi-VN')} đ (đã gồm VAT ${form.vatPct}%), hiệu lực ${form.validDays} ngày.\nĐiều kiện thanh toán: ${form.advancePct ? `tạm ứng ${form.advancePct}%, ` : ''}${form.creditDays ? `công nợ ${form.creditDays} ngày` : 'thanh toán khi nhận hàng'}. Giao hàng: ${form.delivery || 'theo thỏa thuận'}.\n\nBáo giá chi tiết trong file đính kèm. Rất mong nhận được phản hồi của Quý khách.\n\nTrân trọng,\n${me.signature?.trim() || `${sellerName}${me.phone ? ` · ${me.phone}` : ''}\n${seller}`}`;
+  const plain = `${greet}\n\n${seller} xin gửi báo giá số ${code}${version > 1 ? ` (bản ${version})` : ''}, tổng giá trị ${total.toLocaleString('vi-VN')} đ (đã gồm VAT), hiệu lực ${form.validDays} ngày.\nĐiều kiện thanh toán: ${form.advancePct ? `tạm ứng ${form.advancePct}%, ` : ''}${form.creditDays ? `công nợ ${form.creditDays} ngày` : 'thanh toán khi nhận hàng'}. Giao hàng: ${form.delivery || 'theo thỏa thuận'}.\n\nBáo giá chi tiết trong file đính kèm. Rất mong nhận được phản hồi của Quý khách.\n\nTrân trọng,\n${me.signature?.trim() || `${sellerName}${me.phone ? ` · ${me.phone}` : ''}\n${seller}`}`;
   const [ch, setCh] = useState<'EMAIL' | 'ZALO' | 'FILE'>('EMAIL');
   const [to, setTo] = useState(form.party.email);
   const [cc, setCc] = useState(me.email ?? '');
@@ -654,41 +684,77 @@ export function useQuoteSender({ form, code, version, total, sellerName, onPdf, 
   const [subject, setSubject] = useState(`Báo giá ${code} - ${seller}`);
   const [body, setBody] = useState(plain);
   const [busy, setBusy] = useState('');
+  const [sending, setSending] = useState(false);
   const draft = async (key: string, how: string) => {
     setBusy(key);
-    const r = await ai.ask({ prompt: `Soạn thư gửi khách kèm báo giá, tiếng Việt, lịch sự, không bịa thông tin ngoài dữ liệu sau. ${how}\nKhách: ${form.party.name}${form.party.rep ? `, người nhận ${form.party.repTitle} ${form.party.rep}` : ''}\nBáo giá: ${code} v${version}, tổng ${total.toLocaleString('vi-VN')} đ gồm VAT ${form.vatPct}%, hiệu lực ${form.validDays} ngày\nHàng chính: ${form.items.slice(0, 5).map((l) => `${l.name} (${l.qty} ${l.unit})`).join('; ')}\nThanh toán: tạm ứng ${form.advancePct}%, công nợ ${form.creditDays} ngày. Giao hàng: ${form.delivery}\nNgười gửi: ${sellerName}, ${seller}\nChỉ trả về nội dung thư, không có tiêu đề.`, maxTokens: 700 });
+    const r = await ai.ask({ prompt: `Soạn thư gửi khách kèm báo giá, tiếng Việt, lịch sự, không bịa thông tin ngoài dữ liệu sau. ${how}\nKhách: ${form.party.name}${form.party.rep ? `, người nhận ${form.party.repTitle} ${form.party.rep}` : ''}\nBáo giá: ${code} v${version}, tổng ${total.toLocaleString('vi-VN')} đ gồm VAT, hiệu lực ${form.validDays} ngày\nHàng chính: ${form.items.slice(0, 5).map((l) => `${l.name} (${l.qty} ${l.unit})`).join('; ')}\nThanh toán: tạm ứng ${form.advancePct}%, công nợ ${form.creditDays} ngày. Giao hàng: ${form.delivery}\nNgười gửi: ${sellerName}, ${seller}\nChỉ trả về nội dung thư, không có tiêu đề.`, maxTokens: 700 });
     setBusy('');
     if (r.ok) setBody(r.text.trim()); else notify(r.error, 'orange');
   };
-  const phoneDigits = phone.replace(/\D/g, '').replace(/^84/, '0');
+  const p9 = digits9(phone);
+  const conv = p9.length === 9 ? zaloConvs.find((c) => digits9(c.phone) === p9) : undefined;
+  const oaReady = srv.zalo.oa && !!conv?.zaloUserId;
   const file = `${code}${version > 1 ? `-v${version}` : ''}`;
-  const send = () => {
+  const pdfB64 = async () => { const blob = await docPdfBlob(`Báo giá ${file}`, html); const buf = new Uint8Array(await blob.arrayBuffer()); let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000)); return { b64: btoa(bin), size: blob.size }; };
+  const send = async () => {
+    if (ch === 'FILE') return onPdf();
     if (ch === 'EMAIL') {
       if (!to) return notify('Nhập email người nhận', 'orange');
-      const href = `mailto:${encodeURIComponent(to)}?${cc ? `cc=${encodeURIComponent(cc)}&` : ''}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.slice(0, 1800))}`;
-      window.location.href = href;
-      addMsgLog({ channel: 'EMAIL', to, subject, ok: true, detail: 'Mở bằng ứng dụng email của người dùng (mailto), chưa xác nhận đã gửi' });
-    } else if (ch === 'ZALO') {
-      void navigator.clipboard?.writeText(body).then(() => notify('Đã sao chép thư, dán vào khung chat Zalo rồi gửi kèm file', 'teal'));
-      if (phoneDigits.length >= 9) window.open(`https://zalo.me/${phoneDigits}`, '_blank', 'noopener');
-    } else onPdf();
+      if (!srv.email) {
+        window.location.href = `mailto:${encodeURIComponent(to)}?${cc ? `cc=${encodeURIComponent(cc)}&` : ''}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.slice(0, 1800))}`;
+        addMsgLog({ channel: 'EMAIL', to, subject, ok: true, detail: 'Mở bằng ứng dụng email của người dùng (mailto), chưa xác nhận đã gửi' });
+        return;
+      }
+      setSending(true);
+      const pdf = await pdfB64().catch(() => null);
+      if (!pdf) { setSending(false); return notify('Không tạo được file PDF để đính kèm', 'red'); }
+      const r = await apiPost<{ id?: string }>('/api/email/send', { tenant: org.id, to, cc, subject, text: body, attachments: [{ filename: `${file}.pdf`, contentType: 'application/pdf', base64: pdf.b64 }] });
+      setSending(false);
+      addMsgLog({ channel: 'EMAIL', to, subject, ok: r.ok, detail: r.ok ? `Đã gửi kèm ${file}.pdf` : `Lỗi: ${r.error ?? 'không rõ'}` });
+      if (!r.ok) return notify(`Gửi email chưa được: ${r.error === 'smtp_not_configured' ? 'máy chủ chưa cấu hình SMTP' : r.error ?? 'lỗi máy chủ'}`, 'red');
+      notify(`Đã gửi báo giá ${code} tới ${to}`, 'teal');
+      return onClose();
+    }
+    // Zalo
+    if (oaReady && conv) {
+      setSending(true);
+      const pdf = await pdfB64().catch(() => null);
+      const r = await apiPost<{ msgId?: string }>('/api/zalo/send-file', { tenant: org.id, userId: conv.zaloUserId, text: body, ...(pdf ? { filename: `${file}.pdf`, base64: pdf.b64 } : {}) });
+      setSending(false);
+      setZaloMsgs((all) => [...all, { id: uid('zm'), convId: conv.id, dir: 'OUT', kind: pdf ? 'file' : 'text', text: pdf ? `${body}\n[${file}.pdf]` : body, at: Date.now(), by: me.id, status: r.ok ? 'SENT' : 'FAILED', error: r.ok ? undefined : r.error }]);
+      if (!r.ok) return notify(`Gửi qua Zalo OA chưa được: ${r.error ?? 'lỗi máy chủ'}`, 'red');
+      notify(`Đã gửi báo giá ${code} qua Zalo OA tới ${conv.displayName}`, 'teal');
+      return onClose();
+    }
+    void navigator.clipboard?.writeText(body).then(() => notify('Đã sao chép thư, dán vào khung chat Zalo rồi gửi kèm file', 'teal'));
+    const d = phone.replace(/\D/g, '').replace(/^84/, '0');
+    if (d.length >= 9) window.open(`https://zalo.me/${d}`, '_blank', 'noopener');
   };
   const seg = (v: typeof ch, l: string) => <button key={v} type="button" role="tab" aria-selected={ch === v} onClick={() => setCh(v)} className={cn('rounded-md px-3 py-1 text-[13px] transition-colors', ch === v ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>{l}</button>;
+  const note = (t: ReactNode) => <p className="mt-2 flex items-start gap-1.5 text-xs text-[rgb(var(--muted))]"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /><span>{t}</span></p>;
   const bodyNode = (
     <>
       <ComposerCard title="Gửi báo giá" right={<div className="flex rounded-lg bg-[rgb(var(--raised))] p-0.5" role="tablist" aria-label="Kênh gửi">{seg('EMAIL', 'Email')}{seg('ZALO', 'Zalo')}{seg('FILE', 'Tải về')}</div>}>
         {ch === 'EMAIL' && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Đến"><input className={inputCls} type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="email người nhận" /></Field>
-            <Field label="CC"><input className={inputCls} type="email" value={cc} onChange={(e) => setCc(e.target.value)} /></Field>
-            <Field label="Tiêu đề" className="sm:col-span-2"><input className={inputCls} value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Đến"><input className={inputCls} type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="email người nhận" /></Field>
+              <Field label="CC"><input className={inputCls} type="email" value={cc} onChange={(e) => setCc(e.target.value)} /></Field>
+              <Field label="Tiêu đề" className="sm:col-span-2"><input className={inputCls} value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>
+            </div>
+            {srv.email ? note('Gửi từ máy chủ email của doanh nghiệp, tự đính kèm file PDF báo giá.')
+              : note(<>Máy chủ email chưa cấu hình nên sẽ mở ứng dụng email trên máy (đính kèm file thủ công). Quản trị viên khai báo SMTP_HOST, SMTP_USER, SMTP_PASS, SMTP_FROM trên máy chủ{canDo('settings.edit') && <> · <button type="button" className="font-medium text-[rgb(var(--fg))] hover:underline" onClick={() => { onClose(); go('settings', 'email'); }}>Cài đặt › Email</button></>}</>)}
+          </>
         )}
         {ch === 'ZALO' && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Số điện thoại Zalo"><input className={inputCls} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
-            <p className="self-end pb-2 text-xs text-[rgb(var(--muted))]">Bấm "Mở Zalo": thư được sao chép, mở cuộc trò chuyện với số này để dán và gửi kèm file.</p>
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Số điện thoại khách"><input className={inputCls} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
+              <div className="self-end pb-2 text-[13px]">{conv ? <span className="flex items-center gap-2"><Avatar name={conv.displayName} size={24} />{conv.displayName}<span className="text-xs text-[rgb(var(--muted))]">đã quan tâm OA</span></span> : <span className="text-xs text-[rgb(var(--muted))]">Chưa tìm thấy hội thoại Zalo OA với số này</span>}</div>
+            </div>
+            {oaReady ? note('Gửi qua Zalo OA của doanh nghiệp: thư và file PDF báo giá, lưu vào hội thoại Zalo trong CRM.')
+              : note(!srv.zalo.oa ? 'Zalo OA chưa kết nối trên máy chủ: sẽ sao chép thư và mở Zalo cá nhân.' : 'Khách chưa nhắn hoặc quan tâm OA nên OA không gửi tin chủ động được: sẽ sao chép thư và mở Zalo cá nhân.')}
+          </>
         )}
         {ch === 'FILE' && (
           <div className="flex flex-wrap gap-2">
@@ -698,9 +764,9 @@ export function useQuoteSender({ form, code, version, total, sellerName, onPdf, 
         )}
       </ComposerCard>
       {ch !== 'FILE' && (
-        <ComposerCard title={<span className="flex items-center gap-2">{ai.available && <Sparkles className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />}{ai.available ? 'Thư do AI soạn' : 'Nội dung thư'}</span>} right={ai.available ? <>
+        <ComposerCard title={<span className="flex items-center gap-2">{ai.available && <Sparkles className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />}Nội dung thư</span>} right={ai.available ? <>
           {([['Ngắn hơn', 'Viết ngắn gọn trong 4 câu.'], ['Trang trọng hơn', 'Văn phong trang trọng, phù hợp cơ quan nhà nước.'], ['Soạn lại', '']] as const).map(([l, how]) => (
-            <button key={l} type="button" className={cn(btnGhost, btnSm)} disabled={!!busy} onClick={() => void draft(l, how)}>{l === 'Soạn lại' && <RefreshCw className={cn('h-3.5 w-3.5', busy === l && 'motion-safe:animate-spin')} aria-hidden />}{busy === l ? 'Đang soạn…' : l}</button>
+            <button key={l} type="button" className={cn(btnGhost, btnSm)} disabled={!!busy} onClick={() => void draft(l, how)}>{l === 'Soạn lại' && <RefreshCw className={cn('h-3.5 w-3.5', busy === l && 'motion-safe:animate-spin')} aria-hidden />}{busy === l ? 'CRM 3A đang soạn…' : l}</button>
           ))}
         </> : undefined}>
           <textarea className={cn(inputCls, 'min-h-[220px] text-[13px] leading-6')} value={body} onChange={(e) => setBody(e.target.value)} aria-label="Nội dung thư" />
@@ -709,17 +775,15 @@ export function useQuoteSender({ form, code, version, total, sellerName, onPdf, 
       {ch !== 'FILE' && (
         <ComposerCard title="Đính kèm">
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className={cn(btnGhost, btnSm)} onClick={onPdf} title="Xuất PDF để đính kèm"><FileText className="h-3.5 w-3.5" aria-hidden />{file}.pdf</button>
-            <button type="button" className={cn(btnGhost, btnSm)} onClick={onWord}><FileText className="h-3.5 w-3.5" aria-hidden />{file}.doc</button>
-            <span className="text-xs text-[rgb(var(--muted))]">Xuất file rồi đính kèm trong ứng dụng {ch === 'ZALO' ? 'Zalo' : 'email'}: trình duyệt không tự đính kèm được</span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--line))] px-2.5 py-1 text-[13px]"><FileText className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden />{file}.pdf</span>
+            <span className="text-xs text-[rgb(var(--muted))]">{(ch === 'EMAIL' && srv.email) || (ch === 'ZALO' && oaReady) ? 'tự tạo và đính kèm khi gửi' : <>đính kèm thủ công: <button type="button" className="font-medium text-[rgb(var(--fg))] hover:underline" onClick={onPdf}>tải PDF</button></>}</span>
           </div>
         </ComposerCard>
       )}
     </>
   );
-  const label = ch === 'EMAIL' ? 'Gửi báo giá' : ch === 'ZALO' ? 'Mở Zalo' : 'Tải PDF';
-  const disabled = ch === 'EMAIL' ? !to : false;
-  return { body: bodyNode, send, label, disabled, hint: ch === 'EMAIL' ? 'Mở ứng dụng email trên máy với thư soạn sẵn' : ch === 'ZALO' ? 'Sao chép thư và mở Zalo' : undefined };
+  const label = sending ? 'CRM 3A đang gửi…' : ch === 'EMAIL' ? (srv.email ? 'Gửi báo giá' : 'Mở ứng dụng email') : ch === 'ZALO' ? (oaReady ? 'Gửi qua Zalo OA' : 'Mở Zalo') : 'Tải PDF';
+  return { body: bodyNode, send: () => void send(), label, disabled: sending || (ch === 'EMAIL' && !to), hint: undefined as string | undefined };
 }
 
 /** Chèn bảng thanh toán theo đợt ngay sau đoạn "Điều N. … thanh toán" của mẫu; mẫu không có thì thêm cuối văn bản */
@@ -801,10 +865,10 @@ ${text}` });
     <section className="rounded-xl border border-[rgb(var(--ink)/0.08)] bg-[rgb(var(--surface))] px-4 py-3.5" aria-label="Rà soát hợp đồng">
       <div className="flex flex-wrap items-center gap-2">
         <Sparkles className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><p className="text-sm font-medium">Rà soát hợp đồng</p>
-        <span className="text-xs text-[rgb(var(--muted))]">{ai.available ? `${ai.label} đọc bản xem trước và gợi ý, không tự sửa` : 'cần bật trợ lý AI ở Cài đặt › AI & trợ lý'}</span>
-        <button type="button" className={cn(btnGhost, btnSm, 'ml-auto')} disabled={!ai.available || busy} onClick={() => void run()}>{busy ? <><RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden />Đang rà soát…</> : res ? 'Rà soát lại' : 'Rà soát bằng AI'}</button>
+        <span className="text-xs text-[rgb(var(--muted))]">{ai.available ? 'CRM 3A đọc bản xem trước và gợi ý, không tự sửa' : 'cần bật phân tích ở Cài đặt › AI & trợ lý'}</span>
+        <button type="button" className={cn(btnGhost, btnSm, 'ml-auto')} disabled={!ai.available || busy} onClick={() => void run()}>{busy ? <><RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden />CRM 3A đang phân tích…</> : res ? 'Rà soát lại' : 'Rà soát'}</button>
       </div>
-      {res && (res.length ? <div className="mt-2"><CheckList items={res} /></div> : <p className="mt-2 text-xs text-[rgb(var(--muted))]">AI không trả về gợi ý nào.</p>)}
+      {res && (res.length ? <div className="mt-2"><CheckList items={res} /></div> : <p className="mt-2 text-xs text-[rgb(var(--muted))]">Không có gợi ý nào.</p>)}
     </section>
   );
 }
@@ -865,8 +929,8 @@ export function ContractVersionDiff({ group, currentId, canApprove, onDecide, on
         {diff.length ? <div className="-mt-2"><CheckList items={diff} /></div> : <p className="text-xs text-[rgb(var(--muted))]">Hai phiên bản giống nhau về dữ liệu.</p>}
       </ComposerCard>
       {diff.length > 0 && (
-        <ComposerCard title={<span className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />Tóm tắt cho người duyệt</span>} right={<button type="button" className={cn(btnGhost, btnSm)} disabled={!ai.available || busy} title={ai.available ? '' : 'Cần bật trợ lý AI'} onClick={() => void summarize()}>{busy ? 'Đang tóm tắt…' : sum ? 'Tóm tắt lại' : 'Tóm tắt bằng AI'}</button>}>
-          {sum ? <p className="whitespace-pre-line text-[13px] leading-6 text-[rgb(var(--fg2))]">{sum}</p> : <p className="text-xs text-[rgb(var(--muted))]">{ai.available ? 'AI tóm tắt thay đổi và ảnh hưởng dòng tiền cho người duyệt' : 'Bật trợ lý AI ở Cài đặt › AI & trợ lý để dùng'}</p>}
+        <ComposerCard title={<span className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />Tóm tắt cho người duyệt</span>} right={<button type="button" className={cn(btnGhost, btnSm)} disabled={!ai.available || busy} title={ai.available ? '' : 'Cần bật phân tích ở Cài đặt › AI & trợ lý'} onClick={() => void summarize()}>{busy ? 'CRM 3A đang phân tích…' : sum ? 'Tóm tắt lại' : 'Tóm tắt'}</button>}>
+          {sum ? <p className="whitespace-pre-line text-[13px] leading-6 text-[rgb(var(--fg2))]">{sum}</p> : <p className="text-xs text-[rgb(var(--muted))]">{ai.available ? 'Tóm tắt thay đổi và ảnh hưởng dòng tiền cho người duyệt' : 'Bật phân tích ở Cài đặt › AI & trợ lý để dùng'}</p>}
         </ComposerCard>
       )}
       {B.status === 'PENDING_APPROVAL' && canApprove && onDecide && (
@@ -883,10 +947,10 @@ export function ContractVersionDiff({ group, currentId, canApprove, onDecide, on
 }
 
 /** Mở đúng màn: báo giá hoặc hợp đồng */
-export function DocComposerModal({ mode = 'QUOTE', leadId, customerId, docId, quoteId, view, onClose }: { mode?: ComposerMode; leadId?: string; customerId?: string; docId?: string; quoteId?: string; view?: boolean; onClose: () => void }) {
+export function DocComposerModal({ mode = 'QUOTE', leadId, customerId, docId, quoteId, view, edit, reviseOf, onClose }: { mode?: ComposerMode; leadId?: string; customerId?: string; docId?: string; quoteId?: string; view?: boolean; edit?: boolean; reviseOf?: string; onClose: () => void }) {
   return mode === 'CONTRACT' || docId
     ? <ContractComposer leadId={leadId} quoteId={quoteId} docId={docId} view={view} onClose={onClose} />
-    : <QuoteComposer leadId={leadId} customerId={customerId} quoteId={quoteId} onClose={onClose} />;
+    : <QuoteComposer leadId={leadId} customerId={customerId} quoteId={quoteId} edit={edit} reviseOf={reviseOf} onClose={onClose} />;
 }
 
 // ---------------- Danh sách hợp đồng (bản mới nhất mỗi hợp đồng, xem lịch sử phiên bản) ----------------
@@ -1147,7 +1211,7 @@ export function TemplateManager() {
 
 /** Báo giá & Hợp đồng: hai bảng tách riêng, mỗi dòng là một bộ (phiên bản mới nhất), mở rộng để xem các phiên bản */
 export function SalesDocsPanel() {
-  const { quotes, genDocs, setGenDocs, leads, customers, openComposer, canDo, me, notify, logDecision } = useApp();
+  const { quotes, setQuotes, genDocs, setGenDocs, leads, customers, openComposer, canDo, me, notify, logDecision } = useApp();
   const canApprove = useContractApprover();
   const inR = useInRange();
   const [view, setView] = useState<'QUOTE' | 'CONTRACT'>('QUOTE');
@@ -1160,7 +1224,7 @@ export function SalesDocsPanel() {
 
   // ---- Báo giá: gom theo dự án (hoặc khách hàng nếu không gắn dự án) ----
   const groups = new Map<string, Quote[]>();
-  for (const x of quotes) { const k = x.leadId || `c:${x.customerId ?? x.id}`; groups.set(k, [...(groups.get(k) ?? []), x]); }
+  for (const x of quotes) { const k = x.leadId || (x.customerId ? `c:${x.customerId}` : `r:${x.rootId ?? x.id}`); groups.set(k, [...(groups.get(k) ?? []), x]); }
   const quoteRows = Array.from(groups.entries()).map(([key, xs]) => {
     const versions = [...xs].sort((a, b) => b.version - a.version);
     return { key, latest: versions[0], versions, lead: leads.find((l) => l.id === versions[0].leadId) };
@@ -1230,9 +1294,14 @@ export function SalesDocsPanel() {
                     <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{compact(Math.round(r.latest.amount * (1 + (r.latest.vatPct ?? 0) / 100)))}</td>
                     <td className={tdCls}><Chip tone={QUOTE_STATUS[r.latest.status].tone}>{QUOTE_STATUS[r.latest.status].label}</Chip></td>
                     <td className={cn(tdLast, 'text-right')}><div className="flex items-center justify-end gap-1">
-                      <button className={cn(btnGhost, 'h-8 w-8 border-0 p-0')} onClick={() => setMailFor(r.latest)} title="Soạn email gửi báo giá bằng AI" aria-label={`Soạn email ${r.latest.code}`}><Mail className="h-4 w-4" aria-hidden /></button>
+                      <button className={cn(btnGhost, 'h-8 w-8 border-0 p-0')} onClick={() => setMailFor(r.latest)} title="Soạn email gửi báo giá" aria-label={`Soạn email ${r.latest.code}`}><Mail className="h-4 w-4" aria-hidden /></button>
                       <button className={cn(btnGhost, 'h-8 w-8 border-0 p-0')} onClick={() => openComposer({ quoteId: r.latest.id, mode: 'QUOTE' })} title="Xem" aria-label={`Xem ${r.latest.code}`}><Eye className="h-4 w-4" aria-hidden /></button>
                       <RowMenu label={`Thao tác ${r.latest.code}`} items={[
+                        ...(r.latest.draft && r.latest.status !== 'ACCEPTED' ? [
+                          { label: 'Sửa báo giá nháp', icon: Pencil, disabled: !(canDo('project.update') || canDo('customer.edit')), onClick: () => openComposer({ quoteId: r.latest.id, edit: true, mode: 'QUOTE' }) },
+                          { label: 'Xóa báo giá nháp', icon: Trash2, disabled: !(canDo('project.update') || canDo('customer.edit')), onClick: () => { const root = r.latest.rootId ?? r.latest.id; const prev = quotes.filter((x) => (x.rootId ?? x.id) === root); setQuotes((p) => p.filter((x) => (x.rootId ?? x.id) !== root)); notify(`Đã xóa báo giá nháp ${r.latest.code}`, 'orange', { label: 'Hoàn tác', run: () => setQuotes((p) => [...prev, ...p]) }); } },
+                        ] : []),
+                        ...(r.latest.status !== 'ACCEPTED' ? [{ label: 'Báo giá điều chỉnh', icon: Copy, disabled: !(canDo('project.update') || canDo('customer.edit')), onClick: () => openComposer(r.lead ? { leadId: r.lead.id, mode: 'QUOTE' } : { reviseOf: r.latest.id, mode: 'QUOTE' }) }] : []),
                         { label: 'Tạo hợp đồng từ báo giá', icon: FileText, disabled: !(canDo('project.update') || canDo('customer.edit')), onClick: () => openComposer({ quoteId: r.latest.id, mode: 'CONTRACT' }) },
                         { label: r.versions.length > 1 ? (open === r.key ? 'Ẩn phiên bản cũ' : `Xem ${r.versions.length - 1} phiên bản cũ`) : 'Chỉ có 1 phiên bản', icon: History, disabled: r.versions.length < 2, onClick: () => setOpen(open === r.key ? null : r.key) },
                       ]} />

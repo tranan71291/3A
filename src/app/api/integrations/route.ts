@@ -17,6 +17,7 @@ export async function GET(req: Request) {
     images: !!envFor('OPENAI_API_KEY', tenant),
     zalo: zaloStatus(tenant),
     cloud: !!(sb.url && sb.key),
+    email: !!(envFor('SMTP_HOST', tenant) && envFor('SMTP_USER', tenant) && envFor('SMTP_PASS', tenant)),
     social: { facebook: !!envFor('FACEBOOK_PAGE_ACCESS_TOKEN', tenant), zalo: zaloStatus(tenant).oa, youtube: true },
   });
 }

@@ -1,12 +1,12 @@
 'use client';
 
 import { type KeyboardEvent as RKeyboardEvent, useEffect, useRef, useState } from 'react';
-import { ClipboardPaste, Maximize2, Minimize2, PackagePlus, Plus, RefreshCw, ScanText, Sparkles, Trash2 } from 'lucide-react';
+import { ClipboardPaste, Maximize2, Minimize2, PackagePlus, Plus, RefreshCw, ScanText, Sparkles, Trash2, Truck } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { Pagination, usePaged } from '../../components/controls';
 import { EmptyState, FilePicker, Table } from '../../components/ui';
-import { AI_NAME, aiErrText, btnGhost, btnSm, catalogSkus, digits, fileB64, GM_RULE, HEAD_RULES, inputBase, isUnitWord, liveDrafts, netOf, nextCode, normKey, rowCls, shrinkImage, tdCls, tdLast, tierPrice, uid, useApp } from '../../lib/core';
-import type { DocLine, DraftProduct, PasteRow, PriceTier, Quote, SkuItem, SmartCatalog, SmartSuggest } from '../../lib/types';
+import { AI_NAME, aiErrText, btnGhost, btnSm, catalogSkus, digits, fileB64, fold, HEAD_RULES, inputBase, isUnitWord, lineNet, liveDrafts, netOf, nextCode, normKey, rowCls, shrinkImage, tdCls, tdLast, tierPrice, uid, useApp } from '../../lib/core';
+import type { DocLine, DraftProduct, PasteRow, PastSale, PriceTier, Quote, SkuItem, SmartCatalog, SmartSuggest } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { apiPost, useAi } from '../ai/ai-core';
 
@@ -90,15 +90,22 @@ export function mapPastedRows(cells: string[][]): PasteRow[] {
   }).filter((r) => r.name.length >= 2 && !/^(tong|cong|vat|thue|chiet khau|tong cong|thanh tien)\b/.test(normKey(r.name)));
 }
 
-/** Giá bán gần nhất của một mã hàng (báo giá mới nhất có mã đó) */
-export function lastSkuSale(sku: string, quotes: Quote[]) {
-  let best: { price: number; discountPct: number; at: number; code: string } | null = null;
+export function pastSales(match: { sku?: string; name: string }, quotes: Quote[], cust?: { id?: string; name: string }) {
+  const key = normKey(match.name);
+  const who = cust?.name.trim() ? fold(cust.name.trim()) : '';
+  let mine: PastSale | null = null;
+  let any: PastSale | null = null;
   for (const q of quotes) {
-    const l = q.lines.find((x) => x.sku === sku);
+    const l = q.lines.find((x) => (match.sku ? x.sku === match.sku : !x.sku && normKey(x.name) === key));
+    if (!l) continue;
     const at = q.createdAt ?? Date.parse(q.date);
-    if (l && (!best || at > best.at)) best = { price: l.listPrice, discountPct: l.discountPct, at, code: q.code };
+    const name = q.quoteForm?.party.name ?? '';
+    const rec: PastSale = { listPrice: l.listPrice, discountPct: l.discountPct, net: lineNet(l), at, code: q.code, customer: name };
+    const isMine = (!!cust?.id && q.customerId === cust.id) || (!!who && fold(name.trim()) === who);
+    if (isMine && (!mine || at > mine.at)) mine = rec;
+    if (!any || at > any.at) any = rec;
   }
-  return best;
+  return { mine, any };
 }
 
 /** Khớp chính xác (bỏ dấu, bỏ ký tự đặc biệt) với mã / tên trong danh mục hoặc danh mục nháp */
@@ -121,16 +128,21 @@ export function smartSuggest(q: string, c: SmartCatalog, limit = 8): SmartSugges
     return hit / toks.length >= 0.6 ? 50 * (hit / toks.length) : 0;
   };
   const out: (SmartSuggest & { s: number })[] = [];
+  const dateVN = (t: number) => new Date(t).toLocaleDateString('vi-VN');
   for (const k of catalogSkus(c)) {
     const s = score(normKey(`${k.sku} ${k.name}`));
     if (!s) continue;
-    const last = lastSkuSale(k.sku, c.quotes);
-    out.push({ s: s + 5, kind: 'SKU', key: `s:${k.sku}`, name: k.name, unit: k.unit, sku: k.sku, price: tierPrice(k, c.tier), sub: `${k.sku} · Danh mục${last ? ` · bán gần nhất ${last.price.toLocaleString('vi-VN')}đ (${new Date(last.at).toLocaleDateString('vi-VN')})` : ''}` });
+    const { mine, any } = pastSales({ sku: k.sku, name: k.name }, c.quotes, c.cust);
+    const hit = mine ?? any;
+    out.push({ s: s + 5 + (mine ? 20 : 0), kind: 'SKU', key: `s:${k.sku}`, name: k.name, unit: k.unit, sku: k.sku, price: hit ? hit.listPrice : tierPrice(k, c.tier), discountPct: hit ? hit.discountPct : undefined,
+      sub: `${k.sku} · ${mine ? `giá đã bán cho khách này ${mine.net.toLocaleString('vi-VN')}đ (${dateVN(mine.at)}, ${mine.code})` : any ? `giá bán gần nhất ${any.net.toLocaleString('vi-VN')}đ cho ${any.customer || 'khách khác'} (${dateVN(any.at)})` : 'theo bảng giá'}` });
   }
   for (const d of liveDrafts(c)) {
     const s = score(d.key);
     if (!s) continue;
-    out.push({ s: s + Math.min(10, d.uses), kind: 'DRAFT', key: `d:${d.id}`, name: d.name, unit: d.unit, price: d.lastPrice, discountPct: d.lastDiscountPct, sub: `Nháp · bán gần nhất ${new Date(d.lastAt).toLocaleDateString('vi-VN')}${d.lastCustomer ? ` cho ${d.lastCustomer}` : ''}${d.lastQuote ? ` · ${d.lastQuote}` : ''} · ${d.uses} lần` });
+    const { mine } = pastSales({ name: d.name }, c.quotes, c.cust);
+    out.push({ s: s + Math.min(10, d.uses) + (mine ? 20 : 0), kind: 'DRAFT', key: `d:${d.id}`, name: d.name, unit: d.unit, price: mine ? mine.listPrice : d.lastPrice, discountPct: mine ? mine.discountPct : d.lastDiscountPct,
+      sub: mine ? `Nháp · giá đã bán cho khách này ${mine.net.toLocaleString('vi-VN')}đ (${dateVN(mine.at)})` : `Nháp · bán gần nhất ${d.lastPrice.toLocaleString('vi-VN')}đ, ${dateVN(d.lastAt)}${d.lastCustomer ? ` cho ${d.lastCustomer}` : ''}` });
   }
   return out.sort((a, b) => b.s - a.s).slice(0, limit).map(({ s: _s, ...x }) => x);
 }
@@ -164,7 +176,7 @@ export function learnDrafts(all: DraftProduct[], lines: DocLine[], skus: SkuItem
 }
 
 /** Bảng tính dòng hàng của báo giá */
-export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, canSeeCost }: { items: DocLine[]; onChange: (v: DocLine[]) => void; locked: boolean; tier: PriceTier; wide: boolean; onWide: (v: boolean) => void; canSeeCost: boolean }) {
+export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, cust, vatLine, vatPct }: { items: DocLine[]; onChange: (v: DocLine[]) => void; locked: boolean; tier: PriceTier; wide: boolean; onWide: (v: boolean) => void; canSeeCost?: boolean; cust?: { id?: string; name: string }; vatLine?: boolean; vatPct?: number }) {
   const { skus, quotes, draftProducts, notify, org } = useApp();
   const ai = useAi('extract');
   const ref = useRef<HTMLDivElement>(null);
@@ -175,7 +187,9 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
   const [ed, setEd] = useState<{ r: number; c: number; v: string } | null>(null);
   const numText = (r: number, c: number, n: number, empty: boolean) => (ed && ed.r === r && ed.c === c ? ed.v : empty ? '' : String(n).replace('.', ','));
   const typeNum = (r: number, c: number, v: string, apply: (n: number) => void) => { setEd({ r, c, v }); const n = parseVnNum(v); if (n !== null) apply(n); else if (!v.trim()) apply(0); };
-  const cat: SmartCatalog = { skus, drafts: draftProducts, quotes, tier };
+  const cat: SmartCatalog = { skus, drafts: draftProducts, quotes, tier, cust };
+  /** Gợi ý tiến độ theo tồn kho cho cột Ghi chú */
+  const etaOf = (l: DocLine) => { const k = skus.find((x) => x.sku === l.sku); if (!k || !l.qty) return ''; if (k.stock >= l.qty) return 'Có sẵn'; return k.stock > 0 ? `Có sẵn ${k.stock.toLocaleString('vi-VN')}, còn lại${k.leadTimeDays ? ` ~${k.leadTimeDays} ngày` : ' đặt hàng'}` : `Đặt hàng${k.leadTimeDays ? ` ~${k.leadTimeDays} ngày` : ''}`; };
   const blank: DocLine = { sku: '', name: '', unit: '', qty: 0, price: 0, listPrice: 0, discountPct: 0 };
   const rows = locked ? items : [...items, blank];
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(null), 2600); return () => clearTimeout(t); }, [flash]);
@@ -191,7 +205,7 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
   };
   const pick = (i: number, s: SmartSuggest) => {
     const cur = i < items.length ? items[i] : blank;
-    const disc = s.kind === 'DRAFT' ? s.discountPct ?? cur.discountPct ?? 0 : cur.discountPct ?? 0;
+    const disc = s.discountPct ?? cur.discountPct ?? 0;
     const n: DocLine = { ...cur, sku: s.sku ?? '', name: s.name, unit: s.unit || cur.unit || 'Cái', qty: cur.qty || 1, listPrice: s.price, discountPct: disc, price: netOf(s.price, disc) };
     onChange(i < items.length ? items.map((x, j) => (j === i ? n : x)) : [...items, n]);
     setAc(null);
@@ -244,7 +258,7 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
   const extract = async (files: File[]) => {
     const f = files[0];
     if (!f) return;
-    if (!ai.available) return notify('Chưa bật AI bóc tách: khai báo ANTHROPIC_API_KEY (ảnh và PDF) hoặc OPENAI_API_KEY (ảnh) trên máy chủ, bật ở Cài đặt › AI, Zalo OA & ZNS', 'orange');
+    if (!ai.available) return notify('Chưa bật phân tích tài liệu: quản trị viên bật ở Cài đặt › AI & trợ lý (cần khóa ANTHROPIC_API_KEY hoặc OPENAI_API_KEY trên máy chủ)', 'orange');
     let mediaType = f.type; let data = '';
     try {
       if (f.type === 'application/pdf') {
@@ -254,7 +268,7 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
       } else if (f.type.startsWith('image/')) { const url = await shrinkImage(f, 2000); mediaType = 'image/jpeg'; data = url.split(',')[1] ?? ''; }
       else return notify('Chọn ảnh (JPG, PNG) hoặc file PDF', 'red');
     } catch { return notify('Không đọc được file', 'red'); }
-    setBusy(`${ai.label} đang đọc ${f.name}…`);
+    setBusy(`CRM 3A đang phân tích ${f.name}…`);
     const r = await apiPost<{ items: { name: string; unit?: string; qty?: number; price?: number }[]; provider: 'ANTHROPIC' | 'OPENAI'; model: string }>('/api/ai/extract', { tenant: org.id, provider: ai.provider, file: { mediaType, data } });
     setBusy('');
     if (!r.ok) return notify(`Chưa bóc tách được: ${r.error === 'pdf_needs_claude' ? 'đọc PDF cần Claude' : r.error === 'no_items' ? 'không thấy bảng vật tư trong file' : aiErrText(r.error)}`, 'red');
@@ -280,19 +294,20 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
       {!locked && (
         <div className="flex flex-wrap items-center gap-2">
           <FilePicker accept="image/*,application/pdf" onFiles={(fs) => void extract(fs)} disabled={!!busy} className={cn(btnGhost, btnSm)}>
-            {busy ? <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden /> : <ScanText className="h-3.5 w-3.5" aria-hidden />}{busy ? 'Đang đọc…' : 'Nhập từ ảnh / PDF'}
+            {busy ? <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden /> : <ScanText className="h-3.5 w-3.5" aria-hidden />}{busy ? 'CRM 3A đang phân tích…' : 'Nhập từ ảnh / PDF'}
           </FilePicker>
           {typeof navigator !== 'undefined' && !!navigator.clipboard?.readText && <button className={cn(btnGhost, btnSm)} onClick={() => void pasteButton()}><ClipboardPaste className="h-3.5 w-3.5" aria-hidden />Dán từ Excel</button>}
           <button className={cn(btnGhost, btnSm, 'hidden lg:inline-flex')} onClick={() => onWide(!wide)} aria-pressed={wide}>{wide ? <Minimize2 className="h-3.5 w-3.5" aria-hidden /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden />}{wide ? 'Thu gọn bảng' : 'Mở rộng bảng'}</button>
+          {items.some((l) => !l.note?.trim() && etaOf(l)) && <button className={cn(btnGhost, btnSm)} onClick={() => { onChange(items.map((l) => (!l.note?.trim() && etaOf(l) ? { ...l, note: etaOf(l) } : l))); notify('Đã điền tiến độ theo tồn kho vào cột Ghi chú', 'teal'); }} title="Điền cột Ghi chú theo tồn kho và thời gian về hàng"><Truck className="h-3.5 w-3.5" aria-hidden />Điền tiến độ hàng</button>}
           {items.length > 0 && <button className={cn(btnGhost, btnSm, 'ml-auto hover:text-[rgb(var(--danger-fg))]')} onClick={() => { const prev = items; onChange([]); notify('Đã xóa hết dòng hàng', 'orange', { label: 'Hoàn tác', run: () => onChange(prev) }); }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Xóa hết</button>}
         </div>
       )}
       {busy && <p className="flex items-center gap-2 rounded-md border border-[rgb(var(--secondary)/0.4)] bg-[rgb(var(--secondary)/0.08)] px-3 py-2 text-xs text-[rgb(var(--secondary-fg))]" role="status"><Sparkles className="h-3.5 w-3.5" aria-hidden />{busy} Các dòng sẽ tự thêm vào cuối bảng.</p>}
       <div ref={ref} onPaste={onPaste} className="-mx-1 overflow-x-auto px-1" aria-label="Bảng dòng hàng báo giá">
-        <table className="w-full min-w-[640px] table-fixed text-xs">
-          <colgroup><col className="w-7" /><col /><col className="w-[60px]" /><col className="w-[60px]" /><col className={wide ? 'w-[110px]' : 'w-[92px]'} /><col className="w-[48px]" /><col className={wide ? 'w-[120px]' : 'w-[96px]'} /><col className="w-[64px]" />{canSeeCost && <col className="w-[44px]" />}<col className="w-7" /></colgroup>
+        <table className="w-full min-w-[800px] table-fixed text-xs">
+          <colgroup><col className="w-7" /><col /><col className="w-[60px]" /><col className="w-[60px]" /><col className={wide ? 'w-[110px]' : 'w-[92px]'} /><col className="w-[48px]" /><col className={wide ? 'w-[120px]' : 'w-[96px]'} />{vatLine && <col className="w-[60px]" />}<col className={wide ? 'w-[180px]' : 'w-[130px]'} /><col className="w-7" /></colgroup>
           <thead className="border-b border-[rgb(var(--line))] text-[11.5px] text-[rgb(var(--muted))]">
-            <tr><th className="py-2 text-center font-normal">#</th><th className="px-2 text-left font-medium">Tên hàng / quy cách</th><th className="px-1 text-left font-medium">ĐVT</th><th className="px-1 text-right font-medium">SL</th><th className="px-1 text-right font-medium">Đơn giá</th><th className="px-1 text-right font-medium">CK %</th><th className="px-2 text-right font-medium">Thành tiền</th><th className="px-1 text-right font-medium">Kho</th>{canSeeCost && <th className="px-1 text-right font-medium">GM</th>}<th /></tr>
+            <tr><th className="py-2 text-center font-normal">#</th><th className="px-2 text-left font-medium">Tên hàng / quy cách</th><th className="px-1 text-left font-medium">ĐVT</th><th className="px-1 text-right font-medium">SL</th><th className="px-1 text-right font-medium">Đơn giá</th><th className="px-1 text-right font-medium">CK %</th><th className="px-2 text-right font-medium">Thành tiền</th>{vatLine && <th className="px-1 text-center font-medium">VAT</th>}<th className="px-2 text-left font-medium">Ghi chú</th><th /></tr>
           </thead>
           <tbody>
             {rows.map((l, r) => {
@@ -300,7 +315,6 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
               const k = l.sku ? skus.find((s) => s.sku === l.sku) : undefined;
               const dr = !k && l.name.trim() ? exactMatch(l.name, cat).draft : undefined;
               const sugg = ac?.r === r ? smartSuggest(l.name, cat) : [];
-              const lineGm = k?.costPrice && l.price ? ((l.price - k.costPrice) / l.price) * 100 : null;
               const hot = flash && r >= flash.from && r < flash.from + flash.n;
               return (
                 <tr key={r} className={cn('border-t border-[rgb(var(--line))] align-top', hot && 'bg-[rgb(var(--success)/0.1)]', ghost && 'bg-[rgb(var(--raised)/0.4)]')}>
@@ -337,8 +351,8 @@ export function SmartQuoteGrid({ items, onChange, locked, tier, wide, onWide, ca
                   <td className="px-0.5 py-1"><input data-r={r} data-c={3} disabled={locked} className={cn(num, !ghost && !(l.listPrice ?? l.price) && 'border-[rgb(var(--accent)/0.6)] bg-[rgb(var(--accent)/0.06)]')} inputMode="numeric" placeholder={ghost ? '' : 'Nhập giá'} value={(l.listPrice ?? l.price) ? (l.listPrice ?? l.price).toLocaleString('vi-VN') : ''} onChange={(e) => upd(r, { listPrice: digits(e.target.value) })} onKeyDown={(e) => onKey(e, r, 3, [])} aria-label={`Đơn giá dòng ${r + 1}`} /></td>
                   <td className="px-0.5 py-1"><input data-r={r} data-c={4} disabled={locked} className={num} inputMode="decimal" value={numText(r, 4, l.discountPct ?? 0, ghost)} onChange={(e) => typeNum(r, 4, e.target.value, (n) => upd(r, { discountPct: Math.min(100, Math.max(0, n)) }))} onBlur={() => setEd(null)} onKeyDown={(e) => onKey(e, r, 4, [])} aria-label={`Chiết khấu dòng ${r + 1}`} /></td>
                   <td className="px-2 py-2 text-right tabular-nums">{!ghost && <span className="font-medium text-[rgb(var(--fg))]">{Math.round(l.qty * l.price).toLocaleString('vi-VN')}</span>}</td>
-                  <td className={cn('px-1 py-2 text-right text-[11px] tabular-nums', k && l.qty > k.stock ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')} title={k && l.qty > k.stock ? `Thiếu ${(l.qty - k.stock).toLocaleString('vi-VN')} ${l.unit}` : undefined}>{!ghost && (k ? `tồn ${k.stock.toLocaleString('vi-VN')}` : '—')}</td>
-                  {canSeeCost && <td className={cn('px-1 py-2 text-right font-mono text-[11px] tabular-nums', lineGm !== null && lineGm < GM_RULE.bod ? 'text-[rgb(var(--danger-fg))]' : lineGm !== null && lineGm < GM_RULE.head ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--fg2))]')}>{!ghost && (lineGm !== null ? `${lineGm.toFixed(0)}%` : '—')}</td>}
+                  {vatLine && <td className="px-0.5 py-1">{!ghost && <select className={cn(cell, 'px-1 text-center')} disabled={locked} value={l.vat ?? vatPct ?? 10} onChange={(e) => upd(r, { vat: Number(e.target.value) })} aria-label={`Thuế suất dòng ${r + 1}`}>{[0, 5, 8, 10].map((v) => <option key={v} value={v}>{v}%</option>)}</select>}</td>}
+                  <td className="px-0.5 py-1">{!ghost && <input disabled={locked} className={cn(cell, 'text-[12px]')} value={l.note ?? ''} placeholder={etaOf(l)} title={!l.note && etaOf(l) ? `Gợi ý theo tồn kho: ${etaOf(l)}` : undefined} onChange={(e) => upd(r, { note: e.target.value })} aria-label={`Ghi chú dòng ${r + 1}`} />}</td>
                   <td className="py-1.5 pr-1 text-center">{!ghost && !locked && <button tabIndex={-1} className="rounded p-1 text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => onChange(items.filter((_, j) => j !== r))} aria-label={`Xóa dòng ${r + 1}`}><Trash2 className="h-3.5 w-3.5" /></button>}</td>
                 </tr>
               );

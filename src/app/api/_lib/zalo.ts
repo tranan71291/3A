@@ -66,6 +66,19 @@ export async function sendText(tenant: string | undefined, userId: string, text:
   });
 }
 
+/** Tải file (PDF / DOC / DOCX, tối đa 5 MB) lên Zalo OA rồi gửi cho người quan tâm OA */
+export async function sendFile(tenant: string | undefined, userId: string, filename: string, data: Uint8Array, f: typeof fetch = fetch) {
+  const fd = new FormData();
+  fd.append('file', new Blob([new Uint8Array(data)], { type: filename.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream' }), filename);
+  const up = await zcall(tenant, f, 'https://openapi.zalo.me/v2.0/oa/upload/file', { method: 'POST', body: fd });
+  const token = (up.data as { token?: string } | undefined)?.token;
+  if (up.error !== 0 || !token) return { error: up.error ?? -4, message: up.message ?? 'upload_failed' };
+  return zcall(tenant, f, 'https://openapi.zalo.me/v3.0/oa/message/cs', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipient: { user_id: userId }, message: { attachment: { type: 'file', payload: { token } } } }),
+  });
+}
+
 /** Gửi ảnh qua đường dẫn công khai (https) */
 export async function sendImage(tenant: string | undefined, userId: string, url: string, text: string, f: typeof fetch = fetch) {
   return zcall(tenant, f, 'https://openapi.zalo.me/v3.0/oa/message/cs', {

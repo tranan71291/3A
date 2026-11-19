@@ -150,7 +150,7 @@ export default function DashboardApp() {
   const [cloudBusy, setCloudBusy] = useState(false);
   const orgRef = useRef<string>(ORGS[0].id);
   const [openJobId, setOpenJobId] = useState<string | null>(null);
-  const [composer, setComposer] = useState<{ leadId?: string; customerId?: string; docId?: string; quoteId?: string; mode?: 'QUOTE' | 'CONTRACT'; view?: boolean } | null>(null);
+  const [composer, setComposer] = useState<{ leadId?: string; customerId?: string; docId?: string; quoteId?: string; mode?: 'QUOTE' | 'CONTRACT'; view?: boolean; edit?: boolean; reviseOf?: string } | null>(null);
   const [winFor, setWinFor] = useState<string | null>(null);
   const [range, setRange] = useState<DateRange>(() => periodRange('YEAR', INITIAL_BUDGET.fiscalYear));
   const [leadForm, setLeadForm] = useState<{ asProject?: boolean; id?: string } | null>(null);
@@ -1929,7 +1929,7 @@ export default function DashboardApp() {
         {mustChange && <ChangePasswordModal forced onClose={() => setMustChange(false)} />}
         {openJobId && <JobDrawer key={openJobId} id={openJobId} onClose={() => setOpenJobId(null)} />}
         {winFor && <WinModal leadId={winFor} onClose={() => setWinFor(null)} />}
-        {composer && <DocComposerModal key={`${composer.docId ?? ''}${composer.leadId ?? ''}${composer.customerId ?? ''}${composer.quoteId ?? ''}${composer.mode ?? ''}${composer.view ? 'v' : ''}`} mode={composer.mode} leadId={composer.leadId} customerId={composer.customerId} docId={composer.docId} quoteId={composer.quoteId} view={composer.view} onClose={() => setComposer(null)} />}
+        {composer && <DocComposerModal key={`${composer.docId ?? ''}${composer.leadId ?? ''}${composer.customerId ?? ''}${composer.quoteId ?? ''}${composer.mode ?? ''}${composer.view ? 'v' : ''}${composer.edit ? 'e' : ''}${composer.reviseOf ?? ''}`} mode={composer.mode} leadId={composer.leadId} customerId={composer.customerId} docId={composer.docId} quoteId={composer.quoteId} view={composer.view} edit={composer.edit} reviseOf={composer.reviseOf} onClose={() => setComposer(null)} />}
 
         {toast && (
           <div key={toast.id} role={toast.tone === 'red' ? 'alert' : 'status'} className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-[80] flex w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 items-start gap-3 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--raised))] px-4 py-3 text-sm shadow-[var(--shadow-lg)] motion-safe:animate-[toastIn_.2s_ease-out] lg:bottom-6">
