@@ -1,3 +1,24 @@
+# 3A CRM v45 (sửa theo góp ý test báo giá — dựa trên v44)
+
+> Cần cài thêm thư viện: `jspdf`, `html2canvas` (tạo PDF để chia sẻ / đính kèm), `nodemailer` (gửi email từ máy chủ). Script `cai-dat-v45.ps1` tự cài.
+> Gửi email thật cần biến môi trường SMTP_* trên Vercel (xem env.local.example). Không đổi bảng / SQL.
+
+## Cập nhật v45 (19/11)
+1. **Báo giá nháp**: Sửa (lưu đè, giữ số), Xóa (có Hoàn tác), Báo giá điều chỉnh (phiên bản mới) — trong màn báo giá và menu "⋮" ở Tài liệu › Báo giá. Báo giá không gắn dự án cũng tạo được báo giá điều chỉnh; các phiên bản gom chung một dòng.
+2. **Chia sẻ**: tạo file PDF rồi mở bảng chia sẻ của máy (Zalo, Messenger, Email…) trên điện thoại / Windows / macOS; trình duyệt không hỗ trợ thì tải PDF về.
+3. **Tên pháp nhân**: không còn tự gập thẻ khi vừa gõ 1 ký tự.
+4. **Thẻ Khách hàng** có nút Thu gọn / Mở.
+5. **Bảng hàng**: bỏ cột Kho, GM; thêm cột **Ghi chú** (in lên báo giá), gợi ý tiến độ theo tồn kho (Có sẵn / Có sẵn x, còn lại ~N ngày / Đặt hàng ~N ngày), nút "Điền tiến độ hàng".
+6. **Mặc định**: công nợ 0 ngày; bảo hành để trống = "theo tiêu chuẩn nhà sản xuất" (in đúng câu này trên báo giá / hợp đồng).
+7. **VAT nhiều thuế suất**: chọn VAT "Theo từng dòng" → mỗi dòng chọn 0/5/8/10%; bảng in thêm cột VAT và tách dòng "Thuế GTGT 8% (trên …)", "Thuế GTGT 10% (trên …)"; tổng tiền, danh sách báo giá tính đúng theo từng thuế suất.
+8. **Gửi khách**: Email gửi từ máy chủ email của doanh nghiệp kèm PDF (khi có SMTP_*), chưa cấu hình thì mở ứng dụng email và chỉ đường tới Cài đặt › Email. Zalo: nếu khách đã nhắn / quan tâm OA (tìm theo số điện thoại trong hội thoại Zalo của CRM) thì gửi thư + file PDF qua **Zalo OA**, lưu vào hội thoại; chưa có thì sao chép thư và mở Zalo cá nhân.
+9. **Sửa trực tiếp** có thanh soạn thảo: hoàn tác / làm lại, đậm / nghiêng / gạch chân, tiêu đề, danh sách, căn trái / giữa / phải, chèn ảnh (đổi cỡ 25–100%, căn giữa, xóa, kéo thả để di chuyển), chèn bảng, thêm / xóa dòng, cột, xóa bảng.
+10. **Gợi ý giá theo lịch sử**: gõ tên hàng → ưu tiên giá đã bán gần nhất cho chính khách này, sau đó giá bán gần nhất cho khách khác, cuối cùng là bảng giá (ghi rõ nguồn giá trong gợi ý).
+11. **Từ ngữ**: các thao tác đọc tài liệu / soạn / rà soát ghi "CRM 3A đang phân tích…", "CRM 3A đang soạn…" thay cho tên AI.
+
+**Chưa kiểm chứng với tài khoản thật**: gửi email qua SMTP và gửi file qua Zalo OA (upload file v2.0 + tin nhắn tư vấn v3.0) — mã đã viết theo tài liệu Zalo / nodemailer, cần thử trên bản Vercel với khóa thật. Zalo OA chỉ gửi được cho người đã nhắn / quan tâm OA trong thời hạn Zalo cho phép.
+**Giới hạn trình soạn thảo**: chưa kéo giãn độ rộng cột bảng bằng chuột (đổi cỡ ảnh bằng nút %).
+
 # 3A CRM v44 (Cài đặt, Báo giá, Hợp đồng bám 18 ảnh đề xuất — dựa trên v43)
 
 > Không đổi bảng, API hay SQL. Các trường mới (báo giá nháp, nội dung sửa trực tiếp, phạt chậm thanh toán, giấy ủy quyền, chi nhánh) là trường tùy chọn trong dữ liệu đã có; dữ liệu cũ mở bình thường.

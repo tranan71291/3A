@@ -113,7 +113,7 @@ export type DocTemplate = {
 };
 
 /** price = đơn giá chốt; listPrice / discountPct để sửa chiết khấu trên màn soạn */
-export type DocLine = { sku: string; name: string; unit: string; qty: number; price: number; listPrice?: number; discountPct?: number; /** v35: dòng do AI bóc tách từ ảnh / PDF */ ai?: boolean };
+export type DocLine = { sku: string; name: string; unit: string; qty: number; price: number; listPrice?: number; discountPct?: number; /** v35: dòng do AI bóc tách từ ảnh / PDF */ ai?: boolean; /** v45: ghi chú dòng (tiến độ hàng…) */ note?: string; /** v45: thuế suất riêng của dòng (%), trống = theo VAT chung */ vat?: number };
 
 export type GuaranteeType = 'NONE' | 'PERFORMANCE' | 'ADVANCE' | 'WARRANTY';
 
@@ -142,6 +142,8 @@ export type ComposerForm = {
   customHtml?: string;
   /** v44: phạt chậm thanh toán, %/ngày trên số tiền chậm trả (hợp đồng) */
   latePenaltyPct?: number;
+  /** v45: 'LINE' = mỗi dòng một thuế suất (cột VAT trên bảng hàng) */
+  vatMode?: 'ALL' | 'LINE';
 };
 
 export type PayMilestone = { label: string; pct: number; cond: string };
@@ -321,7 +323,7 @@ export type Customer = {
 };
 
 /** Dòng báo giá: giá niêm yết theo bảng giá, chiết khấu dòng, đơn giá chốt = niêm yết x (1 - CK) */
-export type QuoteLine = { sku: string; name: string; unit: string; qty: number; listPrice: number; discountPct: number };
+export type QuoteLine = { sku: string; name: string; unit: string; qty: number; listPrice: number; discountPct: number; note?: string; vat?: number };
 
 /** Payload tạo đơn Getfly API v3 (giống server action syncWonProjectToGetfly) */
 export type GetflyOrderPayload = {
@@ -362,6 +364,8 @@ export type Quote = {
   file?: { name: string; url: string };
   /** v44: báo giá nháp cho khách lẻ chưa có trong CRM (không pháp nhân, không công nợ): không cần duyệt giá */
   draft?: boolean;
+  /** v45: báo giá gốc của chuỗi điều chỉnh (khi không gắn dự án) */
+  rootId?: string;
 };
 
 export type GetflyOrderRec = {
@@ -872,7 +876,7 @@ export type AppCtx = {
   setGenDocs: Dispatch<SetStateAction<GeneratedDoc[]>>;
   /** Màn soạn báo giá & hợp đồng: quoteId để sửa một báo giá, focus để mở sẵn tab xem trước */
   /** view = chỉ xem bản đã lưu; không có view với docId = tạo phiên bản mới từ bản đó */
-  openComposer: (o: { leadId?: string; customerId?: string; docId?: string; quoteId?: string; mode?: 'QUOTE' | 'CONTRACT'; view?: boolean }) => void;
+  openComposer: (o: { leadId?: string; customerId?: string; docId?: string; quoteId?: string; mode?: 'QUOTE' | 'CONTRACT'; view?: boolean; edit?: boolean; reviseOf?: string }) => void;
   /** Khoảng thời gian lọc toàn cục */
   range: DateRange;
   setRange: (r: DateRange) => void;
@@ -1184,7 +1188,7 @@ export type HubCfg = {
   social?: SocialCfg;
 };
 
-export type ServerStatus = { checked: boolean; reachable: boolean; ai: { anthropic: boolean; openai: boolean }; images: boolean; models: { anthropic: string; openai: string; image?: string }; zalo: { oa: boolean; webhook: boolean }; cloud: boolean; social?: { facebook: boolean; zalo: boolean; youtube: boolean } };
+export type ServerStatus = { email?: boolean; checked: boolean; reachable: boolean; ai: { anthropic: boolean; openai: boolean }; images: boolean; models: { anthropic: string; openai: string; image?: string }; zalo: { oa: boolean; webhook: boolean }; cloud: boolean; social?: { facebook: boolean; zalo: boolean; youtube: boolean } };
 
 export type AiCall = { system?: string; prompt: string; history?: { role: 'user' | 'assistant'; content: string }[]; image?: { mediaType: string; data: string }; maxTokens?: number };
 
@@ -1736,7 +1740,11 @@ export type PasteRow = { name: string; unit: string; qty: number; price?: number
 
 export type SmartSuggest = { kind: 'SKU' | 'DRAFT'; key: string; name: string; unit: string; price: number; discountPct?: number; sku?: string; sub: string };
 
-export type SmartCatalog = { skus: SkuItem[]; drafts: DraftProduct[]; quotes: Quote[]; tier: PriceTier };
+/** Giá bán gần nhất của một mã hàng (báo giá mới nhất có mã đó) */
+/** v45: giá đã bán gần nhất của một mặt hàng (theo mã, hoặc theo tên khi là hàng nháp): cho chính khách này và cho bất kỳ khách nào */
+export type PastSale = { listPrice: number; discountPct: number; net: number; at: number; code: string; customer: string };
+
+export type SmartCatalog = { skus: SkuItem[]; drafts: DraftProduct[]; quotes: Quote[]; tier: PriceTier; /** v45: khách đang báo giá */ cust?: { id?: string; name: string } };
 
 export type CheckItem = { tone: 'red' | 'orange' | 'teal'; title: string; detail: string; act?: ReactNode };
 

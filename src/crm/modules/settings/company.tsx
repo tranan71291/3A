@@ -200,7 +200,7 @@ export function CompanyAiFill({ current, onApply, title = 'Điền từ giấy p
       } else if (file.type.startsWith('image/')) { const url = await shrinkImage(file, 2000); mediaType = 'image/jpeg'; data = url.split(',')[1] ?? ''; }
       else return notify('Chọn ảnh (JPG, PNG) hoặc PDF', 'red');
     } catch { return notify('Không đọc được file', 'red'); }
-    setBusy(`${ai.label} đang đọc ${file.name}…`);
+    setBusy(`CRM 3A đang phân tích ${file.name}…`);
     const r = await ai.ask({ image: { mediaType, data }, maxTokens: 700, prompt: 'Tài liệu đính kèm là giấy phép đăng ký kinh doanh, danh thiếp hoặc báo giá cũ của chính doanh nghiệp này. CHỈ trả về một đối tượng JSON, không thêm chữ: {"legalName":"","taxCode":"","address":"","phone":"","email":"","website":"","representative":"","representativeTitle":"","bankAccount":"","bankName":""}. Chép đúng chữ trong tài liệu, trường không có thì để chuỗi rỗng, không tự suy đoán.' });
     setBusy('');
     if (!r.ok) return notify(`Chưa đọc được: ${r.error}`, 'red');
@@ -213,7 +213,7 @@ export function CompanyAiFill({ current, onApply, title = 'Điền từ giấy p
   return (
     <section className="glass-card rounded-xl p-4" aria-label={title}>
       <p className="mb-2 flex items-center gap-2 text-[14px] font-medium"><Sparkles className="h-4 w-4 text-[rgb(var(--fg2))]" aria-hidden />{title}<span className="ml-auto text-xs font-normal text-[rgb(var(--muted))]">{ai.available ? ai.label : 'chưa bật AI'}</span></p>
-      <p className="mb-3 text-[13px] text-[rgb(var(--fg2))]">Tải giấy phép ĐKKD, danh thiếp hoặc báo giá cũ. AI đọc và đề xuất từng trường, bạn bấm Dùng rồi Lưu</p>
+      <p className="mb-3 text-[13px] text-[rgb(var(--fg2))]">Tải giấy phép ĐKKD, danh thiếp hoặc báo giá cũ. CRM 3A đọc và đề xuất từng trường, bạn bấm Dùng rồi Lưu</p>
       <FilePicker accept="image/png,image/jpeg,image/webp,application/pdf" onFiles={(fs) => void read(fs)} disabled={!!busy} className="flex h-20 w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-[rgb(var(--line))] text-xs text-[rgb(var(--muted))]">
         {busy ? <><RefreshCw className="h-4 w-4 motion-safe:animate-spin" aria-hidden />{busy}</> : <><Upload className="h-4 w-4" aria-hidden />Kéo thả PDF / ảnh hoặc bấm để chọn</>}
       </FilePicker>

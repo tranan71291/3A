@@ -2426,6 +2426,9 @@ export const money = (n: number) => `${Math.round(n).toLocaleString('vi-VN')} đ
 
 export const tierPrice = (k: SkuItem | undefined, tier: PriceTier) => (!k ? 0 : tier === 'DEALER' ? k.dealerPrice || k.basePrice : tier === 'PROJECT' ? k.projectPrice || k.basePrice : k.basePrice);
 
+/** v45: thuế suất của dòng (VAT theo dòng khi vatMode = LINE) */
+export const lineVat = (f: ComposerForm, l: DocLine) => (f.vatMode === 'LINE' && l.vat !== undefined ? l.vat : f.vatPct);
+
 /** Ghép biến: khối {{#if}} trước, sau đó {{biến}}; tiêu đề h3.art tự đánh số "Điều N." */
 /** Biến bắt buộc của bên bán / bên mua: để trống thì hiện ô vàng có tên trường (không in ra khoảng trống "MST:") */
 export const REQUIRED_VARS = new Set(['company_name', 'company_tax_code', 'company_address', 'company_phone', 'company_rep', 'company_bank', 'customer_name', 'tax_code', 'customer_address']);
@@ -2462,9 +2465,9 @@ export const SAMPLE_FORM: ComposerForm = {
 export const guessTx = (seg?: Segment): TxType =>
   seg === 'DEALER_L1' || seg === 'DEALER_L2' ? 'DEALER' : seg === 'RETAILER' ? 'RETAIL_CASH' : seg === 'FACTORY_END_USER' || seg === 'WORKSHOP' ? 'FACTORY' : seg === 'EPC_CONTRACTOR' || seg === 'INVESTOR_OWNER' || seg === 'CONSULTANT' ? 'PROJECT_ME' : 'DEALER';
 
-export const quoteLineToDoc = (x: QuoteLine): DocLine => ({ sku: x.sku, name: x.name, unit: x.unit, qty: x.qty, price: lineNet(x), listPrice: x.listPrice, discountPct: x.discountPct });
+export const quoteLineToDoc = (x: QuoteLine): DocLine => ({ sku: x.sku, name: x.name, unit: x.unit, qty: x.qty, price: lineNet(x), listPrice: x.listPrice, discountPct: x.discountPct, ...(x.note ? { note: x.note } : {}), ...(x.vat !== undefined ? { vat: x.vat } : {}) });
 
-export const docLineToQuote = (x: DocLine): QuoteLine => ({ sku: x.sku, name: x.name, unit: x.unit, qty: x.qty, listPrice: x.listPrice ?? x.price, discountPct: x.discountPct ?? 0 });
+export const docLineToQuote = (x: DocLine): QuoteLine => ({ sku: x.sku, name: x.name, unit: x.unit, qty: x.qty, listPrice: x.listPrice ?? x.price, discountPct: x.discountPct ?? 0, ...(x.note?.trim() ? { note: x.note.trim() } : {}), ...(x.vat !== undefined ? { vat: x.vat } : {}) });
 
 export const partyOf = (c?: Customer, l?: Lead): ComposerForm['party'] => ({
   name: c?.name ?? l?.company ?? '', taxCode: c?.taxCode ?? l?.taxCode ?? '', address: c?.address ?? (l?.province ?? ''),

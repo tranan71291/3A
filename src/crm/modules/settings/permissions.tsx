@@ -29,7 +29,7 @@ export function PermAiReview({ summary }: { summary: string }) {
     <section className="glass-card rounded-xl p-4" aria-label="Rà soát phân quyền">
       <div className="flex flex-wrap items-center gap-2">
         <Sparkles className="h-4 w-4 text-[rgb(var(--fg2))]" aria-hidden /><b className="text-[14px] font-medium">Rà soát phân quyền</b>
-        <span className="text-xs text-[rgb(var(--muted))]">{ai.available ? `${ai.label} đọc ma trận và gợi ý, không tự đổi quyền` : 'cần bật trợ lý AI ở Cài đặt › AI & trợ lý'}</span>
+        <span className="text-xs text-[rgb(var(--muted))]">{ai.available ? `${ai.label} đọc ma trận và gợi ý, không tự đổi quyền` : 'cần bật phân tích ở Cài đặt › AI & trợ lý'}</span>
         <button className={cn(btnGhost, btnSm, 'ml-auto')} disabled={!ai.available || busy} onClick={() => void run()}>{busy ? <><RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden />Đang rà soát…</> : res ? 'Rà soát lại' : 'Rà soát'}</button>
       </div>
       {err && <p className="mt-2 text-[13px] text-[rgb(var(--danger-fg))]">{err}</p>}

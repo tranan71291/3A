@@ -1,9 +1,9 @@
 'use client';
 
 import { type KeyboardEvent as RKeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, Download, FileText, Maximize2, Minimize2, Minus, Pencil, Plus, Printer, Send, Share2, Wallet, X } from 'lucide-react';
-import { Field, useOverlay, useSticky } from '../../components/ui';
-import { btnBase, btnGhost, btnPrimary, compact, DOC_CSS, esc, GUARANTEE_LABEL, inputCls, missingCompanyInfo, money, RAW_VARS, REQUIRED_VARS, TX_CLAUSE, TX_TYPE, useApp, varLabel, VN_DIGITS } from '../../lib/core';
+import { AlertTriangle, CheckCircle2, ChevronDown, Columns3, Download, FileText, ImagePlus, List, Maximize2, Minimize2, Minus, Pencil, Plus, Printer, Redo2, Send, Share2, Undo2, Wallet, X } from 'lucide-react';
+import { Field, FilePicker, useOverlay, useSticky } from '../../components/ui';
+import { btnBase, btnGhost, btnPrimary, compact, DOC_CSS, esc, GUARANTEE_LABEL, inputCls, lineVat, missingCompanyInfo, money, RAW_VARS, REQUIRED_VARS, TX_CLAUSE, TX_TYPE, useApp, varLabel, VN_DIGITS } from '../../lib/core';
 import type { BarAct, ComposerForm, ComposerStep, Customer, DocContext, DocTemplate, GuaranteeType, PreviewAct, SkuItem, TxType } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
@@ -124,11 +124,20 @@ export function moneyToWordsVN(amount: number): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** Nhóm thuế suất: [thuế suất, tiền hàng, tiền thuế], tăng dần */
+export function vatGroups(f: ComposerForm): [number, number, number][] {
+  const by = new Map<number, number>();
+  f.items.forEach((l) => { const r = lineVat(f, l); by.set(r, (by.get(r) ?? 0) + l.qty * l.price); });
+  if (!by.size) by.set(f.vatPct, 0);
+  return [...by.entries()].sort((a, b) => a[0] - b[0]).map(([r, b]) => [r, b, Math.round((b * r) / 100)]);
+}
+
 export function docTotals(f: ComposerForm) {
   const sub = f.items.reduce((a, l) => a + l.qty * l.price, 0);
-  const vat = Math.round((sub * f.vatPct) / 100);
+  const groups = vatGroups(f);
+  const vat = groups.reduce((a, g) => a + g[2], 0);
   const grand = sub + vat;
-  return { sub, vat, grand, advance: Math.round((grand * f.advancePct) / 100), guarantee: Math.round((grand * f.guaranteePct) / 100) };
+  return { sub, vat, grand, groups, mixed: groups.length > 1, advance: Math.round((grand * f.advancePct) / 100), guarantee: Math.round((grand * f.guaranteePct) / 100) };
 }
 
 /** v38.7: bảng hàng đầy đủ theo mẫu báo giá thiết bị vật tư (VAT từng dòng, hãng SX lấy từ danh mục sản phẩm) */
@@ -136,20 +145,26 @@ export function itemsTableFullHtml(f: ComposerForm, skus: SkuItem[] = []) {
   const t = docTotals(f);
   const n0 = (v: number) => Math.round(v).toLocaleString('vi-VN');
   const rows = f.items.map((l, i) => {
-    const amount = l.qty * l.price, vat = Math.round((amount * f.vatPct) / 100);
-    return `<tr><td class="c">${i + 1}</td><td class="c">${esc(l.sku)}</td><td>${esc(l.name)}</td><td class="c">${esc(skus.find((x) => x.sku === l.sku)?.brand ?? '')}</td><td class="c">${esc(l.unit)}</td><td class="c">${l.qty.toLocaleString('vi-VN')}</td><td class="r">${n0(l.price)}</td><td class="r">${n0(vat)}</td><td class="r">${n0(amount + vat)}</td><td>${l.discountPct ? `CK ${l.discountPct}%` : ''}</td></tr>`;
+    const amount = l.qty * l.price, vat = Math.round((amount * lineVat(f, l)) / 100);
+    return `<tr><td class="c">${i + 1}</td><td class="c">${esc(l.sku)}</td><td>${esc(l.name)}</td><td class="c">${esc(skus.find((x) => x.sku === l.sku)?.brand ?? '')}</td><td class="c">${esc(l.unit)}</td><td class="c">${l.qty.toLocaleString('vi-VN')}</td><td class="r">${n0(l.price)}</td><td class="r">${n0(vat)}</td><td class="r">${n0(amount + vat)}</td><td>${esc([l.discountPct ? `CK ${l.discountPct}%` : '', f.vatMode === 'LINE' ? `VAT ${lineVat(f, l)}%` : '', l.note?.trim() ?? ''].filter(Boolean).join('; '))}</td></tr>`;
   }).join('');
-  return `<table class="items items-full"><thead><tr><th>STT</th><th>MÃ HÀNG</th><th>HẠNG MỤC</th><th>HÃNG SX</th><th>ĐƠN VỊ</th><th>SỐ LƯỢNG</th><th>ĐƠN GIÁ</th><th>VAT ${f.vatPct}%</th><th>THÀNH TIỀN</th><th>GHI CHÚ</th></tr></thead><tbody>${rows || '<tr><td colspan="10" class="c">Chưa có hàng hóa</td></tr>'}
+  return `<table class="items items-full"><thead><tr><th>STT</th><th>MÃ HÀNG</th><th>HẠNG MỤC</th><th>HÃNG SX</th><th>ĐƠN VỊ</th><th>SỐ LƯỢNG</th><th>ĐƠN GIÁ</th><th>${t.mixed ? 'VAT' : `VAT ${f.vatPct}%`}</th><th>THÀNH TIỀN</th><th>GHI CHÚ</th></tr></thead><tbody>${rows || '<tr><td colspan="10" class="c">Chưa có hàng hóa</td></tr>'}
 <tr class="total"><td colspan="7" class="c"><b>TỔNG TIỀN CÓ VAT</b></td><td class="r"><b>${n0(t.vat)}</b></td><td class="r"><b>${n0(t.grand)}</b></td><td class="c"><b>VND</b></td></tr></tbody></table>`;
 }
 
 export function itemsTableHtml(f: ComposerForm) {
   const t = docTotals(f);
-  const rows = f.items.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${esc(l.sku)}</td><td>${esc(l.name)}</td><td class="c">${esc(l.unit)}</td><td class="r">${l.qty.toLocaleString('vi-VN')}</td><td class="r">${Math.round(l.price).toLocaleString('vi-VN')}</td><td class="r">${Math.round(l.qty * l.price).toLocaleString('vi-VN')}</td></tr>`).join('');
-  return `<table class="items"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng hóa, quy cách</th><th>ĐVT</th><th>SL</th><th>Đơn giá (đ)</th><th>Thành tiền (đ)</th></tr></thead><tbody>${rows || '<tr><td colspan="7" class="c">Chưa có hàng hóa</td></tr>'}
-<tr><td colspan="6" class="r">Cộng tiền hàng</td><td class="r">${t.sub.toLocaleString('vi-VN')}</td></tr>
-<tr><td colspan="6" class="r">Thuế GTGT ${f.vatPct}%</td><td class="r">${t.vat.toLocaleString('vi-VN')}</td></tr>
-<tr><td colspan="6" class="r"><b>Tổng cộng thanh toán</b></td><td class="r"><b>${t.grand.toLocaleString('vi-VN')}</b></td></tr></tbody></table>`;
+  const n0 = (v: number) => Math.round(v).toLocaleString('vi-VN');
+  const hasNote = f.items.some((l) => l.note?.trim());
+  const cols = 7 + (t.mixed ? 1 : 0) + (hasNote ? 1 : 0);
+  const rows = f.items.map((l, i) => `<tr><td class="c">${i + 1}</td><td>${esc(l.sku)}</td><td>${esc(l.name)}</td><td class="c">${esc(l.unit)}</td><td class="r">${l.qty.toLocaleString('vi-VN')}</td><td class="r">${n0(l.price)}</td>${t.mixed ? `<td class="c">${lineVat(f, l)}%</td>` : ''}<td class="r">${n0(l.qty * l.price)}</td>${hasNote ? `<td>${esc(l.note ?? '')}</td>` : ''}</tr>`).join('');
+  const span = cols - 1 - (hasNote ? 1 : 0);
+  const tail = (label: string, v: string, bold = false) => `<tr><td colspan="${span}" class="r">${bold ? `<b>${label}</b>` : label}</td><td class="r">${bold ? `<b>${v}</b>` : v}</td>${hasNote ? '<td></td>' : ''}</tr>`;
+  const vatRows = t.groups.map(([r, base, v]) => tail(t.mixed ? `Thuế GTGT ${r}% (trên ${n0(base)})` : `Thuế GTGT ${r}%`, n0(v))).join('');
+  return `<table class="items"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng hóa, quy cách</th><th>ĐVT</th><th>SL</th><th>Đơn giá (đ)</th>${t.mixed ? '<th>VAT</th>' : ''}<th>Thành tiền (đ)</th>${hasNote ? '<th>Ghi chú</th>' : ''}</tr></thead><tbody>${rows || `<tr><td colspan="${cols}" class="c">Chưa có hàng hóa</td></tr>`}
+${tail('Cộng tiền hàng', n0(t.sub))}
+${vatRows}
+${tail('Tổng cộng thanh toán', n0(t.grand), true)}</tbody></table>`;
 }
 
 export function buildDocVars(f: ComposerForm, x: DocContext) {
@@ -187,7 +202,7 @@ export function buildDocVars(f: ComposerForm, x: DocContext) {
     doc_revision: String(x.revision ?? 1),
     sales_email: x.salesEmail ?? '',
     subtotal: money(t.sub),
-    vat_rate: `${f.vatPct}%`,
+    vat_rate: t.mixed ? t.groups.map((g) => `${g[0]}%`).join(', ') : `${f.vatPct}%`,
     vat_amount: money(t.vat),
     grand_total: money(t.grand),
     grand_total_words: moneyToWordsVN(t.grand),
@@ -195,7 +210,7 @@ export function buildDocVars(f: ComposerForm, x: DocContext) {
     advance_percent: `${f.advancePct}%`,
     advance_amount: money(t.advance),
     guarantee_terms: f.guaranteeType === 'NONE' ? '' : `Bên B nộp cho Bên A ${GUARANTEE_LABEL[f.guaranteeType].toLowerCase()} trị giá ${f.guaranteePct}% giá trị hợp đồng (${money(t.guarantee)}) do ngân hàng hoạt động hợp pháp tại Việt Nam phát hành.`,
-    warranty_months: String(f.warrantyMonths),
+    warranty_months: f.warrantyMonths > 0 ? String(f.warrantyMonths) : '__STD__',
     credit_days: String(f.creditDays),
     payment_method: f.paymentMethod,
     note: f.note,
@@ -213,6 +228,9 @@ export function renderTemplate(body: string, vars: Record<string, string>, flags
   let out = body.replace(/\{\{#if (\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (_m, k: string, inner: string) => (flags[k] ? inner : ''));
   out = out.replace(/\{\{(\w+)\}\}/g, (m, k: string) => (!(k in vars) ? `<span class="missing">${m}</span>` : REQUIRED_VARS.has(k) && !String(vars[k] ?? '').trim() ? `<span class="missing">[${esc(varLabel(k))}]</span>` : RAW_VARS.has(k) ? vars[k] : esc(vars[k])));
   let n = 0;
+  // v45: bảo hành 0 tháng = theo tiêu chuẩn nhà sản xuất
+  out = out.replace(/__STD__ tháng kể từ ngày giao hàng theo tiêu chuẩn của nhà sản xuất/g, 'theo tiêu chuẩn của nhà sản xuất, tính từ ngày giao hàng')
+    .replace(/__STD__ tháng theo tiêu chuẩn (của )?nhà sản xuất/g, 'theo tiêu chuẩn $1nhà sản xuất').replace(/__STD__ tháng/g, 'theo tiêu chuẩn nhà sản xuất').replace(/__STD__/g, 'theo tiêu chuẩn nhà sản xuất');
   return out.replace(/<h3 class="art">/g, () => `<h3>Điều ${++n}. `);
 }
 
@@ -301,10 +319,93 @@ export function docOutline(html: string): { key: string; label: string }[] {
   return out;
 }
 
-/** File Word (.doc dạng HTML) để tải hoặc chia sẻ */
-export function wordBlob(title: string, body: string) {
-  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${body}</body></html>`;
-  return new Blob(['﻿' + html], { type: 'application/msword' });
+/** v45: tạo file PDF khổ A4 từ nội dung tài liệu (dựng trang ẩn, chụp bằng html2canvas, ghép trang bằng jsPDF) */
+export async function docPdfBlob(title: string, html: string): Promise<Blob> {
+  const [{ jsPDF }, h2c] = await Promise.all([import('jspdf'), import('html2canvas')]);
+  const html2canvas = h2c.default;
+  const f = document.createElement('iframe');
+  Object.assign(f.style, { position: 'fixed', left: '-10000px', top: '0', width: '840px', height: '1200px', border: '0' });
+  document.body.appendChild(f);
+  try {
+    await new Promise<void>((res) => { f.onload = () => res(); f.srcdoc = docShell(title, html).replace('</head>', '<style>html,body{background:#fff!important;padding:0!important;margin:0}.page{box-shadow:none!important;margin:0!important}</style></head>'); });
+    const d = f.contentDocument;
+    const page = d?.querySelector('.page') as HTMLElement | null;
+    if (!d || !page) throw new Error('no_page');
+    await Promise.all(Array.from(d.images).map((img) => (img.complete ? null : new Promise((r) => { img.onload = img.onerror = () => r(null); }))));
+    const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    const pw = 210, ph = 297;
+    const sliceH = Math.floor((canvas.width * ph) / pw);
+    for (let y = 0, i = 0; y < canvas.height; y += sliceH, i++) {
+      const c = document.createElement('canvas');
+      c.width = canvas.width; c.height = Math.min(sliceH, canvas.height - y);
+      const g = c.getContext('2d');
+      if (!g) break;
+      g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(canvas, 0, y, canvas.width, c.height, 0, 0, canvas.width, c.height);
+      if (i) pdf.addPage();
+      pdf.addImage(c.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, pw, (c.height * pw) / canvas.width);
+    }
+    return pdf.output('blob');
+  } finally { f.remove(); }
+}
+
+/** v45: thanh soạn thảo khi sửa trực tiếp trên bản xem trước */
+export function DocEditBar({ frame }: { frame: { current: HTMLIFrameElement | null } }) {
+  const { notify } = useApp();
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const [inTable, setInTable] = useState(false);
+  const doc = () => frame.current?.contentDocument ?? null;
+  useEffect(() => {
+    const d = doc();
+    if (!d) return;
+    const onSel = () => {
+      const n = d.getSelection()?.anchorNode;
+      const el = (n && (n.nodeType === 1 ? n : n.parentElement)) as HTMLElement | null;
+      setInTable(!!el?.closest?.('td,th'));
+    };
+    const onClick = (e: MouseEvent) => { const t = e.target as HTMLElement; setImg(t.tagName === 'IMG' ? (t as HTMLImageElement) : null); onSel(); };
+    d.addEventListener('selectionchange', onSel);
+    d.addEventListener('click', onClick);
+    return () => { d.removeEventListener('selectionchange', onSel); d.removeEventListener('click', onClick); };
+  });
+  const run = (cmd: string, val?: string) => { const d = doc(); if (!d) return; d.execCommand(cmd, false, val); (d.querySelector('.page') as HTMLElement | null)?.focus(); };
+  const cellOf = () => { const n = doc()?.getSelection()?.anchorNode; const el = (n && (n.nodeType === 1 ? n : n.parentElement)) as HTMLElement | null; return el?.closest?.('td,th') as HTMLTableCellElement | null; };
+  const addTable = () => {
+    const cols = 3, rows = 3;
+    const td = 'border:1px solid #333;padding:4px 6px;min-width:40px';
+    const head = `<tr>${Array.from({ length: cols }, (_, i) => `<th style="${td};background:#f2f2f2">Cột ${i + 1}</th>`).join('')}</tr>`;
+    const body = Array.from({ length: rows - 1 }, () => `<tr>${Array.from({ length: cols }, () => `<td style="${td}">&nbsp;</td>`).join('')}</tr>`).join('');
+    run('insertHTML', `<table style="width:100%;border-collapse:collapse;margin:6px 0">${head}${body}</table><p><br></p>`);
+  };
+  const rowOp = (add: boolean) => { const c = cellOf(); const tr = c?.parentElement as HTMLTableRowElement | null; if (!tr) return; if (add) { const n = tr.cloneNode(true) as HTMLTableRowElement; n.querySelectorAll('td,th').forEach((x) => { x.innerHTML = '&nbsp;'; }); tr.after(n); } else tr.remove(); };
+  const colOp = (add: boolean) => { const c = cellOf(); const t = c?.closest('table'); if (!c || !t) return; const i = c.cellIndex; t.querySelectorAll('tr').forEach((tr) => { const x = (tr as HTMLTableRowElement).cells[i]; if (!x) return; if (add) { const n = x.cloneNode(false) as HTMLElement; n.innerHTML = '&nbsp;'; x.after(n); } else x.remove(); }); };
+  const delTable = () => { const t = cellOf()?.closest('table'); if (t) { t.remove(); setInTable(false); } };
+  const pickImage = (files: File[]) => {
+    const file = files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 3 * 1024 * 1024) return notify('Ảnh tối đa 3 MB', 'orange');
+    const r = new FileReader();
+    r.onload = () => run('insertHTML', `<img src="${String(r.result)}" alt="" style="max-width:100%;width:50%;height:auto;display:block;margin:6px 0">`);
+    r.readAsDataURL(file);
+  };
+  const b = 'inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-md px-1.5 text-xs text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--fg))]';
+  const btn = (label: string, on: () => void, child: ReactNode) => <button type="button" className={b} title={label} aria-label={label} onMouseDown={(e) => e.preventDefault()} onClick={on}>{child}</button>;
+  const sep = <span className="mx-0.5 h-4 w-px bg-[rgb(var(--line))]" aria-hidden />;
+  return (
+    <div className="flex flex-wrap items-center gap-0.5 border-b border-[rgb(var(--accent)/0.3)] bg-[rgb(var(--accent)/0.06)] px-2 py-1" role="toolbar" aria-label="Định dạng văn bản">
+      {btn('Hoàn tác', () => run('undo'), <Undo2 className="h-3.5 w-3.5" />)}{btn('Làm lại', () => run('redo'), <Redo2 className="h-3.5 w-3.5" />)}{sep}
+      {btn('In đậm', () => run('bold'), <b className="text-[13px]">B</b>)}{btn('In nghiêng', () => run('italic'), <i className="font-serif text-[13px]">I</i>)}{btn('Gạch chân', () => run('underline'), <u className="text-[13px]">U</u>)}
+      {btn('Tiêu đề', () => run('formatBlock', 'H3'), <span className="text-[12px] font-semibold">H</span>)}{btn('Đoạn thường', () => run('formatBlock', 'P'), <span className="text-[12px]">¶</span>)}{sep}
+      {btn('Danh sách chấm', () => run('insertUnorderedList'), <List className="h-3.5 w-3.5" />)}{btn('Danh sách số', () => run('insertOrderedList'), <span className="font-mono text-[11px]">1.</span>)}
+      {btn('Căn trái', () => run('justifyLeft'), <span className="text-[11px]">Trái</span>)}{btn('Căn giữa', () => run('justifyCenter'), <span className="text-[11px]">Giữa</span>)}{btn('Căn phải', () => run('justifyRight'), <span className="text-[11px]">Phải</span>)}{sep}
+      <FilePicker accept="image/*" onFiles={pickImage} className={b}><ImagePlus className="h-3.5 w-3.5" aria-hidden />Ảnh</FilePicker>
+      {btn('Chèn bảng 3 × 3', addTable, <><Columns3 className="h-3.5 w-3.5" />Bảng</>)}
+      {inTable && <>{sep}{btn('Thêm dòng dưới', () => rowOp(true), <span className="text-[11px]">+ Dòng</span>)}{btn('Xóa dòng', () => rowOp(false), <span className="text-[11px]">− Dòng</span>)}{btn('Thêm cột phải', () => colOp(true), <span className="text-[11px]">+ Cột</span>)}{btn('Xóa cột', () => colOp(false), <span className="text-[11px]">− Cột</span>)}{btn('Xóa bảng', delTable, <span className="text-[11px] text-[rgb(var(--danger-fg))]">Xóa bảng</span>)}</>}
+      {img && <>{sep}<span className="px-1 text-[11px] text-[rgb(var(--muted))]">Cỡ ảnh</span>{[25, 50, 75, 100].map((w) => btn(`Ảnh rộng ${w}%`, () => { img.style.width = `${w}%`; img.style.maxWidth = '100%'; img.style.height = 'auto'; }, <span className="text-[11px]">{w}%</span>))}{btn('Căn giữa ảnh', () => { img.style.marginLeft = 'auto'; img.style.marginRight = 'auto'; img.style.display = 'block'; }, <span className="text-[11px]">Giữa</span>)}{btn('Xóa ảnh', () => { img.remove(); setImg(null); }, <span className="text-[11px] text-[rgb(var(--danger-fg))]">Xóa ảnh</span>)}</>}
+      <span className="ml-auto px-1 text-[11px] text-[rgb(var(--muted))]">Kéo thả ảnh để di chuyển</span>
+    </div>
+  );
 }
 
 export function ComposerShell({ title, subtitle, badge, left, html, footer, onClose, wide, steps, outline, edit, print, share, notice }: {
@@ -341,7 +442,7 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
   const step = (d: number) => setZoomPick(Math.round(Math.max(0.3, Math.min(2, zoom + d)) * 10) / 10);
   // Khi đang sửa trực tiếp: giữ nguyên nội dung khung để không mất chữ đang gõ
   const src = editing ? frozen : html;
-  const doc = docShell('Xem trước', src).replace('</head>', `<style>@media screen{html{background:#cfd3da}body{zoom:${zoom.toFixed(3)}}${editing ? '.page{outline:2px dashed #f28c28;outline-offset:4px}.page:focus{outline-style:solid}' : ''}}</style></head>`);
+  const doc = docShell('Xem trước', src).replace('</head>', `<style>@media screen{html{background:#cfd3da}body{zoom:${zoom.toFixed(3)}}${editing ? '.page{outline:2px dashed #f28c28;outline-offset:4px}.page:focus{outline-style:solid}.page img{cursor:move}.page img:hover{outline:1px solid #f28c28}' : ''}}</style></head>`);
   const onFrameLoad = () => {
     const d = frameRef.current?.contentDocument;
     const page = d?.querySelector('.page') as HTMLElement | null;
@@ -360,17 +461,29 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
     setEditing(false);
   };
   const toggleFull = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void paneRef.current?.requestFullscreen?.(); };
+  const [sharing, setSharing] = useState(false);
   const doShare = async () => {
-    if (!share || share.disabled) return;
-    const file = new File([wordBlob(share.name, html)], `${share.name.replace(/[\\/:*?"<>|\s]+/g, '_')}.doc`, { type: 'application/msword' });
-    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+    if (!share || share.disabled || sharing) return;
+    setSharing(true);
+    let file: File;
     try {
-      if (nav.share && nav.canShare?.({ files: [file] })) { await nav.share({ files: [file], title: share.name }); return; }
-    } catch { return; }
+      const blob = await docPdfBlob(share.name, html);
+      file = new File([blob], `${share.name.replace(/[\\/:*?"<>|\s]+/g, '_')}.pdf`, { type: 'application/pdf' });
+    } catch {
+      setSharing(false);
+      return notify('Không tạo được file PDF để chia sẻ', 'red');
+    }
+    setSharing(false);
+    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+    // Bảng chia sẻ của hệ điều hành: Zalo, Messenger, Email… (điện thoại, Windows, macOS có hỗ trợ)
+    if (nav.share && nav.canShare?.({ files: [file] })) {
+      try { await nav.share({ files: [file], title: share.name, text: share.name }); } catch { /* người dùng đóng bảng chia sẻ */ }
+      return;
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(file); a.download = file.name; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    notify('Trình duyệt này không chia sẻ trực tiếp được: đã tải file Word để gửi qua Zalo / email', 'orange');
+    notify('Trình duyệt này chưa hỗ trợ bảng chia sẻ: đã tải file PDF để gửi qua Zalo / email', 'orange');
   };
   const toc = useMemo(() => (outline ? docOutline(html) : []), [outline, html]);
   const [tocOn, setTocOn] = useState('');
@@ -427,9 +540,9 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
             <span className="ml-auto" />
             <button type="button" className={tb} onClick={toggleFull} title={full ? 'Thoát toàn màn hình' : 'Toàn màn hình'}>{full ? <Minimize2 className="h-3.5 w-3.5" aria-hidden /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden />}<span className="hidden 2xl:inline">{full ? 'Thu lại' : 'Toàn màn hình'}</span></button>
             {print && <button type="button" aria-label="In" className={tb} onClick={print.onClick} disabled={print.disabled} title={print.title}><Printer className="h-3.5 w-3.5" aria-hidden /><span className="hidden 2xl:inline">In</span></button>}
-            {share && <button type="button" className={tb} onClick={() => void doShare()} disabled={share.disabled} title={share.title ?? 'Chia sẻ file Word qua Zalo, email (điện thoại / máy hỗ trợ), hoặc tải về'}><Share2 className="h-3.5 w-3.5" aria-hidden />Chia sẻ</button>}
+            {share && <button type="button" className={tb} onClick={() => void doShare()} disabled={share.disabled || sharing} title={share.title ?? 'Chia sẻ file PDF qua Zalo, Messenger, Email… (bảng chia sẻ của máy)'}><Share2 className="h-3.5 w-3.5" aria-hidden />{sharing ? 'CRM 3A đang tạo PDF…' : 'Chia sẻ'}</button>}
           </div>
-          {editing && <p className="border-b border-[rgb(var(--accent)/0.3)] bg-[rgb(var(--accent)/0.08)] px-4 py-2 text-xs text-[rgb(var(--accent-fg))]" role="status">Đang sửa trực tiếp: bấm vào chữ trên trang để sửa, xong bấm "Xong". Thay đổi ở form bên trái sẽ không cập nhật vào trang cho tới khi bấm "Dựng lại từ form".</p>}
+          {editing && <DocEditBar frame={frameRef} />}
           {!editing && edit?.customized && (
             <p className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--line))] bg-[rgb(var(--raised))] px-4 py-2 text-xs text-[rgb(var(--fg2))]" role="status">
               <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden />Đang dùng nội dung sửa trực tiếp; số liệu đổi ở form không tự cập nhật vào trang
@@ -533,7 +646,7 @@ export function TermsFields({ form, set, cTpl, contract, part = 'all', dense }: 
           <Field label="Giá trị bảo lãnh (%)"><input className={inputCls} type="number" min={0} max={100} disabled={form.guaranteeType === 'NONE'} value={form.guaranteePct} onChange={(e) => set('guaranteePct', Number(e.target.value))} /></Field>
         </>
       )}
-      {other && <Field label="Bảo hành (tháng)"><input className={inputCls} type="number" min={0} value={form.warrantyMonths} onChange={(e) => set('warrantyMonths', Number(e.target.value))} /></Field>}
+      {other && <Field label="Bảo hành (tháng)" hint="Để 0: in là bảo hành theo tiêu chuẩn nhà sản xuất"><input className={inputCls} type="number" min={0} value={form.warrantyMonths || ''} placeholder="Theo tiêu chuẩn nhà sản xuất" onChange={(e) => set('warrantyMonths', Math.max(0, Number(e.target.value) || 0))} /></Field>}
       {pay && !contract && <Field label="Hiệu lực báo giá (ngày)"><input className={inputCls} type="number" min={1} value={form.validDays} onChange={(e) => set('validDays', Number(e.target.value))} /></Field>}
       {pay && <Field label="Hình thức thanh toán" className={!contract ? undefined : 'col-span-2'}><input className={inputCls} value={form.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value)} /></Field>}
       {other && <Field label="Ghi chú" className="col-span-2"><textarea className={cn(inputCls, 'min-h-16')} value={form.note} onChange={(e) => set('note', e.target.value)} /></Field>}
