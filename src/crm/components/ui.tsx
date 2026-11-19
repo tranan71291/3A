@@ -1,10 +1,44 @@
 'use client';
 
 import { type Dispatch, type DragEvent, type ReactNode, type SetStateAction, useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, Plus, Wallet, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Plus, Sparkles, Wallet, X } from 'lucide-react';
 import { BRAND, btnGhost, btnPrimary, C, digits, GRAD, inputCls, overlaySeq, overlayStack, overlaySubs, overlayTop, portal, stickySave, stickyStore, VIEW_META } from '../lib/core';
 import type { SortState, SortVal, TableSort, Tone, ViewKind } from '../lib/types';
 import { cn } from '../lib/utils';
+
+/** v44: khối cài đặt: tiêu đề + phụ đề + nút nằm trên, nội dung trong thẻ (flush = bảng sát mép) */
+export function SetBlock({ title, sub, action, children, flush, className }: { title: ReactNode; sub?: ReactNode; action?: ReactNode; children: ReactNode; flush?: boolean; className?: string }) {
+  return (
+    <section className={className}>
+      <div className="mb-2 flex min-h-8 flex-wrap items-center gap-x-2 gap-y-1 px-1">
+        <h2 className="text-[15px] font-medium">{title}</h2>
+        {sub && <span className="text-[12.5px] text-[rgb(var(--muted))]">{sub}</span>}
+        {action && <span className="ml-auto flex items-center gap-2">{action}</span>}
+      </div>
+      <div className={cn('glass-card rounded-xl p-5', flush && 'pb-2')}>{children}</div>
+    </section>
+  );
+}
+
+/** v44: thẻ phụ ở cột phải (gợi ý, AI): tiêu đề có biểu tượng */
+export function SideCard({ title, icon: Icon = Sparkles, sub, children }: { title: ReactNode; icon?: typeof Wallet; sub?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="glass-card rounded-xl p-4">
+      <p className="mb-1 flex items-start gap-2 text-[13.5px] font-medium"><Icon className="mt-0.5 h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden /><span className="flex-1">{title}</span>{sub && <span className="text-xs font-normal text-[rgb(var(--muted))]">{sub}</span>}</p>
+      {children}
+    </section>
+  );
+}
+
+/** v44: dòng trạng thái "đang áp dụng" (thay cho công tắc giả khi quy tắc là cố định của hệ thống) */
+export function RuleRow({ title, detail, on = true, note }: { title: string; detail: string; on?: boolean; note?: string }) {
+  return (
+    <li className="flex items-start gap-3 py-2.5">
+      <div className="min-w-0 flex-1"><p className="text-[13px] font-medium">{title}</p><p className="text-xs text-[rgb(var(--muted))]">{detail}</p></div>
+      <span className={cn('shrink-0 rounded-md px-2 py-0.5 text-[11.5px]', on ? 'bg-[rgb(var(--success)/0.12)] text-[rgb(var(--success-fg))]' : 'bg-[rgb(var(--raised))] text-[rgb(var(--muted))]')}>{note ?? (on ? 'Đang áp dụng' : 'Tắt')}</span>
+    </li>
+  );
+}
 
 export function Panel({ title, action, children, className }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (

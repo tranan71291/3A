@@ -18,7 +18,7 @@ import { cn } from '../../lib/utils';
 import { GetflyOrdersPanel } from './getfly-history';
 import { SourceManagerModal } from './sources';
 import { QuoteHistory } from '../projects/projects';
-import { GeneratedDocList } from '../sales/contract';
+import { GeneratedDocList } from '../sales/quote';
 import { ActivityList } from '../staff/staff';
 import { ReservedGoodsPanel } from '../supply/inventory';
 

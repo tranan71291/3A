@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, ImagePlus, RefreshCw, Sparkles, Trash2, Upload } from 'lucide-react';
-import { Field, FilePicker, Panel } from '../../components/ui';
+import { AlertTriangle, CheckCircle2, ImagePlus, Plus, RefreshCw, ShieldCheck, Sparkles, Trash2, Upload } from 'lucide-react';
+import { Field, FilePicker, Panel, SideCard } from '../../components/ui';
 import { bizMode, btnGhost, btnPrimary, btnSm, compact, COMPANY_AI_FIELDS, EMAIL_RE, fileB64, initials, inputCls, MST_RE, shrinkImage, useApp } from '../../lib/core';
-import type { CompanyInfo, SettingsTab } from '../../lib/types';
+import type { CompanyBranch, CompanyInfo, SettingsTab } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
+import { Switch } from '../platform/console';
 
 // =====================================================================
 //  CÀI ĐẶT: THÔNG TIN DOANH NGHIỆP & LOGO
@@ -61,7 +62,7 @@ export function CompanySettings() {
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_320px] xl:items-start">
       <div className="min-w-0 space-y-4">
-        <Panel title="Thông tin chung">
+        <Panel title="Thông tin chung" action={canEdit ? <button type="button" className={cn(btnGhost, btnSm)} onClick={() => document.getElementById('company-ai-fill')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}><Sparkles className="h-3.5 w-3.5" aria-hidden />Điền từ giấy phép ĐKKD</button> : undefined}>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[160px_1fr]">
             <div>
               <p className="mb-1.5 text-xs text-[rgb(var(--muted))]">Logo</p>
@@ -79,7 +80,7 @@ export function CompanySettings() {
               {inp('appName', 'Tên hệ thống')}
               {inp('shortName', 'Tên viết tắt')}
               {inp('legalName', 'Tên pháp lý', 'sm:col-span-2')}
-              {inp('taxCode', 'Mã số thuế')}
+              <Field label="Mã số thuế" error={err('taxCode')}><span className="relative block"><input className={cn(inputCls, 'pr-16')} disabled={!canEdit} value={f.taxCode} onChange={(ev) => set('taxCode', ev.target.value)} />{f.taxCode.trim() && <span className={cn('pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs', /^\d{10}(-?\d{3})?$/.test(f.taxCode.replace(/[\s.]/g, '')) ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')}>{/^\d{10}(-?\d{3})?$/.test(f.taxCode.replace(/[\s.]/g, '')) ? 'đúng dạng' : 'sai dạng'}</span>}</span></Field>
               {inp('phone', 'Điện thoại', '', 'tel')}
               {inp('address', 'Địa chỉ trụ sở', 'sm:col-span-2')}
               {inp('email', 'Email', '', 'email')}
@@ -94,6 +95,25 @@ export function CompanySettings() {
             {inp('bankAccount', 'Số tài khoản')}
             {inp('bankName', 'Ngân hàng, chi nhánh')}
           </div>
+        </Panel>
+        <Panel title="Văn phòng, chi nhánh" action={canEdit ? <button type="button" className={cn(btnGhost, btnSm)} onClick={() => set('branches', [...(f.branches ?? []), { name: '', address: '', print: false }])}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm</button> : undefined}>
+          {(f.branches ?? []).length ? (
+            <div className="-mt-1 max-sm:overflow-x-auto">
+              <table className="w-full min-w-[520px] text-[13px]">
+                <thead className="border-b border-[rgb(var(--line))] text-xs text-[rgb(var(--muted))]"><tr><th className="py-1.5 text-left font-normal">Tên</th><th className="px-2 text-left font-normal">Địa chỉ</th><th className="w-28 text-center font-normal">In trên báo giá</th><th className="w-8" /></tr></thead>
+                <tbody>
+                  {(f.branches ?? []).map((b, i) => { const put = (p: Partial<CompanyBranch>) => set('branches', (f.branches ?? []).map((x, j) => (j === i ? { ...x, ...p } : x))); return (
+                    <tr key={i} className="border-b border-[rgb(var(--line))] last:border-0">
+                      <td className="py-1 pr-2"><input className={inputCls} disabled={!canEdit} value={b.name} onChange={(ev) => put({ name: ev.target.value })} placeholder="VD: Văn phòng đại diện" aria-label={`Tên chi nhánh ${i + 1}`} /></td>
+                      <td className="px-2"><input className={inputCls} disabled={!canEdit} value={b.address} onChange={(ev) => put({ address: ev.target.value })} aria-label={`Địa chỉ chi nhánh ${i + 1}`} /></td>
+                      <td className="text-center"><span className="inline-flex"><Switch on={b.print} disabled={!canEdit} onChange={(v) => put({ print: v })} label={`In chi nhánh ${i + 1} trên báo giá`} /></span></td>
+                      <td className="text-center">{canEdit && <button type="button" className="rounded p-1 text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => set('branches', (f.branches ?? []).filter((_, j) => j !== i))} aria-label={`Xóa chi nhánh ${i + 1}`}><Trash2 className="h-3.5 w-3.5" /></button>}</td>
+                    </tr>
+                  ); })}
+                </tbody>
+              </table>
+            </div>
+          ) : <p className="text-[13px] text-[rgb(var(--muted))]">Chưa khai báo. Chi nhánh bật "In trên báo giá" sẽ in qua biến {'{{company_branches}}'} khi mẫu có biến này.</p>}
         </Panel>
         <Panel title="Mộc và chữ ký">
           <div className="flex flex-wrap items-center gap-4">
@@ -111,7 +131,7 @@ export function CompanySettings() {
       </div>
       <aside className="min-w-0 space-y-4 xl:sticky xl:top-20">
         <CompanyPrintPreview c={f} />
-        {canEdit && <CompanyAiFill current={f} onApply={(p) => setF((x) => ({ ...x, ...p }))} />}
+        {canEdit && <div id="company-ai-fill" className="scroll-mt-24"><CompanyAiFill current={f} onApply={(p) => setF((x) => ({ ...x, ...p }))} /></div>}
       </aside>
     </div>
   );
@@ -219,7 +239,7 @@ export function CompanyAiFill({ current, onApply, title = 'Điền từ giấy p
 //  v42: CÀI ĐẶT › TỔNG QUAN — danh sách thiết lập tính từ dữ liệu thật của doanh nghiệp
 // =====================================================================
 export function SettingsOverview({ go }: { go: (t: SettingsTab) => void }) {
-  const { company, setCompany, departments, users, mfgConfig, warehouses, hubCfg, emailCfg, getfly, canDo, platform, org, notify } = useApp();
+  const { company, setCompany, departments, users, mfgConfig, warehouses, hubCfg, emailCfg, getfly, canDo, platform, org, notify, dataInfo, auditLogs } = useApp();
   const [srv] = useServerStatus();
   const mode = bizMode(company);
   const feat = platform.tenants.find((t) => t.id === org.id)?.features;
@@ -263,14 +283,16 @@ export function SettingsOverview({ go }: { go: (t: SettingsTab) => void }) {
       </section>
       <aside className="min-w-0 space-y-4 xl:sticky xl:top-20">
         {canDo('settings.edit') && <CompanyAiFill title="Thiết lập nhanh bằng AI" current={company} onApply={(p) => { setCompany({ ...company, ...p }); notify('Đã cập nhật thông tin doanh nghiệp', 'teal'); }} />}
-        <section className="glass-card rounded-xl p-4 text-[13px]">
-          <p className="mb-2 text-[14px] font-medium">Tài khoản</p>
-          <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5">
-            <dt className="text-[rgb(var(--muted))]">Đang hoạt động</dt><dd className="font-mono text-xs">{active.length}</dd>
-            <dt className="text-[rgb(var(--muted))]">Mật khẩu tạm</dt><dd className="font-mono text-xs">{weak}</dd>
+        <SideCard title="Sức khỏe hệ thống" icon={ShieldCheck}>
+          <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5 text-[13px]">
+            <dt className="text-[rgb(var(--muted))]">Dữ liệu</dt><dd className="font-mono text-xs">v{dataInfo.version}{dataInfo.savedAt ? ` · lưu ${new Date(dataInfo.savedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` : ''}</dd>
+            <dt className="text-[rgb(var(--muted))]">Tài khoản hoạt động</dt><dd className="font-mono text-xs">{active.length}</dd>
+            <dt className="text-[rgb(var(--muted))]">Mật khẩu tạm</dt><dd className={cn('font-mono text-xs', weak > 0 && 'text-[rgb(var(--accent-fg))]')}>{weak} tài khoản</dd>
             <dt className="text-[rgb(var(--muted))]">Ngừng / khóa</dt><dd className="font-mono text-xs">{users.length - active.length}</dd>
+            <dt className="text-[rgb(var(--muted))]">Đăng nhập lỗi</dt><dd className="font-mono text-xs">{auditLogs.filter((x) => (x.action === 'LOGIN_FAIL' || x.action === 'ACCOUNT_LOCKED') && x.at > Date.now() - 864e5).length} trong 24 giờ</dd>
           </dl>
-        </section>
+          <button type="button" className={cn(btnGhost, btnSm, 'mt-3')} onClick={() => go('security')}>Dữ liệu & bảo mật</button>
+        </SideCard>
       </aside>
     </div>
   );

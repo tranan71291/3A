@@ -124,7 +124,7 @@ export type ComposerForm = {
   tier: PriceTier;
   leadId?: string;
   customerId?: string;
-  party: { name: string; taxCode: string; address: string; rep: string; repTitle: string; phone: string; email: string };
+  party: { name: string; taxCode: string; address: string; rep: string; repTitle: string; phone: string; email: string; /** v44: giấy ủy quyền của người ký */ authDoc?: string };
   items: DocLine[];
   vatPct: number;
   delivery: string;
@@ -138,6 +138,10 @@ export type ComposerForm = {
   note: string;
   /** v42: lịch thanh toán theo đợt (không bắt buộc) */
   milestones?: PayMilestone[];
+  /** v44: nội dung sửa trực tiếp trên bản xem trước (thay cho bản dựng từ mẫu) */
+  customHtml?: string;
+  /** v44: phạt chậm thanh toán, %/ngày trên số tiền chậm trả (hợp đồng) */
+  latePenaltyPct?: number;
 };
 
 export type PayMilestone = { label: string; pct: number; cond: string };
@@ -356,6 +360,8 @@ export type Quote = {
   status: QuoteStatus;
   note: string;
   file?: { name: string; url: string };
+  /** v44: báo giá nháp cho khách lẻ chưa có trong CRM (không pháp nhân, không công nợ): không cần duyệt giá */
+  draft?: boolean;
 };
 
 export type GetflyOrderRec = {
@@ -490,7 +496,10 @@ export type Activity = {
 /** Gói phân hệ theo mô hình kinh doanh: thương mại – phân phối, sản xuất – lắp đặt, hoặc dùng tất cả */
 export type BusinessProfile = 'TRADING' | 'MANUFACTURING' | 'ALL' | 'CUSTOM';
 
-export type CompanyInfo = { appName: string; legalName: string; shortName: string; taxCode: string; address: string; phone: string; email: string; website: string; logo?: string; representative: string; representativeTitle: string; bankAccount: string; bankName: string; stamp?: string; profile?: BusinessProfile; enabledModules?: Partial<Record<Module, boolean>> };
+export type CompanyBranch = { name: string; address: string; print: boolean };
+
+/** v44: branches = văn phòng / chi nhánh; mục print in lên báo giá qua {{company_branches}} */
+export type CompanyInfo = { branches?: CompanyBranch[]; appName: string; legalName: string; shortName: string; taxCode: string; address: string; phone: string; email: string; website: string; logo?: string; representative: string; representativeTitle: string; bankAccount: string; bankName: string; stamp?: string; profile?: BusinessProfile; enabledModules?: Partial<Record<Module, boolean>> };
 
 // ---------------- Trung tâm phê duyệt ----------------
 export type ApprovalKind = 'QUOTE' | 'CONTRACT' | 'ACTIVITY' | 'EXPENSE' | 'PROGRAM' | 'CLAIM' | 'LEAD_ASSIGN' | 'STOCK' | 'RECEIPT' | 'CASH' | 'CONTENT';
@@ -934,6 +943,8 @@ export type AppCtx = {
   getflyLogs: GetflyLog[];
   addGetflyLog: (l: Omit<GetflyLog, 'id' | 'at'>) => void;
   winLead: (id: string, quoteId: string) => void;
+  /** v44: chốt báo giá nháp (khách lẻ), tự thêm khách vào CRM */
+  winDraftQuote: (quoteId: string) => void;
   /** Mở hộp chọn phiên bản báo giá để chốt đơn */
   openWin: (leadId: string) => void;
   syncLeadToGetfly: (leadId: string) => void;
@@ -1700,7 +1711,9 @@ export type ComposerMode = 'QUOTE' | 'CONTRACT';
 
 /** Khung chung Split-View cố định: trái 38% form tối giản, phải 62% bản A4 xem trước theo thời gian thực;
  *  thanh nút hành động cố định dưới đáy. Hai cột cuộn độc lập, không cuộn dài cả trang. */
-export type ComposerStep = { label: string; done: boolean; target?: string };
+export type ComposerStep = { label: string; done: boolean; target?: string; onClick?: () => void };
+
+export type PreviewAct = { onClick: () => void; disabled?: boolean; title?: string };
 
 export type BarAct = { onClick: () => void; disabled?: boolean; title?: string; label?: string };
 

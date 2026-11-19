@@ -17,7 +17,7 @@ import { projectValue, quoteTotals } from '../../lib/getfly';
 import type { ConfirmState, Customer, Lead, LeadStatus, LostReason, MenuItem, Quote, Stage, Tone } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { BoqEditorModal } from './boq';
-import { GeneratedDocList } from '../sales/contract';
+import { GeneratedDocList } from '../sales/quote';
 import { ProjectFlow } from '../sales/sales-flow';
 import { ActivityList } from '../staff/staff';
 import { ReservedGoodsPanel } from '../supply/inventory';

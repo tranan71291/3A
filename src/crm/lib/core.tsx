@@ -2316,6 +2316,7 @@ export const moveEffect = (m: StockMove, wh: string | 'ALL', main: string) => {
 
 /** Biến hỗ trợ trong mẫu. Khối điều kiện: {{#if advance}}...{{/if}} (không lồng nhau) */
 export const TEMPLATE_VARS: [string, string][] = [
+  ['company_branches', 'Văn phòng / chi nhánh (đánh dấu in trên báo giá)'],
   ['doc_code', 'Số báo giá'],
   ['contract_code', 'Số hợp đồng'],
   ['doc_date', 'Ngày lập (dd/mm/yyyy)'],
