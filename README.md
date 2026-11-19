@@ -1,3 +1,70 @@
+# 3A CRM v48 (Quy trình & phê duyệt, Đề nghị, bảng chọn nhiều, ảnh nổi / con dấu, nhập Excel — dựa trên v46)
+
+> Không đổi bảng, SQL. Không thêm thư viện. Dữ liệu mới nằm trong dữ liệu doanh nghiệp: `wfDefs` (quy trình đã sửa / tự tạo), `wfRuns` (tiến trình duyệt nhiều bước, đề nghị), `wfPolicy`, `wfDelegations`. Dữ liệu cũ mở bình thường; yêu cầu đang chờ từ bản trước vẫn duyệt được.
+> Máy chủ: sửa `src/app/api/ai/extract/route.ts` (nhận bảng Excel, gộp tên hàng xuống dòng) và `src/app/api/_lib/ai.ts` (giới hạn trả lời 8.192 token cho danh sách dài).
+
+## Cập nhật v48 (19/11)
+
+**Cài đặt › Quy trình & phê duyệt (mới)**
+- 13 quy trình có sẵn (hiện theo loại doanh nghiệp): duyệt giá báo giá, hợp đồng, đơn bán (giảm giá / vượt hạn mức nợ), xác nhận tiền thu đơn bán, công tác / nghỉ, chi phí công tác, đề xuất quỹ MDF, thẩm định POP & đối soát hóa đơn, phiếu kho, nội dung marketing, báo giá xưởng lãi gộp thấp, bản vẽ triển khai, xác nhận tiền thu đơn hàng.
+- Sửa từng quy trình: điều kiện cần duyệt (lãi gộp, giá trị, chiết khấu…), thêm / bớt / đổi thứ tự bước, người duyệt (trưởng phòng của khách / dự án, quản lý trực tiếp, vai trò, người cụ thể, thủ kho), bước có điều kiện, SLA, hạn mức bước, hạn mức cá nhân, quá hạn chuyển cấp trên, cho / không cho yêu cầu bổ sung; chạy thử với số liệu giả định; lưu thành phiên bản mới, nhật ký thay đổi.
+- Quy tắc chung: không tự duyệt; Giám đốc duy nhất được tự duyệt (ghi nhật ký bảo mật); Giám đốc duyệt thay mọi bước; quá SLA thì trưởng phòng của người duyệt / Giám đốc cùng duyệt được; người duyệt nghỉ phép cả ngày thì tự chuyển người thay.
+- Ủy quyền duyệt theo khoảng ngày (người duyệt thay, ghi "duyệt thay ai").
+- Tạo quy trình mới: biểu mẫu tự thiết kế (chữ, số, số tiền, ngày, chọn, file / ảnh, người, khách hàng), 5 mẫu sẵn (mua tài sản, tạm ứng, thanh toán nhà cung cấp, văn phòng phẩm, tuyển dụng), ai được gửi, tiền tố mã, sau khi duyệt (báo người gửi, tự sinh phiếu chi, báo thêm một người).
+
+**Công việc › Đề nghị (mới)**: chọn loại đề nghị, điền biểu mẫu, xem trước đường duyệt; theo dõi từng bước; rút lại; sửa và gửi lại khi bị trả; in phiếu đề nghị có người duyệt; người duyệt duyệt / từ chối / yêu cầu bổ sung ngay trong đề nghị. Đề nghị cũng hiện ở Trung tâm phê duyệt (nhóm "Đề nghị").
+
+**Sửa lỗi luồng duyệt (theo kiểm tra v46)**
+1. Báo giá khách không gắn dự án tới đúng Trưởng phòng của khách (trước chỉ Giám đốc thấy).
+2. Báo giá Giám đốc tự lập không còn bị kẹt (Giám đốc duy nhất tự duyệt, có nhật ký).
+3. Báo giá điều chỉnh: bản cũ rời hàng chờ.
+4. Phiếu kho chờ duyệt vào Trung tâm phê duyệt, báo người duyệt khi lập phiếu; người lập không tự duyệt phiếu chờ của mình.
+5. Lịch công tác đã duyệt mà đổi thời gian / chi phí thì phải duyệt lại.
+6. Thông báo lọc theo người nhận (mã người dùng); Trưởng MKT không còn xem thông báo của người khác.
+7. Không tự duyệt: đề xuất quỹ, POP, nội dung marketing, bản vẽ, hợp đồng (trừ Giám đốc duy nhất).
+8. Duyệt hợp đồng / đề xuất quỹ từ danh sách đi qua quy trình; từ chối nhập lý do ở Công việc.
+9. Hạn mức: tùy chọn "người duyệt phải đủ hạn mức cá nhân" và "hạn mức bước" cho mọi quy trình.
+10. Đơn bán: người không có quyền duyệt phiếu kho bấm "Gửi yêu cầu xuất kho", Thủ kho / Kế toán duyệt; đơn giảm giá trên 10% hoặc vượt hạn mức nợ chờ Trưởng phòng duyệt mới xuất kho; tiền thu chờ xác nhận vào Trung tâm phê duyệt.
+11. Báo giá xưởng (ALUX) lãi gộp dưới 25% phải duyệt mới in / nhận cọc.
+12. Bản vẽ chờ duyệt vào Trung tâm phê duyệt, báo người duyệt.
+
+**Bảng**: mọi bảng dùng chung có ô tích chọn nhiều dòng + thanh thao tác (sao chép, xuất CSV, in các dòng chọn, thao tác riêng như in phiếu / hủy đơn ở Bán hàng) và nút chọn cột hiển thị (nhớ theo trình duyệt; "Hiện tất cả", "Mặc định"). Danh sách đơn bán có thêm 4 cột ẩn sẵn: NV bán, Kho xuất, Hẹn giao, Hạn công nợ. Bảng đã có ô chọn riêng (lead, khách hàng, Trung tâm phê duyệt…) giữ cách chọn cũ.
+
+**Báo giá / hợp đồng › Sửa trực tiếp**
+- "Ảnh nổi": ảnh PNG kéo thả tự do, đặt trên hoặc dưới chữ, phóng to / thu nhỏ, phím mũi tên nhích (Shift: 10px), Delete để xóa; không làm xô lệch chữ.
+- "Dấu & ký" (ảnh mộc ở Cài đặt › Doanh nghiệp) hoặc "Dấu / ký khác": báo giá đặt ở đầu trang đè lên góc logo; hợp đồng đặt đúng ô "Đại diện bên bán / Bên B", giữ khoảng trống ký; kéo chỉnh được. Ảnh mộc đã in sẵn trong ô ký được chuyển thành ảnh nổi (không bị trùng). Vị trí gắn theo ô nên bản in / PDF đúng chỗ.
+- Khung sửa dùng đúng khổ A4 như bản in.
+
+**Báo giá › Nhập từ ảnh / PDF / Excel**: nhận .xlsx và .csv (đọc trên trình duyệt; có phân tích thì CRM 3A phân tích bảng, chưa bật thì tự nhận cột Tên / ĐVT / SL / Đơn giá); .xls đời cũ nhắc lưu lại .xlsx. Tên hàng xuống nhiều dòng trong PDF / ảnh không còn bị tách thành nhiều dòng hàng (máy chủ và trình duyệt cùng nối dòng tiếp nối vào tên dòng trên); danh sách dài bị cắt giữa chừng vẫn giữ các dòng đã đọc trọn.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict); chạy thử trên trình duyệt với 6 tài khoản mẫu: đề nghị 3 bước (Trưởng phòng → Giám đốc → Kế toán, tự sinh phiếu chi); báo giá khách tới Trưởng phòng; bản cũ rời hàng chờ; Giám đốc tự duyệt báo giá của mình; đơn bán giảm giá chờ duyệt → yêu cầu xuất kho → Kế toán duyệt; phiếu kho mẫu duyệt trong Trung tâm; ủy quyền duyệt thay; chọn nhiều + chọn cột; con dấu ở báo giá / hợp đồng, so vị trí khi in; nhập Excel (có và không có phân tích).
+**Chưa làm / giới hạn**: nhắc lại tự động theo giờ khi quá SLA (hiện là chuyển thêm người duyệt và đánh dấu quá hạn); bước "cần tất cả người trong nhóm cùng duyệt"; file Word xuất ra không giữ vị trí ảnh nổi (PDF / in giữ đúng); nhập Excel và gộp tên hàng mới thử với dữ liệu giả lập, cần thử lại với file thật trên bản có khóa phân tích.
+
+
+# 3A CRM v46 (phân hệ Bán hàng, sắp xếp lại menu trái — dựa trên v45)
+
+> Không đổi bảng, API hay SQL, không thêm thư viện. Đơn bán lưu trong dữ liệu doanh nghiệp như các phân hệ khác (khóa mới `salesOrders`); dữ liệu cũ mở bình thường.
+
+## Cập nhật v46 (19/11)
+**Menu trái** (phân phối): Tổng quan · Làm việc · **Bán hàng** (Bán hàng, Khách hàng, Dự án, Tài liệu) · **Marketing** (Lead, Auto Content, MDF/CS) · Hàng hóa · Tài chính (Thu chi, Công nợ) · Cài đặt.
+Sản xuất (ALUX): Bán hàng (Bán hàng, Khách hàng, Đơn hàng, Tài liệu) · Marketing (Lead, Auto Content) · Xưởng · Tài chính · Cài đặt. Đường dẫn cũ (#/…/marketing, /claims, /docs) vẫn mở đúng trang.
+
+**Bán hàng › danh sách đơn bán**: 4 số (doanh số hôm nay so với hôm qua, doanh số tháng, chờ xuất kho, ghi công nợ trong tháng), tab Tất cả / Chờ xuất kho / Đang giao / Hoàn thành / Đã hủy / Từ báo giá, tìm theo mã đơn, khách, SĐT, mã hàng, lọc hình thức thanh toán, xuất CSV.
+
+**Lên đơn bán** (tại quầy): tìm hoặc quét mã hàng (Enter thêm dòng đầu), gợi ý hiện tồn khả dụng và giá đã bán cho khách này; khách CRM (hiện đang nợ / hạn mức / khoản quá hạn, tự áp bảng giá) hoặc khách lẻ (tên + SĐT); thanh toán Tiền mặt / Chuyển khoản / Trả một phần / Công nợ (hạn ngày); VAT từng dòng, chiết khấu, phí giao; Lấy tại cửa hàng / Giao hàng / Gửi xe; "Xuất kho ngay khi hoàn tất"; Lưu tạm; phím F9 = Hoàn tất.
+Sản xuất: bán vật tư, phụ kiện (trừ tồn Vật tư, lập phiếu PX) và sản phẩm gia công trong bảng giá (đơn vị bộ / cái → tự tạo lệnh sản xuất, xuất giao khi xưởng làm xong).
+
+**Chốt báo giá tự tạo đơn bán**: Chốt đơn dự án, Ghi nhận chốt báo giá nháp, và (mới) Ghi nhận chốt báo giá của khách có sẵn trong CRM → tạo đơn bán lấy nguyên giá, chiết khấu, VAT, hạn công nợ. Màn báo giá đã chốt có thẻ "Đơn bán tự tạo khi chốt": từng mã đủ hàng (đang giữ) hoặc thiếu, nút **Tạo phiếu đặt hàng** (lập PO theo nhà cung cấp cho phần thiếu, hàng về tự giữ chỗ cho khách / dự án) và **Giao trước phần có sẵn** (tách phần thiếu sang đơn giao sau).
+
+**Chi tiết đơn**: Xuất kho (dùng hàng giữ chỗ cho khách / dự án trước, phần còn lại lập phiếu xuất kho XK đã duyệt, trừ tồn kho đã chọn), Đã giao xong, Hủy đơn (chỉ khi chưa xuất kho; đã xuất thì nhập trả ở Kho), In phiếu bán hàng, Thu tiền (người có quyền quỹ: tự sinh phiếu thu "Thu tiền bán hàng"; người khác: chờ Kế toán xác nhận), chứng từ liên quan.
+
+**Giữ hàng**: đơn chưa xuất kho giữ mềm số lượng (chưa trừ tồn); đơn lên trước được ưu tiên hàng. **Công nợ**: đơn đã xuất kho chưa thu đủ vào Tài chính › Công nợ & tuổi nợ (hạn = ngày xuất kho + số ngày công nợ, chỉ tính tiền Kế toán đã xác nhận).
+
+**Quyền**: thêm dòng "Bán hàng" trong ma trận phân quyền (mặc định bật cho mọi vai trò trừ Marketing). Lên đơn: quyền lập phiếu kho hoặc quản lý đơn hàng; Xuất kho: quyền xuất giao / quản lý kho / duyệt phiếu kho; Đặt hàng: quyền PO; xác nhận tiền: Kế toán.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict như Next build); chạy thử trên trình duyệt: lên đơn tại quầy trả tiền mặt (tự xuất kho XK, phiếu thu vào quỹ), chốt báo giá nháp thiếu hàng → tự tạo đơn, lập PO phần thiếu, tách giao trước, xuất kho; đơn công nợ khách CRM → vào bảng tuổi nợ; giao diện ALUX tìm vật tư đúng tồn; không lỗi console.
+**Chưa làm**: giữ hàng chưa hiện ở màn Kho (chỉ hiện ở Bán hàng và báo giá); trả hàng sau khi xuất kho làm bằng phiếu nhập ở Kho; quét mã vạch dùng máy quét dạng bàn phím (gõ vào ô tìm), chưa dùng camera.
+
 # 3A CRM v45 (sửa theo góp ý test báo giá — dựa trên v44)
 
 > Cần cài thêm thư viện: `jspdf`, `html2canvas` (tạo PDF để chia sẻ / đính kèm), `nodemailer` (gửi email từ máy chủ). Script `cai-dat-v45.ps1` tự cài.

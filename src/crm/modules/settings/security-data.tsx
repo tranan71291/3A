@@ -22,6 +22,7 @@ import { FundSettings, OrgSettings, SegmentSettings } from './my-account';
 import { PermissionsSettings } from './permissions';
 import { LegacyDemoPanel } from './sample-data';
 import { BusinessModulesPanel } from './settings';
+import { WorkflowSettings } from './workflow';
 
 /** Phát hiện bất thường từ nhật ký: đăng nhập lỗi dồn dập, khóa tài khoản, đổi quyền ngoài giờ (22h–6h) trong 7 ngày */
 export function AnomalyCard() {
@@ -328,6 +329,7 @@ export function SettingsModule() {
     { id: 'company', label: 'Doanh nghiệp', show: true, group: 'Tổ chức' },
     { id: 'org', label: 'Phòng ban & nhân sự', show: true, group: 'Tổ chức' },
     { id: 'perms', label: 'Phân quyền', show: true, group: 'Tổ chức' },
+    { id: 'workflow', label: 'Quy trình & phê duyệt', show: true, group: 'Tổ chức' },
     { id: 'accounting', label: 'Kế toán & công nợ', show: true, group: 'Nghiệp vụ' },
     { id: 'pricing', label: 'Bảng đơn giá & thanh toán', show: mode !== 'TRADING', group: 'Nghiệp vụ' },
     { id: 'warehouses', label: 'Kho hàng', show: mode !== 'MFG', group: 'Nghiệp vụ' },
@@ -381,6 +383,7 @@ export function SettingsModule() {
       {cur === 'getfly' && <GetflySettings />}
       {cur === 'email' && <EmailSettings />}
       {cur === 'perms' && <PermissionsSettings />}
+      {cur === 'workflow' && <WorkflowSettings />}
       {cur === 'overview' && <SettingsOverview go={setTab} />}
       {cur === 'ai' && <HubSettings part="ai" />}
       {cur === 'zalo' && <HubSettings part="zalo" znsOn={feat?.zns !== false} />}

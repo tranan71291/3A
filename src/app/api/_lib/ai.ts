@@ -24,7 +24,7 @@ export function pickProvider(p: AiRequest['provider'], tenant?: string): AiProvi
 export async function callAi(req: AiRequest, tenant?: string, f: typeof fetch = fetch): Promise<AiResult> {
   const provider = pickProvider(req.provider, tenant);
   if (!provider) return { ok: false, error: 'ai_not_configured', status: 503 };
-  const maxTokens = Math.min(Math.max(req.maxTokens ?? 1024, 64), 4096);
+  const maxTokens = Math.min(Math.max(req.maxTokens ?? 1024, 64), 8192);
   const turns = req.messages.slice(-30);
   const lastUser = turns.map((t) => t.role).lastIndexOf('user');
   try {

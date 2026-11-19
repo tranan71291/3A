@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, ArrowLeftRight, AtSign, Banknote, Bell, BookUser, Boxes, Briefcase, Building2, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Coins, Columns3, Copy, Database, Download, Factory, FileCheck2, FileText, FolderOpen, HardHat, House, Inbox, LayoutDashboard, Lightbulb, Megaphone, MessageCircle, MessagesSquare, Newspaper, Package, PackageMinus, PackagePlus, Plane, Receipt as ReceiptIcon, RefreshCw, Rows3, Ruler, Settings, ShieldCheck, Ship, SlidersHorizontal, SquarePlay, Target, ThumbsUp, Truck, Users, Vote, Wallet, Warehouse, XCircle, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, AtSign, Banknote, Bell, BookUser, Boxes, Briefcase, Building2, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Coins, Columns3, Copy, Database, Download, Factory, FileCheck2, FileText, FolderOpen, HardHat, House, Inbox, LayoutDashboard, Lightbulb, Megaphone, MessageCircle, MessagesSquare, Newspaper, Package, PackageMinus, PackagePlus, Plane, Receipt as ReceiptIcon, RefreshCw, Rows3, Ruler, Settings, ShieldCheck, Ship, ShoppingBag, SlidersHorizontal, Sparkles, SquarePlay, Target, ThumbsUp, Truck, Users, Vote, Wallet, Warehouse, XCircle, Zap } from 'lucide-react';
 import { Component, Fragment, createContext, memo, type ReactNode, useContext, useDeferredValue, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { type JSONContent } from '@tiptap/core';
@@ -8,7 +8,7 @@ import { PluginKey } from '@tiptap/pm/state';
 import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
-import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleLine, SalePay, SalesOrder, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
@@ -169,7 +169,7 @@ export const ROLE_DESC: Record<Role, string> = {
   ACCOUNTANT: 'Đối soát hóa đơn VAT, Credit Note và cấn trừ công nợ Hãng',
 };
 
-export const MODULES: Module[] = ['home', 'overview', 'tasks', 'leads', 'customers', 'projects', 'products', 'warehouse', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'staff', 'docs', 'reports', 'settings', 'messages', 'contacts', 'zalo', 'marketing'];
+export const MODULES: Module[] = ['home', 'overview', 'tasks', 'sales', 'leads', 'customers', 'projects', 'products', 'warehouse', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'staff', 'docs', 'reports', 'settings', 'messages', 'contacts', 'zalo', 'marketing'];
 
 export const MODULE_LABEL: Record<Module, string> = {
   home: 'Bàn làm việc',
@@ -183,9 +183,10 @@ export const MODULE_LABEL: Record<Module, string> = {
   products: 'Sản phẩm',
   messages: 'Tin nhắn',
   zalo: 'Zalo Hub',
-  marketing: 'Marketing Hub',
+  marketing: 'Auto Content',
+  sales: 'Bán hàng',
   supply: 'Đặt hàng & Hàng về',
-  claims: 'Hồ sơ MDF',
+  claims: 'MDF/CS',
   jobs: 'Đơn hàng công trình',
   production: 'Sản xuất',
   install: 'Lắp đặt & Nghiệm thu',
@@ -198,7 +199,7 @@ export const MODULE_LABEL: Record<Module, string> = {
 };
 
 /** Nhãn ngắn cho thanh điều hướng dưới (mobile) */
-export const MODULE_SHORT: Partial<Record<Module, string>> = { zalo: 'Zalo', marketing: 'Marketing', home: 'Bàn làm việc', contacts: 'Danh bạ', warehouse: 'Kho', tasks: 'Công việc', leads: 'Lead', customers: 'Khách hàng', projects: 'Dự án', messages: 'Tin nhắn', products: 'Sản phẩm', supply: 'Đặt hàng', claims: 'Quỹ MDF', jobs: 'Đơn hàng', production: 'Sản xuất', install: 'Lắp đặt', inventory: 'Vật tư', cashbook: 'Thu chi', staff: 'Lịch công tác', reports: 'Công nợ', docs: 'Tài liệu', settings: 'Cài đặt', overview: 'Tổng quan' };
+export const MODULE_SHORT: Partial<Record<Module, string>> = { sales: 'Bán hàng', zalo: 'Zalo', marketing: 'Auto Content', home: 'Bàn làm việc', contacts: 'Danh bạ', warehouse: 'Kho', tasks: 'Công việc', leads: 'Lead', customers: 'Khách hàng', projects: 'Dự án', messages: 'Tin nhắn', products: 'Sản phẩm', supply: 'Đặt hàng', claims: 'MDF/CS', jobs: 'Đơn hàng', production: 'Sản xuất', install: 'Lắp đặt', inventory: 'Vật tư', cashbook: 'Thu chi', staff: 'Lịch công tác', reports: 'Công nợ', docs: 'Tài liệu', settings: 'Cài đặt', overview: 'Tổng quan' };
 
 export const MODULE_DESC: Record<Module, string> = {
   home: 'Bảng tin nội bộ: thông báo, tin tức, sáng kiến, bình chọn, sinh nhật và việc của tôi hôm nay',
@@ -213,6 +214,7 @@ export const MODULE_DESC: Record<Module, string> = {
   zalo: 'Chat với khách qua Zalo OA và ZNS ngay trong CRM, tự liên kết hội thoại với khách hàng, đơn hàng, dự án',
   marketing: 'Plan (lịch chiến dịch & nội dung cho AI viết), Content Studio AI, Image (ảnh AI chuẩn SEO, banner), Budget (ngân sách & ROI), Automation (ZNS / Zalo / SMS / Messenger theo phân khúc)',
   products: 'Danh mục SKU dùng chung cho bóc tách BOQ, báo giá và đặt hàng Hãng',
+  sales: 'Lên đơn bán trực tiếp và đơn tự tạo khi chốt báo giá: giữ hàng, xuất kho, thu tiền hoặc ghi công nợ, đề xuất mua phần thiếu',
   supply: 'PO đặt Hãng trước 3–4 tháng, các đợt hàng về, phân bổ giữ chỗ cho dự án',
   jobs: 'Đơn chờ khảo sát, tạo báo giá m² / md, nhận cọc chuyển sản xuất, theo dõi đến khi thu đủ tiền',
   production: 'Lệnh sản xuất 3 trạng thái: chờ sản xuất, đang sản xuất, đã hoàn thành rồi hẹn lắp đặt',
@@ -238,7 +240,8 @@ export const MODULE_ICON: Record<Module, typeof Wallet> = {
   products: Package,
   messages: MessagesSquare,
   zalo: MessageCircle,
-  marketing: Megaphone,
+  marketing: Sparkles,
+  sales: ShoppingBag,
   supply: Ship,
   claims: Briefcase,
   jobs: Ruler,
@@ -441,14 +444,137 @@ export const APPROVAL_LEVEL: Record<ApprovalLevel, { label: string; tone: Tone }
   BOD: { label: 'Cần BOD duyệt', tone: 'red' },
 };
 
-export const approvalOf = (gm: number | null, amount = 0): ApprovalLevel =>
-  amount > GM_RULE.bigDeal || (gm !== null && gm < GM_RULE.bod) ? 'BOD' : gm === null || gm < GM_RULE.head ? 'HEAD' : 'AUTO';
-
 /** Lý do cần duyệt giá (hiển thị cho người duyệt) */
 export const approvalReasons = (gm: number | null, amount: number): string[] => [
   ...(gm === null ? ['Thiếu giá vốn một số SKU, chưa tính được GM'] : gm < GM_RULE.bod ? [`GM ${gm.toFixed(1)}% dưới ${GM_RULE.bod}%`] : gm < GM_RULE.head ? [`GM ${gm.toFixed(1)}% dưới ${GM_RULE.head}%`] : []),
   ...(amount > GM_RULE.bigDeal ? [`Đơn ${compact(amount)} trên 1 tỷ`] : []),
 ];
+
+// ---------------- v48: QUY TRÌNH & PHÊ DUYỆT (bộ máy) ----------------
+export const WF_POLICY: WfPolicy = { noSelf: true, soleBodSelf: true, bodOverride: true, escalate: true, leaveDelegate: true };
+
+export const WF_WHO_LABEL: Record<WfWhoKind, string> = { DEPT_HEAD: 'Trưởng phòng của khách / dự án', MANAGER: 'Quản lý trực tiếp của người gửi', ROLE: 'Theo vai trò', USER: 'Người cụ thể', WH_MANAGER: 'Thủ kho của kho / người duyệt phiếu kho' };
+
+export const WF_OP_LABEL: Record<WfOp, string> = { lt: 'nhỏ hơn', gt: 'lớn hơn', eq: 'bằng', ne: 'khác', empty: 'chưa có' };
+
+/** Trường dùng trong điều kiện của từng quy trình có sẵn */
+export const WF_FIELDS: Record<string, { id: string; label: string; unit?: string }[]> = {
+  QUOTE: [{ id: 'gm', label: 'Lãi gộp', unit: '%' }, { id: 'amount', label: 'Giá trị trước VAT', unit: 'đ' }, { id: 'maxDisc', label: 'Chiết khấu dòng lớn nhất', unit: '%' }],
+  CONTRACT: [{ id: 'amount', label: 'Giá trị sau VAT', unit: 'đ' }, { id: 'special', label: 'Số điều khoản đặc biệt' }],
+  ACTIVITY: [{ id: 'amount', label: 'Chi phí đề xuất', unit: 'đ' }, { id: 'days', label: 'Số ngày' }],
+  EXPENSE: [{ id: 'amount', label: 'Tổng chứng từ', unit: 'đ' }],
+  PROGRAM: [{ id: 'amount', label: 'Giữ chỗ quỹ', unit: 'đ' }],
+  CLAIM: [{ id: 'amount', label: 'Giá trị claim', unit: 'đ' }],
+  VOUCHER: [{ id: 'amount', label: 'Giá trị phiếu', unit: 'đ' }],
+  SALE: [{ id: 'maxDisc', label: 'Chiết khấu dòng lớn nhất', unit: '%' }, { id: 'overLimit', label: 'Vượt hạn mức nợ', unit: 'đ' }, { id: 'amount', label: 'Tổng đơn', unit: 'đ' }],
+  SALE_PAY: [{ id: 'amount', label: 'Số tiền', unit: 'đ' }],
+  CONTENT: [],
+  JOB_QUOTE: [{ id: 'gm', label: 'Lãi gộp dự toán', unit: '%' }, { id: 'amount', label: 'Giá trị', unit: 'đ' }],
+  DESIGN: [],
+  RECEIPT: [{ id: 'amount', label: 'Số tiền', unit: 'đ' }],
+};
+
+export const wfStep = (id: string, name: string, who: WfWho, slaMin: number, extra: Partial<WfStep> = {}): WfStep => ({ id, name, who, slaMin, allowNeedInfo: true, ...extra });
+
+export const BOD_WHO: WfWho = { kind: 'ROLE', role: 'BOD' };
+
+/** 13 quy trình có sẵn, giữ đúng cách duyệt của các bản trước (thêm bước Giám đốc có điều kiện cho báo giá, hợp đồng lớn) */
+export const WF_DEFAULTS: WfDef[] = [
+  { key: 'QUOTE', name: 'Duyệt giá báo giá', group: 'Bán hàng', builtin: true, enabled: true, version: 1,
+    trigger: [{ field: 'gm', op: 'lt', value: 25 }, { field: 'gm', op: 'empty' }, { field: 'amount', op: 'gt', value: 1e9 }], skipText: 'Báo giá nháp khách lẻ (không MST, công nợ 0 ngày)',
+    steps: [wfStep('q1', 'Trưởng phòng duyệt', { kind: 'DEPT_HEAD' }, 240, { perm: 'quote.approve' }), wfStep('q2', 'Giám đốc duyệt', BOD_WHO, 240, { when: [{ field: 'gm', op: 'lt', value: 15 }, { field: 'amount', op: 'gt', value: 1e9 }] })] },
+  { key: 'CONTRACT', name: 'Duyệt hợp đồng', group: 'Bán hàng', builtin: true, lockEnable: true, enabled: true, version: 1, trigger: [], triggerText: 'Có điều khoản khác mẫu (điều khoản đặc biệt)',
+    steps: [wfStep('c1', 'Trưởng phòng duyệt', { kind: 'DEPT_HEAD' }, 480, { perm: 'contract.approve' }), wfStep('c2', 'Giám đốc duyệt', BOD_WHO, 480, { when: [{ field: 'amount', op: 'gt', value: 2e9 }] })] },
+  { key: 'SALE', name: 'Đơn bán: giảm giá, vượt hạn mức nợ', group: 'Bán hàng', builtin: true, enabled: true, version: 1, mode: 'TRADING',
+    trigger: [{ field: 'maxDisc', op: 'gt', value: 10 }, { field: 'overLimit', op: 'gt', value: 0 }], skipText: 'Đơn tự tạo từ báo giá đã duyệt',
+    steps: [wfStep('s1', 'Trưởng phòng duyệt', { kind: 'DEPT_HEAD' }, 120)] },
+  { key: 'SALE_PAY', name: 'Xác nhận tiền thu đơn bán', group: 'Tài chính', builtin: true, lockSteps: true, lockEnable: true, enabled: true, version: 1, trigger: [], triggerText: 'Tiền do người không có quyền quỹ ghi nhận',
+    steps: [wfStep('p1', 'Kế toán xác nhận', { kind: 'ROLE', role: 'ACCOUNTANT' }, 240, { perm: 'receipt.confirm', allowNeedInfo: false })] },
+  { key: 'ACTIVITY', name: 'Công tác / nghỉ / giải trình công', group: 'Nhân sự & công tác', builtin: true, lockEnable: true, enabled: true, version: 1, trigger: [], triggerText: 'Công tác, nghỉ, giải trình; gặp khách / khảo sát có chi phí',
+    steps: [wfStep('a1', 'Quản lý trực tiếp duyệt', { kind: 'MANAGER' }, 240, { perm: 'activity.approve' })] },
+  { key: 'EXPENSE', name: 'Chi phí công tác', group: 'Nhân sự & công tác', builtin: true, lockSteps: true, lockEnable: true, enabled: true, version: 1, trigger: [], triggerText: 'Mọi chứng từ chi phí',
+    steps: [wfStep('e1', 'Trưởng phòng duyệt chi', { kind: 'MANAGER' }, 1440, { perm: 'activity.approve', allowNeedInfo: false }), wfStep('e2', 'Kế toán thanh toán', { kind: 'ROLE', role: 'ACCOUNTANT' }, 1440, { perm: 'claim.accounting', allowNeedInfo: false })] },
+  { key: 'PROGRAM', name: 'Đề xuất chi quỹ MDF', group: 'Quỹ Hãng', builtin: true, lockEnable: true, enabled: true, version: 1, mode: 'TRADING', trigger: [], triggerText: 'Mọi đề xuất (sau khi duyệt nội bộ: chờ 3M Pre-Approval)',
+    steps: [wfStep('m1', 'Trưởng phòng trong hạn mức', { kind: 'DEPT_HEAD' }, 1440, { perm: 'program.approveInternal', userLimit: true, allowNeedInfo: false })] },
+  { key: 'CLAIM', name: 'Thẩm định POP và đối soát hóa đơn', group: 'Quỹ Hãng', builtin: true, lockSteps: true, lockEnable: true, enabled: true, version: 1, mode: 'TRADING', trigger: [], triggerText: 'Có chứng từ POP mới / hóa đơn claim',
+    steps: [wfStep('k1', 'Thẩm định POP (khác người đề xuất)', { kind: 'ROLE', role: 'MKT_LEAD' }, 2880, { perm: 'claim.verify', allowNeedInfo: false }), wfStep('k2', 'Kế toán đối soát hóa đơn', { kind: 'ROLE', role: 'ACCOUNTANT' }, 2880, { perm: 'claim.accounting', allowNeedInfo: false })] },
+  { key: 'VOUCHER', name: 'Phiếu kho (nhập, xuất, chuyển, kiểm)', group: 'Kho', builtin: true, lockEnable: true, enabled: true, version: 1, mode: 'TRADING', trigger: [], triggerText: 'Mọi phiếu lập bởi người không có quyền duyệt',
+    steps: [wfStep('v1', 'Thủ kho / Kế toán duyệt', { kind: 'WH_MANAGER' }, 240, { allowNeedInfo: false })] },
+  { key: 'CONTENT', name: 'Nội dung marketing', group: 'Marketing', builtin: true, lockEnable: true, enabled: true, version: 1, trigger: [], triggerText: 'Bài gửi duyệt từ Content Studio',
+    steps: [wfStep('n1', 'Trưởng MKT duyệt (khác người viết)', { kind: 'ROLE', role: 'MKT_LEAD' }, 1440, { perm: 'mkt.manage' })] },
+  { key: 'JOB_QUOTE', name: 'Báo giá xưởng lãi gộp thấp', group: 'Xưởng', builtin: true, enabled: true, version: 1, mode: 'MFG',
+    trigger: [{ field: 'gm', op: 'lt', value: 25 }],
+    steps: [wfStep('j1', 'Trưởng phòng duyệt', { kind: 'DEPT_HEAD' }, 240, { perm: 'quote.approve' }), wfStep('j2', 'Giám đốc duyệt', BOD_WHO, 240, { when: [{ field: 'gm', op: 'lt', value: 15 }] })] },
+  { key: 'DESIGN', name: 'Duyệt bản vẽ triển khai', group: 'Xưởng', builtin: true, lockEnable: true, enabled: true, version: 1, mode: 'MFG', trigger: [], triggerText: 'Bản vẽ gửi duyệt trước khi cắt',
+    steps: [wfStep('d1', 'Quản lý sản xuất duyệt', { kind: 'ROLE', role: 'DEPT_HEAD' }, 480, { perm: 'production.manage' })] },
+  { key: 'RECEIPT', name: 'Xác nhận tiền thu đơn hàng', group: 'Tài chính', builtin: true, lockSteps: true, lockEnable: true, enabled: true, version: 1, mode: 'MFG', trigger: [], triggerText: 'Phiếu thu nộp về kế toán',
+    steps: [wfStep('r1', 'Kế toán xác nhận', { kind: 'ROLE', role: 'ACCOUNTANT' }, 240, { perm: 'receipt.confirm', allowNeedInfo: false })] },
+];
+
+export const wfCondOk = (c: WfCond, s: WfSubject) => {
+  const v = s.vals[c.field];
+  if (c.op === 'empty') return v === null || v === undefined || v === '';
+  if (v === null || v === undefined || v === '') return false;
+  if (c.op === 'lt') return Number(v) < Number(c.value);
+  if (c.op === 'gt') return Number(v) > Number(c.value);
+  if (c.op === 'eq') return String(v) === String(c.value);
+  return String(v) !== String(c.value);
+};
+
+export const wfNeeds = (d: WfDef | undefined, s: WfSubject) => !!d && d.enabled && (!d.trigger.length || d.trigger.some((c) => wfCondOk(c, s)));
+
+export const wfFieldLabel = (d: WfDef, id: string) => (WF_FIELDS[d.key] ?? []).find((f) => f.id === id)?.label ?? d.form?.find((f) => f.id === id)?.label ?? id;
+
+export const wfCondText = (d: WfDef, c: WfCond) => {
+  const f = (WF_FIELDS[d.key] ?? []).find((x) => x.id === c.field);
+  const val = c.op === 'empty' ? '' : f?.unit === 'đ' || d.form?.find((x) => x.id === c.field)?.type === 'MONEY' ? compact(Number(c.value)) : `${c.value}${f?.unit === '%' ? '%' : ''}`;
+  return c.op === 'empty' ? `${wfFieldLabel(d, c.field)} chưa có` : `${wfFieldLabel(d, c.field)} ${c.op === 'lt' ? '<' : c.op === 'gt' ? '>' : c.op === 'eq' ? '=' : '≠'} ${val}`;
+};
+
+/** Lý do cần duyệt: các điều kiện khớp */
+export const wfReasons = (d: WfDef, s: WfSubject) => d.trigger.filter((c) => wfCondOk(c, s)).map((c) => wfCondText(d, c));
+
+export const wfHasPerm = (u: User, a: Action, c: WfCtx) => c.perms.users?.[u.id]?.actions?.[a] ?? (c.perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(u.role);
+
+export const wfHeadOf = (dept: string | undefined, c: WfCtx) => { const d = c.departments.find((x) => x.code === dept); return c.users.find((u) => u.id === d?.headId && u.active); };
+
+export const wfBods = (c: WfCtx) => c.users.filter((u) => u.active && u.role === 'BOD');
+
+export const wfDayOf = (t: number) => iso(new Date(t));
+
+export const wfOnLeave = (u: User, c: WfCtx) => c.activities.some((a) => a.userId === u.id && a.type === 'LEAVE' && a.status === 'APPROVED' && (a.leaveKind ?? 'LEAVE') === 'LEAVE' && Date.parse(a.from) <= c.now && Date.parse(a.to) >= c.now);
+
+export const wfDelegateOf = (u: User, c: WfCtx) => { const day = wfDayOf(c.now); const d = c.delegations.find((x) => x.fromId === u.id && x.from <= day && x.to >= day); return d ? c.users.find((x) => x.id === d.toId && x.active) : undefined; };
+
+export const wfOverdue = (step: WfStep, startedAt: number, now: number) => now > startedAt + step.slaMin * 60_000;
+
+/** Mẫu đề nghị dựng sẵn */
+export const wfF = (id: string, label: string, type: WfFieldType, required = false, options?: string[]): WfField => ({ id, label, type, required, options });
+
+export const WF_TEMPLATES: Omit<WfDef, 'key' | 'version' | 'enabled'>[] = [
+  { name: 'Đề nghị mua tài sản', group: 'Hành chính & tài sản', desc: 'Mua máy tính, thiết bị, dụng cụ', prefix: 'TS', after: ['NOTIFY', 'CASH_OUT'], trigger: [],
+    form: [wfF('title', 'Tiêu đề đề nghị', 'TEXT', true), wfF('item', 'Tài sản cần mua', 'LONG', true), wfF('amount', 'Số tiền dự kiến', 'MONEY', true), wfF('vendor', 'Nhà cung cấp đề xuất', 'TEXT'), wfF('need', 'Ngày cần có', 'DATE'), wfF('quote', 'Báo giá nhà cung cấp', 'FILE', true)],
+    steps: [wfStep('t1', 'Trưởng phòng duyệt', { kind: 'MANAGER' }, 480), wfStep('t2', 'Giám đốc duyệt', BOD_WHO, 1440, { when: [{ field: 'amount', op: 'gt', value: 20e6 }] }), wfStep('t3', 'Kế toán chi tiền', { kind: 'ROLE', role: 'ACCOUNTANT' }, 1440)] },
+  { name: 'Đề nghị tạm ứng', group: 'Tài chính', desc: 'Tạm ứng công tác, mua hàng', prefix: 'TU', after: ['NOTIFY', 'CASH_OUT'], trigger: [],
+    form: [wfF('title', 'Nội dung tạm ứng', 'TEXT', true), wfF('amount', 'Số tiền', 'MONEY', true), wfF('back', 'Ngày hoàn ứng', 'DATE', true), wfF('note', 'Ghi chú', 'LONG')],
+    steps: [wfStep('t1', 'Trưởng phòng duyệt', { kind: 'MANAGER' }, 480), wfStep('t2', 'Kế toán chi tiền', { kind: 'ROLE', role: 'ACCOUNTANT' }, 1440)] },
+  { name: 'Đề nghị thanh toán nhà cung cấp', group: 'Tài chính', desc: 'Thanh toán hóa đơn đầu vào', prefix: 'TT', after: ['NOTIFY', 'CASH_OUT'], trigger: [],
+    form: [wfF('title', 'Nội dung thanh toán', 'TEXT', true), wfF('vendor', 'Nhà cung cấp', 'TEXT', true), wfF('amount', 'Số tiền', 'MONEY', true), wfF('invoice', 'Hóa đơn / chứng từ', 'FILE', true), wfF('due', 'Hạn thanh toán', 'DATE')],
+    steps: [wfStep('t1', 'Người phụ trách xác nhận', { kind: 'MANAGER' }, 480), wfStep('t2', 'Kế toán kiểm tra', { kind: 'ROLE', role: 'ACCOUNTANT' }, 1440), wfStep('t3', 'Giám đốc duyệt chi', BOD_WHO, 1440, { when: [{ field: 'amount', op: 'gt', value: 50e6 }] })] },
+  { name: 'Đề nghị cấp văn phòng phẩm', group: 'Hành chính & tài sản', desc: 'Giấy, mực, dụng cụ văn phòng', prefix: 'VP', after: ['NOTIFY'], trigger: [],
+    form: [wfF('title', 'Cần cấp', 'TEXT', true), wfF('list', 'Danh sách, số lượng', 'LONG', true), wfF('amount', 'Giá trị ước tính', 'MONEY')],
+    steps: [wfStep('t1', 'Quản lý trực tiếp duyệt', { kind: 'MANAGER' }, 480)] },
+  { name: 'Đề nghị tuyển dụng', group: 'Nhân sự', desc: 'Bổ sung nhân sự', prefix: 'TD', after: ['NOTIFY'], trigger: [],
+    form: [wfF('title', 'Vị trí cần tuyển', 'TEXT', true), wfF('qty', 'Số lượng', 'NUMBER', true), wfF('reason', 'Lý do', 'LONG', true), wfF('salary', 'Mức lương dự kiến', 'MONEY'), wfF('start', 'Ngày cần nhận việc', 'DATE')],
+    steps: [wfStep('t1', 'Trưởng phòng đề xuất', { kind: 'MANAGER' }, 1440), wfStep('t2', 'Giám đốc duyệt', BOD_WHO, 2880)] },
+];
+
+export const WF_FIELD_TYPE: Record<WfFieldType, string> = { TEXT: 'Chữ ngắn', LONG: 'Chữ dài', NUMBER: 'Số', MONEY: 'Số tiền', DATE: 'Ngày', SELECT: 'Chọn 1', MULTI: 'Chọn nhiều', FILE: 'File / ảnh', USER: 'Người trong công ty', LINK: 'Khách hàng / dự án' };
+
+/** Giá trị trường số của đề nghị tự tạo dùng cho điều kiện */
+export const wfFormVals = (d: WfDef, form: Record<string, string>) => Object.fromEntries((d.form ?? []).map((f) => [f.id, f.type === 'NUMBER' || f.type === 'MONEY' ? (form[f.id] ? Number(form[f.id]) : null) : form[f.id] ?? null]));
+
+export const wfAmountOf = (d: WfDef, form: Record<string, string>) => { const f = (d.form ?? []).find((x) => x.type === 'MONEY'); return f && form[f.id] ? Number(form[f.id]) : undefined; };
 
 export const QUOTE_STATUS: Record<QuoteStatus, { label: string; tone: Tone }> = {
   SENT: { label: 'Đã gửi', tone: 'orange' },
@@ -567,7 +693,7 @@ export const allModules = (v: boolean) => Object.fromEntries(MODULES.map((m) => 
 export const INITIAL_PERMS: Perms = {
   modules: {
     BOD: allModules(true),
-    MKT_LEAD: { ...allModules(true), cashbook: false, inventory: false, warehouse: false },
+    MKT_LEAD: { ...allModules(true), cashbook: false, inventory: false, warehouse: false, sales: false },
     DEPT_HEAD: { ...allModules(true), settings: false },
     SALES_REP: { ...allModules(true), reports: false, settings: false, cashbook: false, marketing: false },
     ACCOUNTANT: { ...allModules(true), leads: false, zalo: false, marketing: false },
@@ -757,6 +883,24 @@ export const blockersOf = (c: Claim, rules: ClaimRules) => auditClaim(c, rules).
 
 export const lineNet = (l: QuoteLine) => Math.round(l.listPrice * (1 - l.discountPct / 100));
 
+// ---------------- v46: đơn bán ----------------
+export const SALE_STATUS: Record<SaleStatus, { label: string; tone: Tone }> = { PENDING: { label: 'Chờ xuất kho', tone: 'orange' }, SHIPPING: { label: 'Đang giao', tone: 'blue' }, DONE: { label: 'Hoàn thành', tone: 'teal' }, CANCELLED: { label: 'Đã hủy', tone: 'muted' } };
+
+export const SALE_PAY: Record<SalePay, string> = { CASH: 'Tiền mặt', BANK: 'Chuyển khoản', PARTIAL: 'Trả một phần', CREDIT: 'Công nợ' };
+
+export const SALE_DELIVERY: Record<SaleDelivery, string> = { PICKUP: 'Lấy tại cửa hàng', DELIVER: 'Giao hàng', CARRIER: 'Gửi xe / chành' };
+
+export const saleLineNet = (l: SaleLine) => Math.round(l.qty * l.price * (1 - l.discountPct / 100));
+
+export const salePaid = (o: SalesOrder, all = false) => o.payments.filter((p) => all || p.confirmed).reduce((s, p) => s + p.amount, 0);
+
+/** Đơn đã xuất kho (đang giao / hoàn thành) mới phát sinh công nợ */
+export const saleIssued = (o: SalesOrder) => o.status === 'SHIPPING' || o.status === 'DONE';
+
+/** Hàng giữ chỗ (đã về theo phiếu đặt hàng) cho đúng khách / dự án của đơn */
+export const saleResOf = (o: Pick<SalesOrder, 'customerId' | 'leadId'>, sku: string, res: StockReservation[]) =>
+  res.filter((r) => r.sku === sku && r.status === 'HELD' && r.qty > 0 && ((r.kind === 'CUSTOMER' && !!o.customerId && r.refId === o.customerId) || (r.kind === 'LEAD' && !!o.leadId && r.refId === o.leadId)));
+
 /** Báo giá mới nhất có dòng sản phẩm của dự án */
 export const latestQuote = (leadId: string, quotes: Quote[]) => quotes.filter((q) => q.leadId === leadId && q.lines.length).sort((a, b) => b.version - a.version)[0];
 
@@ -909,6 +1053,8 @@ export const VIEW_META: Record<ViewKind, { label: string; icon: typeof Wallet }>
   board: { label: 'Kanban', icon: Columns3 },
   gantt: { label: 'Gantt', icon: CalendarRange },
 };
+
+export const strHash = (s: string) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
 
 export const tdCls = 'px-3 py-2.5 align-middle';
 
@@ -2440,7 +2586,8 @@ export const missingCompanyInfo = (c: CompanyInfo) => ([['taxCode', 'MST'], ['ad
 
 export const DOC_CSS = `@page{size:A4;margin:18mm 16mm}
 body{font-family:'Times New Roman',Times,serif;font-size:13pt;color:#111;line-height:1.45;margin:0;padding:16px 8px;background:#cfd3da}
-.page{box-sizing:border-box;width:210mm;max-width:100%;min-height:297mm;margin:0 auto;padding:18mm 16mm;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.28)}
+.page{box-sizing:border-box;width:210mm;max-width:100%;min-height:297mm;margin:0 auto;padding:18mm 16mm;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.28);position:relative;z-index:0;--pl:16mm;--pt:18mm}
+img[data-float]{position:absolute;height:auto;max-width:none}
 h1{font-size:17pt;text-align:center;margin:18px 0 4px}h3{font-size:13pt;margin:14px 0 4px}
 p{margin:6px 0}ul{margin:4px 0;padding-left:22px}
 table.items{width:100%;border-collapse:collapse;font-size:11.5pt;margin:8px 0}
@@ -2450,8 +2597,8 @@ table.layout{width:100%;border-collapse:collapse}table.layout td{vertical-align:
 .sign td{text-align:center;width:50%;padding-top:16px}
 .r{text-align:right}.c{text-align:center}.small{font-size:10.5pt;color:#444}
 .missing{background:#fde68a;color:#92400e;padding:0 2px}
-@media (max-width:820px){.page{padding:10mm 8mm;min-height:0}}
-@media print{body{background:#fff;padding:0}.page{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}.missing{background:none;color:inherit}}`;
+@media (max-width:820px){.page{padding:10mm 8mm;min-height:0;--pl:8mm;--pt:10mm}}
+@media print{body{background:#fff;padding:0}.page{width:auto;min-height:0;margin:0;padding:0;box-shadow:none;--pl:0px;--pt:0px}.missing{background:none;color:inherit}}`;
 
 /** Dữ liệu mẫu để xem trước mẫu tài liệu khi chưa có khách thật */
 export const SAMPLE_FORM: ComposerForm = {
@@ -2617,6 +2764,8 @@ export const HUB_GROUP: Record<HubGroup, { label: string; color: string; kinds: 
   CASH: { label: 'Thu tiền & nộp quỹ', color: '#EC4899', kinds: ['RECEIPT', 'CASH'] },
   STOCK: { label: 'Hàng giữ chỗ', color: '#F6B533', kinds: ['STOCK'] },
   MKT: { label: 'Nội dung marketing', color: '#0EA5E9', kinds: ['CONTENT'] },
+  OPS: { label: 'Kho, đơn bán & xưởng', color: '#64748B', kinds: ['VOUCHER', 'SALE', 'SALE_PAY', 'JOB_QUOTE', 'DESIGN'] },
+  REQ: { label: 'Đề nghị', color: '#14B8A6', kinds: ['REQUEST'] },
 };
 
 export const groupOf = (k: ApprovalKind) => (Object.keys(HUB_GROUP) as HubGroup[]).find((g) => HUB_GROUP[g].kinds.includes(k)) ?? 'STOCK';
@@ -2625,22 +2774,34 @@ export const HUB_KIND: Record<ApprovalKind, string> = {
   QUOTE: 'Duyệt giá báo giá', CONTRACT: 'Duyệt hợp đồng', ACTIVITY: 'Duyệt công tác / công', EXPENSE: 'Duyệt chi phí công tác',
   PROGRAM: 'Duyệt đề xuất chi quỹ', CLAIM: 'Nghiệm thu POP / hóa đơn', LEAD_ASSIGN: 'Chỉ định Sales', STOCK: 'Giải phóng hàng giữ chỗ',
   RECEIPT: 'Xác nhận tiền thu', CASH: 'Nộp tiền về kế toán', CONTENT: 'Duyệt nội dung marketing',
+  VOUCHER: 'Duyệt phiếu kho', SALE: 'Duyệt đơn bán', SALE_PAY: 'Xác nhận tiền đơn bán', JOB_QUOTE: 'Duyệt báo giá xưởng', DESIGN: 'Duyệt bản vẽ', REQUEST: 'Duyệt đề nghị',
 };
 
 /** Nhãn ngắn cho cột "Phân loại" của bảng hợp nhất */
 export const HUB_SHORT: Record<ApprovalKind, string> = {
   QUOTE: 'Duyệt báo giá', CONTRACT: 'Duyệt hợp đồng', ACTIVITY: 'Công tác / công', EXPENSE: 'Chi phí công tác', PROGRAM: 'Đề xuất quỹ',
   CLAIM: 'Claim / POP', LEAD_ASSIGN: 'Chỉ định Sales', STOCK: 'Hàng giữ chỗ', RECEIPT: 'Xác nhận thu', CASH: 'Nộp quỹ', CONTENT: 'Nội dung MKT',
+  VOUCHER: 'Phiếu kho', SALE: 'Đơn bán', SALE_PAY: 'Tiền đơn bán', JOB_QUOTE: 'Báo giá xưởng', DESIGN: 'Bản vẽ', REQUEST: 'Đề nghị',
 };
 
 /** SLA xử lý (phút) theo loại yêu cầu */
-export const HUB_SLA: Record<ApprovalKind, number> = { QUOTE: 120, CONTRACT: 480, ACTIVITY: 240, EXPENSE: 2880, PROGRAM: 1440, CLAIM: 2880, LEAD_ASSIGN: 60, STOCK: 1440, RECEIPT: 240, CASH: 1440, CONTENT: 1440 };
+export const HUB_SLA: Record<ApprovalKind, number> = { QUOTE: 120, CONTRACT: 480, ACTIVITY: 240, EXPENSE: 2880, PROGRAM: 1440, CLAIM: 2880, LEAD_ASSIGN: 60, STOCK: 1440, RECEIPT: 240, CASH: 1440, CONTENT: 1440, VOUCHER: 240, SALE: 120, SALE_PAY: 240, JOB_QUOTE: 240, DESIGN: 480, REQUEST: 1440 };
 
 export const DECISION_LABEL: Record<ApprovalDecision, { label: string; tone: Tone }> = {
   APPROVED: { label: 'Đã duyệt', tone: 'teal' }, REJECTED: { label: 'Từ chối', tone: 'red' }, NEED_INFO: { label: 'Yêu cầu bổ sung', tone: 'orange' },
 };
 
 export const dayStart = (iso: string) => Date.parse(`${iso.slice(0, 10)}T08:00:00`);
+
+// =====================================================================
+// ĐỀ NGHỊ (v48): gửi đề nghị theo quy trình tự tạo, theo dõi, duyệt
+// =====================================================================
+export const RUN_STATUS: Record<WfRunStatus, { label: string; tone: Tone }> = { PENDING: { label: 'Chờ duyệt', tone: 'orange' }, APPROVED: { label: 'Đã duyệt', tone: 'teal' }, REJECTED: { label: 'Từ chối', tone: 'red' }, NEED_INFO: { label: 'Yêu cầu bổ sung', tone: 'blue' }, CANCELLED: { label: 'Đã rút', tone: 'muted' } };
+
+export const runStep = (r: WfRun) => Math.min(r.decisions.filter((d) => d.decision === 'APPROVED').length, r.steps.length);
+
+/** Giá trị hiển thị của một trường đề nghị */
+export const runVal = (f: WfField, v: string | undefined, users: User[]) => (!v ? '—' : f.type === 'MONEY' ? vnd(Number(v)) : f.type === 'DATE' ? fmtDate(v) : f.type === 'USER' ? users.find((u) => u.id === v)?.name ?? v : f.type === 'MULTI' ? v.split('|').join(', ') : v);
 
 // =====================================================================
 //  DỮ LIỆU MẪU THEO YÊU CẦU — nạp / xóa bằng nút trong Cài đặt > Doanh nghiệp
@@ -2656,6 +2817,13 @@ export const DEMO_BUDGET_NOTE = '(Dữ liệu mẫu)';
 export const ESC_MAP: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
 export const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ESC_MAP[ch] ?? ch);
+
+export const saleDay = (o: SalesOrder) => new Date(o.createdAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+export const saleGoods = (o: SalesOrder) => o.lines.map((l) => `${l.name} ×${fmtN(l.qty)}`).join(', ');
+
+/** Hạn thanh toán: ngày xuất kho (hoặc ngày đơn) + số ngày công nợ */
+export const saleDue = (o: SalesOrder) => addDaysISO(o.issuedAt ? iso(new Date(o.issuedAt)) : o.date, o.creditDays);
 
 // =====================================================================
 //  CÀI ĐẶT: DỮ LIỆU & BẢO MẬT
@@ -2713,6 +2881,16 @@ export const ACTION_MODULE: Record<Action, Module> = {
 };
 
 export const LOCKED = (r: Role, m?: Module, a?: Action) => r === 'BOD' && (m === 'settings' || a === 'settings.edit');
+
+/** Ô tích của trang Phân quyền: 16px, bo 4px; khóa = ổ khóa trên nền xám */
+// =====================================================================
+// QUY TRÌNH & PHÊ DUYỆT (v48): cài đặt quy trình, tạo quy trình mới
+// =====================================================================
+export const WF_SLA_OPTS: [number, string][] = [[60, '1 giờ'], [120, '2 giờ'], [240, '4 giờ'], [480, '8 giờ'], [1440, '1 ngày'], [2880, '2 ngày'], [4320, '3 ngày'], [10080, '7 ngày']];
+
+export const wfSlaText = (m: number) => WF_SLA_OPTS.find(([v]) => v === m)?.[1] ?? (m % 1440 === 0 ? `${m / 1440} ngày` : m % 60 === 0 ? `${m / 60} giờ` : `${m} phút`);
+
+export const wfWhoText = (w: WfWho, users: User[]) => (w.kind === 'ROLE' ? ROLE_LABEL[w.role ?? 'BOD'] : w.kind === 'USER' ? users.find((u) => u.id === w.userId)?.name ?? 'Chưa chọn người' : w.kind === 'DEPT_HEAD' ? 'Trưởng phòng' : w.kind === 'MANAGER' ? 'Quản lý trực tiếp' : 'Thủ kho / Kế toán');
 
 export const HOOK_LABEL: Record<HookEvent, string> = {
   'order.created': 'Tạo đơn hàng mới',
@@ -2963,7 +3141,7 @@ export const TENANT_PLAN: Record<TenantPlan, { label: string; seats: number; pri
 };
 
 /** 13 module nghiệp vụ cấp phép được (Tổng quan, Công việc, Cài đặt luôn bật) */
-export const PROVISION_MODULES: Module[] = ['leads', 'customers', 'projects', 'products', 'warehouse', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'staff', 'docs', 'reports'];
+export const PROVISION_MODULES: Module[] = ['sales', 'leads', 'customers', 'projects', 'products', 'warehouse', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'staff', 'docs', 'reports'];
 
 export const defaultTenantReg = (o: Org): TenantReg => ({
   id: o.id, plan: o.id === 'vassh' ? 'ENTERPRISE' : 'BUSINESS', seats: o.id === 'vassh' ? 100 : 30,
@@ -3584,9 +3762,10 @@ export const DATE_PAGES: Module[] = ['warehouse', 'overview', 'leads', 'customer
 /** v40: Tổng quan đứng riêng trên cùng; 4 nhóm Làm việc · Bán hàng · Hàng hóa (Xưởng) · Tài chính; Tài liệu, Cài đặt ở cuối không tiêu đề */
 export const NAV_GROUPS: { id: string; title: string; list: Module[] }[] = [
   { id: 'work', title: 'Làm việc', list: ['home', 'tasks', 'staff', 'messages', 'zalo', 'contacts'] },
-  { id: 'sales', title: 'Bán hàng', list: ['leads', 'customers', 'projects', 'jobs', 'marketing'] },
+  { id: 'sales', title: 'Bán hàng', list: ['sales', 'customers', 'projects', 'jobs', 'docs'] },
+  { id: 'mkt', title: 'Marketing', list: ['leads', 'marketing', 'claims'] },
   { id: 'supply', title: 'Hàng hóa', list: ['products', 'warehouse', 'supply', 'production', 'install', 'inventory'] },
-  { id: 'finance', title: 'Tài chính', list: ['cashbook', 'reports', 'claims'] },
-  { id: 'system', title: '', list: ['docs', 'settings'] },
+  { id: 'finance', title: 'Tài chính', list: ['cashbook', 'reports'] },
+  { id: 'system', title: '', list: ['settings'] },
 ];
 

@@ -7,21 +7,23 @@ import { Collapse, ConfirmDialog } from '../../components/crud';
 import { FilterBar, useInRange } from '../../components/filters';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, Panel, StatCard, Table, Tabs, useOverlay, useSticky } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
-import { APPROVAL_LEVEL, approvalOf, approvalReasons, btnBase, btnGhost, btnPrimary, btnSm, C, CHECK_DOT, compact, contractVersions, digits9, docGroupOf, docLineToQuote, esc, findByTax, fmtDate, fmtN, GENDOC_STATUS, GM_RULE, GUARANTEE_LABEL, guessTx, inputBase, inputCls, iso, latestQuote, nextCode, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, rowCls, SAMPLE_FORM, tdCls, tdFirst, tdLast, TEMPLATE_FLAGS, TEMPLATE_VARS, tierPrice, todayISO, TX_TYPE, uid, useApp } from '../../lib/core';
-import type { ApprovalDecision, ApprovalLevel, CheckItem, ComposerForm, ComposerMode, ConfirmState, DocLine, DocTemplate, GenDocStatus, GeneratedDoc, GuaranteeType, Lead, PayMilestone, PriceTier, Quote, QuoteStatus, SkuItem, TxType, User } from '../../lib/types';
-import { cn } from '../../lib/utils';
+import { APPROVAL_LEVEL, approvalReasons, btnBase, btnGhost, btnPrimary, btnSm, C, CHECK_DOT, compact, contractVersions, digits9, docGroupOf, docLineToQuote, esc, findByTax, fmtDate, fmtN, GENDOC_STATUS, GM_RULE, GUARANTEE_LABEL, guessTx, inputBase, inputCls, iso, latestQuote, nextCode, partyOf, PRICE_TIER, QUOTE_STATUS, quoteLineToDoc, rowCls, SAMPLE_FORM, tdCls, tdFirst, tdLast, TEMPLATE_FLAGS, TEMPLATE_VARS, tierPrice, todayISO, TX_TYPE, uid, useApp, wfNeeds, wfReasons } from '../../lib/core';
+import type { ApprovalDecision, ApprovalLevel, CheckItem, ComposerForm, ComposerMode, ConfirmState, DocLine, DocTemplate, GenDocStatus, GeneratedDoc, GuaranteeType, Lead, PayMilestone, PriceTier, Quote, QuoteStatus, SkuItem, TxType, WfSubject } from '../../lib/types';
+import { cn, wfPath } from '../../lib/utils';
 import { apiPost, parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
 import { AiWriterSheet } from '../ai/copilot-plus';
 import { DocsPage } from '../docs/docs';
+import { SaleStockCard } from './orders';
 import { learnDrafts, SmartQuoteGrid } from './smart-quote';
 import { buildDocVars, ComposerShell, DocActionBar, docPdfBlob, docShell, docTotals, downloadWord, Fold, moneyToWordsVN, PartyFields, printHtml, quoteBody, readDocxParagraphs, renderTemplate, specialTermsOf, TermsFields } from './templates';
+import { useHubItem } from '../tasks/tasks';
 
 // =====================================================================
 //  MÀN BÁO GIÁ — chỉ ghi khi bấm "Tạo báo giá" / "Lưu thay đổi"; xuất file sau khi đã lưu
 // =====================================================================
 
 export function QuoteComposer({ leadId, customerId, quoteId, edit, reviseOf, onClose }: { leadId?: string; customerId?: string; quoteId?: string; edit?: boolean; reviseOf?: string; onClose: () => void }) {
-  const { winDraftQuote, leads, myLeads, customers, skus, company, users, me, role, docTemplates, quotes, setQuotes, submitQuote, notify, canDo, getfly, openComposer, dispatch, departments, logDecision, winLead, setDraftProducts } = useApp();
+  const { winDraftQuote, leads, myLeads, customers, skus, company, users, me, role, docTemplates, quotes, setQuotes, submitQuote, notify, canDo, getfly, openComposer, dispatch, logDecision, winLead, setDraftProducts, salesOrders, setOpenSale, go, wfDef, wfFirstApprovers } = useApp();
   const [wide, setWide] = useSticky('QuoteComposer.wide3', false);
   const editQuote = quotes.find((q) => q.id === quoteId);
   // v45: báo giá điều chỉnh từ một báo giá bất kỳ (kể cả không gắn dự án); báo giá nháp chưa chốt được sửa đè
@@ -77,8 +79,11 @@ export function QuoteComposer({ leadId, customerId, quoteId, edit, reviseOf, onC
   const gm = costKnown && totals.sub > 0 ? ((totals.sub - costSum) / totals.sub) * 100 : null;
   // Khách lẻ: không pháp nhân (không MST), không công nợ, chưa có trong CRM -> báo giá nháp, không cần duyệt giá
   const retail = !lead && !form.customerId && !form.party.taxCode.trim() && form.creditDays === 0;
-  const level: ApprovalLevel = retail ? 'AUTO' : approvalOf(gm, totals.sub);
-  const reasons = retail ? [] : approvalReasons(gm, totals.sub);
+  /** v48: cần duyệt và các bước theo quy trình "Duyệt giá báo giá" (Cài đặt › Quy trình & phê duyệt) */
+  const wfQ = wfDef('QUOTE');
+  const wfQs: WfSubject = { requesterId: me.id, dept: lead?.dept ?? customers.find((c) => c.id === form.customerId)?.dept, amount: totals.sub, vals: { gm, amount: totals.sub, maxDisc: Math.max(0, ...form.items.map((l) => l.discountPct ?? 0)) } };
+  const level: ApprovalLevel = retail || !wfQ ? 'AUTO' : !wfNeeds(wfQ, wfQs) ? 'AUTO' : wfPath(wfQ, wfQs).some((x) => x.who.kind === 'ROLE' && x.who.role === 'BOD') ? 'BOD' : 'HEAD';
+  const reasons = retail || !wfQ || level === 'AUTO' ? [] : wfReasons(wfQ, wfQs).length ? wfReasons(wfQ, wfQs) : approvalReasons(gm, totals.sub);
   const errs: string[] = [];
   if (form.party.name.trim().length < 3) errs.push('Nhập tên khách hàng');
   if (!form.items.length) errs.push('Thêm ít nhất 1 dòng hàng hóa');
@@ -121,9 +126,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, edit, reviseOf, onC
     if (lead?.status === 'ACCEPTED') submitQuote(lead.id);
     setSavedId(q.id);
     if (q.approval) {
-      const head = users.find((u) => u.id === departments.find((d) => d.code === lead?.dept)?.headId && u.active);
-      const bods = users.filter((u) => u.active && u.role === 'BOD');
-      dispatch('QUOTE_APPROVAL', { lead, toAll: level === 'BOD' ? bods : [head, ...bods].filter((u): u is User => !!u), title: `Báo giá chờ duyệt: ${form.party.name}`, body: `${code} v${version}, ${compact(totals.sub)}. ${reasons.join('; ')}` });
+      dispatch('QUOTE_APPROVAL', { lead, toAll: wfFirstApprovers('QUOTE', wfQs).filter((u) => u.id !== me.id), title: `Báo giá chờ duyệt: ${form.party.name}`, body: `${code} v${version}, ${compact(totals.sub)}. ${reasons.join('; ')}` });
       notify(`Đã tạo báo giá ${code} v${version}, gửi ${APPROVAL_LEVEL[level].label.replace('Cần ', '')}. Xuất PDF sau khi được duyệt.`, 'orange');
     } else notify(`Đã tạo báo giá ${code} v${version}: ${compact(totals.sub)} trước VAT`, 'teal');
   };
@@ -164,8 +167,10 @@ export function QuoteComposer({ leadId, customerId, quoteId, edit, reviseOf, onC
       <p className="text-xs text-[rgb(var(--muted))]">{approval.reasons.join('; ')}{approval.note ? `. Ghi chú: ${approval.note}` : ''}</p>
     </div>
   );
+  const quoteSale = saved ? salesOrders.find((o) => o.quoteId === saved.id && o.status !== 'CANCELLED') : undefined;
   const editLeft = (
     <>
+      {quoteSale && <SaleStockCard o={quoteSale} compact onOpen={() => { go('sales'); setOpenSale(quoteSale.id); onClose(); }} />}
       {approvalBox}
       {locked && <p className="rounded-[10px] border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-4 py-3 text-xs text-[rgb(var(--muted))]">Báo giá đã tạo chỉ xem và xuất lại. Muốn đổi giá, số lượng hoặc điều kiện, bấm "Báo giá điều chỉnh" để tạo phiên bản mới.</p>}
       <fieldset disabled={locked} className="min-w-0 space-y-3">
@@ -258,11 +263,13 @@ export function QuoteComposer({ leadId, customerId, quoteId, edit, reviseOf, onC
     onClose();
   };
   const draftQuote = saved?.draft && !lead;
-  const canWin = draftQuote ? saved?.status !== 'ACCEPTED' && canDo('customer.edit') : !!savedId && !exportLocked && !!lead && lead.status === 'QUOTED' && canDo('project.update');
-  const winHint = draftQuote ? (saved?.status === 'ACCEPTED' ? 'Đã ghi nhận chốt' : 'Ghi nhận chốt: tự thêm khách vào CRM') : !lead ? 'Gắn báo giá với dự án để chốt đơn' : lead.status === 'WON' ? 'Dự án đã chốt' : !savedId ? 'Gửi duyệt báo giá trước' : exportLocked ? 'Chờ duyệt giá' : !canDo('project.update') ? 'Không có quyền chốt đơn' : `Chốt đơn theo báo giá ${code} v${version}`;
+  /** v46: báo giá cho khách có sẵn trong CRM (không dự án): ghi nhận chốt như báo giá nháp, tự tạo đơn bán */
+  const custQuote = !lead && !!saved && !saved.draft && !!saved.customerId;
+  const canWin = draftQuote ? saved?.status !== 'ACCEPTED' && canDo('customer.edit') : custQuote ? saved?.status !== 'ACCEPTED' && !exportLocked && (canDo('customer.edit') || canDo('project.update')) : !!savedId && !exportLocked && !!lead && lead.status === 'QUOTED' && canDo('project.update');
+  const winHint = draftQuote ? (saved?.status === 'ACCEPTED' ? 'Đã ghi nhận chốt' : 'Ghi nhận chốt: tự thêm khách vào CRM, tạo đơn bán') : custQuote ? (saved?.status === 'ACCEPTED' ? 'Đã ghi nhận chốt' : exportLocked ? 'Chờ duyệt giá' : 'Ghi nhận chốt: tự tạo đơn bán, giữ hàng hoặc đề xuất mua') : !lead ? 'Gắn báo giá với dự án để chốt đơn' : lead.status === 'WON' ? 'Dự án đã chốt' : !savedId ? 'Gửi duyệt báo giá trước' : exportLocked ? 'Chờ duyệt giá' : !canDo('project.update') ? 'Không có quyền chốt đơn' : `Chốt đơn theo báo giá ${code} v${version}`;
   const winNow = () => {
     if (!canWin || !savedId) return;
-    if (draftQuote) { winDraftQuote(savedId); return; }
+    if (draftQuote || custQuote) { winDraftQuote(savedId); return; }
     if (!lead) return;
     winLead(lead.id, savedId);
     onClose();
@@ -283,7 +290,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, edit, reviseOf, onC
       left={left}
       html={html}
       onClose={onClose}
-      edit={{ enabled: !locked, customized: !!form.customHtml, onSave: (h) => set('customHtml', h), onReset: () => set('customHtml', undefined) }}
+      edit={{ enabled: !locked, customized: !!form.customHtml, onSave: (h) => set('customHtml', h), onReset: () => set('customHtml', undefined), kind: 'QUOTE' }}
       print={{ onClick: () => exportQuote('PDF'), disabled: !savedId || exportLocked, title: !savedId ? 'Lưu báo giá trước khi in' : exportLocked ? 'Chờ duyệt giá' : 'In / lưu PDF' }}
       share={{ name: `Báo giá ${code}${version > 1 ? ` v${version}` : ''}`, disabled: !savedId || exportLocked, title: !savedId ? 'Lưu báo giá trước khi chia sẻ' : exportLocked ? 'Chờ duyệt giá' : undefined }}
       footer={stage === 'send' && canSend ? (
@@ -310,7 +317,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, edit, reviseOf, onC
           </>}
           pdf={{ onClick: () => exportQuote('PDF'), disabled: !savedId || exportLocked, title: !savedId ? 'Lưu báo giá trước khi xuất' : exportLocked ? 'Chờ duyệt giá' : 'In / lưu PDF' }}
           word={{ onClick: () => exportQuote('WORD'), disabled: !savedId || exportLocked, title: !savedId ? 'Lưu báo giá trước khi xuất' : exportLocked ? 'Chờ duyệt giá' : 'Tải file Word (.doc)' }}
-          win={{ onClick: winNow, disabled: !canWin, title: winHint, label: draftQuote ? 'Ghi nhận chốt' : undefined }}
+          win={{ onClick: winNow, disabled: !canWin, title: winHint, label: draftQuote || custQuote ? 'Ghi nhận chốt' : undefined }}
           submit={{ onClick: save, disabled: locked || errs.length > 0, label: locked ? 'Đã lưu' : retail ? 'Lưu báo giá nháp' : level === 'AUTO' ? 'Lưu báo giá' : 'Gửi duyệt giá', title: locked ? 'Muốn đổi giá hoặc điều kiện: tạo báo giá điều chỉnh' : errs[0] ?? (retail ? 'Khách lẻ: lưu và xuất được ngay, không cần duyệt giá' : level === 'AUTO' ? 'Lưu phiên bản, tự duyệt vì giá trong ngưỡng' : `Lưu phiên bản và gửi ${APPROVAL_LEVEL[level].label.replace('Cần ', '')}`) }}
         />
       )}
@@ -319,7 +326,7 @@ export function QuoteComposer({ leadId, customerId, quoteId, edit, reviseOf, onC
 }
 
 export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { leadId?: string; quoteId?: string; docId?: string; view?: boolean; onClose: () => void }) {
-  const { leads, customers, skus, company, users, me, role, docTemplates, genDocs, setGenDocs, quotes, notify, dispatch, canDo, openComposer, logDecision, winLead } = useApp();
+  const { leads, customers, skus, company, users, me, role, docTemplates, genDocs, setGenDocs, quotes, notify, dispatch, canDo, openComposer, logDecision, winLead, wfFirstApprovers } = useApp();
   const lead0 = leads.find((x) => x.id === leadId);
   const baseId0 = genDocs.find((d) => d.id === docId)?.quoteId ?? quoteId ?? lead0?.wonQuoteId ?? (lead0 ? latestQuote(lead0.id, quotes)?.id : undefined);
   // Nguồn: bản được chỉ định, hoặc bản mới nhất đã có của báo giá này (tránh tạo trùng nhóm hợp đồng)
@@ -396,7 +403,7 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
     setGenDocs((all) => [rec, ...all.map((d) => (group && docGroupOf(d) === group && d.status !== 'SUPERSEDED' ? { ...d, status: 'SUPERSEDED' as GenDocStatus } : d))]);
     setSavedId(id);
     if (needApproval) {
-      dispatch('CONTRACT_APPROVAL', { lead: baseLead, title: `Hợp đồng chờ duyệt: ${form.party.name}`, body: `${code} v${rec.version}, ${compact(totals.grand)}. ${special.join('; ')}`, module: 'tasks' });
+      dispatch('CONTRACT_APPROVAL', { lead: baseLead, toAll: wfFirstApprovers('CONTRACT', { requesterId: me.id, dept: baseLead?.dept ?? customers.find((c) => c.id === form.customerId)?.dept, amount: totals.grand, vals: { amount: totals.grand, special: special.length } }).filter((u) => u.id !== me.id), title: `Hợp đồng chờ duyệt: ${form.party.name}`, body: `${code} v${rec.version}, ${compact(totals.grand)}. ${special.join('; ')}`, module: 'tasks' });
       notify(`Đã gửi phê duyệt hợp đồng ${code} v${rec.version}`, 'teal');
     } else notify(`Đã tạo hợp đồng ${code} v${rec.version}, có hiệu lực`, 'teal');
   };
@@ -537,7 +544,7 @@ export function ContractComposer({ leadId, quoteId, docId, view, onClose }: { le
       left={left}
       html={html}
       onClose={onClose}
-      edit={{ enabled: !locked, customized: !!form.customHtml, onSave: (h) => set('customHtml', h), onReset: () => set('customHtml', undefined) }}
+      edit={{ enabled: !locked, customized: !!form.customHtml, onSave: (h) => set('customHtml', h), onReset: () => set('customHtml', undefined), kind: 'CONTRACT' }}
       print={{ onClick: () => exportContract('PDF'), disabled: !canExport, title: canExport ? 'In / lưu PDF' : 'Chỉ in hợp đồng có hiệu lực' }}
       share={{ name: `Hợp đồng ${fileBase}`, disabled: !canExport, title: canExport ? undefined : 'Chỉ chia sẻ hợp đồng có hiệu lực' }}
       footer={mode === 'compare' ? (
@@ -965,15 +972,17 @@ export function useContractApprover() {
 
 /** Bản ghi hợp đồng: chỉ xem; duyệt nhanh nếu có quyền. Sửa bằng nút "Mở hợp đồng" ở đầu ngăn dự án */
 export function GeneratedDocList({ leadId, customerId }: { leadId?: string; customerId?: string; compact?: boolean }) {
-  const { genDocs, setGenDocs, openComposer, me, notify, userName, logDecision } = useApp();
-  const canApprove = useContractApprover();
+  const { genDocs, openComposer, notify, userName, go } = useApp();
+  const canApprove = (d: GeneratedDoc) => !!hubOf('CONTRACT', d.id);
   const [open, setOpen] = useState<string | null>(null);
   const list = latestContracts(genDocs.filter((d) => (!leadId || d.leadId === leadId) && (!customerId || d.customerId === customerId)))
     .sort((a, b) => Number(b.status === 'PENDING_APPROVAL') - Number(a.status === 'PENDING_APPROVAL') || b.createdAt.localeCompare(a.createdAt));
+  const hubOf = useHubItem();
+  /** v48: duyệt theo quy trình (đúng người duyệt bước hiện tại); từ chối cần lý do nên mở Công việc */
   const decide = (d: GeneratedDoc, ok: boolean) => {
-    setGenDocs((all) => all.map((x) => (x.id === d.id ? { ...x, ...(ok ? { status: 'APPROVED' as GenDocStatus, approvedBy: me.id, approvedAt: todayISO() } : { status: 'REJECTED' as GenDocStatus, rejectNote: 'Từ chối từ danh sách hợp đồng' }) } : x)));
-    logDecision({ kind: 'CONTRACT', refId: d.id, title: `${d.contractCode} v${d.version ?? 1}: ${d.partyName}`, requesterId: d.createdBy, decision: ok ? 'APPROVED' : 'REJECTED', amount: d.total });
-    notify(ok ? `Đã duyệt ${d.contractCode}` : `Đã từ chối ${d.contractCode}`, ok ? 'teal' : 'orange');
+    const it = hubOf('CONTRACT', d.id);
+    if (!it) return notify('Bạn không phải người duyệt bước hiện tại của hợp đồng này', 'orange');
+    if (ok) it.approve?.(); else { go('tasks'); notify('Nhập lý do từ chối ở Công việc › Chờ tôi duyệt', 'teal'); }
   };
   if (!list.length) return <p className="text-sm text-[rgb(var(--muted))]">Chưa có hợp đồng.</p>;
   return (
@@ -1211,7 +1220,7 @@ export function TemplateManager() {
 
 /** Báo giá & Hợp đồng: hai bảng tách riêng, mỗi dòng là một bộ (phiên bản mới nhất), mở rộng để xem các phiên bản */
 export function SalesDocsPanel() {
-  const { quotes, setQuotes, genDocs, setGenDocs, leads, customers, openComposer, canDo, me, notify, logDecision } = useApp();
+  const { quotes, setQuotes, genDocs, leads, customers, openComposer, canDo, notify, go } = useApp();
   const canApprove = useContractApprover();
   const inR = useInRange();
   const [view, setView] = useState<'QUOTE' | 'CONTRACT'>('QUOTE');
@@ -1239,10 +1248,12 @@ export function SalesDocsPanel() {
 
   const qPaged = usePaged(qFiltered, 12);
   const cPaged = usePaged(cFiltered, 12);
+  const hubOf = useHubItem();
+  /** v48: duyệt theo quy trình (đúng người duyệt bước hiện tại); từ chối cần lý do nên mở Công việc */
   const decide = (d: GeneratedDoc, ok: boolean) => {
-    setGenDocs((all) => all.map((x) => (x.id === d.id ? { ...x, ...(ok ? { status: 'APPROVED' as GenDocStatus, approvedBy: me.id, approvedAt: todayISO() } : { status: 'REJECTED' as GenDocStatus, rejectNote: 'Từ chối từ danh sách' }) } : x)));
-    logDecision({ kind: 'CONTRACT', refId: d.id, title: `${d.contractCode} v${d.version ?? 1}: ${d.partyName}`, requesterId: d.createdBy, decision: ok ? 'APPROVED' : 'REJECTED', amount: d.total });
-    notify(ok ? `Đã duyệt ${d.contractCode}` : `Đã từ chối ${d.contractCode}`, ok ? 'teal' : 'orange');
+    const it = hubOf('CONTRACT', d.id);
+    if (!it) return notify('Bạn không phải người duyệt bước hiện tại của hợp đồng này', 'orange');
+    if (ok) it.approve?.(); else { go('tasks'); notify('Nhập lý do từ chối ở Công việc › Chờ tôi duyệt', 'teal'); }
   };
   const statusOpts = view === 'QUOTE'
     ? [{ value: 'DRAFT', label: `Nháp, khách lẻ (${quoteRows.filter((r) => r.latest.draft).length})` }, ...(Object.keys(QUOTE_STATUS) as QuoteStatus[]).map((s) => ({ value: s, label: QUOTE_STATUS[s].label }))]

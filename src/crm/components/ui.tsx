@@ -1,10 +1,12 @@
 'use client';
 
-import { type Dispatch, type DragEvent, type ReactNode, type SetStateAction, useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, Plus, Sparkles, Wallet, X } from 'lucide-react';
-import { BRAND, btnGhost, btnPrimary, C, digits, GRAD, inputCls, overlaySeq, overlayStack, overlaySubs, overlayTop, portal, stickySave, stickyStore, VIEW_META } from '../lib/core';
-import type { SortState, SortVal, TableSort, Tone, ViewKind } from '../lib/types';
+import { Children, Fragment, cloneElement, isValidElement, type Dispatch, type DragEvent, type ReactElement, type ReactNode, type SetStateAction, useEffect, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, Copy, Download, Plus, Printer, Sparkles, Wallet, X } from 'lucide-react';
+import { BRAND, btnGhost, btnPrimary, btnSm, C, digits, esc, GRAD, inputCls, overlaySeq, overlayStack, overlaySubs, overlayTop, portal, stickySave, stickyStore, strHash, todayISO, VIEW_META } from '../lib/core';
+import { downloadCsv } from '../lib/csv';
+import type { SortState, SortVal, TableBulk, TableSort, Tone, ViewKind } from '../lib/types';
 import { cn } from '../lib/utils';
+import { docShell, printHtml } from '../modules/sales/templates';
 
 /** v44: khối cài đặt: tiêu đề + phụ đề + nút nằm trên, nội dung trong thẻ (flush = bảng sát mép) */
 export function SetBlock({ title, sub, action, children, flush, className }: { title: ReactNode; sub?: ReactNode; action?: ReactNode; children: ReactNode; flush?: boolean; className?: string }) {
@@ -360,46 +362,128 @@ export function useSort<T>(key: string, rows: T[], spec: Record<number, (r: T) =
 /** Bảng dữ liệu dùng chung (chuẩn theo bảng Sản phẩm):
  *  - Cột STT tự thêm ở đầu (đếm bằng CSS counter, không cần sửa từng dòng); `stt` = số thứ tự bắt đầu (offset khi phân trang), `stt={false}` để tắt.
  *  - Cột cuối tiêu đề '' hoặc 'Thao tác' được chuẩn hóa thành “Thao tác”, căn phải. */
-export function Table({ head, children, minW = 760, right, sort, stack = true, stt = 0 }: { head: ReactNode[]; children: ReactNode; minW?: number; right?: number[]; sort?: TableSort; stack?: boolean; stt?: number | false }) {
+/** Chữ thuần của nội dung tiêu đề / ô (để đặt tên cột, xuất CSV) */
+export function nodeText(n: ReactNode): string {
+  if (n === null || n === undefined || typeof n === 'boolean') return '';
+  if (typeof n === 'string' || typeof n === 'number') return String(n);
+  if (Array.isArray(n)) return n.map(nodeText).join('');
+  if (isValidElement(n)) return nodeText((n.props as { children?: ReactNode }).children);
+  return '';
+}
+
+/**
+ * v48: bảng dùng chung. Ô tích chọn nhiều dòng + thanh thao tác (sao chép, xuất CSV, in, thao tác riêng), nút chọn cột hiển thị (nhớ theo trình duyệt).
+ * Bảng đã có ô chọn riêng (cột đầu là ô tích) giữ nguyên cách chọn cũ. optional: cột thêm, mặc định ẩn.
+ */
+export function Table({ head, children, minW = 760, right, sort, stack = true, stt = 0, select, bulk, id, title, optional }: { head: ReactNode[]; children: ReactNode; minW?: number; right?: number[]; sort?: TableSort; stack?: boolean; stt?: number | false; select?: boolean; bulk?: TableBulk[]; id?: string; title?: string; optional?: number[] }) {
   const showStt = stt !== false && stack && head[0] !== 'STT';
   const lastH = head[head.length - 1];
   const actCol = head.length > 1 && (lastH === '' || lastH === 'Thao tác');
+  const ownSel = isValidElement(head[0]) && (head[0] as ReactElement).type === 'input';
+  const useSel = (select ?? true) && !ownSel && head.length > 1;
+  const labels = head.map((h, i) => (actCol && i === head.length - 1 ? 'Thao tác' : nodeText(h).trim()));
+  const tid = id ?? `t${strHash(labels.join('|'))}`;
   const ref = useRef<HTMLTableElement>(null);
   const [auto, setAuto] = useState<number[]>([]);
+  const [hidden, setHidden0] = useState<number[]>(() => { try { const v = JSON.parse(localStorage.getItem(`3a:cols:${tid}`) ?? 'null'); return Array.isArray(v) ? v : optional ?? []; } catch { return optional ?? []; } });
+  const setHidden = (v: number[]) => { setHidden0(v); try { localStorage.setItem(`3a:cols:${tid}`, JSON.stringify(v)); } catch { /* bỏ qua */ } };
+  const [picked, setPicked] = useState<string[]>([]);
+  const [colOpen, setColOpen] = useState(false);
+  // ---- gắn ô chọn vào từng dòng
+  const keys: string[] = [];
+  let n0 = 0;
+  const withSel = (node: ReactNode): ReactNode => Children.map(node, (ch) => {
+    if (!isValidElement(ch)) return ch;
+    if (ch.type === Fragment) return cloneElement(ch as ReactElement<{ children?: ReactNode }>, {}, withSel((ch.props as { children?: ReactNode }).children));
+    if (ch.type !== 'tr') return ch;
+    const k = String(ch.key ?? `r${n0}`);
+    n0 += 1;
+    keys.push(k);
+    const on = picked.includes(k);
+    const box = <td key="__sel" data-sel="" className="w-10 pl-5 pr-1 align-middle max-md:hidden" onClick={(e) => e.stopPropagation()}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={on} onChange={() => setPicked((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]))} aria-label="Chọn dòng" /></td>;
+    return cloneElement(ch as ReactElement<{ children?: ReactNode; 'data-rk'?: string }>, { 'data-rk': k }, box, ...Children.toArray((ch.props as { children?: ReactNode }).children));
+  });
+  const body = useSel ? withSel(children) : children;
+  const sel = picked.filter((k) => keys.includes(k));
+  const allOn = keys.length > 0 && keys.every((k) => sel.includes(k));
+  const off = useSel ? 1 : 0;
   useEffect(() => {
     const t = ref.current;
     if (t && stack) {
-      const labels = [...(t.tHead?.rows[0]?.cells ?? [])].slice(showStt ? 1 : 0).map((c) => (c.textContent ?? '').trim());
-      [...(t.tBodies[0]?.rows ?? [])].forEach((r) => { if (r.cells.length === labels.length) [...r.cells].forEach((c, i) => { if (c.getAttribute('data-label') !== labels[i]) c.setAttribute('data-label', labels[i]); }); });
+      const ls = [...(t.tHead?.rows[0]?.cells ?? [])].slice(showStt ? 1 : 0).map((c) => (c.textContent ?? '').trim());
+      [...(t.tBodies[0]?.rows ?? [])].forEach((r) => { if (r.cells.length === ls.length) [...r.cells].forEach((c, i) => { if (c.getAttribute('data-label') !== ls[i]) c.setAttribute('data-label', ls[i]); }); });
     }
     const rows = ref.current?.tBodies[0]?.rows;
-    const row = rows ? [...rows].find((r) => r.cells.length === head.length) : undefined;
+    const row = rows ? [...rows].find((r) => r.cells.length === head.length + off) : undefined;
     if (!row) return;
-    const r = [...row.cells].flatMap((c, i) => (c.classList.contains('text-right') ? [i] : []));
+    const r = [...row.cells].slice(off).flatMap((c, i) => (c.classList.contains('text-right') ? [i] : []));
     setAuto((p) => (p.join() === r.join() ? p : r));
   });
   const alignR = right ?? auto;
+  // ---- ẩn cột: tiêu đề có thêm ô STT thật; thân bảng STT là ::before (không tính nth-child)
+  const vis = hidden.filter((i) => i < head.length && !(actCol && i === head.length - 1));
+  const css = vis.map((i) => `table[data-tid="${tid}"] > thead > tr > :nth-child(${i + 1 + (showStt ? 1 : 0) + off}), table[data-tid="${tid}"] > tbody > tr:not(:has(> td[colspan])) > :nth-child(${i + 1 + off}){display:none}`).join('');
+  // ---- thao tác hàng loạt: đọc chữ của các dòng đã chọn ngay trên bảng
+  const grab = (): string[][] => {
+    const t = ref.current;
+    if (!t) return [];
+    const cols = labels.map((_, i) => i).filter((i) => !vis.includes(i) && !(actCol && i === head.length - 1));
+    const rows = [...(t.tBodies[0]?.rows ?? [])].filter((r) => sel.includes(r.getAttribute('data-rk') ?? '') && !r.querySelector('td[colspan]'));
+    return [cols.map((i) => labels[i]), ...rows.map((r) => cols.map((i) => (r.cells[i + off]?.innerText ?? '').replace(/\s+/g, ' ').trim()))];
+  };
+  const copy = async () => { const g = grab(); try { await navigator.clipboard.writeText(g.map((r) => r.join('\t')).join('\n')); } catch { /* bỏ qua */ } };
+  const csv = () => downloadCsv(`${(title ?? 'danh-sach').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}-${todayISO()}.csv`, grab());
+  const print = () => { const g = grab(); printHtml(docShell(title ?? 'Danh sách', `<h1>${esc(title ?? 'Danh sách')}</h1><table class="items"><thead><tr>${g[0].map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${g.slice(1).map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`)); };
+  const colBtn = 'inline-flex h-7 items-center gap-1 rounded-md px-2 text-[12px] text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.05)] hover:text-[rgb(var(--fg))]';
   return (
-    <div className={cn('-mx-5 overflow-x-auto', stack && 'max-md:mx-0 max-md:overflow-visible')}>
-      <table ref={ref} className={cn('dt w-full text-left text-[13.5px]', stack && 'dt-cards', showStt && 'dt-stt', actCol && 'dt-act')} style={{ minWidth: minW + (showStt ? 56 : 0) }}>
+    <div className={cn('relative -mx-5', stack && 'max-md:mx-0')}>
+      {css && <style>{css}</style>}
+      {useSel && sel.length > 0 && (
+        <div className="mx-5 mb-2 flex flex-wrap items-center gap-1.5 rounded-lg bg-[rgb(var(--accent)/0.08)] px-3 py-1.5 text-[13px]" role="toolbar" aria-label="Thao tác với các dòng đã chọn">
+          <span className="mr-1 font-medium">Đã chọn {sel.length}</span>
+          {(bulk ?? []).map((b) => <button key={b.label} className={cn(btnGhost, btnSm, b.danger && 'text-[rgb(var(--danger-fg))]')} onClick={() => { b.run(sel); setPicked([]); }}>{b.icon && <b.icon className="h-3.5 w-3.5" aria-hidden />}{b.label}</button>)}
+          <button className={cn(btnGhost, btnSm)} onClick={() => void copy()}><Copy className="h-3.5 w-3.5" aria-hidden />Sao chép</button>
+          <button className={cn(btnGhost, btnSm)} onClick={csv}><Download className="h-3.5 w-3.5" aria-hidden />Xuất CSV</button>
+          <button className={cn(btnGhost, btnSm)} onClick={print}><Printer className="h-3.5 w-3.5" aria-hidden />In</button>
+          <button className={cn(btnGhost, btnSm, 'ml-auto')} onClick={() => setPicked([])}>Bỏ chọn</button>
+        </div>
+      )}
+      {head.length > 2 && (
+        <div className="absolute right-3 z-[2] max-md:hidden" style={{ top: useSel && sel.length > 0 ? 50 : 6 }}>
+          <button type="button" className={colBtn} onClick={() => setColOpen((v) => !v)} aria-expanded={colOpen} aria-label="Chọn cột hiển thị" title="Chọn cột hiển thị"><Columns3 className="h-3.5 w-3.5" aria-hidden />{vis.length ? <span className="tabular-nums">{head.length - vis.length - (actCol ? 1 : 0)}/{head.length - (actCol ? 1 : 0)}</span> : null}</button>
+          {colOpen && (
+            <div className="absolute right-0 top-8 z-30 w-60 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-2 shadow-lg" onMouseLeave={() => setColOpen(false)}>
+              <p className="px-1.5 pb-1 text-[12px] text-[rgb(var(--muted))]">Cột hiển thị</p>
+              {labels.map((l, i) => (actCol && i === head.length - 1) || !l ? null : (
+                <label key={i} className="flex items-center gap-2 rounded px-1.5 py-1 text-[13px] hover:bg-[rgb(var(--ink)/0.04)]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={!vis.includes(i)} disabled={!vis.includes(i) && head.length - vis.length - (actCol ? 1 : 0) <= 1} onChange={() => setHidden(vis.includes(i) ? vis.filter((x) => x !== i) : [...vis, i])} />{l}{optional?.includes(i) && <span className="ml-auto text-[11px] text-[rgb(var(--muted))]">thêm</span>}</label>
+              ))}
+              <div className="mt-1 flex gap-1 border-t border-[rgb(var(--line))] pt-1.5"><button className={cn(btnGhost, btnSm, 'flex-1 justify-center')} onClick={() => setHidden([])}>Hiện tất cả</button><button className={cn(btnGhost, btnSm, 'flex-1 justify-center')} onClick={() => setHidden(optional ?? [])}>Mặc định</button></div>
+            </div>
+          )}
+        </div>
+      )}
+      <div className={cn('overflow-x-auto', stack && 'max-md:overflow-visible')}>
+      <table ref={ref} data-tid={tid} className={cn('dt w-full text-left text-[13.5px]', stack && 'dt-cards', showStt && 'dt-stt', actCol && 'dt-act')} style={{ minWidth: minW + (showStt ? 56 : 0) + (useSel ? 40 : 0) }}>
         <thead className="text-[12.5px] text-[rgb(var(--muted))]">
           <tr className="border-b border-[rgb(var(--ink)/0.1)]">
             {showStt && <th className="w-14 whitespace-nowrap py-2.5 pl-5 pr-3 font-normal">STT</th>}
+            {useSel && <th className="w-10 py-2.5 pl-5 pr-1 font-normal max-md:hidden"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={allOn} onChange={() => setPicked(allOn ? [] : keys)} aria-label="Chọn tất cả dòng" /></th>}
             {head.map((h0, i) => {
               const h = actCol && i === head.length - 1 ? 'Thao tác' : h0;
               const can = sort?.sortable.includes(i);
               const on = can && sort?.sort?.col === i ? sort.sort.dir : 0;
               const Ico = on === 1 ? ArrowUp : on === -1 ? ArrowDown : ArrowUpDown;
               return (
-                <th key={i} aria-sort={on === 1 ? 'ascending' : on === -1 ? 'descending' : undefined} className={cn('whitespace-nowrap py-2.5 font-normal', i === 0 && !showStt ? 'pl-5 pr-3' : i === head.length - 1 ? 'pl-3 pr-5' : 'px-3', (alignR.includes(i) || (actCol && i === head.length - 1)) && 'text-right')}>
+                <th key={i} aria-sort={on === 1 ? 'ascending' : on === -1 ? 'descending' : undefined} className={cn('whitespace-nowrap py-2.5 font-normal', i === 0 && !showStt && !useSel ? 'pl-5 pr-3' : i === head.length - 1 ? 'pl-3 pr-12' : 'px-3', (alignR.includes(i) || (actCol && i === head.length - 1)) && 'text-right')}>
                   {can ? <button type="button" onClick={() => sort!.onSort(i)} className={cn('group inline-flex items-center gap-1 hover:text-[rgb(var(--fg))]', on !== 0 && 'text-[rgb(var(--fg))]', alignR.includes(i) && 'flex-row-reverse')}>{h}<Ico className={cn('h-3 w-3', on ? 'opacity-100' : 'opacity-40 group-hover:opacity-80')} aria-hidden /></button> : h}
                 </th>
               );
             })}
           </tr>
         </thead>
-        <tbody style={showStt ? { counterReset: `stt ${stt || 0}` } : undefined}>{children}</tbody>
+        <tbody style={showStt ? { counterReset: `stt ${stt || 0}` } : undefined}>{body}</tbody>
       </table>
+      </div>
     </div>
   );
 }

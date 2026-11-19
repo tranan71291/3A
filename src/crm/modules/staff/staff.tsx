@@ -55,7 +55,7 @@ export async function watermarkPhoto(file: File, lines: string[]): Promise<strin
 }
 
 export function ActivityFormModal({ activity, preset, onClose }: { activity?: Activity; preset?: Partial<Activity>; onClose: () => void }) {
-  const { me, role, users, customers, leads, programs, setActivities, notify, dispatch, departments } = useApp();
+  const { me, role, users, customers, leads, programs, setActivities, notify, dispatch, departments, wfFirstApprovers } = useApp();
   const scope = useActivityScope();
   const canPickUser = role === 'BOD' || role === 'DEPT_HEAD' || role === 'MKT_LEAD';
   const defaultsFor = (type: ActivityType, kind?: LeaveKind) => {
@@ -99,15 +99,16 @@ export function ActivityFormModal({ activity, preset, onClose }: { activity?: Ac
     if (Object.keys(e).length) return notify(Object.values(e)[0], 'red');
     const approval = needsApproval(f);
     const byApprover = canPickUser && f.userId !== me.id;
-    const keep = activity && !['PENDING_APPROVAL', 'NEED_INFO', 'REJECTED'].includes(activity.status) && !(approval && activity.status === 'PLANNED');
+    const changed = !!activity && activity.status === 'APPROVED' && (activity.from !== f.from || activity.to !== f.to || activity.cost !== f.cost || (activity.advance ?? 0) !== (f.advance ?? 0) || activity.type !== f.type || activity.leaveKind !== f.leaveKind);
+    const keep = activity && !['PENDING_APPROVAL', 'NEED_INFO', 'REJECTED'].includes(activity.status) && !(approval && activity.status === 'PLANNED') && !(approval && changed && !byApprover);
     const status: ActivityStatus = keep ? activity!.status : approval ? (byApprover ? 'APPROVED' : 'PENDING_APPROVAL') : 'PLANNED';
     const title = f.title.trim() || (isLeave ? `${LEAVE_KIND[f.leaveKind ?? 'LEAVE']}` : `${ACTIVITY_TYPE[f.type].label}${cust ? `: ${cust.name}` : ''}`);
     const clean: Activity = { ...f, title, location: f.location.trim(), note: f.note.trim(), status, approvedBy: status === 'APPROVED' && byApprover ? me.id : f.approvedBy, rejectNote: status === 'PENDING_APPROVAL' ? undefined : f.rejectNote, requestNote: status === 'PENDING_APPROVAL' ? undefined : f.requestNote, submittedAt: status === 'PENDING_APPROVAL' ? Date.now() : f.submittedAt };
     setActivities((all) => (all.some((x) => x.id === clean.id) ? all.map((x) => (x.id === clean.id ? clean : x)) : [clean, ...all]));
     if (status === 'PENDING_APPROVAL') {
       const head = users.find((u) => u.id === departments.find((d) => d.code === owner?.dept)?.headId && u.id !== f.userId);
-      dispatch('ACTIVITY_APPROVAL', { to: head, title: `${isLeave ? LEAVE_KIND[f.leaveKind ?? 'LEAVE'] : ACTIVITY_TYPE[f.type].label} chờ duyệt: ${owner?.name ?? ''}`, body: `${title}, ${fmtDT(f.from)} – ${fmtDT(f.to)}${f.cost ? `, chi phí ${compact(f.cost)}` : ''}`, module: 'staff' });
-      notify(activity?.status === 'NEED_INFO' ? 'Đã bổ sung và gửi lại để duyệt' : 'Đã gửi đề nghị, chờ Trưởng phòng / Giám đốc duyệt', 'teal');
+      dispatch('ACTIVITY_APPROVAL', { to: head, toAll: wfFirstApprovers('ACTIVITY', { requesterId: f.userId, dept: owner?.dept, amount: f.cost || undefined, vals: { amount: f.cost } }), title: `${isLeave ? LEAVE_KIND[f.leaveKind ?? 'LEAVE'] : ACTIVITY_TYPE[f.type].label} chờ duyệt: ${owner?.name ?? ''}`, body: `${title}, ${fmtDT(f.from)} – ${fmtDT(f.to)}${f.cost ? `, chi phí ${compact(f.cost)}` : ''}`, module: 'staff' });
+      notify(activity?.status === 'NEED_INFO' ? 'Đã bổ sung và gửi lại để duyệt' : changed ? 'Lịch đã duyệt có thay đổi thời gian / chi phí: đã gửi duyệt lại' : 'Đã gửi đề nghị, chờ Trưởng phòng / Giám đốc duyệt', 'teal');
     } else notify(activity ? 'Đã cập nhật lịch' : 'Đã thêm vào lịch công tác', 'teal');
     onClose();
   };

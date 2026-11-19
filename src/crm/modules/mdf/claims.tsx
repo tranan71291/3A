@@ -15,6 +15,7 @@ import { VendorApprovalModal } from './pre-approval';
 import { MdfSettlementPanel } from './settlement';
 import { ClaimFinancePanel } from './surplus';
 import { BudgetStrip, ClaimTable } from '../messages/messenger';
+import { useHubItem } from '../tasks/tasks';
 
 // =====================================================================
 //  PHÂN HỆ 3: HỒ SƠ CLAIM & POP
@@ -44,7 +45,8 @@ export function ClaimsModule() {
 }
 
 export function ProgramsTab() {
-  const { me, role, budget, setBudget, policy, programs, setPrograms, claims, setClaims, customers, canDo, notify, dept, userName, openProgramForm, openClaim, dispatch, logDecision } = useApp();
+  const { budget, setBudget, policy, programs, setPrograms, claims, setClaims, customers, canDo, notify, dept, userName, openProgramForm, openClaim, go } = useApp();
+  const hubOf = useHubItem();
   const [showAll, setShowAll] = useState(false);
   const [approving, setApproving] = useState<Program | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
@@ -54,18 +56,10 @@ export function ProgramsTab() {
   const list = showAll ? yearPrograms : yearPrograms.filter((p) => !['REJECTED', 'CANCELLED', 'CLOSED'].includes(p.status));
 
   /** Người đang đăng nhập có đủ hạn mức duyệt nội bộ không */
-  const canApprove = (p: Program) =>
-    canDo('program.approveInternal') && (role === 'BOD' || (me.dept === p.dept && me.approvalLimit >= p.held));
-
   const release = (p: Program, status: ProgramStatus, msg: string) => {
     setBudget((b) => ({ ...b, committed: Math.max(0, b.committed - p.held) }));
     setPrograms((ps) => ps.map((x) => (x.id === p.id ? { ...x, held: 0, status } : x)));
     notify(`${msg}. Đã nhả ${compact(p.held)} về quỹ khả dụng`, 'orange');
-  };
-  const patch = (p: Program, data: Partial<Program>, msg: string) => {
-    setPrograms((ps) => ps.map((x) => (x.id === p.id ? { ...x, ...data } : x)));
-    notify(msg, 'teal');
-    dispatch('CLAIM_UPDATE', { title: 'Cập nhật duyệt Pre-Approval', body: msg, module: 'claims' });
   };
 
   const createClaim = (p: Program) => {
@@ -127,7 +121,7 @@ export function ProgramsTab() {
         <Table head={['Chương trình', 'Hạng mục', 'Khách hàng / phòng', 'Chi phí / phần 3M', 'Thời gian', 'Đề xuất / duyệt', 'Trạng thái', 'Thao tác']} minW={1260}>
           {list.map((p) => {
             const cust = customers.find((c) => c.id === p.customerId);
-            const ok = canApprove(p);
+            const ok = !!hubOf('PROGRAM', p.id);
             return (
               <tr key={p.id} className={rowCls}>
                 <td className={tdFirst}>
@@ -148,8 +142,8 @@ export function ProgramsTab() {
                   <div className="flex flex-wrap gap-1.5">
                     {p.status === 'PENDING_INTERNAL' && (
                       <>
-                        <button className={cn(btnGhost, btnSm)} disabled={!ok} title={ok ? undefined : 'Cần Trưởng phòng đủ hạn mức hoặc Ban Giám đốc'} onClick={() => { patch(p, { status: 'PENDING_VENDOR', approvedBy: me.id }, `Đã duyệt nội bộ ${p.code}, gửi 3M duyệt`); logDecision({ kind: 'PROGRAM', refId: p.id, title: `${p.code}: ${p.title}`, requesterId: p.requestedBy, decision: 'APPROVED', amount: p.held }); }}>Duyệt nội bộ</button>
-                        <button className={cn(btnGhost, btnSm)} disabled={!ok} onClick={() => { release(p, 'REJECTED', `Đã từ chối ${p.code}`); logDecision({ kind: 'PROGRAM', refId: p.id, title: `${p.code}: ${p.title}`, requesterId: p.requestedBy, decision: 'REJECTED', amount: p.held }); }}>Từ chối</button>
+                        <button className={cn(btnGhost, btnSm)} disabled={!ok} title={ok ? undefined : 'Bạn không phải người duyệt bước hiện tại (không tự duyệt đề xuất của mình)'} onClick={() => hubOf('PROGRAM', p.id)?.approve?.()}>Duyệt nội bộ</button>
+                        <button className={cn(btnGhost, btnSm)} disabled={!ok} title="Nhập lý do ở Công việc" onClick={() => { go('tasks'); notify('Nhập lý do từ chối ở Công việc › Chờ tôi duyệt', 'teal'); }}>Từ chối</button>
                       </>
                     )}
                     {p.status === 'PENDING_VENDOR' && (

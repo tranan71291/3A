@@ -417,7 +417,8 @@ export function StudioWorkspace({ c, onClose }: { c: MktContent | null; onClose:
 }
 
 export function StudioShell({ base, onClose }: { base: MktContent; onClose: () => void }) {
-  const { setContents, contents, canDo, me, notify, campaigns, setContentVersions, hubCfg, users, dispatch, logDecision } = useApp();
+  const { setContents, contents, canDo, me, notify, campaigns, setContentVersions, hubCfg, users, dispatch, logDecision, wfPolicy } = useApp();
+  const wfSelfBlocked = wfPolicy.noSelf && !(me?.role === 'BOD' && wfPolicy.soleBodSelf && users.filter((u) => u.active && u.role === 'BOD').length === 1);
   ST_VARIANT_CACHE.cfg = vCfgOf(hubCfg.content);
   const api = useStudioPort();
   const store = useStudioApi();
@@ -465,6 +466,8 @@ export function StudioShell({ base, onClose }: { base: MktContent; onClose: () =
   const [showSteps, setShowSteps] = useState(() => store.getState().step < 3);
   const hasBody = useStudio((s) => s.article.sections.length > 0);
   const act = (s: ContentStatus, msg: string, note?: string) => {
+    const req0 = live?.submittedBy ?? live?.aiJob?.by ?? live?.ownerId;
+    if (s === 'APPROVED' && req0 === me?.id && wfSelfBlocked) return notify('Người gửi không tự duyệt bài của mình: chờ Trưởng MKT / Giám đốc khác duyệt', 'orange');
     if (!persist(s)) return;
     const now = Date.now();
     const t = store.getState().article.title;

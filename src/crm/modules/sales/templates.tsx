@@ -1,7 +1,7 @@
 'use client';
 
 import { type KeyboardEvent as RKeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, Columns3, Download, FileText, ImagePlus, List, Maximize2, Minimize2, Minus, Pencil, Plus, Printer, Redo2, Send, Share2, Undo2, Wallet, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Columns3, Download, FileText, ImagePlus, Layers, List, Maximize2, Minimize2, Minus, PenLine, Pencil, Plus, Printer, Redo2, Send, Share2, Stamp, Trash2, Undo2, Wallet, X } from 'lucide-react';
 import { Field, FilePicker, useOverlay, useSticky } from '../../components/ui';
 import { btnBase, btnGhost, btnPrimary, compact, DOC_CSS, esc, GUARANTEE_LABEL, inputCls, lineVat, missingCompanyInfo, money, RAW_VARS, REQUIRED_VARS, TX_CLAUSE, TX_TYPE, useApp, varLabel, VN_DIGITS } from '../../lib/core';
 import type { BarAct, ComposerForm, ComposerStep, Customer, DocContext, DocTemplate, GuaranteeType, PreviewAct, SkuItem, TxType } from '../../lib/types';
@@ -351,9 +351,19 @@ export async function docPdfBlob(title: string, html: string): Promise<Blob> {
 }
 
 /** v45: thanh soạn thảo khi sửa trực tiếp trên bản xem trước */
-export function DocEditBar({ frame }: { frame: { current: HTMLIFrameElement | null } }) {
-  const { notify } = useApp();
+/** v48: ảnh nổi trong trang: vị trí tính từ góc vùng nội dung (biến --pl / --pt theo lề trang), nên in / PDF đúng chỗ */
+export function placeFloat(el: HTMLImageElement, x: number, y: number) {
+  el.dataset.x = String(Math.round(x)); el.dataset.y = String(Math.round(y));
+  // Gắn theo ô (con dấu ở ô ký, logo): tọa độ tính từ ô đó nên chữ dàn lại khi in cũng không lệch
+  if (el.dataset.anchor === 'cell') { el.style.left = `${Math.round(x)}px`; el.style.top = `${Math.round(y)}px`; return; }
+  el.style.left = `calc(var(--pl, 16mm) + ${Math.round(x)}px)`; el.style.top = `calc(var(--pt, 18mm) + ${Math.round(y)}px)`;
+}
+
+export function DocEditBar({ frame, kind }: { frame: { current: HTMLIFrameElement | null }; kind?: 'QUOTE' | 'CONTRACT' }) {
+  const { notify, company } = useApp();
   const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const [fl, setFl] = useState<HTMLImageElement | null>(null);
+  const dragR = useRef<{ el: HTMLImageElement; sx: number; sy: number; x: number; y: number; k: number } | null>(null);
   const [inTable, setInTable] = useState(false);
   const doc = () => frame.current?.contentDocument ?? null;
   useEffect(() => {
@@ -364,11 +374,93 @@ export function DocEditBar({ frame }: { frame: { current: HTMLIFrameElement | nu
       const el = (n && (n.nodeType === 1 ? n : n.parentElement)) as HTMLElement | null;
       setInTable(!!el?.closest?.('td,th'));
     };
-    const onClick = (e: MouseEvent) => { const t = e.target as HTMLElement; setImg(t.tagName === 'IMG' ? (t as HTMLImageElement) : null); onSel(); };
+    const onClick = (e: MouseEvent) => { const t = e.target as HTMLElement; const isF = t.tagName === 'IMG' && t.hasAttribute('data-float'); setImg(t.tagName === 'IMG' && !isF ? (t as HTMLImageElement) : null); pickFl(isF ? (t as HTMLImageElement) : null); onSel(); };
+    // Kéo ảnh nổi: đổi tọa độ chuột (đã nhân tỉ lệ thu phóng) về đơn vị CSS của trang
+    const down = (e: PointerEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.tagName !== 'IMG' || !t.hasAttribute('data-float')) return;
+      e.preventDefault();
+      const el = t as HTMLImageElement;
+      const page = d.querySelector('.page') as HTMLElement | null;
+      const k = page ? page.getBoundingClientRect().width / Math.max(1, page.offsetWidth) : 1;
+      dragR.current = { el, sx: e.clientX, sy: e.clientY, x: Number(el.dataset.x ?? 0), y: Number(el.dataset.y ?? 0), k: k || 1 };
+      pickFl(el);
+    };
+    const move = (e: PointerEvent) => { const g = dragR.current; if (!g) return; e.preventDefault(); placeFloat(g.el, g.x + (e.clientX - g.sx) / g.k, g.y + (e.clientY - g.sy) / g.k); };
+    const up = () => { dragR.current = null; };
+    const key = (e: KeyboardEvent) => {
+      const el = d.querySelector('img[data-float].on') as HTMLImageElement | null;
+      if (!el) return;
+      const st = e.shiftKey ? 10 : 1;
+      const mv: Record<string, [number, number]> = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, -st], ArrowDown: [0, st] };
+      if (mv[e.key]) { e.preventDefault(); placeFloat(el, Number(el.dataset.x ?? 0) + mv[e.key][0], Number(el.dataset.y ?? 0) + mv[e.key][1]); }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); el.remove(); pickFl(null); }
+    };
     d.addEventListener('selectionchange', onSel);
     d.addEventListener('click', onClick);
-    return () => { d.removeEventListener('selectionchange', onSel); d.removeEventListener('click', onClick); };
+    d.addEventListener('pointerdown', down);
+    d.addEventListener('pointermove', move);
+    d.addEventListener('pointerup', up);
+    d.addEventListener('keydown', key);
+    return () => { d.removeEventListener('selectionchange', onSel); d.removeEventListener('click', onClick); d.removeEventListener('pointerdown', down); d.removeEventListener('pointermove', move); d.removeEventListener('pointerup', up); d.removeEventListener('keydown', key); };
   });
+  const pickFl = (el: HTMLImageElement | null) => { doc()?.querySelectorAll('img[data-float].on').forEach((x) => x.classList.remove('on')); el?.classList.add('on'); setFl(el); };
+  /** Tọa độ của phần tử so với góc vùng nội dung trang (đơn vị CSS) */
+  const posOf = (el: HTMLElement, page: HTMLElement) => {
+    let x = 0, y = 0;
+    let n: HTMLElement | null = el;
+    while (n && n !== page) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent as HTMLElement | null; }
+    const cs = page.ownerDocument.defaultView?.getComputedStyle(page);
+    return { x: x - parseFloat(cs?.paddingLeft ?? '0'), y: y - parseFloat(cs?.paddingTop ?? '0'), w: el.offsetWidth, h: el.offsetHeight, cw: page.clientWidth - parseFloat(cs?.paddingLeft ?? '0') - parseFloat(cs?.paddingRight ?? '0') };
+  };
+  /** Thêm ảnh nổi; where: vị trí gợi ý (đầu trang / ô ký bên bán) */
+  const addFloat = (src: string, where: 'TOP' | 'LOGO' | 'SELLER', width = 150) => {
+    const d = doc();
+    const page = d?.querySelector('.page') as HTMLElement | null;
+    if (!d || !page) return;
+    const el = d.createElement('img');
+    el.src = src; el.alt = ''; el.setAttribute('data-float', where === 'TOP' ? 'image' : 'stamp'); el.setAttribute('draggable', 'false'); el.setAttribute('contenteditable', 'false');
+    el.style.width = `${width}px`; el.style.zIndex = '5';
+    if (where !== 'TOP') el.style.mixBlendMode = 'multiply';
+    const box = posOf(page, page);
+    let x = Math.max(0, box.cw - width - 10), y = 0;
+    let host: HTMLElement = page;
+    if (where === 'LOGO') {
+      const logo = Array.from(page.querySelectorAll('img:not([data-float])')).find((im) => posOf(im as HTMLElement, page).y < 220) as HTMLImageElement | undefined;
+      const box2 = logo?.parentElement;
+      if (logo && box2) { box2.style.position = 'relative'; host = box2; el.dataset.anchor = 'cell'; x = logo.offsetLeft + logo.offsetWidth * 0.45; y = logo.offsetTop - width * 0.25; } else { x = 0; y = -10; }
+    }
+    if (where === 'SELLER') {
+      const heads = Array.from(page.querySelectorAll('b,strong,th,td')).filter((n) => /^ĐẠI DIỆN BÊN (BÁN|B)$/i.test((n.textContent ?? '').replace(/\s+/g, ' ').trim()));
+      const head = heads[heads.length - 1] as HTMLElement | undefined;
+      const cell = (head?.closest('td,th') as HTMLElement | null) ?? head;
+      if (cell && head) {
+        // ảnh mộc in sẵn trong ô ký (từ mẫu) chuyển thành ảnh nổi để kéo chỉnh, không bị trùng
+        let gap = 0;
+        cell.querySelectorAll('img:not([data-float])').forEach((im) => { if ((im as HTMLImageElement).src === src || /mộc|stamp/i.test((im as HTMLImageElement).alt)) { const sp = d.createElement('div'); sp.setAttribute('data-stamp-space', ''); sp.style.height = `${(im as HTMLImageElement).offsetHeight || 90}px`; im.replaceWith(sp); gap = 1; } });
+        // giữ chỗ trống cho chữ ký / con dấu giữa tiêu đề và tên người đại diện
+        if (!gap && !cell.querySelector('[data-stamp-space]')) { const sp = d.createElement('div'); sp.setAttribute('data-stamp-space', ''); sp.style.height = `${Math.round(width * 0.6)}px`; head.after(sp); }
+        cell.style.position = 'relative'; host = cell; el.dataset.anchor = 'cell';
+        x = cell.clientWidth / 2 - width * 0.75; y = head.offsetTop + head.offsetHeight + 2;
+      } else { x = Math.max(0, box.cw - width - 20); y = Math.max(0, page.scrollHeight - 260); }
+    }
+    if (where === 'LOGO') page.querySelectorAll('table.sign img:not([data-float])').forEach((im) => { if ((im as HTMLImageElement).src === src) im.remove(); });
+    placeFloat(el, x, y);
+    host.appendChild(el);
+    pickFl(el);
+  };
+  const readImg = (files: File[], then: (src: string) => void) => {
+    const file = files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 3 * 1024 * 1024) return notify('Ảnh tối đa 3 MB', 'orange');
+    const r = new FileReader();
+    r.onload = () => then(String(r.result));
+    r.readAsDataURL(file);
+  };
+  const stampWhere = kind === 'CONTRACT' ? 'SELLER' : 'LOGO';
+  const stampTip = kind === 'CONTRACT' ? 'đặt vào ô Đại diện bên bán' : 'đặt ở đầu trang, đè lên góc logo';
+  const flSize = (k: number) => { if (!fl) return; fl.style.width = `${Math.max(30, Math.min(700, Math.round(fl.offsetWidth * k)))}px`; };
+  const flLayer = (under: boolean) => { if (!fl) return; fl.style.zIndex = under ? '-1' : '5'; };
   const run = (cmd: string, val?: string) => { const d = doc(); if (!d) return; d.execCommand(cmd, false, val); (d.querySelector('.page') as HTMLElement | null)?.focus(); };
   const cellOf = () => { const n = doc()?.getSelection()?.anchorNode; const el = (n && (n.nodeType === 1 ? n : n.parentElement)) as HTMLElement | null; return el?.closest?.('td,th') as HTMLTableCellElement | null; };
   const addTable = () => {
@@ -400,10 +492,14 @@ export function DocEditBar({ frame }: { frame: { current: HTMLIFrameElement | nu
       {btn('Danh sách chấm', () => run('insertUnorderedList'), <List className="h-3.5 w-3.5" />)}{btn('Danh sách số', () => run('insertOrderedList'), <span className="font-mono text-[11px]">1.</span>)}
       {btn('Căn trái', () => run('justifyLeft'), <span className="text-[11px]">Trái</span>)}{btn('Căn giữa', () => run('justifyCenter'), <span className="text-[11px]">Giữa</span>)}{btn('Căn phải', () => run('justifyRight'), <span className="text-[11px]">Phải</span>)}{sep}
       <FilePicker accept="image/*" onFiles={pickImage} className={b}><ImagePlus className="h-3.5 w-3.5" aria-hidden />Ảnh</FilePicker>
+      <FilePicker accept="image/png,image/webp,image/*" onFiles={(fs) => readImg(fs, (src) => addFloat(src, 'TOP', 160))} className={b}><Layers className="h-3.5 w-3.5" aria-hidden />Ảnh nổi</FilePicker>
+      {company.stamp ? btn(`Chèn con dấu & chữ ký công ty: ${stampTip}`, () => addFloat(company.stamp!, stampWhere, kind === 'CONTRACT' ? 150 : 120), <><Stamp className="h-3.5 w-3.5" />Dấu & ký</>) : null}
+      <FilePicker accept="image/png,image/webp,image/*" onFiles={(fs) => readImg(fs, (src) => addFloat(src, stampWhere, kind === 'CONTRACT' ? 150 : 120))} className={b}><PenLine className="h-3.5 w-3.5" aria-hidden />{company.stamp ? 'Dấu / ký khác' : 'Chèn dấu & ký'}</FilePicker>
       {btn('Chèn bảng 3 × 3', addTable, <><Columns3 className="h-3.5 w-3.5" />Bảng</>)}
       {inTable && <>{sep}{btn('Thêm dòng dưới', () => rowOp(true), <span className="text-[11px]">+ Dòng</span>)}{btn('Xóa dòng', () => rowOp(false), <span className="text-[11px]">− Dòng</span>)}{btn('Thêm cột phải', () => colOp(true), <span className="text-[11px]">+ Cột</span>)}{btn('Xóa cột', () => colOp(false), <span className="text-[11px]">− Cột</span>)}{btn('Xóa bảng', delTable, <span className="text-[11px] text-[rgb(var(--danger-fg))]">Xóa bảng</span>)}</>}
       {img && <>{sep}<span className="px-1 text-[11px] text-[rgb(var(--muted))]">Cỡ ảnh</span>{[25, 50, 75, 100].map((w) => btn(`Ảnh rộng ${w}%`, () => { img.style.width = `${w}%`; img.style.maxWidth = '100%'; img.style.height = 'auto'; }, <span className="text-[11px]">{w}%</span>))}{btn('Căn giữa ảnh', () => { img.style.marginLeft = 'auto'; img.style.marginRight = 'auto'; img.style.display = 'block'; }, <span className="text-[11px]">Giữa</span>)}{btn('Xóa ảnh', () => { img.remove(); setImg(null); }, <span className="text-[11px] text-[rgb(var(--danger-fg))]">Xóa ảnh</span>)}</>}
-      <span className="ml-auto px-1 text-[11px] text-[rgb(var(--muted))]">Kéo thả ảnh để di chuyển</span>
+      {fl && <>{sep}<span className="px-1 text-[11px] text-[rgb(var(--muted))]">Ảnh nổi</span>{btn('Nhỏ hơn', () => flSize(0.9), <Minus className="h-3.5 w-3.5" />)}{btn('Lớn hơn', () => flSize(1.1), <Plus className="h-3.5 w-3.5" />)}{btn('Đặt trên chữ', () => flLayer(false), <span className="text-[11px]">Trên chữ</span>)}{btn('Đặt dưới chữ', () => flLayer(true), <span className="text-[11px]">Dưới chữ</span>)}{btn('Về vị trí gợi ý', () => { const src = fl.src; const w = fl.offsetWidth; fl.remove(); addFloat(src, fl.getAttribute('data-float') === 'stamp' ? stampWhere : 'TOP', w); }, <span className="text-[11px]">Vị trí gợi ý</span>)}{btn('Xóa ảnh nổi', () => { fl.remove(); pickFl(null); }, <Trash2 className="h-3.5 w-3.5" />)}</>}
+      <span className="ml-auto px-1 text-[11px] text-[rgb(var(--muted))]">{fl ? 'Kéo ảnh, phím mũi tên để nhích (Shift: 10px)' : 'Kéo thả ảnh để di chuyển'}</span>
     </div>
   );
 }
@@ -411,7 +507,7 @@ export function DocEditBar({ frame }: { frame: { current: HTMLIFrameElement | nu
 export function ComposerShell({ title, subtitle, badge, left, html, footer, onClose, wide, steps, outline, edit, print, share, notice }: {
   title: string; subtitle: string; badge?: ReactNode; left: ReactNode; html: string; footer: ReactNode; onClose: () => void; wide?: boolean; steps?: ComposerStep[]; outline?: boolean;
   /** Sửa trực tiếp trên bản xem trước: onSave nhận HTML đã sửa; customized = đang dùng bản sửa tay */
-  edit?: { enabled: boolean; customized: boolean; onSave: (html: string) => void; onReset: () => void };
+  edit?: { enabled: boolean; customized: boolean; onSave: (html: string) => void; onReset: () => void; /** v48: vị trí chèn con dấu & chữ ký */ kind?: 'QUOTE' | 'CONTRACT' };
   print?: PreviewAct; share?: { name: string; disabled?: boolean; title?: string }; notice?: ReactNode;
 }) {
   const ov = useOverlay();
@@ -442,7 +538,7 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
   const step = (d: number) => setZoomPick(Math.round(Math.max(0.3, Math.min(2, zoom + d)) * 10) / 10);
   // Khi đang sửa trực tiếp: giữ nguyên nội dung khung để không mất chữ đang gõ
   const src = editing ? frozen : html;
-  const doc = docShell('Xem trước', src).replace('</head>', `<style>@media screen{html{background:#cfd3da}body{zoom:${zoom.toFixed(3)}}${editing ? '.page{outline:2px dashed #f28c28;outline-offset:4px}.page:focus{outline-style:solid}.page img{cursor:move}.page img:hover{outline:1px solid #f28c28}' : ''}}</style></head>`);
+  const doc = docShell('Xem trước', src).replace('</head>', `<style>@media screen{html{background:#cfd3da}body{zoom:${zoom.toFixed(3)}}${editing ? '.page{outline:2px dashed #f28c28;outline-offset:4px;width:210mm!important;max-width:none!important;padding:18mm 16mm!important;--pl:16mm!important;--pt:18mm!important}.page:focus{outline-style:solid}.page img{cursor:move}.page img:hover{outline:1px solid #f28c28}.page img[data-float]{cursor:grab;touch-action:none}.page img[data-float].on{outline:2px solid #2563eb;outline-offset:2px}' : ''}}</style></head>`);
   const onFrameLoad = () => {
     const d = frameRef.current?.contentDocument;
     const page = d?.querySelector('.page') as HTMLElement | null;
@@ -542,7 +638,7 @@ export function ComposerShell({ title, subtitle, badge, left, html, footer, onCl
             {print && <button type="button" aria-label="In" className={tb} onClick={print.onClick} disabled={print.disabled} title={print.title}><Printer className="h-3.5 w-3.5" aria-hidden /><span className="hidden 2xl:inline">In</span></button>}
             {share && <button type="button" className={tb} onClick={() => void doShare()} disabled={share.disabled || sharing} title={share.title ?? 'Chia sẻ file PDF qua Zalo, Messenger, Email… (bảng chia sẻ của máy)'}><Share2 className="h-3.5 w-3.5" aria-hidden />{sharing ? 'CRM 3A đang tạo PDF…' : 'Chia sẻ'}</button>}
           </div>
-          {editing && <DocEditBar frame={frameRef} />}
+          {editing && <DocEditBar frame={frameRef} kind={edit?.kind} />}
           {!editing && edit?.customized && (
             <p className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--line))] bg-[rgb(var(--raised))] px-4 py-2 text-xs text-[rgb(var(--fg2))]" role="status">
               <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden />Đang dùng nội dung sửa trực tiếp; số liệu đổi ở form không tự cập nhật vào trang

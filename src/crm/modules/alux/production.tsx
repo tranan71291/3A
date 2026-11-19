@@ -42,12 +42,16 @@ export function WoActionButton({ w, onSchedule }: { w: WorkOrder; onSchedule: (w
 
 /** Thiết kế & bản vẽ triển khai: Đang vẽ → Chờ duyệt → Đã duyệt (ghi lịch sử, có Hoàn tác) */
 export function DesignStep({ w, can, patch }: { w: WorkOrder; can: boolean; patch: (p: Partial<WorkOrder>) => void }) {
-  const { me, userName, notify } = useApp();
+  const app = useApp();
+  const { me, userName, notify } = app;
   const cur = w.design?.status;
   const idx = cur ? DESIGN_STEPS.indexOf(cur) : -1;
   const go = (status: DesignStatus) => {
     const prev = w.design;
+    if (status === 'APPROVED' && prev?.status === 'REVIEW' && prev.by === me.id && (app.wfPolicy.noSelf && !(app.me?.role === 'BOD' && app.wfPolicy.soleBodSelf && app.users.filter((u) => u.active && u.role === 'BOD').length === 1))) return notify('Người gửi bản vẽ không tự duyệt: chờ người duyệt theo quy trình', 'orange');
+    if (status === 'APPROVED' && prev?.status === 'REVIEW' && !app.wfFirstApprovers('DESIGN', { requesterId: prev.by, vals: {} }).some((u) => u.id === me.id) && me.role !== 'BOD') return notify('Bạn không phải người duyệt bản vẽ theo quy trình', 'orange');
     patch({ design: { ...w.design, status, by: me.id, at: Date.now() } });
+    if (status === 'REVIEW') app.wfFirstApprovers('DESIGN', { requesterId: me.id, vals: {} }).filter((u) => u.id !== me.id).forEach((u) => app.dispatch('APPROVAL_RESULT', { to: u, title: `Bản vẽ chờ duyệt: ${w.code}`, body: w.title, module: 'tasks' }));
     notify(DESIGN_STATUS[status].label, 'teal', { label: 'Hoàn tác', run: () => patch({ design: prev }) });
   };
   return (
