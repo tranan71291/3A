@@ -29,6 +29,19 @@ export function AgeBadge({ hours }: { hours: number }) {
 
 /** Bộ chọn khoảng ngày toàn cục (tiêu đề trang) */
 /** compact = chỉ hiện icon lịch (dùng trên thanh header mobile) */
+/** v41: "Tháng 11/2026", "Quý 4/2026", "Năm 2026" khi trọn kỳ, còn lại "dd/mm – dd/mm/yyyy" */
+export function rangeLabel(r: DateRange): string {
+  const [fy, fm, fd] = r.from.split('-').map(Number);
+  const [ty, tm, td] = r.to.split('-').map(Number);
+  const last = new Date(ty, tm, 0).getDate();
+  if (fd === 1 && td === last && fy === ty) {
+    if (fm === tm) return `Tháng ${fm}/${fy}`;
+    if (fm === 1 && tm === 12) return `Năm ${fy}`;
+    if ((fm - 1) % 3 === 0 && tm === fm + 2) return `Quý ${(fm + 2) / 3}/${fy}`;
+  }
+  return `${fmtDate(r.from).slice(0, 5)} – ${fmtDate(r.to)}`;
+}
+
 export function DateRangePicker({ compact: iconOnly }: { compact?: boolean } = {}) {
   const { range, setRange, budget } = useApp();
   const [open, setOpen] = useState(false);
@@ -49,7 +62,7 @@ export function DateRangePicker({ compact: iconOnly }: { compact?: boolean } = {
       ) : (
         <button className={cn(btnGhost, 'w-full justify-between gap-2 py-2 sm:w-auto')} onClick={() => { setDraft(range); setOpen((v) => !v); }} aria-expanded={open} aria-haspopup="dialog">
           <CalendarDays className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />
-          <span className="tabular-nums">{fmtDate(range.from)} - {fmtDate(range.to)}</span>
+          <span className="tabular-nums">{rangeLabel(range)}</span>
           <ChevronDown className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />
         </button>
       )}
@@ -136,17 +149,17 @@ export function Pagination({ paged, unit }: { paged: ReturnType<typeof usePaged>
   if (!paged.total) return null;
   const nums = Array.from({ length: paged.pages }, (_, i) => i + 1).filter((n) => n === 1 || n === paged.pages || Math.abs(n - paged.page) <= 1);
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 pt-4 text-sm">
-      <span className="text-[rgb(var(--muted))]">Hiển thị {paged.from} - {paged.to} trong tổng số {paged.total} {unit}</span>
+    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 text-[13px]">
+      <span className="tabular-nums text-[rgb(var(--muted))]">{paged.from}–{paged.to} trong {paged.total} {unit}</span>
       <div className="flex items-center gap-1">
-        <button className={cn(btnGhost, 'h-8 w-8 p-0')} disabled={paged.page <= 1} onClick={() => paged.setPage(paged.page - 1)} aria-label="Trang trước"><ChevronRight className="h-4 w-4 rotate-180" /></button>
+        <button className={cn(btnGhost, 'h-7 w-7 border-0 p-0')} disabled={paged.page <= 1} onClick={() => paged.setPage(paged.page - 1)} aria-label="Trang trước"><ChevronRight className="h-4 w-4 rotate-180" /></button>
         {nums.map((n, i) => (
           <span key={n} className="flex items-center gap-1">
             {i > 0 && n - nums[i - 1] > 1 && <span className="px-1 text-[rgb(var(--muted))]">…</span>}
-            <button className={cn('h-8 min-w-[2rem] rounded px-2 text-sm font-medium tabular-nums', n === paged.page ? 'g-brand font-semibold text-[rgb(var(--on-accent))]' : 'border border-[rgb(var(--line))] text-[rgb(var(--fg))] hover:bg-[rgb(var(--raised))]')} onClick={() => paged.setPage(n)} aria-current={n === paged.page ? 'page' : undefined}>{n}</button>
+            <button className={cn('h-7 min-w-[1.75rem] rounded-md px-2 text-[13px] tabular-nums', n === paged.page ? 'border border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--raised))]')} onClick={() => paged.setPage(n)} aria-current={n === paged.page ? 'page' : undefined}>{n}</button>
           </span>
         ))}
-        <button className={cn(btnGhost, 'h-8 w-8 p-0')} disabled={paged.page >= paged.pages} onClick={() => paged.setPage(paged.page + 1)} aria-label="Trang sau"><ChevronRight className="h-4 w-4" /></button>
+        <button className={cn(btnGhost, 'h-7 w-7 border-0 p-0')} disabled={paged.page >= paged.pages} onClick={() => paged.setPage(paged.page + 1)} aria-label="Trang sau"><ChevronRight className="h-4 w-4" /></button>
       </div>
     </div>
   );

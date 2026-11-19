@@ -7,7 +7,7 @@ import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, Panel, Table, useSort, useSticky } from '../../components/ui';
-import { btnGhost, btnPrimary, canViewDoc, DOC_CATEGORY, docVisibility, fmtDate, inputCls, rowCls, slug, tdCls, tdFirst, tdLast, todayISO, uid, useApp, visibilityOptions } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, canViewDoc, DOC_CATEGORY, docVisibility, fmtDate, inputCls, rowCls, slug, tdCls, tdFirst, tdLast, todayISO, uid, useApp, visibilityOptions } from '../../lib/core';
 import type { ConfirmState, Department, DocCategory, DocItem, DocVisibility } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
@@ -123,7 +123,7 @@ export function DocsPage() {
         q={q} onQ={setQ} placeholder="Tìm tên tài liệu, nội dung, từ khóa"
         status={cat} onStatus={setCat} statusLabel="Danh mục" extraActive={vis !== 'ALL_VIS' ? 1 : 0}
         statusOptions={(Object.keys(DOC_CATEGORY) as DocCategory[]).map((c) => ({ value: c, label: DOC_CATEGORY[c] }))}
-        actions={<button className={cn(btnPrimary, 'py-2')} disabled={!canDo('docs.manage')} onClick={() => setUploading(true)}><Upload className="h-4 w-4" aria-hidden />Tải lên tài liệu</button>}
+        actions={<button className={cn(btnPrimary, btnSm)} disabled={!canDo('docs.manage')} onClick={() => setUploading(true)}><Upload className="h-3.5 w-3.5" aria-hidden />Tải lên</button>}
         chips={<ChipFilter value={cat === 'ALL' ? 'ALL' : (cat as DocCategory)} onChange={(v) => setCat(v)} total={visible.length} options={(Object.keys(DOC_CATEGORY) as DocCategory[]).map((c) => ({ value: c, label: DOC_CATEGORY[c], count: visible.filter((d) => d.category === c).length }))} />}
       >
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={vis} onChange={(e) => setVis(e.target.value as 'ALL_VIS' | DocVisibility)} aria-label="Phạm vi hiển thị">

@@ -7,7 +7,7 @@ import { CommentButton } from '../../components/comments';
 import { BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
-import { FilterBar, useInRange } from '../../components/filters';
+import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
 import { QuoteTimer } from '../../components/sla';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, Tabs, useSort, useSticky, ViewSwitch } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
@@ -427,19 +427,6 @@ export function ProjectsPage() {
 
   return (
     <div className="space-y-4">
-      <FilterBar
-        q={q} onQ={setQ} placeholder="Tìm dự án, khách hàng, mã dự án, mã đơn Getfly…"
-        dept={dp} onDept={setDp} status={stage} onStatus={(v) => setStage(v as 'ALL' | Stage)}
-        statusOptions={STAGES.map((s) => ({ value: s, label: stageLabel(s) }))}
-        onAdvanced={() => setAdvOpen(true)} advancedCount={advCount} extraActive={owner !== 'ALL' ? 1 : 0}
-        actions={<><ViewSwitch value={view} onChange={setView} options={['table', 'board', 'gantt']} /></>}
-      >
-        <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={owner} onChange={(e) => setOwner(e.target.value)} aria-label="Phụ trách">
-          <option value="ALL">Tất cả phụ trách</option>
-          {owners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-        </select>
-      </FilterBar>
-
       {(overdue.length > 0 || ppPending > 0) && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <AlertTriangle className="hidden h-4 w-4 shrink-0 text-[rgb(var(--danger-fg))] sm:block" aria-hidden />
@@ -447,11 +434,26 @@ export function ProjectsPage() {
             {overdue.length > 0 && <span>{overdue.length} dự án quá hạn nộp báo giá 24 giờ, đã báo Trưởng phòng. </span>}
             {ppPending > 0 && <span>{ppPending} đề xuất bảo vệ giá đang chờ 3M phản hồi.</span>}
           </p>
-          <div className="flex gap-2">
-            <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} disabled={!canEdit} onClick={() => openLeadForm(true)}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo dự án mới</button>
-          </div>
         </div>
       )}
+
+      <FilterBar
+        q={q} onQ={setQ} placeholder="Tìm dự án, khách hàng, mã dự án, mã đơn Getfly…"
+        dept={dp} onDept={setDp} status={stage} onStatus={(v) => setStage(v as 'ALL' | Stage)}
+        statusOptions={STAGES.map((s) => ({ value: s, label: stageLabel(s) }))}
+        onAdvanced={() => setAdvOpen(true)} advancedCount={advCount} extraActive={owner !== 'ALL' ? 1 : 0}
+        chips={<ChipFilter total={opp.length} value={stage} onChange={(v) => setStage(v as 'ALL' | Stage)} options={STAGES.map((s) => ({ value: s, label: stageLabel(s), count: opp.filter((l) => l.status === s).length }))} />}
+        actions={<>
+          <ViewSwitch value={view} onChange={setView} options={['table', 'board', 'gantt']} />
+          <RowMenu label="Xuất dữ liệu" items={[{ label: 'Xuất CSV', icon: Download, onClick: () => exportRows(list) }]} />
+          <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} disabled={!canEdit} onClick={() => openLeadForm(true)}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo dự án</button>
+        </>}
+      >
+        <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={owner} onChange={(e) => setOwner(e.target.value)} aria-label="Phụ trách">
+          <option value="ALL">Tất cả phụ trách</option>
+          {owners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+      </FilterBar>
 
       <BulkBar count={sel.ids.length} onClear={sel.clear}>
         <button className={cn(btnGhost, btnSm)} onClick={() => exportRows(allLeads.filter((l) => sel.has(l.id)))}><Download className="h-3.5 w-3.5" aria-hidden />Xuất CSV</button>
@@ -462,15 +464,7 @@ export function ProjectsPage() {
       </BulkBar>
 
       {view === 'board' ? <PipelineBoard list={opp} onOpen={setViewId} /> : view === 'gantt' ? <ProjectGantt list={list} onOpen={setViewId} /> : (
-      <Panel
-        title={`Danh sách dự án & BOQ (${list.length})`}
-        action={
-          <div className="flex gap-2">
-            <RowMenu text="Thao tác" icon={FileSpreadsheet} items={[{ label: 'Xuất CSV', icon: Download, onClick: () => exportRows(list) }]} />
-            {!(overdue.length > 0 || ppPending > 0) && <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} disabled={!canEdit} onClick={() => openLeadForm(true)}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo dự án mới</button>}
-          </div>
-        }
-      >
+      <Panel>
         <div className="space-y-2 md:hidden">
           {paged.slice.map((l) => {
             const st = projectStatus(l, now, quotes);

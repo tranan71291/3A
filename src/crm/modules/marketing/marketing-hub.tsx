@@ -199,8 +199,8 @@ export function MarketingHubPage() {
   const spent = yc.reduce((s, c) => s + c.spent, 0);
   const rev = stats.reduce((s, x) => s + x.revenue, 0);
   const tabs: { id: MktTab; label: string }[] = [
-    { id: 'calendar', label: 'Plan' }, { id: 'content', label: 'Content' }, { id: 'image', label: 'Image' },
-    { id: 'roi', label: 'Budget' }, { id: 'automation', label: 'Automation' },
+    { id: 'calendar', label: 'Kế hoạch' }, { id: 'content', label: 'Nội dung' }, { id: 'image', label: 'Hình ảnh' },
+    { id: 'roi', label: 'Ngân sách' }, { id: 'automation', label: 'Tự động' },
   ];
   return (
     <div className="space-y-4">
@@ -766,24 +766,24 @@ export function CampaignCalendar() {
     downloadBlob(`KeHoach_NoiDung_${ym}.xlsx`, xlsxBlob([{ name: `Ke hoach ${ym}`, rows: data, widths: [6, 12, 40, 26, 14, 18, 44, 40, 18, 18] }]));
   };
   return (
-    <section className="glass-card rounded-md">
-      <div className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--line))] px-5 py-3">
-        <button className={cn(btnGhost, 'h-9 w-9 p-0')} onClick={() => shift(-1)} aria-label="Tháng trước"><ChevronLeft className="h-4 w-4" /></button>
-        <h2 className="min-w-[120px] text-center text-[15px] font-semibold">Tháng {m}/{y}</h2>
-        <button className={cn(btnGhost, 'h-9 w-9 p-0')} onClick={() => shift(1)} aria-label="Tháng sau"><ChevronRight className="h-4 w-4" /></button>
+    <section className="glass-card rounded-xl">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--line))] px-4 py-2.5">
+        <button className={cn(btnGhost, 'h-8 w-8 p-0')} onClick={() => shift(-1)} aria-label="Tháng trước"><ChevronLeft className="h-4 w-4" /></button>
+        <h2 className="min-w-[110px] text-center text-[15px] font-medium">Tháng {m}/{y}</h2>
+        <button className={cn(btnGhost, 'h-8 w-8 p-0')} onClick={() => shift(1)} aria-label="Tháng sau"><ChevronRight className="h-4 w-4" /></button>
         <button className={cn(btnGhost, btnSm)} onClick={() => setYm(today.slice(0, 7))}>Hôm nay</button>
         <div className="flex rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--sunken))] p-0.5" role="radiogroup" aria-label="Chế độ xem">
           {([['calendar', 'Lịch tháng', CalendarDays], ['list', 'Danh sách', List], ['board', 'Bảng', Columns3]] as const).map(([v, l, I]) => <button key={v} role="radio" aria-checked={view === v} onClick={() => setView(v)} className={cn('flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium', view === v ? 'bg-[rgb(var(--surface))] text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))]')}><I className="h-3.5 w-3.5" aria-hidden />{l}</button>)}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <button className={cn(btnGhost, btnSm)} onClick={exportXlsx} disabled={!rows.length} title={`Xuất ${rows.length} nhiệm vụ tháng ${m}/${y}`}><Download className="h-3.5 w-3.5" aria-hidden />Xuất Excel</button>
-          {canEdit && <button className={btnGhost} onClick={() => setEdit('new')}><Plus className="h-4 w-4" aria-hidden />Chiến dịch</button>}
-          {canEdit && <button className={btnAccent} onClick={() => setTask(neu(today.startsWith(ym) ? today : `${ym}-01`))}><Plus className="h-4 w-4" aria-hidden />Nhiệm vụ nội dung</button>}
+          {canEdit && <button className={cn(btnGhost, btnSm)} onClick={() => setEdit('new')}><Plus className="h-3.5 w-3.5" aria-hidden />Chiến dịch</button>}
+          {canEdit && <button className={cn(btnPrimary, btnSm)} onClick={() => setTask(neu(today.startsWith(ym) ? today : `${ym}-01`))}><Plus className="h-3.5 w-3.5" aria-hidden />Nhiệm vụ</button>}
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--line))] px-5 py-2 text-xs">
-        <button onClick={() => setStF('ALL')} className={cn('rounded-full border px-2.5 py-1', stF === 'ALL' ? 'border-[rgb(var(--accent))] text-[rgb(var(--accent-fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))]')}>Tất cả {monthTasks.length}</button>
-        {counts.map(([s, n]) => <button key={s} onClick={() => setStF(s)} className={cn('flex items-center gap-1.5 rounded-full border px-2.5 py-1', stF === s ? 'border-[rgb(var(--fg)/0.5)]' : 'border-[rgb(var(--line))]')} style={{ background: TASK_STATUS[s].bg, color: TASK_STATUS[s].fg }}><span className="h-2 w-2 rounded-full" style={{ background: TASK_STATUS[s].color }} aria-hidden />{TASK_STATUS[s].label} {n}</button>)}
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-[rgb(var(--line))] px-4 py-2 text-[13px]">
+        <button onClick={() => setStF('ALL')} className={cn('flex h-7 items-center gap-1.5 rounded-lg border px-2.5', stF === 'ALL' ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium shadow-sm' : 'border-transparent text-[rgb(var(--fg2))]')}>Tất cả<span className="font-mono text-[11.5px] text-[rgb(var(--muted))]">{monthTasks.length}</span></button>
+        {counts.map(([s, n]) => <button key={s} onClick={() => setStF(s)} className={cn('flex h-7 items-center gap-1.5 rounded-lg border px-2.5', stF === s ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium shadow-sm' : 'border-transparent text-[rgb(var(--fg2))]')}><span className="h-1.5 w-1.5 rounded-full" style={{ background: TASK_STATUS[s].color }} aria-hidden />{TASK_STATUS[s].label}<span className="font-mono text-[11.5px] text-[rgb(var(--muted))]">{n}</span></button>)}
         <span className="ml-auto text-[rgb(var(--muted))]">{view === 'calendar' ? 'Bấm vào một ngày để thêm nhiệm vụ; thanh mảnh phía trên là chiến dịch' : 'Trạng thái tự cập nhật theo tiến độ AI và Content Studio'}</span>
       </div>
 

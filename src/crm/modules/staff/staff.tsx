@@ -5,7 +5,7 @@ import { CalendarDays, CheckCircle2, ChevronRight, FileSpreadsheet, MapPin, Penc
 import { useIntent } from '../../components/command-palette';
 import { Fab } from '../../components/controls';
 import { Drawer } from '../../components/drawer';
-import { FilterBar, useInRange } from '../../components/filters';
+import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
 import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, Tabs, useSticky } from '../../components/ui';
 import { actDays, ACTIVITY_STATUS, ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, compact, DECISION_LABEL, digits, EXPENSE_STATUS, fmtDate, fmtDT, inputCls, LEAVE_KIND, needsApproval, pad2, rowCls, tdCls, tdFirst, tdLast, todayISO, toLocal, TRANSPORTS, uid, useApp, vnd, WEEKDAY } from '../../lib/core';
 import type { Activity, ActivityStatus, ActivityType, ApprovalDecision, LeaveKind } from '../../lib/types';
@@ -445,9 +445,21 @@ export function StaffModule() {
 
   return (
     <div className="space-y-4">
-      <Tabs tabs={[{ id: 'list', label: 'Lịch' }, { id: 'approval', label: waiting ? `Chờ duyệt (${waiting})` : 'Chờ duyệt' }, { id: 'summary', label: 'Tổng hợp' }]} value={tab} onChange={setTab} />
+      <Tabs tabs={[{ id: 'list', label: 'Lịch' }, { id: 'approval', label: 'Chờ duyệt', count: waiting || undefined }, { id: 'summary', label: 'Tổng hợp' }]} value={tab} onChange={setTab}
+        aside={<button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => setForm({})}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm lịch</button>} />
 
-      <FilterBar q={q} onQ={setQ} placeholder="Tìm tiêu đề, khách hàng, địa điểm…" status={type} onStatus={setType} statusLabel="Mọi loại" statusOptions={(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => ({ value: t, label: ACTIVITY_TYPE[t].label }))} extraActive={who !== 'ALL' ? 1 : 0}>
+      <FilterBar q={q} onQ={setQ} placeholder="Tìm tiêu đề, khách hàng, địa điểm…" status={type} onStatus={setType} statusLabel="Mọi loại" statusOptions={(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => ({ value: t, label: ACTIVITY_TYPE[t].label }))} extraActive={who !== 'ALL' ? 1 : 0}
+        chips={<ChipFilter total={mine.filter((a) => inR(a.from.slice(0, 10))).length} value={type as ActivityType | 'ALL'} onChange={(v) => setType(v)} options={(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => ({ value: t, label: ACTIVITY_TYPE[t].label, count: mine.filter((a) => a.type === t && inR(a.from.slice(0, 10))).length, color: ACTIVITY_TYPE[t].color })).filter((o) => o.count > 0 || o.value === type)} />}
+        actions={tab === 'list' ? <>
+          <select className={cn(inputCls, 'w-auto py-1.5 text-[13px]')} value={who} onChange={(e) => setWho(e.target.value)} aria-label="Nhân sự">
+            <option value="ALL">Mọi nhân sự</option>
+            {people.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+          <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Kiểu xem">
+            <button role="radio" aria-checked={view === 'table'} onClick={() => setView('table')} className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px]', view === 'table' ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))]')}><FileSpreadsheet className="h-3.5 w-3.5" aria-hidden />Bảng</button>
+            <button role="radio" aria-checked={view === 'calendar'} onClick={() => setView('calendar')} className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px]', view === 'calendar' ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))]')}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Tuần</button>
+          </div>
+        </> : undefined}>
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={who} onChange={(e) => setWho(e.target.value)} aria-label="Nhân sự">
           <option value="ALL">Tất cả nhân sự</option>
           {people.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -455,18 +467,7 @@ export function StaffModule() {
       </FilterBar>
 
       {tab === 'list' && (
-        <Panel
-          title={view === 'table' ? `${list.length} lịch trong khoảng đang lọc` : `Tuần ${fmtDate(dayKey(days[0]))} – ${fmtDate(dayKey(days[6]))}`}
-          action={
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded bg-[rgb(var(--bg))] p-0.5" role="radiogroup" aria-label="Kiểu xem">
-                <button role="radio" aria-checked={view === 'table'} onClick={() => setView('table')} className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium', view === 'table' ? 'bg-[rgb(var(--surface))] font-semibold text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--line))]' : 'text-[rgb(var(--muted))]')}><FileSpreadsheet className="h-3.5 w-3.5" aria-hidden />Dạng bảng</button>
-                <button role="radio" aria-checked={view === 'calendar'} onClick={() => setView('calendar')} className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium', view === 'calendar' ? 'bg-[rgb(var(--surface))] font-semibold text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--line))]' : 'text-[rgb(var(--muted))]')}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Lịch tuần</button>
-              </div>
-              <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => setForm({})}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm lịch</button>
-            </div>
-          }
-        >
+        <Panel title={view === 'table' ? undefined : `Tuần ${fmtDate(dayKey(days[0]))} – ${fmtDate(dayKey(days[6]))}`}>
           {view === 'table' ? (
             <>
               <div className="space-y-2 md:hidden">{list.map((a) => <ActivityRowCard key={a.id} a={a} onOpen={() => setOpen(a.id)} />)}</div>

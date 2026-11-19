@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Bookmark, Cake, CheckCircle2, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, Eye, EyeOff, FolderOpen, Globe, House, ImagePlus, Lightbulb, MapPin, Megaphone, MessageCircle, Newspaper, Paperclip, PenLine, Pencil, Pin, Plus, Share2, SmilePlus, Sparkles, SquarePlay, ThumbsUp, Trash2, Trophy, UserPlus, Vote, Wallet, X } from 'lucide-react';
+import { ArrowLeft, Bookmark, CheckCircle2, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, Eye, EyeOff, FolderOpen, Globe, House, ImagePlus, Lightbulb, MapPin, Megaphone, MessageCircle, Newspaper, Paperclip, PenLine, Pencil, Pin, Plus, Share2, SmilePlus, Sparkles, SquarePlay, ThumbsUp, Trash2, Trophy, UserPlus, Vote, Wallet, X } from 'lucide-react';
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { removeWithUndo } from '../../app/context';
 import { PAvatar, useOutsideClose } from '../../app/header';
@@ -514,7 +514,7 @@ export function HomePage() {
     { id: 'BIZ', label: 'Hoạt động kinh doanh', icon: Trophy, n: auto.length },
     { id: 'SAVED', label: 'Đã lưu', icon: Bookmark, n: saved.filter((id) => visible.some((p) => p.id === id)).length },
   ];
-  const tile = (n: ReactNode, label: string, run: () => void) => <button className="min-w-0 rounded-md bg-[rgb(var(--ink)/0.04)] p-3 text-left hover:bg-[rgb(var(--ink)/0.07)]" onClick={run}><p className="truncate font-display text-xl font-semibold tabular-nums">{n}</p><p className="truncate text-xs text-[rgb(var(--muted))]">{label}</p></button>;
+  const tile = (n: ReactNode, label: string, run: () => void) => <button className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-1.5 text-left text-[13.5px] hover:bg-[rgb(var(--ink)/0.04)]" onClick={run}><span className="truncate text-[rgb(var(--fg2))]">{label}</span><b className="font-mono text-[13px] font-medium tabular-nums">{n}</b></button>;
   const quick = (label: string, color: string, icon: typeof Wallet, run: () => void) => { const I = icon; return <button className="flex h-10 items-center justify-center gap-2 rounded-md text-[15px] font-medium text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.05)]" onClick={run}><I className="h-6 w-6" style={{ color }} aria-hidden /><span className="truncate">{label}</span></button>; };
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[220px_1fr] xl:grid-cols-[220px_1fr_320px] 2xl:grid-cols-[240px_1fr_360px]">
@@ -522,16 +522,13 @@ export function HomePage() {
       <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
         <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible" aria-label="Bảng tin">
           {navItems.map((n) => (
-            <button key={n.id} className={cn('flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors', filter === n.id && !tag ? 'bg-[rgb(var(--secondary)/0.12)] font-semibold text-[rgb(var(--secondary-fg))]' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)]')} onClick={() => { setFilter(n.id); setTag(''); }} aria-current={filter === n.id && !tag ? 'page' : undefined}>
+            <button key={n.id} className={cn('flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors', filter === n.id && !tag ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--ink)/0.06)]' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)]')} onClick={() => { setFilter(n.id); setTag(''); }} aria-current={filter === n.id && !tag ? 'page' : undefined}>
               <n.icon className="h-4 w-4" aria-hidden /><span className="flex-1 whitespace-nowrap">{n.label}</span>{n.n ? <span className="text-xs tabular-nums text-[rgb(var(--muted))]">{n.n}</span> : null}
             </button>
           ))}
         </nav>
         <div className="hidden lg:block">
-          <WidgetCard title={<span className="flex items-center gap-2"><Cake className="h-4 w-4 text-[rgb(var(--accent))]" aria-hidden />Sinh nhật</span>} period="7 ngày tới">
-            {upcoming.length ? <ul className="space-y-2">{upcoming.map((x) => <li key={x.u.id} className="flex items-center gap-2.5 text-sm"><PAvatar user={x.u} size={28} meId={me.id} /><span className="min-w-0 flex-1"><span className="block truncate" title={x.u.name}>{x.u.name}</span><span className="text-xs text-[rgb(var(--muted))]">{x.days === 0 ? 'Hôm nay 🎂' : x.days === 1 ? 'Ngày mai' : `${x.days} ngày nữa`}{x.days === 0 && x.u.id !== me.id && <> · <button className="font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => go('messages', dmId(me.id, x.u.id))}>Chúc mừng</button></>}</span></span></li>)}</ul>
-              : <p className="text-xs text-[rgb(var(--muted))]">Không có sinh nhật trong 7 ngày tới. Thêm ngày sinh ở Cài đặt › Nhân sự.</p>}
-          </WidgetCard>
+
           {allTags.length > 0 && <div className="mt-4"><p className="mb-1 px-3 text-[11px] font-semibold text-[rgb(var(--faint))]">Hashtag</p>{allTags.map(([t, n]) => <button key={t} className={cn('block w-full rounded px-3 py-1 text-left text-sm text-[rgb(var(--secondary-fg))] hover:bg-[rgb(var(--ink)/0.05)]', tag === t && 'font-semibold')} onClick={() => setTag(tag === t ? '' : t)}>{t} <span className="text-xs text-[rgb(var(--muted))]">{n}</span></button>)}</div>}
         </div>
       </aside>
@@ -565,13 +562,17 @@ export function HomePage() {
       {/* Phải: việc của tôi, truyền thông */}
       <aside className="space-y-4 lg:col-span-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0 xl:sticky xl:top-20 xl:col-span-1 xl:block xl:space-y-4 xl:self-start">
         <WidgetCard title="Việc của tôi" period="Tháng này">
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="divide-y divide-[rgb(var(--ink)/0.06)]">
             {tile(taskN, 'Việc chờ xử lý', () => go('tasks'))}
             {canSee('leads') && tile(leads7, 'Lead mới 7 ngày', () => go('leads'))}
             {!mfg && tile(myQuotes.length, 'Báo giá đã tạo', () => go('docs'))}
             {tile(compact(myWon), 'Doanh số đã chốt', () => go(mfg ? 'jobs' : 'projects'))}
           </div>
         </WidgetCard>
+        <WidgetCard title={<span className="flex items-center gap-2">Sinh nhật</span>} period="7 ngày tới">
+            {upcoming.length ? <ul className="space-y-2">{upcoming.map((x) => <li key={x.u.id} className="flex items-center gap-2.5 text-sm"><PAvatar user={x.u} size={28} meId={me.id} /><span className="min-w-0 flex-1"><span className="block truncate" title={x.u.name}>{x.u.name}</span><span className="text-xs text-[rgb(var(--muted))]">{x.days === 0 ? 'Hôm nay 🎂' : x.days === 1 ? 'Ngày mai' : `${x.days} ngày nữa`}{x.days === 0 && x.u.id !== me.id && <> · <button className="font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => go('messages', dmId(me.id, x.u.id))}>Chúc mừng</button></>}</span></span></li>)}</ul>
+              : <p className="text-xs text-[rgb(var(--muted))]">Không có sinh nhật trong 7 ngày tới. Thêm ngày sinh ở Cài đặt › Nhân sự.</p>}
+          </WidgetCard>
         <SocialHubWidget />
       </aside>
       {compose && <PostComposer {...compose} onClose={() => setCompose(null)} />}

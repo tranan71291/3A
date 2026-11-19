@@ -222,7 +222,7 @@ export function FunnelBars({ steps, compactView }: { steps: { label: string; n: 
         return (
           <li key={s.label} className="grid grid-cols-[84px_1fr_auto] items-center gap-2 text-sm">
             <span className="truncate text-[rgb(var(--fg2))]">{s.label}</span>
-            <div className="h-5 rounded-sm bg-[rgb(var(--ink)/0.04)]"><div className="h-full rounded-sm" style={{ width: `${Math.max(2, (s.n / max) * 100)}%`, background: last ? 'rgb(var(--success))' : 'rgb(var(--accent) / 0.55)' }} /></div>
+            <div className="h-1.5 rounded-full bg-[rgb(var(--ink)/0.06)]"><div className="h-full rounded-full" style={{ width: `${Math.max(2, (s.n / max) * 100)}%`, background: last ? 'rgb(var(--accent))' : 'rgb(var(--fg) / 0.75)' }} /></div>
             <span className="w-16 text-right font-num text-xs tabular-nums"><b>{s.n}</b>{!compactView && prev ? <span className="ml-1 text-[rgb(var(--muted))]">{Math.round((s.n / prev) * 100)}%</span> : null}</span>
           </li>
         );
@@ -235,23 +235,29 @@ export function FunnelBars({ steps, compactView }: { steps: { label: string; n: 
 export function DashFilterBar({ period, setPeriod, scope, setScope, r, onTargets }: { period: DashPeriod; setPeriod: (p: DashPeriod) => void; scope: DashScope; setScope: (s: DashScope) => void; r: DashRange; onTargets: () => void }) {
   const { departments, role, me } = useApp();
   const now = new Date();
-  const opts: { id: DashPeriod; label: string }[] = [{ id: 'WEEK', label: 'Tuần' }, { id: 'MONTH', label: `Tháng ${now.getMonth() + 1}` }, { id: 'QUARTER', label: `Quý ${Math.floor(now.getMonth() / 3) + 1}` }, { id: 'YEAR', label: `Năm ${now.getFullYear()}` }];
+  const opts: { id: DashPeriod; label: string }[] = [{ id: 'WEEK', label: 'Tuần' }, { id: 'MONTH', label: 'Tháng' }, { id: 'QUARTER', label: 'Quý' }, { id: 'YEAR', label: 'Năm' }];
   const lockDept = role !== 'BOD' && role !== 'ACCOUNTANT' && role !== 'MKT_LEAD';
+  const heading = period === 'MONTH' ? `Tháng ${now.getMonth() + 1}/${now.getFullYear()}` : period === 'QUARTER' ? `Quý ${Math.floor(now.getMonth() / 3) + 1}/${now.getFullYear()}` : period === 'YEAR' ? `Năm ${now.getFullYear()}` : 'Tuần này';
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="flex rounded-md bg-[rgb(var(--ink)/0.05)] p-0.5" role="radiogroup" aria-label="Kỳ báo cáo">
-        {opts.map((o) => <button key={o.id} role="radio" aria-checked={period === o.id} onClick={() => setPeriod(o.id)} className={cn('rounded px-3 py-1.5 text-sm', period === o.id ? 'bg-[rgb(var(--surface))] font-semibold text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>{o.label}</button>)}
+    <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+      <div className="mr-auto min-w-0">
+        <h2 className="text-[22px] font-medium leading-7">{heading}</h2>
+        <p className="text-[12.5px] text-[rgb(var(--muted))]">Cập nhật {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · kỳ vọng {Math.round(r.elapsed * 100)}% · còn {r.daysLeft} ngày</p>
       </div>
-      <span className="rounded-md border border-[rgb(var(--line))] px-2.5 py-1.5 text-sm text-[rgb(var(--muted))]">So với {r.prevTag}</span>
+      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Kỳ báo cáo">
+        {opts.map((o) => <button key={o.id} role="radio" aria-checked={period === o.id} onClick={() => setPeriod(o.id)} className={cn('rounded-md px-2.5 py-1 text-[13px]', period === o.id ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>{o.label}</button>)}
+      </div>
+      <span className="rounded-lg border border-[rgb(var(--line))] px-2.5 py-1 text-[13px] text-[rgb(var(--fg2))]">So với {r.prevTag}</span>
       {role === 'SALES_REP' ? <span className="rounded-md border border-[rgb(var(--line))] px-2.5 py-1.5 text-sm">Của tôi</span> : (
-        <select aria-label="Phòng ban" disabled={lockDept} className={cn(inputCls, 'h-9 w-auto py-0 text-sm')} value={scope.dept} onChange={(e) => setScope({ dept: e.target.value as DeptCode | 'ALL' })}>
+        <select aria-label="Phòng ban" disabled={lockDept} className={cn(inputCls, 'h-8 w-auto py-0 text-[13px]')} value={scope.dept} onChange={(e) => setScope({ dept: e.target.value as DeptCode | 'ALL' })}>
           {!lockDept && <option value="ALL">Mọi phòng</option>}
           {departments.filter((d) => d.active && (!lockDept || d.code === me.dept)).map((d) => <option key={d.code} value={d.code}>{d.short || d.name}</option>)}
         </select>
       )}
-      <button className={cn(btnGhost, 'h-9')} onClick={onTargets}><Target className="h-4 w-4" aria-hidden />Chỉ tiêu</button>
-      <span className="ml-auto text-xs text-[rgb(var(--muted))]">{new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · kỳ vọng {Math.round(r.elapsed * 100)}% · còn {r.daysLeft} ngày</span>
-      <button className={cn(btnGhost, 'h-9')} onClick={() => window.print()} title="In hoặc lưu PDF"><Printer className="h-4 w-4" aria-hidden />PDF</button>
+      <button className={cn(btnGhost, btnSm)} onClick={onTargets}><Target className="h-4 w-4" aria-hidden />Chỉ tiêu</button>
+      <button className={cn(btnGhost, btnSm, 'border-0')} onClick={() => window.print()} title="In hoặc lưu PDF"><Printer className="h-4 w-4" aria-hidden />PDF</button>
+      </div>
     </div>
   );
 }

@@ -1,11 +1,12 @@
 'use client';
 
 import { Fragment, useState } from 'react';
-import { AlertTriangle, ArrowRight, Boxes, CheckCircle2, Download, PackageMinus, PackagePlus, Plus, Printer, RefreshCw, Search, Warehouse, X } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Boxes, CheckCircle2, ClipboardCheck, Download, PackageMinus, PackagePlus, Plus, Printer, RefreshCw, Search, Warehouse, X } from 'lucide-react';
+import { useIntent } from '../../components/command-palette';
 import { Pagination, usePaged } from '../../components/controls';
 import { useInRange } from '../../components/filters';
 import { Chip, Code, EmptyState, Field, Modal, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
-import { addWh, btnAccent, btnDanger, btnGhost, btnPrimary, btnSm, C, compact, downloadBlob, esc, fmtDate, fold, inputBase, inputCls, kpiGrid, MAIN_WH, MOVE_LABEL, moveEffect, nextVoucherCode, rangeText, reservedInStock, rowCls, tdCls, tdFirst, tdLast, todayISO, uid, useApp, V_STATUS, VOUCHER_META, vStatusLabel, whQty } from '../../lib/core';
+import { addWh, btnDanger, btnGhost, btnPrimary, btnSm, C, compact, downloadBlob, esc, fmtDate, fold, inputBase, inputCls, kpiGrid, MAIN_WH, MOVE_LABEL, moveEffect, nextVoucherCode, rangeText, reservedInStock, rowCls, tdCls, tdFirst, tdLast, todayISO, uid, useApp, V_STATUS, VOUCHER_META, vStatusLabel, whQty } from '../../lib/core';
 import { xlsxBlob } from '../../lib/csv';
 import type { SkuItem, StockMove, StockVoucher, SvLine, VoucherStatus, VoucherType, WarehouseInfo, WhTab } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -183,16 +184,17 @@ export function VoucherList({ type }: { type: VoucherType }) {
   const srt = useSort(`Voucher40.${type}`, list, { 0: (v) => v.code, 2: (v) => v.date });
   const paged = usePaged(srt.rows, 15);
   const pend = stockVouchers.filter((v) => v.type === type && v.status === 'PENDING' && canApprove(v)).length;
+  useIntent(`wh.new.${type}`, () => setOpen('new'));
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--faint))]" aria-hidden /><input className={cn(inputCls, 'pl-9')} placeholder="Mã phiếu, mã hàng, đối tác, chứng từ gốc…" value={q} onChange={(e) => { setQ(e.target.value); paged.setPage(1); }} aria-label="Tìm phiếu" /></div>
-        <select className={cn(inputBase, 'sm:w-52')} value={wh} onChange={(e) => { setWh(e.target.value); paged.setPage(1); }} aria-label="Kho">{[<option key="a" value="ALL">Mọi kho</option>, ...warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)]}</select>
-        <select className={cn(inputBase, 'sm:w-40')} value={st} onChange={(e) => { setSt(e.target.value as typeof st); paged.setPage(1); }} aria-label="Trạng thái"><option value="ALL">Mọi trạng thái</option>{(Object.keys(V_STATUS) as VoucherStatus[]).map((k) => <option key={k} value={k}>{k === 'DONE' ? meta.done : V_STATUS[k].label}</option>)}</select>
-        <button className={cn(btnAccent, 'py-2')} disabled={!canDo('stock.voucher') && !canDo('stock.approve')} onClick={() => setOpen('new')}><Plus className="h-4 w-4" aria-hidden />Lập {meta.label.toLowerCase()}</button>
+        <div className="relative min-w-0 flex-1 lg:w-[280px] lg:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--faint))]" aria-hidden /><input className={cn(inputCls, 'bg-[rgb(var(--surface))] py-1.5 pl-9 text-[13.5px]')} placeholder="Mã phiếu, mã hàng, đối tác, chứng từ gốc…" value={q} onChange={(e) => { setQ(e.target.value); paged.setPage(1); }} aria-label="Tìm phiếu" /></div>
+        <select className={cn(inputBase, 'py-1.5 text-[13px] sm:w-44')} value={wh} onChange={(e) => { setWh(e.target.value); paged.setPage(1); }} aria-label="Kho">{[<option key="a" value="ALL">Mọi kho</option>, ...warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)]}</select>
+        <select className={cn(inputBase, 'py-1.5 text-[13px] sm:w-40')} value={st} onChange={(e) => { setSt(e.target.value as typeof st); paged.setPage(1); }} aria-label="Trạng thái"><option value="ALL">Mọi trạng thái</option>{(Object.keys(V_STATUS) as VoucherStatus[]).map((k) => <option key={k} value={k}>{k === 'DONE' ? meta.done : V_STATUS[k].label}</option>)}</select>
+        <button className={cn(btnGhost, btnSm, 'sm:ml-auto lg:hidden')} disabled={!canDo('stock.voucher') && !canDo('stock.approve')} onClick={() => setOpen('new')}><Plus className="h-3.5 w-3.5" aria-hidden />Lập {meta.label.toLowerCase()}</button>
       </div>
-      {pend > 0 && <p className="flex items-center gap-2 rounded-md border border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--accent)/0.08)] px-3 py-2 text-sm"><AlertTriangle className="h-4 w-4 text-[rgb(var(--accent))]" aria-hidden />{pend} phiếu đang chờ bạn duyệt.<button className="font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => setSt('PENDING')}>Xem</button></p>}
-      <Panel title={`${list.length} ${meta.label.toLowerCase()}`}>
+      {pend > 0 && <p className="flex items-center gap-2 text-sm text-[rgb(var(--fg2))]"><AlertTriangle className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{pend} phiếu đang chờ bạn duyệt.<button className="font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => setSt('PENDING')}>Xem</button></p>}
+      <Panel>
         {list.length ? (
           <>
             <Table stt={Math.max(0, paged.from - 1)} head={['Mã phiếu', 'Chứng từ gốc', 'Ngày', type === 'TRANSFER' ? 'Kho đi → kho đến' : 'Kho', type === 'IN' ? 'Nhà cung cấp' : type === 'OUT' ? 'Khách hàng' : 'Diễn giải', 'Lý do', <span key="m" className="block text-right">Số mã</span>, <span key="q" className="block text-right">{type === 'COUNT' ? 'Lệch' : 'Số lượng'}</span>, 'Người lập', 'Trạng thái']} minW={1200} sort={srt.th}>
@@ -364,18 +366,22 @@ export function StockXnt() {
 }
 
 export function WarehouseModule() {
-  const { stockVouchers, warehouses } = useApp();
+  const { stockVouchers, warehouses, canDo, setIntent } = useApp();
   const [tab, setTab] = useSticky<WhTab>('WarehouseModule.tab', 'stock');
   const c = (t: VoucherType) => stockVouchers.filter((v) => v.type === t).length;
   const p = stockVouchers.filter((v) => v.status === 'PENDING').length;
   const vt = (['in', 'out', 'transfer', 'count'] as WhTab[]).includes(tab);
   return (
     <div className="space-y-4">
-      {p > 0 && tab === 'stock' && <p className="flex items-center gap-2 text-sm text-[rgb(var(--fg2))]"><AlertTriangle className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{p} phiếu kho đang chờ duyệt<button className="font-medium text-[rgb(var(--accent-fg))] hover:underline" onClick={() => setTab('in')}>Xem phiếu</button></p>}
       <Tabs tabs={[
         { id: 'stock' as WhTab, label: 'Tồn kho' }, { id: 'in' as WhTab, label: 'Phiếu kho', count: stockVouchers.length }, { id: 'card' as WhTab, label: 'Thẻ kho' },
         { id: 'xnt' as WhTab, label: 'Xuất nhập tồn' }, { id: 'list' as WhTab, label: 'Danh mục kho', count: warehouses.length },
-      ]} value={vt ? 'in' : tab} onChange={setTab} />
+      ]} value={vt ? 'in' : tab} onChange={setTab}
+        aside={(canDo('stock.voucher') || canDo('stock.approve')) ? <>
+          <button className={cn(btnGhost, btnSm)} onClick={() => { setTab('count'); setIntent('wh.new.COUNT'); }}><ClipboardCheck className="h-3.5 w-3.5" aria-hidden />Kiểm kho</button>
+          <button className={cn(btnPrimary, btnSm)} onClick={() => { const t = vt && tab !== 'count' ? tab : 'in'; setTab(t); setIntent(`wh.new.${({ in: 'IN', out: 'OUT', transfer: 'TRANSFER', count: 'COUNT' } as Record<string, string>)[t]}`); }}><Plus className="h-3.5 w-3.5" aria-hidden />Lập phiếu</button>
+        </> : undefined} />
+      {p > 0 && tab === 'stock' && <p className="flex items-center gap-2 text-sm text-[rgb(var(--fg2))]"><AlertTriangle className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{p} phiếu kho đang chờ duyệt<button className="font-medium text-[rgb(var(--accent-fg))] hover:underline" onClick={() => setTab('in')}>Xem phiếu</button></p>}
       {vt && (
         <div className="flex rounded-lg bg-[rgb(var(--raised))] p-0.5 sm:w-fit" role="radiogroup" aria-label="Loại phiếu">
           {([['in', 'Nhập', 'IN'], ['out', 'Xuất', 'OUT'], ['transfer', 'Chuyển', 'TRANSFER'], ['count', 'Kiểm', 'COUNT']] as const).map(([id, label, t]) => (

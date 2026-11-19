@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowDown, ArrowUp, ClipboardCheck, Download, Pencil, Pl
 import { Pagination, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { btnBase, btnGhost, btnPrimary, btnSm, C, compact, digits, fmtDate, inputCls, iso, jobCustName, kpiGrid, nextCode, rangeBounds, rowCls, STOCK_MOVE, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, C, compact, digits, fmtDate, inputCls, iso, jobCustName, kpiGrid, nextCode, rangeBounds, rowCls, STOCK_MOVE, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import type { CashAccount, ConfirmState, InvMove, InvMoveType, StockItem, VoucherLine } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -176,26 +176,24 @@ export function InventoryModule() {
   const target = (m: InvMove) => { const w = workOrders.find((x) => x.id === m.woId); const j = jobs.find((x) => x.id === (m.jobId ?? w?.jobId)); return j ? `${w?.code ?? j.code}: ${jobCustName(j, customers)}` : m.partner ?? ''; };
   return (
     <div className="space-y-4">
+      <Tabs tabs={[{ id: 'stock', label: 'Tồn kho' }, { id: 'moves', label: 'Phiếu nhập / xuất' }, { id: 'report', label: 'Nhập xuất tồn' }, { id: 'items', label: 'Danh mục' }]} value={tab} onChange={setTab} 
+        aside={<>
+          <button className={cn(btnGhost, btnSm, 'border-0')} disabled={!can} onClick={() => setVoucher('ADJUST')}><ClipboardCheck className="h-3.5 w-3.5" aria-hidden />Kiểm kê</button>
+          <button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setVoucher('IN')}><ArrowDown className="h-3.5 w-3.5" aria-hidden />Nhập kho</button>
+          <button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setVoucher('OUT')}><ArrowUp className="h-3.5 w-3.5" aria-hidden />Xuất kho</button>
+        </>} />
       <div className={kpiGrid('lg:grid-cols-4')}>
         <StatCard label="Giá trị tồn kho" value={compact(balances.reduce((s, b) => s + b.value, 0))} icon={Warehouse} color={C.blue} sub={`${balances.filter((b) => b.qty > 0).length} mặt hàng còn tồn`} />
         <StatCard label="Dưới tồn tối thiểu" value={String(low.length)} icon={AlertTriangle} color={low.length ? C.red : C.teal} sub={low.slice(0, 2).map((b) => b.s.name).join(', ') || 'Đủ hàng'} />
         <StatCard label="Nhập trong kỳ" value={compact(val(inPeriod, 'IN'))} icon={ArrowDown} color={C.teal} sub={`${new Set(inPeriod.filter((m) => m.type === 'IN').map((m) => m.code)).size} phiếu nhập`} />
         <StatCard label="Xuất trong kỳ" value={compact(val(inPeriod, 'OUT'))} icon={ArrowUp} color={C.orange} sub={`${new Set(inPeriod.filter((m) => m.type === 'OUT').map((m) => m.code)).size} phiếu xuất`} />
       </div>
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-0 flex-1"><Tabs tabs={[{ id: 'stock', label: 'Tồn kho' }, { id: 'moves', label: 'Phiếu nhập / xuất' }, { id: 'report', label: 'Báo cáo nhập xuất tồn' }, { id: 'items', label: 'Danh mục vật tư' }]} value={tab} onChange={setTab} /></div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button className={cn(btnBase, btnSm, 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]')} disabled={!can} onClick={() => setVoucher('IN')}><ArrowDown className="h-3.5 w-3.5" aria-hidden />Nhập kho</button>
-          <button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setVoucher('OUT')}><ArrowUp className="h-3.5 w-3.5" aria-hidden />Xuất kho</button>
-          <button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setVoucher('ADJUST')}><ClipboardCheck className="h-3.5 w-3.5" aria-hidden />Kiểm kê</button>
-        </div>
-      </div>
-      <Panel>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
           <SearchBox value={q} onChange={setQ} placeholder={tab === 'moves' ? 'Tìm số phiếu, nhà cung cấp' : 'Tìm mã, tên vật tư'} />
           {tab === 'report' && <button className={cn(btnGhost, btnSm)} onClick={() => downloadCsv(`nhap-xuat-ton-${fromISO}-${toISO}.csv`, [['Mã', 'Tên', 'ĐVT', 'Tồn đầu SL', 'Tồn đầu GT', 'Nhập SL', 'Nhập GT', 'Xuất SL', 'Xuất GT', 'Tồn cuối SL', 'Tồn cuối GT'], ...report.map((r) => [r.s.code, r.s.name, r.s.unit, r.open.qty, r.open.value, r.inQ, Math.round(r.inV), r.outQ, Math.round(r.outV), r.close.qty, r.close.value])])}><Download className="h-3.5 w-3.5" aria-hidden />Xuất CSV</button>}
           {tab === 'items' && <button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setEdit('new')}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm vật tư</button>}
         </div>
+      <Panel>
 
         {tab === 'stock' && (
           <>

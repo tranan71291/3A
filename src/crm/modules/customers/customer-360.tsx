@@ -7,7 +7,7 @@ import { CommentButton } from '../../components/comments';
 import { BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
-import { FilterBar } from '../../components/filters';
+import { ChipFilter, FilterBar } from '../../components/filters';
 import { ImportModal } from '../../components/import-csv';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, ProgressBar, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { claimState, roiRating } from '../../lib/business';
@@ -252,6 +252,11 @@ export function TradingCustomersList() {
         dept={dp} onDept={setDp} status={status} onStatus={setStatus}
         statusOptions={(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((x) => ({ value: x, label: CUSTOMER_STATUS[x].label }))}
         onAdvanced={() => setAdvOpen(true)} advancedCount={advCount} extraActive={region !== 'ALL' ? 1 : 0}
+        chips={<ChipFilter total={customers.length} value={status as CustomerStatus | 'ALL'} onChange={(v) => setStatus(v)} options={(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((x) => ({ value: x, label: CUSTOMER_STATUS[x].label, count: customers.filter((c) => c.status === x).length })).filter((o) => o.count > 0)} />}
+        actions={<>
+          <RowMenu text="Nhập / xuất" icon={FileSpreadsheet} items={[{ label: 'Xuất CSV', icon: Download, onClick: () => exportRows(list) }, { label: 'Nhập từ file', icon: Upload, onClick: () => setImporting(true), disabled: !canEdit }]} />
+          <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} disabled={!canEdit} onClick={() => openCustomerForm()}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm khách hàng</button>
+        </>}
       >
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={region} onChange={(e) => setRegion(e.target.value as 'ALL' | Region)} aria-label="Khu vực">
           <option value="ALL">Tất cả khu vực</option>
@@ -272,15 +277,7 @@ export function TradingCustomersList() {
         <button className={cn(btnGhost, btnSm, 'hover:text-[rgb(var(--danger-fg))]')} disabled={!canEdit} onClick={bulkDelete}><Trash2 className="h-3.5 w-3.5" aria-hidden />Xóa</button>
       </BulkBar>
 
-      <Panel
-        title={`${list.length} khách hàng`}
-        action={
-          <div className="flex gap-2">
-            <RowMenu text="Dữ liệu" icon={FileSpreadsheet} items={[{ label: 'Xuất CSV', icon: Download, onClick: () => exportRows(list) }, { label: 'Nhập từ file', icon: Upload, onClick: () => setImporting(true), disabled: !canEdit }]} />
-            <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} disabled={!canEdit} onClick={() => openCustomerForm()}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm khách hàng</button>
-          </div>
-        }
-      >
+      <Panel>
         {/* Mobile: danh sách thẻ */}
         <div className="space-y-2 md:hidden">
           {paged.slice.map((c) => (

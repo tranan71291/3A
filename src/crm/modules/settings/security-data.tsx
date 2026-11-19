@@ -255,13 +255,13 @@ export function SettingsModule() {
   // Tích hợp do 3A cấp phép theo hợp đồng: tắt ở Console thì ẩn tab cấu hình tương ứng
   const feat = platform.tenants.find((t) => t.id === org.id)?.features;
   const all: { id: SettingsTab; label: string; show: boolean; group: string }[] = [
-    { id: 'company', label: 'Thông tin doanh nghiệp', show: true, group: 'Tổ chức' },
+    { id: 'company', label: 'Doanh nghiệp', show: true, group: 'Tổ chức' },
     { id: 'org', label: 'Phòng ban & nhân sự', show: true, group: 'Tổ chức' },
     { id: 'perms', label: 'Phân quyền', show: true, group: 'Tổ chức' },
     { id: 'accounting', label: 'Kế toán & công nợ', show: true, group: 'Nghiệp vụ' },
     { id: 'pricing', label: 'Bảng đơn giá & thanh toán', show: mode !== 'TRADING', group: 'Nghiệp vụ' },
     { id: 'warehouses', label: 'Kho hàng', show: mode !== 'MFG', group: 'Nghiệp vụ' },
-    { id: 'segments', label: mode === 'MFG' ? 'Loại & nguồn khách' : 'Phân loại khách hàng', show: true, group: 'Nghiệp vụ' },
+    { id: 'segments', label: mode === 'MFG' ? 'Loại & nguồn khách' : 'Phân loại khách', show: true, group: 'Nghiệp vụ' },
     { id: 'fund', label: 'Quỹ Hãng 3M', show: mode !== 'MFG', group: 'Marketing & quỹ' },
     { id: 'mkt', label: 'Ngân sách Marketing', show: true, group: 'Marketing & quỹ' },
     { id: 'hub', label: 'AI, Zalo OA & ZNS', show: true, group: 'Tích hợp' },
@@ -276,16 +276,16 @@ export function SettingsModule() {
   return (
     <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
       {/* Điều hướng dọc: danh sách mục cài đặt (màn nhỏ: ô chọn) */}
-      <nav aria-label="Mục cài đặt" className="lg:sticky lg:top-20 lg:w-56 lg:shrink-0">
+      <nav aria-label="Mục cài đặt" className="lg:sticky lg:top-20 lg:w-52 lg:shrink-0">
         <select className={cn(inputBase, 'lg:hidden')} value={cur} onChange={(e) => setTab(e.target.value as SettingsTab)} aria-label="Mục cài đặt">
           {tabs.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
         </select>
-        <ul className="hidden rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1.5 lg:block">
+        <ul className="hidden lg:block">
           {tabs.map((x, i) => (
             <li key={x.id}>
-              {(i === 0 || tabs[i - 1].group !== x.group) && <p className={cn('px-3 pb-1 text-[11px] font-semibold text-[rgb(var(--faint))]', i > 0 ? 'mt-2 border-t border-[rgb(var(--line))] pt-3' : 'pt-1')}>{x.group}</p>}
+              {(i === 0 || tabs[i - 1].group !== x.group) && <p className={cn('px-3 pb-1 text-[12px] text-[rgb(var(--faint))]', i > 0 ? 'mt-4' : '')}>{x.group}</p>}
               <button
-                className={cn('flex w-full items-center rounded border-l-2 px-3 py-2 text-left text-sm transition-colors', cur === x.id ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.1)] font-semibold text-[rgb(var(--fg))]' : 'border-transparent text-[rgb(var(--muted))] hover:bg-[rgb(var(--raised))] hover:text-[rgb(var(--fg))]')}
+                className={cn('flex w-full items-center rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors', cur === x.id ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm ring-1 ring-[rgb(var(--ink)/0.06)]' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}
                 aria-current={cur === x.id ? 'page' : undefined}
                 onClick={() => setTab(x.id)}
               >{x.label}</button>

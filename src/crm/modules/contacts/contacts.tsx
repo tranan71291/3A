@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { BookUser, Copy, Download, ExternalLink, History, Mail, MessageSquare, Phone, Plus, Search, Star, Tag } from 'lucide-react';
+import { BookUser, Copy, Download, ExternalLink, Eye, History, LayoutGrid, Mail, MessageSquare, Phone, Rows3, Search, Star, Tag } from 'lucide-react';
 import { PAvatar } from '../../app/header';
-import { Pagination, usePaged } from '../../components/controls';
-import { Chip, EmptyState, Tabs, useSticky } from '../../components/ui';
-import { bizMode, btnGhost, btnPrimary, btnSm, contactKey, dmId, downloadText, fmtDate, fold, initials, inputBase, inputCls, PRESENCE_META, presenceOf, ROLE_LABEL, segName, uid, useApp, vcard } from '../../lib/core';
+import { Avatar, Pagination, RowMenu, usePaged } from '../../components/controls';
+import { Chip, EmptyState, Panel, Table, Tabs, useSticky } from '../../components/ui';
+import { bizMode, btnGhost, btnPrimary, btnSm, contactKey, dmId, downloadText, fmtDate, fold, initials, inputBase, inputCls, PRESENCE_META, presenceOf, ROLE_LABEL, rowCls, segName, tdCls, tdFirst, tdLast, uid, useApp, vcard } from '../../lib/core';
 import type { ContactItem, ContactPrefs, DeptCode } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
@@ -25,6 +25,8 @@ export function ContactsPage() {
   const [grp, setGrp] = useSticky('ContactsPage.grp', 'ALL');
   const [newLabel, setNewLabel] = useState('');
   const [labelFor, setLabelFor] = useState<string | null>(null);
+  const [layout, setLayout] = useSticky<'list' | 'card'>('ContactsPage.layout', 'list');
+  const [labelOpen, setLabelOpen] = useState(false);
   const seeCust = canSee('customers');
   const deptName = (d?: DeptCode) => departments.find((x) => x.code === d)?.name ?? 'Ban Giám đốc';
   const staff: ContactItem[] = users.filter((u) => u.active).map((u) => ({ key: `u:${u.id}`, kind: 'staff', name: u.name, title: u.title || ROLE_LABEL[u.role], org: company.shortName, phone: u.phone, email: u.email, extra: u.birthday ? `Sinh nhật ${fmtDate(u.birthday).slice(0, 5)}` : undefined, user: u, group: deptName(u.dept) }));
@@ -46,34 +48,68 @@ export function ContactsPage() {
   const copy = (t: string) => { void navigator.clipboard?.writeText(t).then(() => notify(`Đã sao chép ${t}`, 'teal'), () => notify('Trình duyệt chặn sao chép', 'red')); };
   const views = [{ id: 'all', label: 'Tất cả liên hệ', icon: BookUser, n: base.length }, { id: 'recent', label: 'Xem gần đây', icon: History, n: base.filter((c) => p.recent.includes(c.key)).length }, { id: 'fav', label: 'Yêu thích', icon: Star, n: base.filter((c) => p.fav.includes(c.key)).length }];
   const iconBtn = 'flex h-8 w-8 items-center justify-center rounded-md border border-[rgb(var(--line))] text-[rgb(var(--muted))] transition-colors hover:border-[rgb(var(--secondary)/0.6)] hover:text-[rgb(var(--fg))]';
+  const chips = [...views.map((v) => ({ id: v.id, label: v.id === 'all' ? 'Tất cả' : v.id === 'recent' ? 'Gần đây' : 'Yêu thích', n: v.n })), ...p.labels.map((l) => ({ id: l.id, label: l.name, n: base.filter((c) => l.ids.includes(c.key)).length }))];
+  const seg = (on: boolean) => cn('flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px]', on ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]');
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[220px_1fr]">
-      <aside className="space-y-4">
-        <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible" aria-label="Nhóm liên hệ">
-          {views.map((v) => (
-            <button key={v.id} className={cn('flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors', view === v.id ? 'bg-[rgb(var(--secondary)/0.12)] font-semibold text-[rgb(var(--secondary-fg))]' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)]')} onClick={() => { setView(v.id); paged.setPage(1); }}>
-              <v.icon className="h-4 w-4" aria-hidden /><span className="flex-1">{v.label}</span><span className="text-xs tabular-nums text-[rgb(var(--muted))]">{v.n}</span>
-            </button>
-          ))}
-        </nav>
-        <div>
-          <p className="mb-1.5 px-3 text-[11px] font-semibold text-[rgb(var(--faint))]">Nhãn</p>
-          <div className="flex flex-wrap gap-1 lg:flex-col">
-            {p.labels.map((l) => <button key={l.id} className={cn('flex items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-sm', view === l.id ? 'bg-[rgb(var(--secondary)/0.12)] font-semibold text-[rgb(var(--secondary-fg))]' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)]')} onClick={() => { setView(l.id); paged.setPage(1); }}><Tag className="h-3.5 w-3.5" aria-hidden /><span className="flex-1 truncate">{l.name}</span><span className="text-xs tabular-nums text-[rgb(var(--muted))]">{base.filter((c) => l.ids.includes(c.key)).length}</span></button>)}
-          </div>
-          <div className="mt-2 flex gap-1.5 px-1"><input className={cn(inputBase, 'min-w-0 flex-1 py-1.5 text-xs')} placeholder="Tạo nhãn mới" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addLabel()} aria-label="Tên nhãn mới" /><button className={cn(btnGhost, btnSm)} onClick={addLabel} aria-label="Thêm nhãn"><Plus className="h-3.5 w-3.5" aria-hidden /></button></div>
+    <div className="space-y-4">
+      {seeCust ? <Tabs tabs={[{ id: 'staff' as const, label: 'Nội bộ', count: staff.length }, { id: 'customer' as const, label: 'Khách hàng', count: cust.length }]} value={tab} onChange={(t) => { setTab(t); setGrp('ALL'); paged.setPage(1); }}
+        aside={<button className={cn(btnGhost, btnSm)} onClick={() => setLabelOpen((v) => !v)} aria-expanded={labelOpen}><Tag className="h-3.5 w-3.5" aria-hidden />Nhãn</button>} /> : null}
+      {labelOpen && (
+        <div className="flex flex-wrap items-center gap-2 text-[13px]">
+          <span className="text-[rgb(var(--muted))]">Nhãn của bạn:</span>
+          {p.labels.length ? p.labels.map((l) => <span key={l.id} className="rounded-md border border-[rgb(var(--line))] px-2 py-0.5">{l.name}</span>) : <span className="text-[rgb(var(--faint))]">chưa có</span>}
+          <input className={cn(inputBase, 'w-48 py-1 text-[13px]')} placeholder="Tên nhãn mới, Enter để tạo" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addLabel()} aria-label="Tạo nhãn mới" />
         </div>
-      </aside>
+      )}
       <div className="min-w-0 space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {seeCust && <Tabs variant="pill" tabs={[{ id: 'staff' as const, label: 'Nội bộ', count: staff.length }, { id: 'customer' as const, label: 'Khách hàng', count: cust.length }]} value={tab} onChange={(t) => { setTab(t); setGrp('ALL'); paged.setPage(1); }} />}
-          <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--faint))]" aria-hidden /><input className={cn(inputCls, 'pl-9')} placeholder="Tìm tên, chức danh, công ty, số điện thoại, email" value={q} onChange={(e) => { setQ(e.target.value); paged.setPage(1); }} aria-label="Tìm liên hệ" /></div>
-          <select className={cn(inputBase, 'sm:w-56')} value={grp} onChange={(e) => { setGrp(e.target.value); paged.setPage(1); }} aria-label={tab === 'staff' ? 'Phòng ban' : 'Nhóm khách hàng'}>
-            <option value="ALL">{tab === 'staff' ? 'Tất cả phòng ban' : 'Tất cả nhóm khách hàng'}</option>{groups.map((g) => <option key={g} value={g}>{g}</option>)}
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+          <div className="relative min-w-0 flex-1 lg:w-[280px] lg:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--faint))]" aria-hidden /><input className={cn(inputCls, 'bg-[rgb(var(--surface))] py-1.5 pl-9 text-[13.5px]')} placeholder="Tìm tên, chức danh, số điện thoại, email" value={q} onChange={(e) => { setQ(e.target.value); paged.setPage(1); }} aria-label="Tìm liên hệ" /></div>
+          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Lọc nhanh">
+            {chips.map((c) => <button key={c.id} type="button" aria-pressed={view === c.id} onClick={() => { setView(c.id); paged.setPage(1); }} className={cn('flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-[13px]', view === c.id ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium shadow-sm' : 'border-transparent text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>{c.label}<span className="font-mono text-[11.5px] font-normal text-[rgb(var(--muted))]">{c.n}</span></button>)}
+          </div>
+          <select className={cn(inputBase, 'py-1.5 text-[13px] lg:w-48')} value={grp} onChange={(e) => { setGrp(e.target.value); paged.setPage(1); }} aria-label={tab === 'staff' ? 'Phòng ban' : 'Nhóm khách hàng'}>
+            <option value="ALL">{tab === 'staff' ? 'Mọi phòng ban' : 'Mọi nhóm khách'}</option>{groups.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
+          <div className="flex shrink-0 rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Kiểu xem">
+            <button role="radio" aria-checked={layout === 'list'} onClick={() => setLayout('list')} className={seg(layout === 'list')}><Rows3 className="h-3.5 w-3.5" aria-hidden />Danh sách</button>
+            <button role="radio" aria-checked={layout === 'card'} onClick={() => setLayout('card')} className={seg(layout === 'card')}><LayoutGrid className="h-3.5 w-3.5" aria-hidden />Thẻ</button>
+          </div>
         </div>
-        <p className="text-sm text-[rgb(var(--muted))]">{label ? `Nhãn ${label.name}` : views.find((v) => v.id === view)?.label} ({list.length})</p>
-        {list.length ? (
+        {list.length && layout === 'list' ? (
+          <Panel>
+            <Table stt={Math.max(0, paged.from - 1)} minW={980} head={['Họ tên', 'Chức danh', tab === 'staff' ? 'Phòng ban' : 'Công ty', 'Điện thoại', 'Email', ...(tab === 'staff' ? ['Ngày sinh', 'Trạng thái'] : []), '']}>
+              {paged.slice.map((c) => {
+                const self = c.user?.id === me?.id;
+                const fav = p.fav.includes(c.key);
+                return (
+                  <tr key={c.key} className={rowCls}>
+                    <td className={tdFirst}><span className="flex items-center gap-2">{c.user ? <PAvatar user={c.user} size={24} meId={me?.id} /> : <Avatar name={c.name} size={24} />}<span className="block max-w-[200px] truncate font-medium">{c.name}</span>{self && <span className="text-xs text-[rgb(var(--muted))]">(bạn)</span>}{fav && <Star className="h-3.5 w-3.5 shrink-0 fill-current text-[rgb(var(--accent))]" aria-label="Yêu thích" />}</span></td>
+                    <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[180px] truncate">{c.title}</span></td>
+                    <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[180px] truncate">{tab === 'staff' ? c.group : c.org}</span></td>
+                    <td className={cn(tdCls, 'font-mono text-xs')}>{c.phone ? <a className="hover:underline" href={`tel:${c.phone.replace(/\s/g, '')}`} onClick={() => touch(c.key)}>{c.phone}</a> : '—'}</td>
+                    <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{c.email ? <a className="block max-w-[200px] truncate hover:underline" href={`mailto:${c.email}`} onClick={() => touch(c.key)}>{c.email}</a> : '—'}</td>
+                    {tab === 'staff' && <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{c.user?.birthday ? fmtDate(c.user.birthday) : '—'}</td>}
+                    {tab === 'staff' && <td className={tdCls}><Chip tone={presenceOf(c.user, me?.id) === 'online' ? 'teal' : presenceOf(c.user, me?.id) === 'away' ? 'orange' : 'muted'}>{PRESENCE_META[presenceOf(c.user, me?.id)].label}</Chip></td>}
+                    <td className={cn(tdLast, 'text-right')}><span className="flex items-center justify-end gap-1">
+                      {c.kind === 'staff' && !self && me && <button className={cn(btnGhost, 'h-7 w-7 border-0 p-0')} onClick={() => { touch(c.key); go('messages', dmId(me.id, c.user!.id)); }} aria-label={`Chat với ${c.name}`} title="Chat"><MessageSquare className="h-4 w-4" aria-hidden /></button>}
+                      {c.phone && <a className={cn(btnGhost, 'h-7 w-7 border-0 p-0')} href={`tel:${c.phone.replace(/\s/g, '')}`} onClick={() => touch(c.key)} aria-label={`Gọi ${c.name}`} title="Gọi"><Phone className="h-4 w-4" aria-hidden /></a>}
+                      <RowMenu label={`Thao tác ${c.name}`} items={[
+                        { label: fav ? 'Bỏ yêu thích' : 'Yêu thích', icon: Star, onClick: () => toggleFav(c.key) },
+                        ...(c.kind === 'customer' && c.customer ? [{ label: 'Mở hồ sơ khách hàng', icon: Eye, onClick: () => { touch(c.key); if (bizMode(company) === 'MFG') go('customers', c.customer!.code); else { go('customers'); openCustomer(c.customer!.id); } } }] : []),
+                        ...(c.email ? [{ label: 'Gửi email', icon: Mail, onClick: () => { touch(c.key); window.location.href = `mailto:${c.email}`; } }] : []),
+                        ...((c.phone || c.email) ? [{ label: 'Sao chép liên hệ', icon: Copy, onClick: () => copy(c.phone || c.email || '') }] : []),
+                        { label: 'Tải vCard', icon: Download, onClick: () => { touch(c.key); downloadText(`${c.name}.vcf`, vcard(c), 'text/vcard'); } },
+                        ...p.labels.map((l) => ({ label: `${l.ids.includes(c.key) ? 'Bỏ nhãn' : 'Gắn nhãn'} ${l.name}`, icon: Tag, onClick: () => toggleLabel(l.id, c.key) })),
+                      ]} />
+                    </span></td>
+                  </tr>
+                );
+              })}
+            </Table>
+            <Pagination paged={paged} unit="liên hệ" />
+          </Panel>
+        ) : null}
+        {list.length && layout === 'list' ? null : list.length ? (
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             {paged.slice.map((c) => {
               const fav = p.fav.includes(c.key);
@@ -115,7 +151,7 @@ export function ContactsPage() {
             })}
           </div>
         ) : <EmptyState art="search" text={view === 'fav' ? 'Chưa có liên hệ yêu thích' : view === 'recent' ? 'Chưa xem liên hệ nào gần đây' : 'Không có liên hệ phù hợp'} hint={view === 'fav' ? 'Bấm ngôi sao trên thẻ liên hệ để thêm vào đây.' : 'Thử bỏ bớt bộ lọc hoặc đổi từ khóa.'} />}
-        {list.length > 12 && <Pagination paged={paged} unit="liên hệ" />}
+        {list.length > 12 && layout === 'card' && <Pagination paged={paged} unit="liên hệ" />}
       </div>
     </div>
   );

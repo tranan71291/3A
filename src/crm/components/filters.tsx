@@ -46,22 +46,22 @@ export function FilterBar({
   const sel = cn(inputCls, 'w-full py-2.5');
   // Thanh công cụ tối giản: [Tìm kiếm ........][Bộ lọc (n)][thao tác]; mọi ô lọc nằm trong khung trượt cạnh phải
   return (
-    <div className="space-y-2">
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <div className="flex min-w-[200px] flex-1 gap-2">
-        <div className="relative flex-1">
+    <div>
+    <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+      <div className={cn('flex min-w-[200px] gap-2', chips ? 'lg:contents' : 'flex-1')}>
+        <div className={cn('relative', chips ? 'flex-1 lg:w-[240px] lg:flex-none xl:w-[280px]' : 'flex-1')}>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden />
-          <input className={cn(inputCls, 'bg-[rgb(var(--surface))] py-2 pl-9')} value={q} onChange={(e) => onQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
+          <input className={cn(inputCls, 'bg-[rgb(var(--surface))] py-1.5 pl-9 text-[13.5px]')} value={q} onChange={(e) => onQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
         </div>
+        {chips && <div className="min-w-0 lg:flex-1">{chips}</div>}
         {hasFilters && (
-          <button className={cn(btnGhost, 'relative shrink-0 px-3.5 py-2', active > 0 && 'border-[rgb(var(--fg)/0.4)] font-medium')} onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`Bộ lọc${active ? `, ${active} đang bật` : ''}`}>
+          <button className={cn(btnGhost, 'relative shrink-0 px-3 py-1.5 text-[13px]', active > 0 && 'border-[rgb(var(--fg)/0.4)] font-medium')} onClick={() => setOpen(true)} aria-haspopup="dialog" aria-label={`Bộ lọc${active ? `, ${active} đang bật` : ''}`}>
             <SlidersHorizontal className="h-4 w-4" aria-hidden /><span>Bộ lọc{active > 0 ? ` (${active})` : ''}</span>
           </button>
         )}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2 sm:ml-auto">{actions}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2 lg:ml-auto">{actions}</div>}
     </div>
-    {chips && <div>{chips}</div>}
     {open && (
       <SideSheet title="Bộ lọc" sub={active ? `${active} điều kiện đang áp dụng, kết quả cập nhật ngay` : 'Chọn điều kiện, kết quả cập nhật ngay'} onClose={() => setOpen(false)}
         footer={<>

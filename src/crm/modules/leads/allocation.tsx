@@ -1,7 +1,7 @@
 'use client';
 
 import { type DragEvent, type ReactNode, useState } from 'react';
-import { ArrowRight, ChevronDown, Clock, Inbox, Lock, MapPin, Pencil, Phone, Trash2, UserPlus, Users, Wallet } from 'lucide-react';
+import { ArrowRight, ChevronDown, Clock, Inbox, Lock, MapPin, Pencil, Phone, Trash2, Users, Wallet } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { RouteMenu } from '../../components/command-palette';
 import { CommentButton } from '../../components/comments';
@@ -9,9 +9,9 @@ import { AgeBadge, Avatar, BulkBar, Pagination, RowMenu, usePaged, useSelection 
 import { ConfirmDialog } from '../../components/crud';
 import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
 import { QuoteTimer, Sla } from '../../components/sla';
-import { Chip, Code, EmptyState, Modal, monthly, Panel, ProgressBar, StatCard, Table, useSticky, ViewSwitch } from '../../components/ui';
+import { Chip, Code, EmptyState, Modal, Panel, Table, useSticky, ViewSwitch } from '../../components/ui';
 import { scoreLead } from '../../lib/business';
-import { boqIsEstimate, boqTotal, btnGhost, btnPrimary, btnSm, C, compact, deptIcon, fmtDur, initials, inputCls, isAcceptLate, isQuoteOverdue, kpiGrid, LEAD_STATUS, leadAgeH, leadAt, leadDate, OPEN_STATUSES, overdueCls, pct, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, STEP_COLORS, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
+import { boqIsEstimate, boqTotal, btnGhost, btnPrimary, btnSm, C, compact, deptIcon, fmtDur, initials, inputCls, isAcceptLate, isQuoteOverdue, LEAD_STATUS, leadAgeH, leadDate, OPEN_STATUSES, overdueCls, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
 import type { ConfirmState, DeptCode, Lead, LeadStatus, MenuItem, Region } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
@@ -222,39 +222,16 @@ export function AllocationPage() {
 
   return (
     <div className="space-y-4">
-      <div className={kpiGrid('lg:grid-cols-4')}>
-        <StatCard label="Tổng lead" value={String(total)} icon={Users} color={C.orange} highlight spark={monthly(scope, leadAt)} />
-        <StatCard label="Chờ phân phòng" value={String(scope.filter((l) => l.status === 'NEW').length)} icon={Inbox} color="#F6B533" sub={`${pct(scope.filter((l) => l.status === 'NEW').length, total)} tổng lead`} />
-        <StatCard label="Chờ chỉ định" value={String(scope.filter((l) => l.status === 'ROUTED').length)} icon={UserPlus} color={C.blue} sub={`${pct(scope.filter((l) => l.status === 'ROUTED').length, total)} tổng lead`} />
-        <StatCard label="Quá SLA" value={String(late)} icon={Clock} color={C.red} sub="Tiếp nhận 2h hoặc báo giá 24h" />
-      </div>
-
-      {/* Quy trình 2 bước */}
-      <div className="rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-3 sm:p-4">
-        <ol className="grid grid-cols-4 gap-2 lg:gap-0">
-          {steps.map(([title, n], i) => {
-            const p = total ? (n / total) * 100 : 0;
-            return (
-              <li key={title} className="flex min-w-0 items-start gap-2 lg:gap-3 lg:pr-6">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-col items-center gap-1 text-center lg:flex-row lg:items-center lg:gap-3 lg:text-left">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-[rgb(var(--on-accent))] lg:h-11 lg:w-11 lg:text-sm" style={{ background: STEP_COLORS[i] }}>{String(i + 1).padStart(2, '0')}</span>
-                    <div className="min-w-0">
-                      <p className="truncate text-[11px] font-medium text-[rgb(var(--fg))] lg:text-sm">{title}</p>
-                      <p className="hidden text-xs tabular-nums text-[rgb(var(--muted))] lg:block">{n} / {total} lead</p>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="flex-1"><ProgressBar value={n} max={total || 1} tone={STEP_COLORS[i]} /></div>
-                    <span className="text-[11px] tabular-nums text-[rgb(var(--muted))]">{p.toFixed(0)}%</span>
-                  </div>
-                </div>
-                {i < 3 && <ArrowRight className="mt-3 hidden h-5 w-5 shrink-0 text-[rgb(var(--muted))] lg:block" aria-hidden />}
-              </li>
-            );
-          })}
-        </ol>
-      </div>
+      <ol className="kpi-strip grid grid-cols-2 lg:grid-cols-4" aria-label="Quy trình phân lead">
+        {steps.map(([title, n], i) => (
+          <li key={title} className="flex min-w-0 flex-col gap-1 px-4 py-3">
+            <p className="flex items-baseline gap-2 text-[12.5px] text-[rgb(var(--muted))]"><span className="font-mono text-[11px] text-[rgb(var(--faint))]">{String(i + 1).padStart(2, '0')}</span><span className="truncate">{title}</span></p>
+            <p className="text-[22px] font-medium leading-7 tabular-nums">{n}<span className="ml-1 text-xs font-normal text-[rgb(var(--muted))]">/ {total} lead</span></p>
+            <div className="mt-1 h-1 rounded-full bg-[rgb(var(--ink)/0.08)]"><div className="h-full rounded-full" style={{ width: `${total ? (n / total) * 100 : 0}%`, background: i === 3 ? 'rgb(var(--accent))' : 'rgb(var(--fg) / 0.75)' }} /></div>
+          </li>
+        ))}
+      </ol>
+      {late > 0 && <p className="flex items-center gap-2 text-sm text-[rgb(var(--fg2))]"><Clock className="h-4 w-4 text-[rgb(var(--danger-fg))]" aria-hidden />{late} lead quá SLA (tiếp nhận 2 giờ hoặc báo giá 24 giờ), xếp đầu bảng</p>}
 
       <FilterBar q={q} onQ={setQ} placeholder="Tìm MST, tên khách hàng, mã lead…" status={st} onStatus={setSt} extraActive={(reg !== 'ALL' ? 1 : 0) + (seg !== 'ALL' ? 1 : 0)}
         actions={<>

@@ -107,6 +107,13 @@ export function MessengerInner({ me }: { me: User }) {
   const endRef = useRef<HTMLDivElement>(null);
   const userById = (id: string) => users.find((u) => u.id === id) ?? (id === me.id ? me : undefined);
   const general: Thread = { entity: 'channel', entityId: 'general', title: 'Kênh chung', sub: 'Toàn doanh nghiệp', module: 'messages' };
+  const wideOpen = useRef(false);
+  useEffect(() => {
+    if (wideOpen.current || cur || presetQuery) return;
+    wideOpen.current = true;
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) setCur(general);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cur, presetQuery]);
   const myGroups = channels.filter((g) => g.members.includes(me.id) || g.createdBy === me.id);
   const groupThread = (g: ChatChannel): Thread => ({ entity: 'channel', entityId: g.id, title: g.name, sub: `${g.members.length} thành viên`, module: 'messages' });
   const dmThread = (u: User): Thread => ({ entity: 'channel', entityId: dmId(me.id, u.id), title: u.name, sub: ROLE_LABEL[u.role], module: 'messages' });

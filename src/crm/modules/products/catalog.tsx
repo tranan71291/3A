@@ -9,7 +9,7 @@ import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, SideSheet, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { poLineStats } from '../../lib/business';
-import { btnAccent, btnGhost, btnPrimary, btnSm, chatFileMax, downloadBlob, fmtDate, fmtN, fmtSize, fold, inputBase, inputCls, MAIN_WH, MOVE_LABEL, reservedInStock, rowCls, shrinkImage, SKU_FILTER0, SKU_IMPORT_COLS, SKU_RE, stickyStore, STOCK_LEVEL, stockLevel, tdCls, tdFirst, tdLast, todayISO, UNITS, useApp, whQty } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, chatFileMax, downloadBlob, fmtDate, fmtN, fmtSize, fold, inputBase, inputCls, MAIN_WH, MOVE_LABEL, reservedInStock, rowCls, shrinkImage, SKU_FILTER0, SKU_IMPORT_COLS, SKU_RE, stickyStore, STOCK_LEVEL, stockLevel, tdCls, tdFirst, tdLast, todayISO, UNITS, useApp, whQty } from '../../lib/core';
 import { downloadCsv, parseCsv, readXlsx, xlsxBlob } from '../../lib/csv';
 import type { ConfirmState, ImportRow, SkuFilter, SkuItem, StockLevel, StockMoveType, StockVoucher, VoucherType, WarehouseInfo } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -469,7 +469,7 @@ export function SkuCatalog() {
   if (f.hasImage) chips.push({ k: 'hasImage', label: 'Có ảnh' });
   if (f.onOrder) chips.push({ k: 'onOrder', label: 'Đang đặt Hãng' });
   const moreN = ['supplier', 'origin', 'unit', 'priceMin', 'priceMax', 'leadMax', 'hasDocs', 'hasImage', 'onOrder'].filter((k) => !!f[k as keyof SkuFilter]).length;
-  const sel = cn(inputBase, 'h-10 py-0 pr-8');
+  const sel = cn(inputBase, 'h-8 max-w-[160px] py-0 pr-8 text-[13px]');
   const levelCell = (s: SkuItem) => { const L = STOCK_LEVEL[level(s)]; const r = res(s); return <Chip tone={L.tone}>{L.label}{!curWh && r ? ` · giữ ${fmtN(r)}` : ''}</Chip>; };
 
   const viewTabs = <Tabs tabs={[{ id: 'ALL' as const, label: 'Tất cả', count: pool.length }, { id: 'IN' as const, label: 'Còn hàng', count: pool.filter((s) => qtyOf(s) > 0).length }, { id: 'OUT' as const, label: 'Hết hàng', count: pool.filter((s) => qtyOf(s) <= 0).length }, { id: 'ARCH' as const, label: 'Lưu trữ', count: skus.filter((s) => s.archived).length }, { id: 'DRAFT' as const, label: 'Danh mục nháp', count: draftProducts.filter((d) => !d.promotedSku).length }]} value={view} onChange={(v) => { setView(v); paged.setPage(1); }} />;
@@ -478,12 +478,12 @@ export function SkuCatalog() {
     <div className="space-y-4">
 
       {/* Hàng tab + hành động chính (phía trên bên phải bảng) */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:border-b lg:border-[rgb(var(--line))]">
         <div className="min-w-0 flex-1">{viewTabs}</div>
         <div className="flex flex-wrap gap-2 lg:pb-1.5">
-          <button className={btnGhost} disabled={!canEdit} onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" aria-hidden />Nhập Excel</button>
+          <button className={cn(btnGhost, btnSm, 'border-0')} disabled={!canEdit} onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" aria-hidden />Nhập Excel</button>
           <div className="relative" ref={expRef}>
-            <button className={btnGhost} onClick={() => setExpOpen((v) => !v)} aria-expanded={expOpen} aria-haspopup="menu"><Download className="h-4 w-4" aria-hidden />Xuất Excel<ChevronDown className="h-3.5 w-3.5" aria-hidden /></button>
+            <button className={cn(btnGhost, btnSm, 'border-0')} onClick={() => setExpOpen((v) => !v)} aria-expanded={expOpen} aria-haspopup="menu"><Download className="h-4 w-4" aria-hidden />Xuất Excel<ChevronDown className="h-3.5 w-3.5" aria-hidden /></button>
             {expOpen && (
               <div className="absolute right-0 top-11 z-30 w-64 rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-[var(--shadow-lg)]" role="menu">
                 {([['filter', `Theo bộ lọc hiện tại (${list.length})`], ['all', `Toàn bộ danh mục (${skus.length})`]] as const).map(([sc, label]) => (
@@ -494,24 +494,24 @@ export function SkuCatalog() {
               </div>
             )}
           </div>
-          <button className={btnAccent} disabled={!canEdit} onClick={() => setModal({})}><Plus className="h-4 w-4" aria-hidden />Thêm sản phẩm mới</button>
+          <button className={cn(btnPrimary, btnSm)} disabled={!canEdit} onClick={() => setModal({})}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm sản phẩm</button>
         </div>
       </div>
 
       {/* Bộ lọc */}
-      <section className="rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-3 shadow-[var(--shadow-sm)]" aria-label="Bộ lọc sản phẩm">
+      <section aria-label="Bộ lọc sản phẩm">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-          <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden /><input className={cn(inputCls, 'h-10 pl-9')} value={f.q} onChange={(e) => set('q', e.target.value)} placeholder="Tìm SKU, tên sản phẩm, phân loại, nhà cung cấp…" aria-label="Tìm sản phẩm" /></div>
-          <div className="hidden flex-wrap gap-2 lg:flex">
+          <div className="relative min-w-0 flex-1 lg:w-[280px] lg:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden /><input className={cn(inputCls, 'h-8 bg-[rgb(var(--surface))] py-0 pl-9 text-[13.5px]')} value={f.q} onChange={(e) => set('q', e.target.value)} placeholder="Tìm SKU, tên sản phẩm, phân loại, nhà cung cấp…" aria-label="Tìm sản phẩm" /></div>
+          <div className="hidden flex-wrap gap-2 lg:flex lg:flex-1">
             <select className={sel} value={f.wh} onChange={(e) => set('wh', e.target.value)} aria-label="Kho"><option value="">Tất cả kho</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}</select>
             <select className={sel} value={f.brand} onChange={(e) => set('brand', e.target.value)} aria-label="Thương hiệu"><option value="">Thương hiệu</option>{opts('brand').map((o) => <option key={o} value={o}>{o}</option>)}</select>
             <select className={sel} value={f.cat} onChange={(e) => set('cat', e.target.value)} aria-label="Phân loại"><option value="">Phân loại</option>{opts('category').map((o) => <option key={o} value={o}>{o}</option>)}</select>
             <select className={sel} value={f.level} onChange={(e) => set('level', e.target.value as SkuFilter['level'])} aria-label="Tình trạng tồn"><option value="">Tình trạng tồn</option>{(Object.keys(STOCK_LEVEL) as StockLevel[]).map((k) => <option key={k} value={k}>{STOCK_LEVEL[k].label}</option>)}</select>
           </div>
           <div className="flex gap-2">
-            <button className={cn(btnGhost, 'h-10 flex-1 lg:flex-none')} onClick={() => { setDraft(f); setMoreOpen(true); }}><SlidersHorizontal className="h-4 w-4" aria-hidden /><span className="lg:hidden">Bộ lọc</span><span className="hidden lg:inline">Bộ lọc khác</span>{(moreN || chips.length) > 0 && <span className="rounded-full bg-[rgb(var(--accent))] px-1.5 text-[11px] font-semibold text-[rgb(var(--on-accent))]"><span className="lg:hidden">{chips.length}</span><span className="hidden lg:inline">{moreN || ''}</span></span>}</button>
+            <button className={cn(btnGhost, 'h-8 flex-1 text-[13px] lg:flex-none')} onClick={() => { setDraft(f); setMoreOpen(true); }}><SlidersHorizontal className="h-4 w-4" aria-hidden /><span className="lg:hidden">Bộ lọc</span><span className="hidden lg:inline">Bộ lọc</span>{(moreN || chips.length) > 0 && <span className="rounded-full bg-[rgb(var(--accent))] px-1.5 text-[11px] font-semibold text-[rgb(var(--on-accent))]"><span className="lg:hidden">{chips.length}</span><span className="hidden lg:inline">{moreN || ''}</span></span>}</button>
             <div className="relative" ref={savedRef}>
-              <button className={cn(btnGhost, 'h-10')} onClick={() => setSavedOpen((v) => !v)} aria-expanded={savedOpen} aria-haspopup="menu" title="Bộ lọc đã lưu"><Star className="h-4 w-4" aria-hidden /><span className="hidden xl:inline">Bộ lọc của tôi</span><ChevronDown className="h-3.5 w-3.5" aria-hidden /></button>
+              <button className={cn(btnGhost, 'h-8 text-[13px]')} onClick={() => setSavedOpen((v) => !v)} aria-expanded={savedOpen} aria-haspopup="menu" title="Bộ lọc đã lưu"><Star className="h-4 w-4" aria-hidden /><span className="sr-only">Bộ lọc của tôi</span><ChevronDown className="h-3.5 w-3.5" aria-hidden /></button>
               {savedOpen && (
                 <div className="absolute right-0 top-11 z-30 w-72 rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-2 shadow-[var(--shadow-lg)]" role="menu">
                   {saved.length ? saved.map((x, i) => (

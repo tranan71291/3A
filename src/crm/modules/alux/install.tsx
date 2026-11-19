@@ -407,10 +407,12 @@ export function InstallModule() {
         <StatCard label="Chờ thu tiền" value={String(count('WAIT_PAYMENT'))} icon={Banknote} color={C.red} sub={compact(rows.filter((r) => r.view === 'WAIT_PAYMENT' && r.job).reduce((s, r) => s + jobMoney(r.job!, receipts).receivable, 0))} />
         <StatCard label="Hoàn tất trong kỳ" value={String(count('DONE'))} icon={ShieldCheck} color={C.teal} sub="Đã thu đủ, đang bảo hành" />
       </div>
+      <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
+        <SearchBox value={q} onChange={setQ} placeholder="Tìm khách hàng, số điện thoại, địa chỉ" />
+        <div className="min-w-0 flex-1"><StagePills items={[{ id: 'ALL' as InstallView | 'ALL', label: 'Tất cả', count: rows.length }, ...order.map((v) => ({ id: v as InstallView | 'ALL', label: INSTALL_VIEW[v].label, count: count(v) }))]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} /></div>
+      </div>
       <Panel>
-        <div className="mb-3 flex flex-wrap items-center gap-2"><SearchBox value={q} onChange={setQ} placeholder="Tìm khách hàng, số điện thoại, địa chỉ" /></div>
-        <StagePills items={[{ id: 'ALL' as InstallView | 'ALL', label: 'Tất cả', count: rows.length }, ...order.map((v) => ({ id: v as InstallView | 'ALL', label: INSTALL_VIEW[v].label, count: count(v) }))]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} />
-        <div className="mt-3 space-y-2 md:hidden">
+        <div className="space-y-2 md:hidden">
           {paged.slice.map((r, i) => (
             <button key={r.key} className="w-full rounded bg-[rgb(var(--raised))] p-3 text-left" onClick={() => (r.ij ? setOpen(r.ij.id) : r.wo && setSchedule(r.wo))}>
               <div className="flex items-start justify-between gap-2"><p className="text-sm font-medium">{(paged.page - 1) * 20 + i + 1}. {r.job ? jobCustName(r.job, customers) : '—'}</p><Chip tone={INSTALL_VIEW[r.view].tone}>{INSTALL_VIEW[r.view].label}</Chip></div>
@@ -419,7 +421,7 @@ export function InstallModule() {
             </button>
           ))}
         </div>
-        <div className="mt-3 hidden md:block">
+        <div className="hidden md:block">
           <Table head={['STT', 'Mã', 'Khách hàng', 'Điện thoại', 'Địa chỉ', 'Lịch lắp', 'Đội trưởng', 'Trạng thái', '']} minW={1200}>
             {paged.slice.map((r, i) => (
               <tr key={r.key} className={cn(rowCls, 'cursor-pointer')} onClick={() => (r.ij ? setOpen(r.ij.id) : r.wo && canDo('install.manage') && setSchedule(r.wo))}>

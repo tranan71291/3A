@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, Eye, Pencil, UserPlus, XCircle, Zap } from 'lucide-react';
+import { CheckCircle2, Eye, Pencil, UserPlus, XCircle } from 'lucide-react';
 import { Avatar, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ChipFilter, FilterBar } from '../../components/filters';
 import { Sla } from '../../components/sla';
@@ -365,18 +365,16 @@ export function TasksModule() {
     <div className="space-y-4">
       {/* Thanh tab */}
       <Tabs tabs={[
-        { id: 'todo', label: `Chờ tôi duyệt (${todo.length})` },
-        { id: 'mine', label: `Tôi đã yêu cầu (${mine.filter((x) => x.status === 'PENDING').length})` },
-        { id: 'history', label: 'Lịch sử đã xử lý' },
-      ]} value={tab} onChange={(v) => { setTab(v); sel.clear(); }} />
+        { id: 'todo', label: 'Chờ tôi duyệt', count: todo.length },
+        { id: 'mine', label: 'Tôi yêu cầu', count: mine.filter((x) => x.status === 'PENDING').length },
+        { id: 'history', label: 'Đã xử lý' },
+      ]} value={tab} onChange={(v) => { setTab(v); sel.clear(); }}
+        aside={tab === 'todo' ? <button className={cn(sel.ids.length ? btnPrimary : btnGhost, btnSm)} disabled={!sel.ids.length} onClick={bulkApprove} title={sel.ids.length ? `Duyệt ${sel.ids.length} yêu cầu đã chọn` : 'Tích chọn các dòng cần duyệt'}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Duyệt chọn{sel.ids.length ? ` (${sel.ids.length})` : ''}</button> : undefined} />
 
       {/* Thanh công cụ: tìm kiếm, loại yêu cầu, phòng ban, ưu tiên, duyệt hàng loạt + tag lọc con */}
       <FilterBar q={q} onQ={setQ} placeholder="Tìm mã, khách hàng, lý do…" status={grp} onStatus={(v) => setGrp(v as 'ALL' | HubGroup)} statusLabel="Loại yêu cầu"
         statusOptions={(Object.keys(HUB_GROUP) as HubGroup[]).map((g) => ({ value: g, label: HUB_GROUP[g].label }))} extraActive={(who !== 'ALL' ? 1 : 0) + (prio !== 'ALL' ? 1 : 0)}
-        actions={tab === 'todo' ? (<>
-          <ViewSwitch value={view} onChange={setView} options={['table', 'board']} />
-          <button className={cn(btnPrimary, 'py-2')} disabled={!sel.ids.length} onClick={bulkApprove} title={sel.ids.length ? `Duyệt ${sel.ids.length} yêu cầu đã chọn` : 'Tích chọn các dòng cần duyệt'}><Zap className="h-4 w-4" aria-hidden />Duyệt chọn{sel.ids.length ? ` (${sel.ids.length})` : ''}</button>
-        </>) : undefined}
+        actions={tab === 'todo' ? <ViewSwitch value={view} onChange={setView} options={['table', 'board']} /> : undefined}
         chips={tab === 'todo' ? <ChipFilter value={grp} onChange={(v) => setGrp(v)} total={todo.length} options={counts.filter(([, n]) => n > 0).map(([g, n]) => ({ value: g, label: HUB_GROUP[g].label, count: n, color: HUB_GROUP[g].color }))} /> : undefined}>
         {tab !== 'mine' && (
           <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto sm:max-w-[200px]')} value={who} onChange={(e) => setWho(e.target.value)} aria-label="Phòng ban / nhân sự">

@@ -1,4 +1,32 @@
-# 3A CRM v40 (giao diện mới theo đề xuất v40: menu gọn, bảng mỗi thông tin một cột, Báo giá & Hợp đồng làm lại — dựa trên v39)
+# 3A CRM v41 (bố cục mới theo 75 ảnh đề xuất v40 — dựa trên v40)
+
+> v41 chỉ đổi giao diện: **không đổi bảng, dữ liệu, API hay SQL**. Không cần chạy file SQL mới.
+
+## Cập nhật v41 (19/11): đổi bố cục trang theo ảnh đề xuất
+
+**Khung chung (mọi trang)**
+- Đầu menu là tên doanh nghiệp, bấm vào để chuyển doanh nghiệp / Console (bỏ hàng "3A Group › VASSH"). Chân menu hiện người đang đăng nhập.
+- Tiêu đề trang dùng tên ngắn như menu (Lead, Marketing, Kho, Công nợ, Quỹ MDF, Vật tư…). Bộ chọn thời gian hiện gọn "Tháng 11/2026", "Quý 4/2026", "Năm 2026".
+- Nút tạo mới / thao tác chính nằm ở bên phải hàng tab (Thêm lead, Duyệt chọn, Thêm lịch, Lập phiếu, Tạo PO, Phiếu thu / chi, Đề xuất chương trình, Thêm đơn…).
+- Thanh lọc một hàng: [ô tìm][lọc nhanh có số đếm][Bộ lọc][kiểu xem]; lọc nhanh trung tính (chấm màu + số).
+- Bảng nằm sát mép thẻ, bỏ dòng tiêu đề kiểu "4 khách hàng"; dòng thấp hơn (≈44px); phân trang "1–4 trong 4 khách hàng".
+
+**Từng trang**
+- Bàn làm việc: Việc của tôi dạng danh sách; Sinh nhật sang cột phải.
+- Tổng quan (4 tab): tiêu đề kỳ lớn "Tháng 11/2026" + dòng cập nhật; bộ chọn kỳ / so sánh / phòng / chỉ tiêu / PDF bên phải; phễu thanh mảnh.
+- Công việc, Lịch công tác, Lead (Điều phối: dải 4 bước thay 4 thẻ số trùng; Data MKT), Khách hàng, Dự án (cảnh báo 1 dòng trên cùng), Sản phẩm (thanh lọc không khung), Kho (5 tab, Kiểm kho / Lập phiếu), Đặt hàng, Quỹ MDF (Claim & POP đứng đầu), Tài liệu.
+- Thu chi: tab Sổ chi tiết / Tổng hợp trên cùng, chọn sổ dạng nút gộp có số dư, thanh lọc ngoài bảng.
+- Công nợ: thẻ Tuổi nợ (thanh cơ cấu + chú giải) thay 4 ô; lọc nhanh theo nhóm nợ.
+- Danh bạ: mặc định dạng bảng (họ tên, chức danh, phòng, điện thoại, email, ngày sinh, trạng thái), vẫn chuyển được sang thẻ.
+- Tin nhắn / Zalo: màn rộng tự mở Kênh chung / hội thoại mới nhất (không còn màn chào trống).
+- Marketing: tab tiếng Việt (Kế hoạch · Nội dung · Hình ảnh · Ngân sách · Tự động), thanh lịch gọn.
+- Cài đặt: menu mục không khung, nhóm chữ thường, tên mục ngắn.
+- ALUX: Đơn hàng, Sản xuất, Lắp đặt, Vật tư theo cùng bố cục (tab + nút trên cùng, thanh lọc ngoài bảng).
+- 3A Console: bỏ băng tiêu đề và tab viên (menu trái đã có); Doanh nghiệp dạng bảng (mã, đường dẫn, gói, người dùng, hết hạn, module, dữ liệu, trạng thái, Truy cập).
+
+**Kiểm tra:** TypeScript không lỗi; chụp lại 74 màn (VASSH, ALUX, Console, 12 mục Cài đặt) ở 1440px, không lỗi console. Ảnh trước / sau kèm theo.
+
+**Chưa làm theo đề xuất:** nội dung form trong Cài đặt (thanh "Có thay đổi chưa lưu", công tắc), Cấp phép module / Người dùng của Console dạng bảng, Kế hoạch quỹ MDF dạng bảng hạng mục, giao diện điện thoại.
 
 > v40 chỉ đổi giao diện: **không đổi bảng, dữ liệu, API hay SQL**. Không cần chạy file SQL mới (nếu chưa chạy `supabase-v39.sql` thì vẫn cần chạy file đó).
 

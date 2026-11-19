@@ -78,7 +78,7 @@ export function StatCard({ label, value, sub, color = C.orange, delta, deltaLabe
 
 /** Thanh tab; `aside` = nội dung nằm cùng hàng bên phải (vd. bộ lọc thời gian) */
 export function Tabs<T extends string>({ tabs, value, onChange, variant = 'line', aside }: { tabs: { id: T; label: string; count?: number }[]; value: T; onChange: (v: T) => void; variant?: 'line' | 'pill'; aside?: ReactNode }) {
-  const side = aside ? <div className="hidden shrink-0 lg:block">{aside}</div> : null;
+  const side = aside ? <div className="flex shrink-0 items-center gap-2">{aside}</div> : null;
   if (variant === 'pill') {
     return (
       <div className="flex min-w-0 max-w-full items-center gap-3">
@@ -96,7 +96,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, variant = 'line'
   }
   return (
     <div className="flex min-w-0 max-w-full items-center gap-3 border-b border-[rgb(var(--line))]">
-      <div className="flex min-w-0 flex-1 gap-6 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
+      <div className="flex min-w-0 flex-1 gap-5 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -104,7 +104,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, variant = 'line'
             aria-selected={value === t.id}
             onClick={() => onChange(t.id)}
             className={cn(
-              '-mb-px whitespace-nowrap border-b-2 px-1 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--fg)/0.5)]',
+              '-mb-px whitespace-nowrap border-b-2 px-0.5 py-2.5 text-[13.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--fg)/0.5)]',
               value === t.id ? 'border-[rgb(var(--fg))] text-[rgb(var(--fg))]' : 'border-transparent text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]',
             )}
           >

@@ -56,6 +56,11 @@ export function ZaloHubInner({ me }: { me: User }) {
     .filter((c) => !ft || fold(`${c.displayName} ${c.phone ?? ''} ${c.address ?? ''} ${c.lastText ?? ''} ${(c.tags ?? []).join(' ')} ${(c.links ?? []).map((l) => linkLabel(l)).join(' ')}`).includes(ft))
     .sort((a, b) => b.lastAt - a.lastAt);
   const cur = visible.find((c) => c.id === curId) ?? null;
+  useEffect(() => {
+    if (cur || !list.length) return;
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) setCurId(list[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cur, list.length]);
   const msgs = cur ? zaloMsgs.filter((m) => m.convId === cur.id).sort((a, b) => a.at - b.at) : [];
   const cust = cur ? convCustomer(cur, app) : undefined;
   const hits = cur ? suggestLinks(cur, msgs, app) : [];

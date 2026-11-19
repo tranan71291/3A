@@ -221,11 +221,11 @@ export function MiniStat({ label, value, tone }: { label: string; value: string;
 /** Thanh chọn trạng thái dạng viên, có số đếm */
 export function StagePills<T extends string>({ items, value, onChange }: { items: { id: T; label: string; count?: number }[]; value: T; onChange: (v: T) => void }) {
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]" role="tablist">
+    <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="tablist">
       {items.map((s) => (
         <button key={s.id} role="tab" aria-selected={value === s.id} onClick={() => onChange(s.id)}
-          className={cn('flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium', value === s.id ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.15)] text-[rgb(var(--accent-fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>
-          {s.label}{s.count !== undefined && <span className="tabular-nums opacity-80">{s.count}</span>}
+          className={cn('flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-[13px]', value === s.id ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'border-transparent text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>
+          {s.label}{s.count !== undefined && <span className="font-mono text-[11.5px] font-normal text-[rgb(var(--muted))]">{s.count}</span>}
         </button>
       ))}
     </div>
@@ -237,7 +237,7 @@ export function SearchBox({ value, onChange, placeholder }: { value: string; onC
   return (
     <div className="relative min-w-[200px] flex-1">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden />
-      <input className={cn(inputCls, 'pl-9')} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
+      <input className={cn(inputCls, 'bg-[rgb(var(--surface))] py-1.5 pl-9 text-[13.5px]')} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
     </div>
   );
 }
@@ -906,12 +906,13 @@ export function JobDrawer({ id, onClose }: { id: string; onClose: () => void }) 
 }
 
 export function JobsModule() {
-  const { canDo, role } = useApp();
+  const { canDo, role, setIntent } = useApp();
   const [tab, setTab] = useSticky<'jobs' | 'commission'>('JobsModule.tab', 'jobs');
   const finance = canDo('cash.manage') || canDo('receipt.confirm') || role === 'BOD';
   return (
     <div className="space-y-5">
-      <Tabs tabs={[{ id: 'jobs', label: 'Đơn hàng' }, { id: 'commission', label: finance ? 'Kế toán: quyết toán hoa hồng' : 'Hoa hồng của tôi' }]} value={tab} onChange={setTab} />
+      <Tabs tabs={[{ id: 'jobs', label: 'Đơn hàng' }, { id: 'commission', label: finance ? 'Quyết toán hoa hồng' : 'Hoa hồng của tôi' }]} value={tab} onChange={setTab}
+        aside={canDo('job.manage') || canDo('lead.create') ? <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => { setTab('jobs'); setIntent('job.create'); }}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm đơn</button> : undefined} />
       {tab === 'jobs' ? <JobsList /> : <CommissionPanel />}
     </div>
   );
@@ -953,13 +954,12 @@ export function JobsList() {
         <StatCard label="Sản xuất & lắp đặt" value={String(count('PRODUCTION') + count('INSTALL'))} icon={Factory} color={C.orange} sub={`${count('PRODUCTION')} sản xuất, ${count('INSTALL')} lắp đặt`} />
         <StatCard label="Còn phải thu" value={compact(rows.filter((r) => r.j.wonAt && !r.j.lostAt).reduce((s, r) => s + r.money.receivable, 0))} icon={Banknote} color={C.red} sub={`${holding.length} phiếu chờ nộp / xác nhận`} />
       </div>
+      <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
+        <SearchBox value={q} onChange={setQ} placeholder="Tìm tên, số điện thoại, địa chỉ, mã đơn" />
+        <div className="min-w-0 flex-1"><StagePills items={pills} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} /></div>
+      </div>
       <Panel>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <SearchBox value={q} onChange={setQ} placeholder="Tìm tên, số điện thoại, địa chỉ, mã đơn" />
-          <button className={cn(btnPrimary, 'max-md:hidden')} disabled={!canDo('job.manage') && !canDo('lead.create')} onClick={() => setForm(true)}><Plus className="h-4 w-4" aria-hidden />Thêm lead</button>
-        </div>
-        <StagePills items={pills} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} />
-        <div className="mt-3 space-y-2 md:hidden">
+        <div className="space-y-2 md:hidden">
           {paged.slice.map(({ j, stage, detail }, i) => (
             <button key={j.id} className="w-full rounded bg-[rgb(var(--raised))] p-3 text-left" onClick={() => openJob(j.id)}>
               <div className="flex items-start justify-between gap-2"><p className="text-sm font-medium">{startIdx + i + 1}. {jobCustName(j, customers)}</p><Chip tone={JOB_STAGE[stage].tone}>{JOB_STAGE[stage].short}</Chip></div>
@@ -969,7 +969,7 @@ export function JobsList() {
             </button>
           ))}
         </div>
-        <div className="mt-3 hidden md:block">
+        <div className="hidden md:block">
           <Table head={['STT', 'Mã đơn', 'Khách hàng', 'Điện thoại', 'Địa chỉ', 'Hạng mục', 'Phụ trách', 'Hẹn khảo sát', 'Trạng thái', 'Tiến độ', '']} minW={1360} sort={srt.th}>
             {paged.slice.map(({ j, stage, detail }, i) => {
               const late = stage === 'SURVEY' && j.appointmentAt && j.appointmentAt < nowLocal;

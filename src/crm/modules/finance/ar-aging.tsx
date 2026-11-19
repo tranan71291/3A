@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import { ChevronDown, ChevronRight, Download, FileText } from 'lucide-react';
+import { ChipFilter } from '../../components/filters';
 import { Chip, Code, EmptyState, Panel, Table } from '../../components/ui';
 import { addDaysISO, AGING, bizMode, btnGhost, btnSm, compact, esc, fmtDate, jobCustName, jobPhone, overdueDays, pct, rowCls, tdCls, tdFirst, tdLast, todayISO, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
@@ -106,28 +107,21 @@ export function ArAgingPanel() {
   const grand = total();
   return (
     <div className="space-y-4">
-      <div className={cn('grid grid-cols-2 gap-3', bks.length === 3 ? 'lg:grid-cols-4' : 'lg:grid-cols-5')}>
-        <button className={cn('rounded-md border p-4 text-left', bucket === 'ALL' ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.1)]' : 'border-[rgb(var(--line))] bg-[rgb(var(--surface))] hover:bg-[rgb(var(--raised))]')} onClick={() => setBucket('ALL')}>
-          <p className="text-xs text-[rgb(var(--muted))]">Tổng phải thu</p><p className="mt-1 text-xl font-semibold tabular-nums">{compact(grand)}</p><p className="text-xs text-[rgb(var(--muted))]">{withAge.length} khoản, {new Set(withAge.map((x) => x.customerId)).size} khách</p>
-        </button>
-        {bks.map((b) => (
-          <button key={b} className={cn('rounded-md border p-4 text-left', bucket === b ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.1)]' : 'border-[rgb(var(--line))] bg-[rgb(var(--surface))] hover:bg-[rgb(var(--raised))]')} onClick={() => setBucket(bucket === b ? 'ALL' : b)}>
-            <p className="flex items-center gap-1.5 text-xs text-[rgb(var(--muted))]"><i className="h-2 w-2 rounded-full" style={{ background: bkm[b].color }} />{bkm[b].label}</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: b === bks[0] ? undefined : bkm[b].color }}>{compact(total(b))}</p>
-            <p className="text-xs text-[rgb(var(--muted))]">{pct(total(b), grand)} tổng nợ</p>
-          </button>
-        ))}
-      </div>
-      {grand > 0 && (
-        <div className="flex h-3 overflow-hidden rounded-full bg-[rgb(var(--raised))]" aria-label="Cơ cấu tuổi nợ">
-          {bks.map((b) => <div key={b} style={{ width: `${(total(b) / grand) * 100}%`, background: bkm[b].color }} title={`${bkm[b].label}: ${vnd(total(b))}`} />)}
+      <section className="glass-card rounded-xl px-5 py-4">
+        <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span className="text-[15px] font-medium">Tuổi nợ</span><span className="text-[13px] text-[rgb(var(--muted))]">Tổng phải thu <b className="font-medium tabular-nums text-[rgb(var(--fg))]">{compact(grand)}</b> · {withAge.length} khoản · {new Set(withAge.map((x) => x.customerId)).size} khách</span></p>
+        <div className="mt-3 flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-[rgb(var(--raised))]" aria-label="Cơ cấu tuổi nợ">
+          {grand > 0 && bks.map((b) => <div key={b} style={{ width: `${(total(b) / grand) * 100}%`, background: bkm[b].color }} title={`${bkm[b].label}: ${vnd(total(b))}`} />)}
         </div>
-      )}
-      <Panel>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="mt-2.5 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
+          {bks.map((b) => <span key={b} className="flex items-center gap-1.5 text-[rgb(var(--fg2))]"><i className="h-2 w-2 rounded-sm" style={{ background: bkm[b].color }} />{bkm[b].label}<b className="font-medium tabular-nums text-[rgb(var(--fg))]">{compact(total(b))}</b><span className="font-mono text-[12px] text-[rgb(var(--muted))]">{pct(total(b), grand)}</span></span>)}
+        </div>
+      </section>
+      <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
           <SearchBox value={q} onChange={setQ} placeholder="Tìm khách hàng, số điện thoại" />
-          <button className={cn(btnGhost, btnSm)} onClick={() => downloadCsv(`tuoi-no-${today}.csv`, [['Khách hàng', 'SĐT', 'Chứng từ', 'Diễn giải', 'Ngày', 'Hạn', 'Giá trị', 'Đã thu', 'Còn nợ', 'Tuổi nợ (ngày)', 'Quá hạn (ngày)', 'Nhóm'], ...withAge.map((x) => [x.customer, x.phone ?? '', x.docCode, x.docLabel, x.docDate, x.dueDate, x.amount, x.paid, x.outstanding, x.age, Math.max(0, x.days), bkm[x.bucket].label])])}><Download className="h-3.5 w-3.5" aria-hidden />Xuất CSV</button>
-        </div>
+          <ChipFilter total={new Set(withAge.map((x) => x.customerId)).size} value={bucket as never} onChange={(v) => setBucket(v as never)} options={bks.map((b) => ({ value: b, label: bkm[b].label, color: bkm[b].color, count: new Set(withAge.filter((x) => x.bucket === b).map((x) => x.customerId)).size }))} />
+          <button className={cn(btnGhost, btnSm, 'border-0 lg:ml-auto')} onClick={() => downloadCsv(`tuoi-no-${today}.csv`, [['Khách hàng', 'SĐT', 'Chứng từ', 'Diễn giải', 'Ngày', 'Hạn', 'Giá trị', 'Đã thu', 'Còn nợ', 'Tuổi nợ (ngày)', 'Quá hạn (ngày)', 'Nhóm'], ...withAge.map((x) => [x.customer, x.phone ?? '', x.docCode, x.docLabel, x.docDate, x.dueDate, x.amount, x.paid, x.outstanding, x.age, Math.max(0, x.days), bkm[x.bucket].label])])}><Download className="h-3.5 w-3.5" aria-hidden />CSV</button>
+      </div>
+      <Panel>
         <Table head={['Khách hàng', 'Điện thoại', <span key="k" className="block text-right">Khoản</span>, <span key="t" className="block text-right">Tổng còn nợ</span>, ...bks.map((b) => <span key={b} className="block text-right">{bkm[b].short}</span>), sch.basis === 'doc' ? 'Tuổi nợ lớn nhất' : 'Quá hạn lâu nhất', '']} minW={1180}>
           {byCust.map((r) => (
             <Fragment key={r.id}>

@@ -171,10 +171,12 @@ export function ProductionModule() {
         <StatCard label="Hoàn thành, chờ hẹn lắp" value={String(waitInstall)} icon={CalendarDays} color={C.orange} />
         <StatCard label="Hoàn thành trong kỳ" value={String(workOrders.filter((w) => w.stage === 'DONE' && w.doneAt && inR(new Date(w.doneAt))).length)} icon={CheckCircle2} color={C.teal} />
       </div>
+      <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
+        <SearchBox value={q} onChange={setQ} placeholder="Tìm mã lệnh, khách hàng, địa chỉ" />
+        <div className="min-w-0 flex-1"><StagePills items={[...WO_STAGES.map((s) => ({ id: s as WoStage | 'ALL', label: WO_STAGE[s].label, count: count(s) })), { id: 'ALL', label: 'Tất cả', count: visible.length }]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} /></div>
+      </div>
       <Panel>
-        <div className="mb-3 flex flex-wrap items-center gap-2"><SearchBox value={q} onChange={setQ} placeholder="Tìm mã lệnh, khách hàng, địa chỉ" /></div>
-        <StagePills items={[...WO_STAGES.map((s) => ({ id: s as WoStage | 'ALL', label: WO_STAGE[s].label, count: count(s) })), { id: 'ALL', label: 'Tất cả', count: visible.length }]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} />
-        <div className="mt-3">
+        <div>
           <Table head={['STT', 'Lệnh SX', 'Khách hàng', 'Đội trưởng', 'Hạng mục', <span key="n" className="block text-right">Số mục</span>, 'Ngày nhận', 'Hạn xong', 'Trạng thái', 'Thiết kế', 'Thao tác']} minW={1320}>
             {paged.slice.map((w, i) => {
               const j = jobOf(w);

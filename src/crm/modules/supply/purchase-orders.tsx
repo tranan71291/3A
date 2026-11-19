@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { AlertTriangle, CalendarDays, ChevronRight, Package, Pencil, Plus, Ship, Trash2, Warehouse, XCircle } from 'lucide-react';
+import { useState } from 'react';
 import { useOutsideClose } from '../../app/header';
 import { useIntent } from '../../components/command-palette';
 import { CommentButton } from '../../components/comments';
@@ -23,12 +23,13 @@ import { InventoryPage } from './inventory';
 // =====================================================================
 
 export function SupplyModule() {
-  const { reservations } = useApp();
+  const { reservations, canDo, setIntent } = useApp();
   const [tab, setTab] = useSticky<'po' | 'stock'>('SupplyModule.tab', 'po');
   const pending = reservations.filter((r) => r.status === 'PENDING_RELEASE').length;
   return (
     <div className="space-y-4">
-      <Tabs tabs={[{ id: 'po', label: 'PO & hàng về' }, { id: 'stock', label: pending ? `Kho (${pending} chờ duyệt)` : 'Kho & giữ chỗ' }]} value={tab} onChange={setTab} />
+      <Tabs tabs={[{ id: 'po', label: 'PO & hàng về' }, { id: 'stock', label: 'Kho & giữ chỗ', count: pending || undefined }]} value={tab} onChange={setTab}
+        aside={canDo('po.manage') ? <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => { setTab('po'); setIntent('po.create'); }}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo PO</button> : undefined} />
       {tab === 'po' ? <POPage /> : <InventoryPage />}
     </div>
   );
@@ -227,10 +228,7 @@ export function POPage() {
         </select>
       </FilterBar>
 
-      <Panel
-        title={`PO đặt Hãng (${list.length})`}
-        action={<button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} disabled={!canEdit} onClick={() => setPoForm({})}><Plus className="h-3.5 w-3.5" aria-hidden />Tạo PO mới</button>}
-      >
+      <Panel>
         {/* Mobile */}
         <div className="space-y-2 md:hidden">
           {paged.slice.map((p) => {

@@ -910,11 +910,11 @@ export const VIEW_META: Record<ViewKind, { label: string; icon: typeof Wallet }>
   gantt: { label: 'Gantt', icon: CalendarRange },
 };
 
-export const tdCls = 'px-3 py-3 align-middle';
+export const tdCls = 'px-3 py-2.5 align-middle';
 
-export const tdFirst = 'pl-5 pr-3 py-3 align-middle';
+export const tdFirst = 'pl-5 pr-3 py-2.5 align-middle';
 
-export const tdLast = 'pl-3 pr-5 py-3 align-middle';
+export const tdLast = 'pl-3 pr-5 py-2.5 align-middle';
 
 /** Dòng bảng: chỉ kẻ ngang mờ 10%, zebra rất nhẹ (class .dt trong <style>), hover ánh xanh dương */
 export const rowCls = 'border-b border-[rgb(var(--ink)/0.06)]';
@@ -2213,8 +2213,6 @@ export const salesFunnel = (ls: Lead[]) => {
 export const channelOfSource = (src: Source): MktChannel | 'OTHER' => (Object.keys(MKT_CH) as MktChannel[]).find((ch) => MKT_CH[ch].sources.includes(src)) ?? 'OTHER';
 
 export const overdueCls = 'shadow-[inset_3px_0_0_rgb(var(--danger))]';
-
-export const STEP_COLORS = [C.orange, '#F6B533', C.blue, C.teal];
 
 export const EMPTY_CUSTOMER: CustomerForm = {
   name: '', taxCode: '', segment: 'OTHER', tier: 'NEW', region: 'SOUTH', dept: 'FACTORY_SALES', amId: undefined, sourceId: 'SELF', status: 'PROSPECT', createdAt: '',

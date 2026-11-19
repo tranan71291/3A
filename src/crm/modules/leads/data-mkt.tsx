@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, Download, FileSpreadsheet, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import { CheckCircle2, Download, FileSpreadsheet, Pencil, Trash2, Upload } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { FilterBar, useInRange } from '../../components/filters';
+import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
 import { ImportModal } from '../../components/import-csv';
 import { Chip, Code, EmptyState, Panel, Table, useSort, useSticky } from '../../components/ui';
 import { scoreLead } from '../../lib/business';
-import { boqIsEstimate, boqTotal, btnGhost, btnPrimary, btnSm, compact, digits, findByTax, inputBase, inputCls, LEAD_STATUS, leadDate, LOST_REASON, nextCode, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, SOURCE_LABEL, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
+import { boqIsEstimate, boqTotal, btnGhost, btnSm, compact, digits, findByTax, inputBase, inputCls, LEAD_STATUS, leadDate, LOST_REASON, nextCode, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, SOURCE_LABEL, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
 import { downloadCsv, matchEnum } from '../../lib/csv';
 import type { ConfirmState, ImportSpec, Lead, LeadForm, LeadStatus, Source } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -87,6 +87,8 @@ export function DataMktPage() {
         q={q} onQ={setQ} placeholder="Tìm MST, tên khách, mã lead, SĐT"
         dept={dp} onDept={setDp} status={status} onStatus={setStatus} extraActive={src !== 'ALL' ? 1 : 0}
         statusOptions={(Object.keys(LEAD_STATUS) as LeadStatus[]).map((s) => ({ value: s, label: LEAD_STATUS[s].label }))}
+        chips={<ChipFilter total={leads.length} value={status as LeadStatus | 'ALL'} onChange={(v) => setStatus(v)} options={(Object.keys(LEAD_STATUS) as LeadStatus[]).map((x) => ({ value: x, label: LEAD_STATUS[x].label, count: leads.filter((l) => l.status === x).length })).filter((o) => o.count > 0)} />}
+        actions={<RowMenu text="Nhập / xuất" icon={FileSpreadsheet} items={[{ label: 'Xuất CSV', icon: Download, onClick: exportCsv }, { label: 'Nhập từ file', icon: Upload, onClick: () => setModal('import'), disabled: !canEdit }]} />}
       >
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={src} onChange={(e) => setSrc(e.target.value as 'ALL' | Source)} aria-label="Lọc nguồn">
           <option value="ALL">Mọi nguồn</option>
@@ -105,15 +107,7 @@ export function DataMktPage() {
         }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Xóa</button>
       </BulkBar>
 
-      <Panel
-        title={`${list.length} lead`}
-        action={
-          <div className="flex gap-2">
-            <RowMenu text="Dữ liệu" icon={FileSpreadsheet} items={[{ label: 'Xuất CSV', icon: Download, onClick: exportCsv }, { label: 'Nhập từ file', icon: Upload, onClick: () => setModal('import'), disabled: !canEdit }]} />
-            <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} disabled={!canEdit} onClick={() => setModal('add')}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm lead</button>
-          </div>
-        }
-      >
+      <Panel>
         <div className="space-y-2 md:hidden">
           {paged.slice.map((l) => (
             <MobileRow key={l.id} avatar={l.company} title={l.company} sub={`${l.code}, ${l.phone}, ${l.province ?? REGION_LABEL[l.region]}`}

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { AlertTriangle, Camera, CheckCircle2, Clock, Download, FileCheck2, FileText, MapPin, Pencil, Plus, Receipt as ReceiptIcon, Scale, ShieldCheck, Trash2, Upload, XCircle } from 'lucide-react';
+import { useState } from 'react';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
 import { ChipFilter, claimDate, FilterBar, useInRange } from '../../components/filters';
@@ -22,18 +22,19 @@ import { BudgetStrip, ClaimTable } from '../messages/messenger';
 // =====================================================================
 
 export function ClaimsModule() {
-  const { role } = useApp();
+  const { role, canDo, openProgramForm } = useApp();
   const [tab, setTab] = useSticky<'programs' | 'claims' | 'accounting'>('ClaimsModule.tab', role === 'ACCOUNTANT' ? 'accounting' : 'claims');
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <Tabs
         tabs={[
-          { id: 'programs', label: 'Kế hoạch quỹ' },
           { id: 'claims', label: 'Claim & POP' },
+          { id: 'programs', label: 'Kế hoạch quỹ' },
           { id: 'accounting', label: 'Đối soát' },
         ]}
         value={tab}
         onChange={setTab}
+        aside={tab === 'programs' && canDo('program.create') ? <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => openProgramForm()}><Plus className="h-3.5 w-3.5" aria-hidden />Đề xuất chương trình</button> : undefined}
  />
       {tab === 'programs' && <ProgramsTab />}
       {tab === 'claims' && <ClaimsTab />}
@@ -120,7 +121,6 @@ export function ProgramsTab() {
         action={
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-xs text-[rgb(var(--muted))]"><input type="checkbox" className="accent-[rgb(var(--accent))]" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />Hiện cả chương trình đã đóng</label>
-            <button className={btnPrimary} disabled={!canDo('program.create')} onClick={() => openProgramForm()}><Plus className="h-4 w-4" aria-hidden />Đề xuất chương trình</button>
           </div>
         }
       >

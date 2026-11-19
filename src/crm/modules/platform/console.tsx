@@ -1,12 +1,12 @@
 'use client';
 
-import { Building2, CalendarDays, CheckCircle2, ChevronRight, Copy, Download, Globe, KeyRound, Link2, LogIn, Pencil, Plug, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, Users, XCircle } from 'lucide-react';
+import { Building2, CalendarDays, CheckCircle2, ChevronRight, Copy, Download, KeyRound, Link2, LogIn, Pencil, Plug, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, Users, XCircle } from 'lucide-react';
 import { Fragment, useState } from 'react';
-import { Pagination, usePaged } from '../../components/controls';
+import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { Chip, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { cloudMessage } from '../../lib/cloud';
-import { btnAccent, btnBase, btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, isPlatformEmail, kpiGrid, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, isPlatformEmail, kpiGrid, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { AddTenantModal, OrgMark } from '../../lib/modules';
 import { hashPassword } from '../../lib/security';
@@ -30,11 +30,8 @@ export function PlatformConsole() {
   const meta = CONSOLE_TABS.find((t) => t.id === tab)!;
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3 rounded-md border border-[rgb(var(--accent)/0.3)] bg-gradient-to-r from-[rgb(var(--accent)/0.1)] to-transparent px-4 py-3">
-        <Globe className="h-6 w-6 text-[rgb(var(--accent))]" aria-hidden />
-        <div className="min-w-0 flex-1"><p className="font-semibold">3A Platform Console · {meta.label}</p><p className="text-xs text-[rgb(var(--muted))]">{meta.desc}</p></div>
-        <div className="w-full min-w-0 overflow-x-auto lg:w-auto"><Tabs variant="pill" tabs={CONSOLE_TABS.map((t) => ({ id: t.id, label: t.label }))} value={tab} onChange={platform.setConsoleTab} /></div>
-      </div>
+      <div className="lg:hidden"><Tabs tabs={CONSOLE_TABS.map((t) => ({ id: t.id, label: t.label }))} value={tab} onChange={platform.setConsoleTab} /></div>
+      <p className="sr-only">{meta.desc}</p>
       {tab === 'overview' && <ConsoleOverview />}
       {tab === 'tenants' && <ConsoleTenants />}
       {tab === 'modules' && <ConsoleModules />}
@@ -217,47 +214,43 @@ export function ConsoleTenants() {
   const linkOf = (id: string) => (typeof window !== 'undefined' ? `${window.location.origin}/${id}` : `/${id}`);
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-[rgb(var(--muted))]"><b className="text-[rgb(var(--fg))]">{ORGS.length}</b> doanh nghiệp trên nền tảng. Mỗi doanh nghiệp có đường dẫn đăng nhập riêng, dữ liệu tách biệt hoàn toàn.</p>
-        <button className={cn(btnAccent, 'ml-auto')} onClick={() => setAdding(true)}><Plus className="h-4 w-4" aria-hidden />Thêm doanh nghiệp</button>
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <p className="text-[13px] text-[rgb(var(--muted))]">{ORGS.length} doanh nghiệp · mỗi doanh nghiệp có đường dẫn đăng nhập và dữ liệu riêng</p>
+        <button className={cn(btnPrimary, btnSm, 'lg:ml-auto')} onClick={() => setAdding(true)}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm doanh nghiệp</button>
       </div>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {ORGS.map((o) => {
-          const r = platform.tenants.find((x) => x.id === o.id) ?? defaultTenantReg(o);
-          const st = tenantStats(o.id);
-          const left = daysTo(r.contractEnd);
-          const on = PROVISION_MODULES.filter((m) => r.modules[m]).length;
-          return (
-            <section key={o.id} className={cn('rounded-md border bg-[rgb(var(--surface))] p-5', r.status === 'SUSPENDED' ? 'border-[rgb(var(--danger)/0.5)]' : 'border-[rgb(var(--line))]')}>
-              <div className="flex items-start gap-3">
-                <OrgMark o={o} size={44} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-lg font-semibold">{o.name}</p>
-                  <p className="text-xs text-[rgb(var(--muted))]">{o.profile === 'MANUFACTURING' ? 'Xưởng nội thất, nhôm kính: báo giá m² / md, lệnh sản xuất, lắp đặt, thu tiền' : 'Thương mại B2B, đối tác Hãng 3M: quỹ MDF, PO Hãng, BOQ, Getfly'} · @{o.domain}</p>
-                </div>
-                <Chip tone={r.status === 'ACTIVE' ? 'teal' : 'red'}>{r.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}</Chip>
-              </div>
-              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                <div className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Gói bản quyền</dt><dd className="font-semibold">{TENANT_PLAN[r.plan].label}</dd></div>
-                <div className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Người dùng kích hoạt</dt><dd className={cn('font-semibold tabular-nums', st.activeUsers > r.seats && 'text-[rgb(var(--danger-fg))]')}>{st.activeUsers} / {r.seats}</dd></div>
-                <div className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Hết hạn hợp đồng</dt><dd className={cn('font-semibold tabular-nums', left < 0 ? 'text-[rgb(var(--danger-fg))]' : left <= 30 ? 'text-[rgb(var(--accent-fg))]' : '')}>{fmtDate(r.contractEnd)}</dd><dd className="text-[11px] text-[rgb(var(--muted))]">{left < 0 ? `Quá hạn ${-left} ngày` : `Còn ${left} ngày`}</dd></div>
-                <div className="rounded bg-[rgb(var(--raised))] p-2.5"><dt className="text-[11px] text-[rgb(var(--muted))]">Module cấp phép</dt><dd className="font-semibold tabular-nums">{on} / {PROVISION_MODULES.length}</dd></div>
-              </dl>
-              <p className="mt-3 flex items-center gap-2 text-xs"><Link2 className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden /><a className="font-mono text-[rgb(var(--secondary-fg))] hover:underline" href={linkOf(o.id)} target="_blank" rel="noreferrer">{linkOf(o.id).replace(/^https?:\/\//, '')}</a><button className="text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => { void navigator.clipboard?.writeText(linkOf(o.id)).then(() => notify('Đã chép đường dẫn đăng nhập', 'teal')); }} aria-label={`Chép đường dẫn ${o.shortName}`}><Copy className="h-3.5 w-3.5" /></button>{o.adminEmail && <span className="text-[rgb(var(--muted))]">· quản trị {o.adminEmail}</span>}</p>
-              <p className="mt-1 text-xs text-[rgb(var(--muted))]">{st.customers} khách hàng, {st.records} {o.profile === 'MANUFACTURING' ? 'đơn hàng' : 'lead / dự án'}, {(st.size / 1024).toFixed(0)} KB, dữ liệu v{st.version || '—'}{st.savedAt ? `, lưu ${new Date(st.savedAt).toLocaleString('vi-VN')}` : ''}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button className={cn(btnPrimary, btnSm)} onClick={() => platform.switchTenant(o.id)}><LogIn className="h-3.5 w-3.5" aria-hidden />Truy cập hệ thống{org.id === o.id ? ' (đang mở)' : ''}</button>
-                <button className={cn(btnGhost, btnSm)} onClick={() => setEdit(r)}><Pencil className="h-3.5 w-3.5" aria-hidden />Hợp đồng & gói</button>
-                <button className={cn(btnGhost, btnSm)} onClick={() => { platform.setConsoleTab('modules'); }}><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />Cấp phép module</button>
-                <button className={cn(btnBase, btnSm, r.status === 'ACTIVE' ? 'border border-[rgb(var(--danger)/0.4)] text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--danger)/0.1)]' : 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))]')}
-                  onClick={() => setConfirm({ title: r.status === 'ACTIVE' ? `Tạm dừng ${o.shortName}` : `Kích hoạt lại ${o.shortName}`, confirmLabel: r.status === 'ACTIVE' ? 'Tạm dừng' : 'Kích hoạt', message: r.status === 'ACTIVE' ? `Người dùng ${o.shortName} sẽ không đăng nhập được cho tới khi kích hoạt lại. Dữ liệu giữ nguyên; kỹ thuật 3A vẫn truy cập hỗ trợ được.` : `Cho phép người dùng ${o.shortName} đăng nhập lại.`, onConfirm: () => platform.setTenantReg(o.id, { status: r.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }, r.status === 'ACTIVE' ? 'Tạm dừng doanh nghiệp' : 'Kích hoạt lại doanh nghiệp') })}>
-                  {r.status === 'ACTIVE' ? <><XCircle className="h-3.5 w-3.5" aria-hidden />Tạm dừng</> : <><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Kích hoạt</>}
-                </button>
-              </div>
-            </section>
-          );
-        })}
-      </div>
+      <Panel>
+        <Table minW={1100} head={['Mã', 'Doanh nghiệp', 'Đường dẫn', 'Gói', <span key="u" className="block text-right">Người dùng</span>, 'Hết hạn', 'Còn', <span key="m" className="block text-right">Module</span>, 'Dữ liệu', 'Trạng thái', '']}>
+          {ORGS.map((o) => {
+            const r = platform.tenants.find((x) => x.id === o.id) ?? defaultTenantReg(o);
+            const st = tenantStats(o.id);
+            const left = daysTo(r.contractEnd);
+            const on = PROVISION_MODULES.filter((m) => r.modules[m]).length;
+            return (
+              <tr key={o.id} className={rowCls}>
+                <td className={tdFirst}><Code>{o.id}</Code></td>
+                <td className={tdCls}><span className="flex items-center gap-2"><OrgMark o={o} size={22} /><span className="font-medium">{o.shortName}</span></span></td>
+                <td className={cn(tdCls, 'font-mono text-xs')}><a className="hover:underline" href={linkOf(o.id)} target="_blank" rel="noreferrer">/{o.id}</a></td>
+                <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{TENANT_PLAN[r.plan].label}</td>
+                <td className={cn(tdCls, 'text-right font-mono text-xs', st.activeUsers > r.seats && 'text-[rgb(var(--danger-fg))]')}>{st.activeUsers} / {r.seats}</td>
+                <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(r.contractEnd)}</td>
+                <td className={cn(tdCls, left < 0 ? 'text-[rgb(var(--danger-fg))]' : left <= 60 ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--fg2))]')}>{left < 0 ? `Quá ${-left} ngày` : `Còn ${left} ngày`}</td>
+                <td className={cn(tdCls, 'text-right font-mono text-xs')}>{on} / {PROVISION_MODULES.length}</td>
+                <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--muted))]')}>v{st.version || '—'} · {(st.size / 1024).toFixed(0)} KB</td>
+                <td className={tdCls}><Chip tone={r.status === 'ACTIVE' ? 'teal' : 'red'}>{r.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}</Chip></td>
+                <td className={cn(tdLast, 'text-right')}><span className="flex items-center justify-end gap-1">
+                  <button className={cn(btnGhost, btnSm)} onClick={() => platform.switchTenant(o.id)}><LogIn className="h-3.5 w-3.5" aria-hidden />{org.id === o.id ? 'Đang mở' : 'Truy cập'}</button>
+                  <RowMenu label={`Thao tác ${o.shortName}`} items={[
+                    { label: 'Hợp đồng & gói', icon: Pencil, onClick: () => setEdit(r) },
+                    { label: 'Cấp phép module', icon: SlidersHorizontal, onClick: () => platform.setConsoleTab('modules') },
+                    { label: 'Sao chép đường dẫn', icon: Link2, onClick: () => navigator.clipboard?.writeText(linkOf(o.id)).then(() => notify('Đã sao chép đường dẫn', 'teal'), () => notify('Trình duyệt chặn sao chép', 'red')) },
+                    { label: r.status === 'ACTIVE' ? 'Tạm dừng' : 'Kích hoạt lại', icon: r.status === 'ACTIVE' ? XCircle : CheckCircle2, danger: r.status === 'ACTIVE', onClick: () => setConfirm({ title: r.status === 'ACTIVE' ? `Tạm dừng ${o.shortName}` : `Kích hoạt lại ${o.shortName}`, confirmLabel: r.status === 'ACTIVE' ? 'Tạm dừng' : 'Kích hoạt', message: r.status === 'ACTIVE' ? `Người dùng ${o.shortName} sẽ không đăng nhập được cho tới khi kích hoạt lại. Dữ liệu giữ nguyên; kỹ thuật 3A vẫn truy cập hỗ trợ được.` : `Cho phép người dùng ${o.shortName} đăng nhập lại.`, onConfirm: () => platform.setTenantReg(o.id, { status: r.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }, r.status === 'ACTIVE' ? 'Tạm dừng doanh nghiệp' : 'Kích hoạt lại doanh nghiệp') }) },
+                  ]} />
+                </span></td>
+              </tr>
+            );
+          })}
+        </Table>
+      </Panel>
       {edit && (
         <Modal title={`Hợp đồng & gói: ${orgOf(edit.id).shortName}`} onClose={() => setEdit(null)} footer={<><button className={btnGhost} onClick={() => setEdit(null)}>Hủy</button><button className={btnPrimary} onClick={() => { platform.setTenantReg(edit.id, { plan: edit.plan, seats: edit.seats, contractStart: edit.contractStart, contractEnd: edit.contractEnd, note: edit.note }, `Gói ${TENANT_PLAN[edit.plan].label}, ${edit.seats} người dùng, hạn ${fmtDate(edit.contractEnd)}`); setEdit(null); }}>Lưu</button></>}>
           <div className="grid grid-cols-2 gap-3">

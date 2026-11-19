@@ -4,7 +4,7 @@ import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useRef, 
 import { AlertTriangle, Building2, Camera, CheckCircle2, ChevronDown, Command, Factory, Globe, LogOut, Menu, MessageSquare, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Sparkles, Sun, Wallet, X, XCircle } from 'lucide-react';
 import { ChangePasswordModal, Logo3A, NotificationBell, SyncChip, TenantSwitcher, UserMenu } from './header';
 import { CommandPalette } from '../components/command-palette';
-import { DateRangePicker } from '../components/controls';
+import { Avatar, DateRangePicker } from '../components/controls';
 import { periodRange } from '../components/filters';
 import { Skeleton } from '../components/ui';
 import { fundUsage, scoreLead, shipmentAllocation } from '../lib/business';
@@ -1437,6 +1437,9 @@ export default function DashboardApp() {
         table.dt-cards.dt-stt > tbody > tr::before { display: none; }
       }
       .kpi-row > .kpi:first-child { border-left-color: transparent; padding-left: 0; }
+      .glass-card > .\\-mx-5:first-child, .glass-card > .md\\:hidden:first-child + div > .\\-mx-5:first-child, .glass-card > .md\\:hidden:first-child + div > div:first-child > .\\-mx-5:first-child { margin-top: -1.25rem; }
+      .glass-card > .\\-mx-5:first-child > table.dt > thead > tr { border-bottom-color: rgb(var(--ink) / 0.08); }
+      @media (min-width: 1024px) { .tb40 > .relative:first-child { width: 280px; flex: none; } .tb40 > select { width: auto; max-width: 200px; } .tb40 > button:last-child { margin-left: auto; } }
       .kpi-strip { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 12px; overflow: hidden; }
       .kpi-strip > * { border-left: 1px solid rgb(var(--line)); border-top: 1px solid rgb(var(--line)); margin: 0 0 -1px -1px; }
       /* Card chuẩn: nền surface, viền mảnh, bóng nhẹ (thay hiệu ứng kính để dễ đọc và nhẹ máy) */
@@ -1606,7 +1609,7 @@ export default function DashboardApp() {
   const navList = (onPick?: () => void, mini = false) => consoleMode ? (
     <nav className="space-y-4" aria-label="3A Platform Console">
       <div>
-        {groupHead('console', '3A Platform Console', mini, true)}
+        {groupHead('console', 'Nền tảng', mini, true)}
         <div className="space-y-0.5">{CONSOLE_TABS.map((t) => navBtn({ id: t.id, label: t.label, icon: t.icon, active: consoleTab === t.id, mini, onClick: () => { setConsoleTab(t.id); onPick?.(); window.scrollTo({ top: 0 }); } }))}</div>
       </div>
       <div>
@@ -1659,15 +1662,15 @@ export default function DashboardApp() {
 
   const brand = consoleMode ? (
     <div className="flex min-w-0 items-center gap-3">
-      <Logo3A size={34} />
+      <Logo3A size={30} />
       <div className="min-w-0">
-        <p className="font-display truncate text-[15px] font-semibold leading-tight tracking-normal">3A GROUP</p>
-        <p className="truncate text-xs text-[rgb(var(--muted))]">Master Console · {platformUser?.email}</p>
+        <p className="truncate text-sm font-medium leading-tight text-white">3A Console</p>
+        <p className="truncate text-xs text-[rgb(var(--muted))]">Quản trị nền tảng</p>
       </div>
     </div>
   ) : (
     <div className="flex min-w-0 items-center gap-3">
-      <BrandMark size={36} />
+      <BrandMark size={32} />
       <div className="min-w-0">
         <p className="truncate text-sm font-medium leading-tight text-white">{company.shortName}</p>
         <p className="truncate text-xs text-[rgb(var(--muted))]">{(company.profile ?? 'TRADING') === 'TRADING' ? `${company.shortName} x 3M Việt Nam` : BUSINESS_PROFILE[company.profile ?? 'TRADING'].label}</p>
@@ -1676,8 +1679,9 @@ export default function DashboardApp() {
   );
 
   const switcher = platformId
-    ? <TenantSwitcher orgId={orgId} consoleOn={consoleMode} onConsole={() => ctx.platform.openConsole()} onSwitch={switchTenant} />
+    ? <TenantSwitcher orgId={orgId} consoleOn={consoleMode} onConsole={() => ctx.platform.openConsole()} onSwitch={switchTenant}>{brand}</TenantSwitcher>
     : null;
+  const whoName = me?.name ?? platformUser?.name ?? platformUser?.email ?? '';
 
   return (
     <Ctx.Provider value={ctx}>
@@ -1693,15 +1697,14 @@ export default function DashboardApp() {
               onScroll={() => setRailTip(null)}
             >
               <div className={cn('flex h-14 shrink-0 items-center border-b border-[rgb(var(--ink)/0.06)]', sideOpen ? 'px-4' : 'justify-center px-0')}>
-                {sideOpen ? brand : (consoleMode ? <Logo3A size={30} /> : <BrandMark size={32} />)}
+                {sideOpen ? (switcher ?? brand) : (consoleMode ? <Logo3A size={30} /> : <BrandMark size={32} />)}
               </div>
-              {sideOpen && switcher && <div className="shrink-0 border-b border-[rgb(var(--ink)/0.06)] px-3 py-2">{switcher}</div>}
               <div className={cn('flex-1 overflow-y-auto overflow-x-hidden py-3 [scrollbar-width:thin]', sideOpen ? 'px-2.5' : 'px-2')}>
                 {navList(() => setRailTip(null), !sideOpen)}
               </div>
               <div className={cn('flex shrink-0 items-center gap-2 border-t border-[rgb(var(--ink)/0.06)] py-2.5', sideOpen ? 'px-3' : 'justify-center')}>
-                {sideOpen && <Logo3A size={18} />}
-                {sideOpen && <span className="min-w-0 flex-1 truncate text-[11px] text-[rgb(var(--faint))]">Nền tảng 3A Group</span>}
+                {sideOpen && whoName && <Avatar name={whoName} size={24} />}
+                {sideOpen && <span className="min-w-0 flex-1 truncate text-[13px] text-[rgb(var(--fg2))]">{whoName || 'Nền tảng 3A Group'}</span>}
                 <button className="rounded p-1 text-[rgb(var(--muted))] hover:bg-[rgb(var(--secondary)/0.2)] hover:text-[rgb(var(--fg))]" onClick={() => { setRailTip(null); toggleSide(); }} aria-pressed={!sideMini} aria-label={sideMini ? 'Mở rộng menu (Ctrl + B)' : 'Thu gọn menu (Ctrl + B)'}
                   onMouseEnter={sideMini ? (e) => { const r = e.currentTarget.getBoundingClientRect(); setRailTip({ label: 'Mở rộng menu (Ctrl + B)', y: r.top + r.height / 2 }); } : undefined} onMouseLeave={() => setRailTip(null)}>
                   {sideMini ? <PanelLeftOpen className="h-4 w-4" aria-hidden /> : <PanelLeftClose className="h-4 w-4" aria-hidden />}
@@ -1718,7 +1721,7 @@ export default function DashboardApp() {
             <button className={cn(btnGhost, 'p-2 lg:hidden')} onClick={() => setDrawerOpen(true)} aria-label="Mở menu"><Menu className="h-5 w-5" /></button>
             <div className="flex min-w-0 shrink items-center gap-2">
               {switcher && <div className="lg:hidden">{switcher}</div>}
-              <h1 className="truncate text-base font-medium leading-tight lg:text-lg">{consoleMode ? '3A Platform Console' : MODULE_LABEL[page]}</h1>
+              <h1 className="truncate text-base font-medium leading-tight lg:text-lg">{consoleMode ? (consoleTab === 'overview' ? 'Tổng quan nền tảng' : CONSOLE_TABS.find((t) => t.id === consoleTab)?.label ?? '3A Platform Console') : (MODULE_SHORT[page] ?? MODULE_LABEL[page])}</h1>
             </div>
             <div className="hidden min-w-0 flex-1 justify-end px-2 lg:flex">
 {page === 'home' && !consoleMode ? <AssistantCommandBar variant="header" /> : <>
