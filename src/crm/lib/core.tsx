@@ -8,7 +8,7 @@ import { PluginKey } from '@tiptap/pm/state';
 import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
-import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
@@ -298,7 +298,19 @@ export const ACTION_LABEL: Record<Action, string> = {
   'mkt.manage': 'Marketing Hub: chiến dịch, nội dung, phân khúc, kịch bản tự động',
   'stock.manage': 'Lập phiếu nhập / xuất / kiểm kê kho vật tư',
   'cash.manage': 'Lập phiếu thu / chi, chuyển quỹ',
-  'sale.manage': 'Bán hàng: sửa, hủy, xóa đơn của người khác, hủy phiếu thu của đơn',
+  'sale.create': 'Bán hàng: lên đơn bán',
+  'sale.approve': 'Bán hàng: duyệt đơn trong ngưỡng (người lên đơn tự duyệt)',
+  'sale.viewAll': 'Bán hàng: xem đơn của mọi người (bỏ qua phạm vi dữ liệu)',
+  'customer.delete': 'Khách hàng: xóa khách hàng',
+  'customer.viewAll': 'Khách hàng: xem mọi khách hàng (bỏ qua phạm vi dữ liệu)',
+  'lead.viewAll': 'Lead: xem mọi lead (bỏ qua phạm vi dữ liệu)',
+  'job.delete': 'Xưởng: xóa đơn xưởng chưa thu tiền',
+  'production.delete': 'Sản xuất: xóa lệnh sản xuất chưa làm',
+  'install.delete': 'Lắp đặt: xóa lịch lắp chưa nghiệm thu',
+  'sale.manage': 'Bán hàng: sửa hàng hóa, hủy đơn của người khác (trước khi xuất kho)',
+  'sale.info': 'Bán hàng: cập nhật thông tin đơn của người khác (cả đơn đã hoàn thành, không đổi hàng hóa)',
+  'sale.delete': 'Bán hàng: xóa đơn đã hủy',
+  'sale.docs': 'Bán hàng: sửa / hủy chứng từ liên quan của đơn (phiếu kho, phiếu thu, hóa đơn); người khác chỉ xem',
 };
 
 export const SOURCE_LABEL: Record<Source, string> = {
@@ -742,7 +754,19 @@ export const INITIAL_PERMS: Perms = {
     'priceList.manage': ['BOD', 'DEPT_HEAD'],
     'stock.manage': ['BOD', 'DEPT_HEAD', 'ACCOUNTANT'],
     'cash.manage': ['BOD', 'ACCOUNTANT'],
+    'sale.create': ['BOD', 'DEPT_HEAD', 'SALES_REP', 'ACCOUNTANT'],
+    'sale.approve': ['BOD', 'DEPT_HEAD', 'SALES_REP'],
+    'sale.viewAll': ['BOD', 'ACCOUNTANT'],
+    'customer.delete': ['BOD', 'MKT_LEAD', 'DEPT_HEAD'],
+    'customer.viewAll': ['BOD', 'MKT_LEAD'],
+    'lead.viewAll': ['BOD', 'MKT_LEAD'],
+    'job.delete': ['BOD'],
+    'production.delete': ['BOD'],
+    'install.delete': ['BOD'],
     'sale.manage': ['BOD', 'DEPT_HEAD'],
+    'sale.info': ['BOD', 'DEPT_HEAD', 'ACCOUNTANT'],
+    'sale.delete': ['BOD'],
+    'sale.docs': ['BOD', 'ACCOUNTANT'],
   },
 };
 
@@ -2883,9 +2907,9 @@ export const daysTo = (iso10: string) => Math.ceil((Date.parse(`${iso10}T23:59:5
 export const headRoleFor = (r: Role): Role => (r === 'SALES_REP' ? 'DEPT_HEAD' : r);
 
 export const SCOPE_LABEL: Record<DataScope, { label: string; hint: string }> = {
-  ALL: { label: 'Toàn doanh nghiệp', hint: 'Thấy mọi lead, dự án, khách hàng' },
+  ALL: { label: 'Toàn doanh nghiệp', hint: 'Thấy mọi lead, dự án, khách hàng, đơn hàng' },
   DEPT: { label: 'Phòng ban của mình', hint: 'Chỉ dữ liệu của phòng mình' },
-  OWN: { label: 'Chỉ của mình', hint: 'Lead được giao, khách mình phụ trách' },
+  OWN: { label: 'Chỉ của mình', hint: 'Lead được giao, khách mình phụ trách, đơn mình lên' },
   WON: { label: 'Chỉ đơn đã chốt', hint: 'Dùng cho kế toán: dự án đã chốt, mọi khách hàng' },
 };
 
@@ -2899,7 +2923,7 @@ export const ACTION_MODULE: Record<Action, Module> = {
   'settings.edit': 'settings', 'data.backup': 'settings', 'security.manage': 'settings',
   'po.manage': 'supply', 'stock.deliver': 'supply', 'stock.release': 'supply', 'price.viewCost': 'products', 'stock.voucher': 'warehouse', 'stock.approve': 'warehouse',
   'activity.approve': 'staff', 'production.manage': 'production', 'install.manage': 'install', 'job.manage': 'jobs', 'receipt.confirm': 'jobs', 'priceList.manage': 'jobs',
-  'stock.manage': 'inventory', 'cash.manage': 'cashbook', 'sale.manage': 'sales', 'feed.moderate': 'home', 'feed.poll': 'home', 'zalo.reply': 'zalo', 'zalo.assign': 'zalo', 'mkt.manage': 'marketing',
+  'stock.manage': 'inventory', 'cash.manage': 'cashbook', 'sale.create': 'sales', 'sale.approve': 'sales', 'sale.viewAll': 'sales', 'customer.delete': 'customers', 'customer.viewAll': 'customers', 'lead.viewAll': 'leads', 'job.delete': 'jobs', 'production.delete': 'production', 'install.delete': 'install', 'sale.manage': 'sales', 'sale.info': 'sales', 'sale.delete': 'sales', 'sale.docs': 'sales', 'feed.moderate': 'home', 'feed.poll': 'home', 'zalo.reply': 'zalo', 'zalo.assign': 'zalo', 'mkt.manage': 'marketing',
 };
 
 export const LOCKED = (r: Role, m?: Module, a?: Action) => r === 'BOD' && (m === 'settings' || a === 'settings.edit');
@@ -2913,6 +2937,50 @@ export const WF_SLA_OPTS: [number, string][] = [[60, '1 giờ'], [120, '2 giờ'
 export const wfSlaText = (m: number) => WF_SLA_OPTS.find(([v]) => v === m)?.[1] ?? (m % 1440 === 0 ? `${m / 1440} ngày` : m % 60 === 0 ? `${m / 60} giờ` : `${m} phút`);
 
 export const wfWhoText = (w: WfWho, users: User[]) => (w.kind === 'ROLE' ? ROLE_LABEL[w.role ?? 'BOD'] : w.kind === 'USER' ? users.find((u) => u.id === w.userId)?.name ?? 'Chưa chọn người' : w.kind === 'DEPT_HEAD' ? 'Trưởng phòng' : w.kind === 'MANAGER' ? 'Quản lý trực tiếp' : 'Thủ kho / Kế toán');
+
+export const PTASKS: [PTask, string][] = [['access', 'Truy cập'], ['create', 'Thêm mới'], ['edit', 'Sửa'], ['delete', 'Xóa'], ['approve', 'Duyệt'], ['pay', 'Thanh toán'], ['viewAll', 'Xem tất cả']];
+
+/** v51: chức năng × tác vụ, mỗi ô gắn với quyền thật (phân hệ hoặc thao tác) */
+export const PFEATS: PFeat[] = [
+  { id: 'home', mod: 'home', label: 'Bàn làm việc', cells: { create: ['feed.poll'], edit: ['feed.moderate'], delete: ['feed.moderate'] }, hint: 'bình chọn; ghim / xóa bài người khác' },
+  { id: 'sales', mod: 'sales', label: 'Đơn hàng bán', cells: { create: ['sale.create'], edit: ['sale.manage'], delete: ['sale.delete'], approve: ['sale.approve'], pay: ['receipt.confirm'], viewAll: ['sale.viewAll'] } },
+  { id: 'sales.info', mod: 'sales', sub: true, label: 'Cập nhật đơn đã hoàn thành', cells: { edit: ['sale.info'] } },
+  { id: 'sales.docs', mod: 'sales', sub: true, label: 'Chứng từ liên quan của đơn', cells: { edit: ['sale.docs'], delete: ['sale.docs'] }, hint: 'người khác chỉ xem' },
+  { id: 'customers', mod: 'customers', label: 'Khách hàng', cells: { create: ['customer.edit'], edit: ['customer.edit'], delete: ['customer.delete'], viewAll: ['customer.viewAll'] } },
+  { id: 'projects', mod: 'projects', label: 'Dự án & BOQ', cells: { create: ['project.update'], edit: ['project.update'], approve: ['contract.approve'] }, hint: 'Duyệt: hợp đồng điều khoản đặc biệt' },
+  { id: 'projects.quote', mod: 'projects', sub: true, label: 'Báo giá', cells: { create: ['price.request'], approve: ['quote.approve'] } },
+  { id: 'projects.vendor', mod: 'projects', sub: true, label: 'Ghi nhận Hãng duyệt giá', cells: { approve: ['price.decide'] } },
+  { id: 'projects.tpl', mod: 'projects', sub: true, label: 'Mẫu báo giá & hợp đồng', cells: { create: ['template.manage'], edit: ['template.manage'], delete: ['template.manage'] } },
+  { id: 'docs', mod: 'docs', label: 'Tài liệu', cells: { create: ['docs.manage'], edit: ['docs.manage'], delete: ['docs.manage'] } },
+  { id: 'leads', mod: 'leads', label: 'Lead', cells: { create: ['lead.create'], edit: ['lead.create'], delete: ['lead.create'], approve: ['lead.route'], viewAll: ['lead.viewAll'] }, hint: 'Duyệt: phân về phòng' },
+  { id: 'leads.assign', mod: 'leads', sub: true, label: 'Chỉ định Sales', cells: { approve: ['lead.assign'] } },
+  { id: 'leads.accept', mod: 'leads', sub: true, label: 'Tiếp nhận lead', cells: { access: ['lead.accept'] } },
+  { id: 'marketing', mod: 'marketing', label: 'Auto Content', cells: { create: ['mkt.manage'], edit: ['mkt.manage'], delete: ['mkt.manage'] } },
+  { id: 'claims', mod: 'claims', label: 'MDF / CS', cells: { create: ['program.create'], edit: ['claim.uploadPop'], approve: ['program.approveInternal'], pay: ['claim.accounting'] }, hint: 'Sửa: tải chứng từ POP' },
+  { id: 'claims.verify', mod: 'claims', sub: true, label: 'Xác minh chứng từ', cells: { approve: ['claim.verify'] } },
+  { id: 'claims.vendor', mod: 'claims', sub: true, label: 'Ghi nhận Hãng, nộp claim', cells: { approve: ['program.vendorDecision', 'claim.submit'] } },
+  { id: 'claims.margin', mod: 'claims', sub: true, label: 'Lợi nhuận quỹ', cells: { access: ['mdf.margin'] } },
+  { id: 'products', mod: 'products', label: 'Sản phẩm', cells: { create: ['priceList.manage'], edit: ['priceList.manage'], delete: ['priceList.manage'] } },
+  { id: 'products.cost', mod: 'products', sub: true, label: 'Giá vốn & lãi gộp', cells: { access: ['price.viewCost'] } },
+  { id: 'warehouse', mod: 'warehouse', label: 'Kho hàng', cells: { create: ['stock.voucher'], edit: ['stock.voucher'], approve: ['stock.approve'] }, hint: 'Duyệt / từ chối phiếu kho' },
+  { id: 'warehouse.cat', mod: 'warehouse', sub: true, label: 'Danh mục kho, tồn đầu', cells: { edit: ['stock.manage'] } },
+  { id: 'supply', mod: 'supply', label: 'Đặt hàng & hàng về', cells: { create: ['po.manage'], edit: ['po.manage'], delete: ['po.manage'], approve: ['stock.release'] }, hint: 'Duyệt: giải phóng hàng giữ chỗ' },
+  { id: 'supply.deliver', mod: 'supply', sub: true, label: 'Xuất giao hàng giữ chỗ', cells: { edit: ['stock.deliver'] } },
+  { id: 'jobs', mod: 'jobs', label: 'Đơn xưởng', cells: { create: ['job.manage'], edit: ['job.manage'], delete: ['job.delete'], pay: ['receipt.confirm'] } },
+  { id: 'production', mod: 'production', label: 'Lệnh sản xuất', cells: { create: ['production.manage'], edit: ['production.manage'], delete: ['production.delete'] } },
+  { id: 'install', mod: 'install', label: 'Lắp đặt', cells: { create: ['install.manage'], edit: ['install.manage'], delete: ['install.delete'] } },
+  { id: 'inventory', mod: 'inventory', label: 'Kho vật tư xưởng', cells: { edit: ['stock.manage'] } },
+  { id: 'cashbook', mod: 'cashbook', label: 'Thu chi', cells: { create: ['cash.manage'], edit: ['cash.manage'], delete: ['cash.manage'], approve: ['receipt.confirm'] }, hint: 'Duyệt: xác nhận tiền thu' },
+  { id: 'zalo', mod: 'zalo', label: 'Zalo Hub', cells: { create: ['zalo.reply'], edit: ['zalo.assign'] }, hint: 'Sửa: phân công hội thoại' },
+  { id: 'staff', mod: 'staff', label: 'Lịch công tác', cells: { approve: ['activity.approve'] } },
+  { id: 'settings', mod: 'settings', label: 'Cài đặt', cells: { edit: ['settings.edit'] } },
+  { id: 'settings.sec', mod: 'settings', sub: true, label: 'Bảo mật & nhật ký hệ thống', cells: { edit: ['security.manage'] } },
+  { id: 'settings.backup', mod: 'settings', sub: true, label: 'Sao lưu / khôi phục dữ liệu', cells: { edit: ['data.backup'] } },
+];
+
+export const pModOf = (P: Perms, r: Role, m: Module) => P.modules[r]?.[m] ?? INITIAL_PERMS.modules[r][m];
+
+export const pActOf = (P: Perms, r: Role, a: Action) => (P.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(r);
 
 export const HOOK_LABEL: Record<HookEvent, string> = {
   'order.created': 'Tạo đơn hàng mới',

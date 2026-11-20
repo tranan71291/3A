@@ -44,7 +44,8 @@ export type Verification = 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type Module = 'home' | 'contacts' | 'warehouse' | 'overview' | 'tasks' | 'leads' | 'customers' | 'jobs' | 'projects' | 'products' | 'supply' | 'claims' | 'production' | 'install' | 'inventory' | 'cashbook' | 'staff' | 'docs' | 'reports' | 'settings' | 'messages' | 'zalo' | 'marketing' | 'sales';
 
 export type Action =
-  | 'sale.manage'
+  | 'sale.create' | 'sale.approve' | 'sale.viewAll' | 'customer.delete' | 'customer.viewAll' | 'lead.viewAll' | 'job.delete' | 'production.delete' | 'install.delete'
+  | 'sale.manage' | 'sale.delete' | 'sale.docs' | 'sale.info'
   | 'lead.create' | 'lead.route' | 'lead.assign' | 'lead.accept' | 'customer.edit' | 'docs.manage'
   | 'program.create' | 'program.approveInternal' | 'program.vendorDecision'
   | 'claim.uploadPop' | 'claim.verify' | 'claim.submit' | 'claim.accounting'
@@ -934,6 +935,8 @@ export type AppCtx = {
   setGf: (f: GlobalFilter) => void;
   /** Khách hàng trong phạm vi: Sales chỉ thấy khách mình phụ trách, Trưởng phòng thấy khách của phòng */
   myCustomers: Customer[];
+  /** v50.2: đơn bán theo phạm vi dữ liệu của người đang đăng nhập */
+  mySales: SalesOrder[];
   skus: SkuItem[];
   setSkus: Dispatch<SetStateAction<SkuItem[]>>;
   warehouses: WarehouseInfo[];
@@ -2025,6 +2028,18 @@ export type ConsoleTab = 'overview' | 'tenants' | 'modules' | 'users' | 'data' |
 export type DataScope = 'ALL' | 'DEPT' | 'OWN' | 'WON';
 
 export type UserPerm = { scope?: DataScope; modules?: Partial<Record<Module, boolean>>; actions?: Partial<Record<Action, boolean>> };
+
+// =====================================================================
+// PHÂN QUYỀN CHI TIẾT (tiếp)
+// =====================================================================
+
+export type PTask = 'access' | 'create' | 'edit' | 'delete' | 'approve' | 'pay' | 'viewAll';
+
+export type PCell = 'MOD' | Action[];
+
+export type PFeat = { id: string; label: string; mod: Module; sub?: boolean; hint?: string; cells: Partial<Record<PTask, PCell>> };
+
+export type PCtx = { role: Role; uid?: string };
 
 // =====================================================================
 //  GETFLY: TAB CÀI ĐẶT "CẤU HÌNH GETFLY API"

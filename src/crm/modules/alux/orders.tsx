@@ -2,9 +2,10 @@
 
 import { type ReactNode, useState } from 'react';
 import { ArrowRight, Banknote, CalendarDays, Camera, CheckCircle2, Download, Factory, FileText, Inbox, MapPin, MessageSquare, Pencil, Plus, Ruler, Search, Target, Trash2, Upload } from 'lucide-react';
+import { removeWithUndo } from '../../app/context';
 import { useIntent } from '../../components/command-palette';
 import { CommentButton } from '../../components/comments';
-import { Fab, Pagination, usePaged } from '../../components/controls';
+import { Fab, Pagination, RowMenu, usePaged } from '../../components/controls';
 import { Drawer } from '../../components/drawer';
 import { useInRange } from '../../components/filters';
 import { Sla } from '../../components/sla';
@@ -925,7 +926,7 @@ export function JobsModule() {
 }
 
 export function JobsList() {
-  const { jobs, customers, canDo, openJob, receipts, userName } = useApp();
+  const { jobs, customers, canDo, openJob, receipts, userName, setJobs, workOrders, notify, me } = useApp();
   const info = useJobInfo();
   const inScope = useJobScope();
   const inR = useInRange();
@@ -991,7 +992,7 @@ export function JobsList() {
                   <td className={tdCls}>{j.appointmentAt ? (late ? <Sla tone="over">{fmtDT(j.appointmentAt)} · quá hẹn</Sla> : <span className="font-mono text-xs text-[rgb(var(--fg2))]">{fmtDT(j.appointmentAt)}</span>) : '—'}</td>
                   <td className={tdCls}><Chip tone={JOB_STAGE[stage].tone}>{JOB_STAGE[stage].label}</Chip></td>
                   <td className={cn(tdCls, 'text-[13px] text-[rgb(var(--muted))]')}><span className="block max-w-[200px] truncate">{stage === 'SURVEY' ? '—' : detail || '—'}</span></td>
-                  <td className={tdLast}><div className="flex justify-end"><span onClick={(e) => e.stopPropagation()}><CommentButton entity="job" entityId={j.id} title={`${j.code} · ${jobCustName(j, customers)}`} module="jobs" /></span></div></td>
+                  <td className={tdLast}><div className="flex justify-end gap-1"><span onClick={(e) => e.stopPropagation()}><RowMenu items={[{ label: 'Xem / sửa đơn', icon: Pencil, onClick: () => openJob(j.id) }, { label: 'Xóa đơn', icon: Trash2, danger: true, disabled: !(me?.role === 'BOD' || canDo('job.delete')) || receipts.some((x) => x.jobId === j.id) || workOrders.some((w) => w.jobId === j.id), onClick: () => removeWithUndo(setJobs, j, notify, `Đã xóa ${j.code}`) }]} /></span><span onClick={(e) => e.stopPropagation()}><CommentButton entity="job" entityId={j.id} title={`${j.code} · ${jobCustName(j, customers)}`} module="jobs" /></span></div></td>
                 </tr>
               );
             })}

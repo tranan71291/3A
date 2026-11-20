@@ -1,6 +1,24 @@
-# 3A CRM v50 (giao diện Quản lý đơn hàng mới theo bộ ảnh: danh sách, tạo đơn, chi tiết đơn, trang Duyệt đơn và trang Ghi thu riêng — dựa trên v49)
+# 3A CRM v51 (phân quyền theo tác vụ: Truy cập · Thêm mới · Sửa · Xóa · Duyệt · Thanh toán · Xem tất cả — dựa trên v50.2)
 
-> Không đổi bảng, SQL, không thêm thư viện. Trường mới đều tùy chọn trong dữ liệu doanh nghiệp: đơn bán `origin` (nguồn đơn), `docRef` (nguồn chứng từ PO / hợp đồng), `receiver` (người nhận), `notes` (trao đổi); phiếu thu của đơn `date`, `payer`, `note`, `invNo`, `refund` (hoàn tiền, số âm). Đơn cũ mở bình thường, mã cũ giữ nguyên.
+> Không đổi bảng, SQL, không thêm thư viện. Ma trận dùng chính dữ liệu phân quyền cũ (phân hệ, thao tác, phạm vi, ngoại lệ tài khoản), chỉ thêm 9 quyền mới; cấu hình cũ giữ nguyên.
+
+## Cập nhật v51 (20/11)
+1. **Cài đặt › Phân quyền làm lại**: cột trái là nhóm quyền dạng cây (Giám đốc, Trưởng MKT, Trưởng phòng › Nhân viên KD, Kế toán) kèm số tài khoản, lối vào Ngoại lệ từng tài khoản và Nhật ký thay đổi. Đầu trang: thành viên nhóm, phạm vi dữ liệu. Tab Ma trận quyền / Người dùng / Nhật ký thay đổi.
+2. **Ma trận chức năng × 7 tác vụ**: mỗi ô gắn với quyền thật (bật phân hệ hoặc một thao tác cụ thể); ô không áp dụng gạch mờ; tắt Truy cập thì cả dòng khóa; bật / tắt cả cột ở tiêu đề; tìm chức năng; sao chép quyền từ nhóm khác. Thao tác cũ chưa có ô riêng tự hiện thành dòng con trong phân hệ của nó.
+3. **Sửa nháp rồi Lưu**: thanh dưới cùng đếm thay đổi chưa lưu, Bỏ thay đổi / Lưu phân quyền; mỗi thay đổi ghi nhật ký.
+4. **Quyền riêng từng tài khoản** ở tab Người dùng: đổi phạm vi dữ liệu, bấm tên để mở ma trận của người đó (ô viền cam là khác nhóm), Đưa về theo nhóm.
+5. **Ban giám đốc luôn toàn quyền** mọi thao tác (ma trận khóa ở trạng thái bật).
+6. **Quyền mới**: Lên đơn bán; Duyệt đơn trong ngưỡng; Xem tất cả đơn / khách hàng / lead (bỏ qua phạm vi dữ liệu theo từng chức năng); Xóa khách hàng (tách khỏi Sửa); Xóa đơn xưởng, lệnh sản xuất, lịch lắp đặt.
+7. **Thêm thao tác ở danh sách** (chế độ xưởng): Lệnh sản xuất (xem / sửa, xóa lệnh chưa làm và chưa có lịch lắp), Lắp đặt (xem / sửa, xóa lịch chưa nghiệm thu), Đơn xưởng (xem / sửa, xóa đơn chưa có phiếu thu / lệnh sản xuất); xóa có Hoàn tác.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict); chạy thử: Giám đốc tắt "Đơn hàng bán · Thêm mới" và bật "Khách hàng · Xem tất cả" cho Nhân viên KD, lưu → Hà không còn nút Lên đơn bán, thấy mọi khách hàng; cấp riêng "Thêm mới" cho Bảo → Bảo vẫn lên đơn được; nhật ký ghi thay đổi. Chạy lại toàn bộ luồng đơn hàng v50.1 không lỗi. Ảnh ở thư mục `anh-v51`.
+**Giới hạn**: nhóm quyền là 5 vai trò sẵn có (chưa tạo nhóm tùy ý như Kho vận, Kỹ thuật dự án; dùng quyền riêng từng tài khoản để thay); thao tác xóa ở Xưởng / Sản xuất / Lắp đặt mới kiểm tra bằng TypeScript, chưa chạy thử trên doanh nghiệp chế độ xưởng; phạm vi xem vẫn lọc ở giao diện như v50.2.
+
+## Sửa v50.2 (20/11, phân quyền đơn hàng)
+1. **Đơn đã hoàn thành vẫn cập nhật được thông tin** (nguồn đơn, nguồn chứng từ, người thực hiện, người nhận, SĐT, ngày / địa chỉ giao, ghi chú, khách lấy hóa đơn) bằng nút "Cập nhật thông tin" ở khối Thông tin đơn hàng; không đổi hàng hóa, giá; ghi vào nhật ký đơn. Yêu cầu xuất hóa đơn gửi được cả khi đơn đã hoàn thành (và cả đơn trước đó chọn không lấy hóa đơn).
+2. **Chứng từ liên quan chỉ xem**: bấm dòng chứng từ mở bản xem dạng file (phiếu xuất / nhập trả, phiếu thu / chi, yêu cầu hóa đơn, đặt hàng), có In / lưu PDF. Nút "Sửa chứng từ" chỉ hiện với Giám đốc và người có quyền "Bán hàng: sửa / hủy chứng từ liên quan" (mặc định Kế toán). Hủy phiếu thu của đơn cũng theo quyền này.
+3. **Phân quyền chi tiết** ở Cài đặt › Phân quyền, nhóm Bán hàng: sửa hàng hóa / hủy đơn của người khác; cập nhật thông tin đơn của người khác; xóa đơn đã hủy; sửa / hủy chứng từ liên quan. Giám đốc luôn có toàn quyền.
+4. **Phạm vi xem đơn** theo "Phạm vi dữ liệu" (vai trò hoặc từng tài khoản, do Giám đốc cấp): Chỉ của mình = đơn mình lên; Phòng ban = đơn của người cùng phòng; Toàn doanh nghiệp = mọi đơn. Kế toán xem mọi đơn để thu tiền, xuất hóa đơn. Người đang phải duyệt đơn / duyệt kho vẫn mở được đơn đó; đơn ngoài phạm vi hiện thông báo không có quyền. Lưu ý: phạm vi xem đơn đang lọc ở giao diện; dữ liệu giữa các doanh nghiệp vẫn tách bằng RLS như cũ, nhưng máy chủ chưa chặn theo từng đơn trong cùng doanh nghiệp.
 
 ## Sửa luồng v50.1 (20/11, sau góp ý)
 1. **Lưu đơn chỉ ghi nhận doanh số**: không còn tự sinh phiếu xuất kho, không tự sinh phiếu thu (bỏ "Khách trả trước" và "gửi xuất kho ngay" trên form). Luồng: Lưu đơn → Duyệt → Yêu cầu xuất kho (bấm tay) → kho Duyệt / Từ chối → kế toán lập / xác nhận phiếu thu.
