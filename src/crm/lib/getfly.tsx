@@ -1,7 +1,7 @@
 'use client';
 
-import { boqIsEstimate, boqTotal, latestQuote, lineNet, saleLineNet, saleResOf, whQty } from './core';
-import type { GetflyOrderPayload, GetflyOrderRec, Lead, Quote, QuoteLine, SaleLineKind, SalesOrder, SaleStockData } from './types';
+import { boqIsEstimate, boqTotal, latestQuote, lineNet, saleIssQ, saleLineNet, saleResOf, saleRetQ, whQty } from './core';
+import type { GetflyOrderPayload, GetflyOrderRec, Lead, Quote, QuoteLine, SaleLineKind, SalesOrder, SaleStage, SaleStockData, StockVoucher } from './types';
 import { stockOf } from './workshop';
 
 /** Tiền hàng, chiết khấu, thuế theo từng mức, phí giao, tổng phải trả */
@@ -15,16 +15,43 @@ export function saleTotals(o: Pick<SalesOrder, 'lines' | 'shipFee'>) {
   return { gross, discount: gross - net, net, groups, vat, ship, grand: net + vat + ship };
 }
 
+/** Giá trị hàng trả lại (sau chiết khấu, gồm VAT) — trừ vào số phải thu */
+export function saleReturned(o: SalesOrder) {
+  return o.lines.reduce((s, l) => { const r = saleRetQ(o, l); return r && l.qty ? s + Math.round((saleLineNet(l) / l.qty) * r * (1 + l.vat / 100)) : s; }, 0);
+}
+
+/** Số đang chờ kho duyệt theo dòng (phiếu xuất chờ duyệt của đơn) */
+export function salePendingQ(o: SalesOrder, vs: StockVoucher[]) {
+  const m: Record<string, number> = {};
+  vs.filter((v) => v.saleId === o.id && v.type === 'OUT' && v.status === 'PENDING').forEach((v) => v.lines.forEach((l) => { if (l.lineId) m[l.lineId] = (m[l.lineId] ?? 0) + (l.req ?? l.qty); }));
+  return m;
+}
+
+/** Giai đoạn của đơn để hiển thị: duyệt -> yêu cầu xuất kho -> kho xuất một phần / đủ */
+export function saleStage(o: SalesOrder, vs: StockVoucher[]): SaleStage {
+  if (o.status === 'CANCELLED') return 'CANCELLED';
+  if (o.status === 'DONE') return 'DONE';
+  if (o.status === 'SHIPPING') return 'SHIPPING';
+  if (o.approval?.status === 'PENDING') return 'APPROVAL';
+  if (o.approval?.status === 'REJECTED') return 'REJECTED';
+  const iss = o.lines.some((l) => saleIssQ(o, l) > 0);
+  if (iss) return 'PARTIAL';
+  if (o.issueRequest || vs.some((v) => v.saleId === o.id && v.type === 'OUT' && v.status === 'PENDING')) return 'WAIT_WH';
+  return 'READY';
+}
+
 /** Số lượng đang giữ cho các đơn bán chưa xuất kho (giữ mềm: chưa trừ tồn). before: chỉ tính đơn lên trước (đơn trước được ưu tiên hàng) */
 export function saleHeld(orders: SalesOrder[], kind: SaleLineKind, ref: string, exceptId?: string, before = Infinity) {
-  return orders.filter((o) => o.status === 'PENDING' && o.id !== exceptId && o.createdAt < before).reduce((s, o) => s + o.lines.filter((l) => l.kind === kind && l.ref === ref).reduce((a, l) => a + l.qty, 0), 0);
+  return orders.filter((o) => o.status === 'PENDING' && o.id !== exceptId && o.createdAt < before).reduce((s, o) => s + o.lines.filter((l) => l.kind === kind && l.ref === ref).reduce((a, l) => a + Math.max(0, l.qty - (o.issuedQ?.[l.id] ?? 0)), 0), 0);
 }
 
 /** Từng dòng: giữ chỗ sẵn, tồn tự do (đã trừ phần các đơn khác đang giữ), số có thể giao, số thiếu */
-export function saleStock(o: Pick<SalesOrder, 'id' | 'lines' | 'whId' | 'customerId' | 'leadId' | 'createdAt'>, d: SaleStockData) {
+export function saleStock(o: Pick<SalesOrder, 'id' | 'lines' | 'whId' | 'customerId' | 'leadId' | 'createdAt'> & { issuedQ?: Record<string, number> }, d: SaleStockData) {
   const since = o.createdAt || Infinity;
   const used = new Map<string, number>();
-  return o.lines.map((l) => {
+  return o.lines.map((l0) => {
+    /** v49: chỉ tính phần chưa xuất của dòng */
+    const l = { ...l0, qty: Math.max(0, l0.qty - (o.issuedQ?.[l0.id] ?? 0)) };
     const key = `${l.kind}:${l.ref ?? ''}`;
     const before = used.get(key) ?? 0;
     used.set(key, before + l.qty);
