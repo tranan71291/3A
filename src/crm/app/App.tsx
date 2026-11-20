@@ -474,7 +474,7 @@ export default function DashboardApp() {
   /** Phạm vi lead theo vai trò (+ bộ lọc toàn cục) */
   /** Phạm vi dữ liệu: ngoại lệ tài khoản > cấu hình vai trò > mặc định (BOD, Marketing toàn bộ; Trưởng phòng theo phòng; Sales của mình; Kế toán đơn đã chốt) */
   const scope: DataScope = (me && (perms.users?.[me.id]?.scope ?? perms.scope?.[role])) || DEFAULT_SCOPE[role];
-  const canX = (a: Action) => role === 'BOD' || (myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role));
+  const canX = (a: Action) => myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role);
   const leadScope: DataScope = canX('lead.viewAll') ? 'ALL' : scope;
   const custScope: DataScope = canX('customer.viewAll') ? 'ALL' : scope;
   const saleScope: DataScope = canX('sale.viewAll') ? 'ALL' : scope;
@@ -826,7 +826,7 @@ export default function DashboardApp() {
 
   // ---------------- v46: đơn bán ----------------
   const [openSale, setOpenSale] = useState<string | null>(null);
-  const canAct = (a: Action) => role === 'BOD' || (myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role));
+  const canAct = (a: Action) => myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role);
   const saleCode = (all: SalesOrder[]) => {
     const d = new Date();
     const p = `DH${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(2)}-`;
@@ -1141,10 +1141,10 @@ export default function DashboardApp() {
     }
   };
   /** NV kinh doanh gửi yêu cầu xuất hóa đơn; kế toán xác nhận đã xuất (số hóa đơn) hoặc trả lại */
-  const requestSaleInvoice = (id: string, amount: number, note?: string) => {
+  const requestSaleInvoice = (id: string, amount: number, note?: string, extra?: Pick<SaleInvReq, 'buyer' | 'items'>) => {
     const o = salesOrders.find((x) => x.id === id);
     if (!o || !(amount > 0)) return;
-    const r: SaleInvReq = { id: uid('ir'), at: Date.now(), by: me?.id, amount: Math.round(amount), note: note?.trim() || undefined, status: 'PENDING' };
+    const r: SaleInvReq = { id: uid('ir'), at: Date.now(), by: me?.id, amount: Math.round(amount), note: note?.trim() || undefined, status: 'PENDING', ...extra };
     setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, invoice: true, invReqs: [...(x.invReqs ?? []), r] } : x)));
     const acc = accountantsOf().filter((u) => u.id !== me?.id);
     acc.forEach((u) => dispatch('APPROVAL_RESULT', { to: u, title: `Yêu cầu xuất hóa đơn: ${o.code}`, body: `${o.customer}${o.taxCode ? ` (MST ${o.taxCode})` : ''}, ${fmtN(r.amount)} đ${r.note ? `. ${r.note}` : ''}`, module: 'sales' }));
@@ -1993,7 +1993,7 @@ export default function DashboardApp() {
     },
     workOrders, setWorkOrders, installJobs, setInstallJobs,
     jobs, setJobs, receipts, setReceipts, stockItems, setStockItems, stockMoves, setStockMoves, cashEntries, setCashEntries, priceItems, setPriceItems, mfgConfig, setMfgConfig, openJob: setOpenJobId,
-    canDo: (a) => role === 'BOD' || (myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role)),
+    canDo: (a) => myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role),
     userName, dept, routableDepts, routeLeads, acceptLead,
     getflyOrders, setGetflyOrders, getfly, setGetfly, getflyLogs, addGetflyLog, winLead, winDraftQuote, syncLeadToGetfly, recomputeLinked,
     wfAll, setWfDefs, wfRuns, setWfRuns, wfPolicy, setWfPolicy, wfDelegations, setWfDelegations, wfCtx, wfDef, wfDecide, wfSubmit, wfFinishRequest, openRequest: (id) => { setReqOpen(id); setPage('tasks'); }, reqOpen, setReqOpen, approveVoucher, wfFirstApprovers,

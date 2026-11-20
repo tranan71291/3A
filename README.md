@@ -2,12 +2,16 @@
 
 > Không đổi bảng, SQL, không thêm thư viện. Ma trận dùng chính dữ liệu phân quyền cũ (phân hệ, thao tác, phạm vi, ngoại lệ tài khoản), chỉ thêm 9 quyền mới; cấu hình cũ giữ nguyên.
 
+## Sửa v51.1 (20/11)
+1. **Nhóm Giám đốc không khóa**: cấu hình từng ô như nhóm khác; chỉ giữ cố định quyền vào và sửa Cài đặt của Giám đốc để không tự khóa mình. Quyền Giám đốc giờ đọc đúng theo ma trận (bỏ ép toàn quyền).
+2. **Xóa đơn hàng**: người có quyền "Đơn hàng bán · Xóa" xóa được đơn chưa xuất kho và chưa có phiếu thu đã xác nhận (không cần hủy trước); phiếu xuất đang chờ kho được hủy theo; có Hoàn tác. Khi không xóa được, menu ghi rõ lý do (chưa có quyền / đã xuất kho / đã có phiếu thu). Trước đây chỉ xóa được đơn đã hủy nên bấm không có tác dụng.
+3. **Yêu cầu xuất hóa đơn** mở bảng riêng: thông tin xuất hóa đơn (tên đơn vị, MST, người mua, địa chỉ, email nhận hóa đơn) tự điền từ hồ sơ khách hàng / đơn; thiếu thì bắt buộc nhập (MST 10 hoặc 13 số, hoặc chọn khách cá nhân không MST; email hợp lệ); hàng hóa kế thừa từ đơn: chọn dòng, số lượng (không vượt phần chưa xuất hóa đơn), đổi tên hàng trên hóa đơn; tự tính tiền hàng, VAT, tổng; tùy chọn lưu thông tin vào hồ sơ khách. Kế toán thấy đủ thông tin người mua và hàng hóa khi xử lý; bản xem chứng từ có đủ các thông tin này.
+
 ## Cập nhật v51 (20/11)
 1. **Cài đặt › Phân quyền làm lại**: cột trái là nhóm quyền dạng cây (Giám đốc, Trưởng MKT, Trưởng phòng › Nhân viên KD, Kế toán) kèm số tài khoản, lối vào Ngoại lệ từng tài khoản và Nhật ký thay đổi. Đầu trang: thành viên nhóm, phạm vi dữ liệu. Tab Ma trận quyền / Người dùng / Nhật ký thay đổi.
 2. **Ma trận chức năng × 7 tác vụ**: mỗi ô gắn với quyền thật (bật phân hệ hoặc một thao tác cụ thể); ô không áp dụng gạch mờ; tắt Truy cập thì cả dòng khóa; bật / tắt cả cột ở tiêu đề; tìm chức năng; sao chép quyền từ nhóm khác. Thao tác cũ chưa có ô riêng tự hiện thành dòng con trong phân hệ của nó.
 3. **Sửa nháp rồi Lưu**: thanh dưới cùng đếm thay đổi chưa lưu, Bỏ thay đổi / Lưu phân quyền; mỗi thay đổi ghi nhật ký.
 4. **Quyền riêng từng tài khoản** ở tab Người dùng: đổi phạm vi dữ liệu, bấm tên để mở ma trận của người đó (ô viền cam là khác nhóm), Đưa về theo nhóm.
-5. **Ban giám đốc luôn toàn quyền** mọi thao tác (ma trận khóa ở trạng thái bật).
 6. **Quyền mới**: Lên đơn bán; Duyệt đơn trong ngưỡng; Xem tất cả đơn / khách hàng / lead (bỏ qua phạm vi dữ liệu theo từng chức năng); Xóa khách hàng (tách khỏi Sửa); Xóa đơn xưởng, lệnh sản xuất, lịch lắp đặt.
 7. **Thêm thao tác ở danh sách** (chế độ xưởng): Lệnh sản xuất (xem / sửa, xóa lệnh chưa làm và chưa có lịch lắp), Lắp đặt (xem / sửa, xóa lịch chưa nghiệm thu), Đơn xưởng (xem / sửa, xóa đơn chưa có phiếu thu / lệnh sản xuất); xóa có Hoàn tác.
 

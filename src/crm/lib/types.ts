@@ -255,7 +255,13 @@ export type SalesOrder = {
   origin?: string; docRef?: string; receiver?: string; notes?: SaleNote[];
 };
 
-export type SaleInvReq = { id: string; at: number; by?: string; amount: number; note?: string; status: 'PENDING' | 'DONE' | 'REJECTED'; no?: string; doneBy?: string; doneAt?: number; why?: string };
+export type SaleInvReq = { id: string; at: number; by?: string; amount: number; note?: string; status: 'PENDING' | 'DONE' | 'REJECTED'; no?: string; doneBy?: string; doneAt?: number; why?: string;
+  /** v51: thông tin người mua và hàng hóa ghi trên hóa đơn (tên hàng có thể đổi) */
+  buyer?: SaleInvBuyer; items?: SaleInvItem[] };
+
+export type SaleInvBuyer = { name: string; taxCode?: string; noTax?: boolean; address: string; email: string; buyerName?: string };
+
+export type SaleInvItem = { lineId: string; name: string; unit: string; qty: number; amount: number; vat: number };
 
 export type VendorPO = { id: string; code: string; vendor: string; orderDate: string; expectedDate: string; purpose: PoPurpose; note: string; lines: PoLine[]; shipments: Shipment[]; createdBy?: string; cancelled?: boolean };
 
@@ -360,6 +366,8 @@ export type Customer = {
   contactTitle: string;
   contactPhone: string;
   contactEmail: string;
+  /** v51: email nhận hóa đơn điện tử (trống thì dùng email liên hệ) */
+  invoiceEmail?: string;
   address: string;
   creditLimit: number;
   debt: number;
@@ -1114,7 +1122,7 @@ export type AppCtx = {
   approveSaleVoucher: (v: StockVoucher) => boolean;
   approveSaleReturn: (v: StockVoucher) => boolean;
   saleVoucherUndo: (v: StockVoucher) => void;
-  requestSaleInvoice: (id: string, amount: number, note?: string) => void;
+  requestSaleInvoice: (id: string, amount: number, note?: string, extra?: Pick<SaleInvReq, 'buyer' | 'items'>) => void;
   decideSaleInvoice: (id: string, reqId: string, ok: boolean, text: string) => void;
   /** Đơn vừa lưu: thu tiền và / hoặc xuất kho ngay */
   completeSale: (o: SalesOrder, pay: { amount: number; method: 'CASH' | 'BANK' } | null, issue: boolean) => void;
