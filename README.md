@@ -1,4 +1,20 @@
-# 3A CRM v51 (phân quyền theo tác vụ: Truy cập · Thêm mới · Sửa · Xóa · Duyệt · Thanh toán · Xem tất cả — dựa trên v50.2)
+# 3A CRM v51.2 (Thu chi nâng cấp, hủy đơn đã có chứng từ — dựa trên v51.1)
+
+> Không đổi bảng, SQL, không thêm thư viện. Phiếu quỹ thêm vài trường tùy chọn (phiếu đảo, các khoản thu gộp, đơn chịu chi phí, hóa đơn đầu vào, chứng từ kèm); dữ liệu cũ đọc như trước.
+
+## Cập nhật v51.2 (20/11)
+1. **Sổ thu chi**: thay 4 thẻ số liệu bằng một dòng Đầu kỳ + Thu − Chi = Cuối kỳ. Sổ chi tiết có thêm cột **Nguồn** (Đơn hàng kèm mã đơn, Lập tay, Kho, Hoa hồng, Công tác phí, Phiếu đảo, Chuyển quỹ…) và **Trạng thái** (Hiệu lực / Đã hủy / Hủy một phần / Phiếu đảo). Phiếu đã hủy hiện mờ, số phiếu gạch ngang. Bỏ đoạn ghi chú dài cuối bảng.
+2. **Bấm phiếu tự sinh ngay trong Thu chi** mở bản xem: bản in phiếu, Chứng từ gốc (bấm Mở để sang đơn hàng / đơn xưởng), số tiền và quỹ khóa, sửa được Ngày chứng từ và Diễn giải (đồng bộ ngày vào khoản thu trên đơn). Phiếu thu / chi của đơn hàng có **Hủy phiếu** (bắt buộc lý do): sinh phiếu đảo, gỡ khoản thu khỏi đơn (đơn quay về còn phải thu). Phiếu tự sinh từ nghiệp vụ khác hướng dẫn hủy ở chứng từ gốc. Phiếu lập tay vẫn sửa / xóa như cũ.
+3. **Phiếu thu** (khung rộng 2 cột): loại Thu tiền khách hàng / Thu khác. Thu tiền khách: chọn khách → hiện các đơn còn phải thu; tick đơn, nhập số thu từng đơn hoặc nhập tổng rồi "Phân bổ cho đơn cũ trước"; một phiếu thu cho nhiều đơn, các đơn ghi nhận doanh thu ngay. Cột phải: công nợ khách trước / sau, tồn quỹ trước / sau. Số tiền bằng chữ, chứng từ kèm (ảnh, PDF ≤ 1 MB), In phiếu sau khi lưu, Lưu và thêm mới.
+4. **Phiếu chi**: loại Chi phí / Trả nhà cung cấp / Tạm ứng / Hoàn tiền khách. Chi phí tính vào đơn bán hoặc đơn xưởng (cột phải hiện chi phí đã tính của đơn trước / sau). Hóa đơn đầu vào: số hóa đơn, thuế suất, tiền thuế tự tính. Hoàn tiền khách: chọn khách → các đơn đang trả thừa (kể cả đơn đã hủy), hoàn theo từng đơn. Cảnh báo khi quỹ âm sau khi chi.
+5. **Chuyển quỹ**: hai thẻ Từ quỹ / Sang quỹ với số dư trước → sau, nút đổi chiều; một phiếu CQ hiện ở cả hai sổ; nhập **Phí chuyển** thì tự lập thêm phiếu chi từ quỹ nguồn.
+6. **Hủy đơn đã có chứng từ** (không xóa): menu ⋯ › Hủy đơn mở bảng kiểm tra: hàng đã xuất phải nhập trả đủ (nút **Lập phiếu nhập trả** gửi kho duyệt), tiền khách đã trả phải hoàn đủ (nút **Lập phiếu chi hoàn tiền**, chọn tiền mặt / chuyển khoản; nhân viên không phải kế toán thì là Đề nghị hoàn tiền chờ kế toán xác nhận), hóa đơn đã xuất nhắc lập hóa đơn điều chỉnh, phiếu xuất chờ kho được hủy kèm, yêu cầu hóa đơn đang chờ được trả lại. Đủ điều kiện mới bấm Hủy đơn (bắt buộc lý do); đơn đóng lại, giữ toàn bộ chứng từ.
+7. **Đơn đã hủy**: số phải thu = 0, tiền khách đã trả thành tiền phải hoàn; trong đơn có nút "Hoàn tiền khách". Menu Xóa đơn ghi đúng lý do: "đã xuất kho, dùng Hủy đơn" / "đã có phiếu thu, dùng Hủy đơn".
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict). Chạy thử: 2 đơn của cùng khách → kho xuất → kế toán lập 1 phiếu thu cho 2 đơn → bấm phiếu trong Thu chi, hủy → sinh phiếu đảo, 2 đơn quay về chưa thu; chuyển quỹ có phí → thêm phiếu chi phí; đơn đã thu tiền: lập phiếu nhập trả → kho duyệt → kế toán hoàn tiền ở Phiếu chi › Hoàn tiền khách → người lên đơn hủy đơn thành công. Chạy lại luồng đơn hàng v50 không lỗi. Ảnh ở thư mục `anh-v51-2`.
+**Giới hạn**: khung Hạch toán (Nợ / Có) trong ảnh mẫu chưa làm vì cần chốt hệ thống tài khoản; chứng từ kèm lưu trong dữ liệu phiếu (ảnh được nén) nên giới hạn 6 tệp / phiếu.
+
+## (v51) 3A CRM v51 (phân quyền theo tác vụ: Truy cập · Thêm mới · Sửa · Xóa · Duyệt · Thanh toán · Xem tất cả — dựa trên v50.2)
 
 > Không đổi bảng, SQL, không thêm thư viện. Ma trận dùng chính dữ liệu phân quyền cũ (phân hệ, thao tác, phạm vi, ngoại lệ tài khoản), chỉ thêm 9 quyền mới; cấu hình cũ giữ nguyên.
 

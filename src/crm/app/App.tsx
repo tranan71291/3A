@@ -9,7 +9,7 @@ import { periodRange } from '../components/filters';
 import { Skeleton } from '../components/ui';
 import { fundUsage, scoreLead, shipmentAllocation } from '../lib/business';
 import { canon, cloudMessage, statsOf } from '../lib/cloud';
-import { addDaysISO, AVATARS, bizMode, blockersOf, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, fmtN, fold, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MAIN_WH, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, nextVoucherCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, saleIssQ, saleIssued, saleLineNet, salePaid, saleResOf, saleRetQ, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, WF_POLICY, wfAmountOf, wfFormVals, wfNeeds, wfReasons, znsPhone } from '../lib/core';
+import { addDaysISO, AVATARS, bizMode, blockersOf, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, fmtN, fold, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MAIN_WH, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, nextVoucherCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, salePaid, saleResOf, saleRetQ, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, WF_POLICY, wfAmountOf, wfFormVals, wfNeeds, wfReasons, znsPhone } from '../lib/core';
 import { buildGetflyPayload, financialsFromOrders, salePendingQ, saleReturned, saleStock, saleTotals } from '../lib/getfly';
 import { LoginScreen, orgDefaults, pathOrgOf, registerOrgs, regsFromStored, setPathOrg } from '../lib/modules';
 import { initialNotices } from '../lib/notify';
@@ -1007,10 +1007,41 @@ export default function DashboardApp() {
     postCash(saleCash(o, p));
     notify(`Đã xác nhận ${vnd(p.amount)} của ${o.code}, tự sinh phiếu thu quỹ`, 'teal');
   };
+  const saleCashMulti: AppCtx['saleCashMulti'] = (allocs, method, extra) => {
+    if (!canAct('cash.manage') && !canAct('receipt.confirm')) { notify('Chỉ Kế toán lập phiếu thu / chi cho đơn', 'red'); return false; }
+    const ls = allocs.map((a) => ({ o: salesOrders.find((x) => x.id === a.id), amount: Math.round(a.amount) })).filter((x): x is { o: SalesOrder; amount: number } => !!x.o && x.amount > 0);
+    if (!ls.length) return false;
+    const refund = !!extra.refund;
+    const now = Date.now();
+    const ps = ls.map((x) => ({ oid: x.o.id, p: { id: uid('sp'), amount: (refund ? -1 : 1) * x.amount, method, at: now, by: me?.id, confirmed: true, confirmedBy: me?.id, confirmedAt: now, date: extra.date, payer: extra.payer, note: extra.note, refund: refund || undefined } as SalePayment }));
+    setSalesOrders((all) => all.map((o) => { const hit = ps.filter((y) => y.oid === o.id); return hit.length ? { ...o, payments: [...o.payments, ...hit.map((y) => y.p)] } : o; }));
+    const total = ls.reduce((s, x) => s + x.amount, 0);
+    const codes = ls.map((x) => x.o.code).join(', ');
+    postCash({ kind: refund ? 'OUT' : 'IN', account: method, category: refund ? 'Hoàn tiền bán hàng' : 'Thu tiền bán hàng', amount: total, partner: extra.payer || ls[0].o.customer, ref: codes,
+      note: extra.note || `${refund ? 'Hoàn tiền' : 'Thu tiền'} đơn hàng ${codes}`, date: extra.date, source: 'SALE', sourceId: `grp-${ps[0].p.id}`, payIds: ps.map((y) => y.p.id), saleId: ls.length === 1 ? ls[0].o.id : undefined, files: extra.files, sub: refund ? 'REFUND' : 'CUSTOMER' });
+    if (me) writeAudit(refund ? 'SALE_REFUND' : 'SALE_PAY', `${refund ? 'Hoàn' : 'Thu'} ${fmtN(total)} cho ${codes}`, 'INFO', realUserId ?? me.id);
+    return true;
+  };
+  const requestSaleReturn = (id: string) => {
+    const o = salesOrders.find((x) => x.id === id);
+    if (!o) return false;
+    if (stockVouchers.some((v) => v.saleId === o.id && v.type === 'IN' && v.status === 'PENDING')) { notify(`${o.code} đã có phiếu nhập trả chờ kho duyệt`, 'orange'); return false; }
+    const ls = o.lines.filter((l) => l.kind === 'SKU' && l.ref).map((l) => ({ l, q: saleIssQ(o, l) - saleRetQ(o, l) })).filter((x) => x.q > 0);
+    if (!ls.length) { notify(`${o.code} không còn hàng phải nhập trả`, 'orange'); return false; }
+    const v: StockVoucher = { id: uid('sv'), code: nextVoucherCode('IN', stockVouchers), type: 'IN', status: 'PENDING', date: todayISO(), whId: o.whId, reason: 'Khách trả hàng', partner: o.customer, ref: o.code,
+      note: `Hàng bán trả lại đơn ${o.code}`, saleId: o.id, lines: ls.map((x) => ({ sku: x.l.ref!, qty: x.q, req: x.q, price: skus.find((k) => k.sku === x.l.ref)?.costPrice ?? 0, lineId: x.l.id })), requestedBy: me?.id, createdAt: Date.now() };
+    setStockVouchers((p) => [v, ...p]);
+    const amount = v.lines.reduce((s, l) => s + l.qty * (l.price ?? 0), 0);
+    const who = wfFirstApprovers('VOUCHER', { requesterId: me?.id, whId: v.whId, amount, vals: { amount } });
+    tellApprovers(who, `Phiếu nhập trả chờ duyệt: ${v.code}`, `Đơn bán ${o.code}, ${o.customer}, ${v.lines.length} dòng`);
+    if (me) writeAudit('SALE_RETURN_REQ', `Lập ${v.code} nhập trả hàng đơn ${o.code}`, 'INFO', realUserId ?? me.id);
+    notify(`Đã lập ${v.code}, chờ kho duyệt nhập trả`, 'teal');
+    return true;
+  };
   const setSaleStatus = (id: string, status: SaleStatus, reason?: string) => {
     const o = salesOrders.find((x) => x.id === id);
     if (!o) return;
-    if (status === 'CANCELLED' && o.status !== 'PENDING') return notify('Đơn đã xuất kho: lập phiếu nhập trả hàng ở Kho thay vì hủy', 'red');
+    if (status === 'CANCELLED' && !saleGoodsBack(o)) return notify('Đơn còn hàng đã xuất: nhập trả đủ hàng trước khi hủy', 'red');
     if (status === 'DONE' && o.status !== 'SHIPPING') return;
     setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, status, doneAt: status === 'DONE' ? Date.now() : x.doneAt, cancelReason: status === 'CANCELLED' ? reason : x.cancelReason, cancelledAt: status === 'CANCELLED' ? Date.now() : x.cancelledAt } : x)));
     if (me) writeAudit(status === 'CANCELLED' ? 'SALE_CANCEL' : 'SALE_DONE', `${status === 'CANCELLED' ? 'Hủy' : 'Hoàn thành'} đơn bán ${o.code}${reason ? `: ${reason}` : ''}`, status === 'CANCELLED' ? 'WARN' : 'INFO', realUserId ?? me.id);
@@ -1997,7 +2028,7 @@ export default function DashboardApp() {
     userName, dept, routableDepts, routeLeads, acceptLead,
     getflyOrders, setGetflyOrders, getfly, setGetfly, getflyLogs, addGetflyLog, winLead, winDraftQuote, syncLeadToGetfly, recomputeLinked,
     wfAll, setWfDefs, wfRuns, setWfRuns, wfPolicy, setWfPolicy, wfDelegations, setWfDelegations, wfCtx, wfDef, wfDecide, wfSubmit, wfFinishRequest, openRequest: (id) => { setReqOpen(id); setPage('tasks'); }, reqOpen, setReqOpen, approveVoucher, wfFirstApprovers,
-    salesOrders, setSalesOrders, saveSale, issueSale, requestSaleIssue, approveSaleVoucher, approveSaleReturn, saleVoucherUndo, requestSaleInvoice, decideSaleInvoice, completeSale, splitSale, purchaseForSale, addSalePayment, confirmSalePayment, setSaleStatus, openSale, setOpenSale,
+    salesOrders, setSalesOrders, saveSale, issueSale, requestSaleIssue, approveSaleVoucher, approveSaleReturn, saleVoucherUndo, requestSaleInvoice, decideSaleInvoice, completeSale, splitSale, purchaseForSale, addSalePayment, confirmSalePayment, saleCashMulti, requestSaleReturn, setSaleStatus, openSale, setOpenSale,
     assignLead, submitQuote, markLost,
     notices: myNotices,
     markNoticeRead: (id) => setNotices((p) => p.map((n) => (!id || n.id === id ? { ...n, read: true } : n))),

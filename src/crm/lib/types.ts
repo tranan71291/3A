@@ -747,7 +747,14 @@ export type CashEntry = {
   partner?: string; jobId?: string; ref?: string; note?: string; by?: string; at: number;
   /** Phiếu tự sinh: nguồn nghiệp vụ và mã bản ghi gốc (chống sinh trùng) */
   source?: CashSource; sourceId?: string; claimId?: string;
+  /** v51.2: phiếu đảo của phiếu nào; các khoản thu / hoàn tiền trên đơn mà phiếu này gộp; đơn bán chịu chi phí; hóa đơn đầu vào; chứng từ kèm; loại thu / chi */
+  reverses?: string; payIds?: string[]; saleId?: string; invNo?: string; vatRate?: number; files?: CashFile[]; sub?: CashSub;
 };
+
+export type CashFile = { name: string; url: string };
+
+/** Loại phiếu: thu tiền khách / thu khác; chi phí / trả NCC / tạm ứng / hoàn tiền khách */
+export type CashSub = 'CUSTOMER' | 'OTHER' | 'COST' | 'VENDOR' | 'ADVANCE' | 'REFUND';
 
 /** Hoa hồng đã quyết toán của 1 đơn (chỉ khi kế toán đã xác nhận thu đủ 100%) */
 export type JobCommission = { paidAt: number; by: string; base: number; lines: { userId: string; role: 'SALES' | 'INSTALL'; amount: number }[] };
@@ -1133,6 +1140,10 @@ export type AppCtx = {
   /** Ghi nhận tiền khách trả; kế toán xác nhận mới vào sổ quỹ */
   addSalePayment: (id: string, amount: number, method: 'CASH' | 'BANK', given?: SalesOrder, extra?: SalePayExtra) => void;
   confirmSalePayment: (id: string, payId: string) => void;
+  /** v51.2: một phiếu quỹ thu / hoàn tiền cho nhiều đơn (kế toán lập ở Thu chi) */
+  saleCashMulti: (allocs: { id: string; amount: number }[], method: 'CASH' | 'BANK', extra: SalePayExtra & { files?: CashFile[] }) => boolean;
+  /** v51.2: lập phiếu nhập trả (chờ kho duyệt) cho phần hàng đã xuất của đơn */
+  requestSaleReturn: (id: string) => boolean;
   setSaleStatus: (id: string, status: SaleStatus, reason?: string) => void;
   /** Bán hàng › mở đơn (từ báo giá / khách hàng) */
   openSale: string | null;
