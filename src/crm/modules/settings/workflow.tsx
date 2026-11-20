@@ -22,7 +22,7 @@ export function useWfPending() {
       case 'PROGRAM': return a.programs.filter((p) => p.status === 'PENDING_INTERNAL').length;
       case 'CLAIM': return a.claims.filter((c) => (!c.submitted && c.proofs.some((x) => x.verification === 'PENDING')) || (c.submitted && !c.vatCheck && !!c.invoice)).length;
       case 'VOUCHER': return a.stockVouchers.filter((v) => v.status === 'PENDING').length + a.salesOrders.filter((o) => o.status === 'PENDING' && !!o.issueRequest).length;
-      case 'SALE': return a.salesOrders.filter((o) => o.approval?.status === 'PENDING' && o.status !== 'CANCELLED').length;
+      case 'SALE': return a.salesOrders.filter((o) => o.approval?.status === 'PENDING' && !o.approval.self && o.status !== 'CANCELLED').length;
       case 'SALE_PAY': return a.salesOrders.reduce((s, o) => s + o.payments.filter((p) => !p.confirmed).length, 0);
       case 'CONTENT': return a.contents.filter((c) => c.status === 'REVIEW').length;
       case 'JOB_QUOTE': return a.jobs.filter((j) => j.quotes[j.quotes.length - 1]?.approval?.status === 'PENDING').length;

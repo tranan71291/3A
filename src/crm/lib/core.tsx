@@ -298,6 +298,7 @@ export const ACTION_LABEL: Record<Action, string> = {
   'mkt.manage': 'Marketing Hub: chiến dịch, nội dung, phân khúc, kịch bản tự động',
   'stock.manage': 'Lập phiếu nhập / xuất / kiểm kê kho vật tư',
   'cash.manage': 'Lập phiếu thu / chi, chuyển quỹ',
+  'sale.manage': 'Bán hàng: sửa, hủy, xóa đơn của người khác, hủy phiếu thu của đơn',
 };
 
 export const SOURCE_LABEL: Record<Source, string> = {
@@ -741,6 +742,7 @@ export const INITIAL_PERMS: Perms = {
     'priceList.manage': ['BOD', 'DEPT_HEAD'],
     'stock.manage': ['BOD', 'DEPT_HEAD', 'ACCOUNTANT'],
     'cash.manage': ['BOD', 'ACCOUNTANT'],
+    'sale.manage': ['BOD', 'DEPT_HEAD'],
   },
 };
 
@@ -2897,7 +2899,7 @@ export const ACTION_MODULE: Record<Action, Module> = {
   'settings.edit': 'settings', 'data.backup': 'settings', 'security.manage': 'settings',
   'po.manage': 'supply', 'stock.deliver': 'supply', 'stock.release': 'supply', 'price.viewCost': 'products', 'stock.voucher': 'warehouse', 'stock.approve': 'warehouse',
   'activity.approve': 'staff', 'production.manage': 'production', 'install.manage': 'install', 'job.manage': 'jobs', 'receipt.confirm': 'jobs', 'priceList.manage': 'jobs',
-  'stock.manage': 'inventory', 'cash.manage': 'cashbook', 'feed.moderate': 'home', 'feed.poll': 'home', 'zalo.reply': 'zalo', 'zalo.assign': 'zalo', 'mkt.manage': 'marketing',
+  'stock.manage': 'inventory', 'cash.manage': 'cashbook', 'sale.manage': 'sales', 'feed.moderate': 'home', 'feed.poll': 'home', 'zalo.reply': 'zalo', 'zalo.assign': 'zalo', 'mkt.manage': 'marketing',
 };
 
 export const LOCKED = (r: Role, m?: Module, a?: Action) => r === 'BOD' && (m === 'settings' || a === 'settings.edit');

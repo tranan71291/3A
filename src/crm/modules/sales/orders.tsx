@@ -1,12 +1,14 @@
 'use client';
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Banknote, Building2, CalendarDays, Check as CheckIcon, ChevronDown, ChevronLeft, ChevronRight, Coins, Columns3, Download, FileText, Filter, Lock, MoreVertical, PackageMinus, Plus, Printer, Receipt as ReceiptIcon, Search, Send, Trash2, Truck, Undo2, Users, Wallet, Warehouse, X } from 'lucide-react';
+import { AlertTriangle, Banknote, Building2, CalendarDays, Check as CheckIcon, ChevronDown, ChevronLeft, ChevronRight, Coins, Columns3, Download, Eye, FileText, Filter, Lock, MoreVertical, PackageMinus, Pencil, Plus, Printer, Receipt as ReceiptIcon, Search, Send, Trash2, Truck, Undo2, Users, Wallet, Warehouse, X, XCircle } from 'lucide-react';
+import { removeWithUndo } from '../../app/context';
+import { RowMenu } from '../../components/controls';
 import { Chip, Code, EmptyState, Field, MoneyInput, useSticky } from '../../components/ui';
 import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, compact, DECISION_LABEL, digits, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, MAIN_WH, nextCode, overdueDays, PRICE_TIER, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleDue, saleIssQ, saleIssued, saleLineNet, salePaid, saleRetQ, soGrid, soIco, soTd, soTh, soTime, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { saleHeld, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
-import type { ApprovalDecision, CompanyInfo, Customer, PriceTier, SaleDelivery, SaleFilter, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, WfSubject, WorkOrder } from '../../lib/types';
+import type { ApprovalDecision, CompanyInfo, Customer, PriceTier, SaleDelivery, SaleFilter, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
 import { cn, wfApprovers, wfPath } from '../../lib/utils';
 import { stockOf } from '../../lib/workshop';
 import { SearchBox } from '../alux/orders';
@@ -156,7 +158,8 @@ export function soSteps(o: SalesOrder, stage: SaleStage, vs: StockVoucher[], use
   const invAmt = invDone.reduce((s, r) => s + r.amount, 0);
   if (draft) return [
     { label: 'Tạo đơn', at: 'đang soạn', sub: nm(o.by), state: 'now' },
-    { label: 'Duyệt đơn', chip: draft.needs ? <Chip tone="orange">cần duyệt</Chip> : undefined, sub: draft.needs ? draft.reasons.join('; ') : 'tự duyệt', state: 'todo' },
+    { label: 'Duyệt đơn', chip: draft.needs ? <Chip tone="orange">cần duyệt</Chip> : undefined, sub: draft.needs ? draft.reasons.join('; ') : 'người lên đơn bấm duyệt', state: 'todo' },
+    { label: 'Thu tiền', sub: 'kế toán lập phiếu thu, ghi nhận doanh thu', state: 'todo' },
     { label: 'Yêu cầu xuất kho', state: 'todo' },
     { label: 'Kho xuất', sub: 'một phần hoặc toàn bộ', state: 'todo' },
     { label: 'Hoàn thành', state: 'todo' },
@@ -173,22 +176,61 @@ export function soSteps(o: SalesOrder, stage: SaleStage, vs: StockVoucher[], use
   ];
 }
 
+/** v50: quyền thao tác trên đơn: người lên đơn với đơn của mình; Giám đốc / người có quyền "Bán hàng: sửa, hủy, xóa đơn" với mọi đơn */
+export function useSaleRights() {
+  const { me, canDo, stockVouchers, setStockVouchers, setSalesOrders, setSaleStatus, notify, postCash, users, dispatch } = useApp();
+  const mgr = me?.role === 'BOD' || canDo('sale.manage');
+  const own = (o: SalesOrder) => !!me && o.by === me.id;
+  const issued = (o: SalesOrder) => o.lines.some((l) => saleIssQ(o, l) > 0);
+  const pendOut = (o: SalesOrder) => stockVouchers.filter((v) => v.saleId === o.id && v.type === 'OUT' && v.status === 'PENDING');
+  const decide = (o: SalesOrder, st: ApprovalDecision, note?: string) => setSalesOrders((all) => all.map((x) => (x.id === o.id && x.approval ? { ...x, approval: { ...x.approval, status: st, decidedBy: me?.id, decidedAt: Date.now(), note } } : x)));
+  return {
+    mgr,
+    canEdit: (o: SalesOrder) => o.status === 'PENDING' && !issued(o) && !pendOut(o).length && (own(o) || mgr),
+    canCancel: (o: SalesOrder) => o.status === 'PENDING' && !issued(o) && (own(o) || mgr),
+    canDelete: (o: SalesOrder) => o.status === 'CANCELLED' && mgr && !o.payments.length,
+    canSelf: (o: SalesOrder) => !!o.approval?.self && o.approval.status === 'PENDING' && o.status === 'PENDING' && (own(o) || mgr),
+    canVoidPay: () => mgr || canDo('cash.manage'),
+    selfApprove: (o: SalesOrder) => { decide(o, 'APPROVED'); notify(`Đã duyệt ${o.code}. Bấm Yêu cầu xuất kho khi cần giao hàng`, 'teal'); },
+    selfReject: (o: SalesOrder, note: string) => { decide(o, 'REJECTED', note); setSaleStatus(o.id, 'CANCELLED', `Không duyệt: ${note}`); },
+    cancelOrder: (o: SalesOrder, why: string) => {
+      const ps = pendOut(o);
+      if (ps.length) setStockVouchers((all) => all.map((v) => (ps.some((p) => p.id === v.id) ? { ...v, status: 'CANCELLED' as VoucherStatus, cancelledBy: me?.id, cancelReason: `Hủy đơn ${o.code}: ${why}` } : v)));
+      setSaleStatus(o.id, 'CANCELLED', why);
+      const u = users.find((x) => x.id === o.by);
+      if (u && u.id !== me?.id) dispatch('APPROVAL_RESULT', { to: u, title: `Đơn ${o.code} đã hủy`, body: why, module: 'sales' });
+    },
+    remove: (o: SalesOrder) => removeWithUndo(setSalesOrders, o, notify, `Đã xóa đơn ${o.code}`),
+    /** Hủy phiếu thu: bỏ khỏi đơn; phiếu đã vào quỹ thì sinh phiếu đảo (giữ lịch sử sổ quỹ) */
+    voidPay: (o: SalesOrder, p: SalePayment, code?: string) => {
+      setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, payments: x.payments.filter((y) => y.id !== p.id) } : x)));
+      if (p.confirmed) postCash({ kind: p.refund ? 'IN' : 'OUT', account: p.method === 'CASH' ? 'CASH' : 'BANK', category: p.refund ? 'Hủy phiếu hoàn tiền bán hàng' : 'Hủy phiếu thu bán hàng', amount: Math.abs(p.amount), partner: o.customer, ref: o.code, note: `Hủy ${code ?? 'phiếu thu'} của đơn ${o.code}`, source: 'SALE', sourceId: `${p.id}-void` });
+      notify(`Đã hủy ${code ?? 'phiếu thu'} của ${o.code}${p.confirmed ? ', đã sinh phiếu đảo trong sổ quỹ' : ''}`, 'orange');
+    },
+  };
+}
+
 export function SalesModule() {
   const ctx = useApp();
   const { salesOrders, openSale, setOpenSale, canDo } = ctx;
   const [mode, setMode] = useState<'list' | 'new'>('list');
   const [sub, setSub] = useState<{ kind: 'approve' | 'pay'; id: string } | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [cancelId, setCancelId] = useState<string | null>(null);
   const open = openSale ? salesOrders.find((o) => o.id === openSale) : undefined;
   useEffect(() => { window.scrollTo({ top: 0 }); }, [openSale, sub, mode]);
+  const editO = editId ? salesOrders.find((o) => o.id === editId) : undefined;
+  if (editO) return <SaleForm key={editO.id} edit={editO} onDone={(id) => { setEditId(null); if (id) setOpenSale(id); }} />;
   if (open && sub?.id === open.id) return sub.kind === 'approve'
     ? <SaleApprove o={open} onBack={() => setSub(null)} onGo={(id) => { setOpenSale(id); setSub({ kind: 'approve', id }); }} />
     : <SalePayPage o={open} onBack={() => setSub(null)} />;
-  if (open) return <SaleDetail o={open} onBack={() => setOpenSale(null)} onApprove={() => setSub({ kind: 'approve', id: open.id })} onPay={() => setSub({ kind: 'pay', id: open.id })} />;
+  if (open) return <SaleDetail key={`${open.id}${cancelId === open.id ? '-c' : ''}`} o={open} onBack={() => { setCancelId(null); setOpenSale(null); }} onApprove={() => setSub({ kind: 'approve', id: open.id })} onPay={() => setSub({ kind: 'pay', id: open.id })} onEdit={() => setEditId(open.id)} startCancel={cancelId === open.id} />;
   if (mode === 'new') return <SaleForm onDone={(id) => { setMode('list'); if (id) setOpenSale(id); }} />;
-  return <SaleList onNew={canDo('stock.voucher') || canDo('job.manage') ? () => setMode('new') : undefined} />;
+  return <SaleList onNew={canDo('stock.voucher') || canDo('job.manage') ? () => setMode('new') : undefined} onEdit={(id) => setEditId(id)} onCancel={(id) => { setCancelId(id); setOpenSale(id); }} />;
 }
 
-export function SaleList({ onNew }: { onNew?: () => void }) {
+export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEdit: (id: string) => void; onCancel: (id: string) => void }) {
+  const R = useSaleRights();
   const { salesOrders, setOpenSale, users, quotes, warehouses, stockVouchers, customers } = useApp();
   const [tab0, setTab] = useSticky<SaleTab>('Sales.tab50', 'ALL');
   const [per, setPer] = useSticky<SalePer>('Sales.per50', 'M');
@@ -278,17 +320,18 @@ export function SaleList({ onNew }: { onNew?: () => void }) {
     { id: 'deliver', label: 'Ngày giao', group: 'Tiến độ', cell: (o) => (o.deliverAt ? <span className="tabular-nums">{fmtDate(o.deliverAt)}</span> : '—') },
     { id: 'gross', label: 'Doanh số', group: 'Tiền', def: true, right: true, sum: (o) => saleTotals(o).net, cell: (o) => money(saleTotals(o).net) },
     { id: 'vat', label: 'VAT', group: 'Tiền', def: true, right: true, sum: (o) => saleTotals(o).vat, cell: (o) => money(saleTotals(o).vat) },
-    { id: 'grand', label: 'Doanh thu', group: 'Tiền', def: true, right: true, sum: (o) => saleTotals(o).grand, cell: (o) => <span className="font-medium tabular-nums">{fmtN(saleTotals(o).grand)}</span> },
+    { id: 'grand', label: 'Tổng đơn', group: 'Tiền', def: true, right: true, sum: (o) => saleTotals(o).grand, cell: (o) => <span className="font-medium tabular-nums">{fmtN(saleTotals(o).grand)}</span> },
     { id: 'disc', label: 'Chiết khấu', group: 'Tiền', right: true, sum: (o) => saleTotals(o).discount, cell: (o) => money(saleTotals(o).discount) },
     { id: 'ret', label: 'Hàng trả lại', group: 'Tiền', right: true, sum: (o) => saleReturned(o), cell: (o) => (saleReturned(o) ? money(saleReturned(o)) : '—') },
-    { id: 'paid', label: 'Đã thanh toán', group: 'Tiền', def: true, right: true, sum: (o) => salePaid(o), cell: (o) => money(salePaid(o)) },
+    { id: 'paid', label: 'Doanh thu', group: 'Tiền', def: true, right: true, sum: (o) => salePaid(o), cell: (o) => money(salePaid(o)) },
+    { id: 'wait', label: 'Chờ kế toán thu', group: 'Tiền', right: true, sum: (o) => salePaid(o, true) - salePaid(o), cell: (o) => (salePaid(o, true) - salePaid(o) ? money(salePaid(o, true) - salePaid(o)) : '—') },
     { id: 'left', label: 'Còn lại', group: 'Tiền', def: true, right: true, sum: (o) => Math.max(0, leftOf(o)), cell: (o) => money(Math.max(0, leftOf(o)), leftOf(o) > 0) },
     { id: 'dueAt', label: 'Hạn thanh toán', group: 'Tiền', cell: (o) => (o.creditDays && o.issuedAt ? <span className={cn('tabular-nums', overdueOf(o) && 'text-[rgb(var(--danger-fg))]')}>{fmtDate(saleDue(o))}</span> : '—') },
     { id: 'inv', label: 'Hóa đơn thuế', group: 'Tiến độ', def: true, cell: (o) => { const s = invOf(o); return s === 'NO' ? <span className="text-[rgb(var(--muted))]">Không lấy</span> : s === 'DONE' ? <span className="flex gap-1">{(o.invReqs ?? []).filter((r) => r.status === 'DONE').map((r) => <Code key={r.id}>{r.no}</Code>)}</span> : s === 'WAIT' ? <Chip tone="orange">Chờ xuất</Chip> : '—'; } },
   ];
   const DEF = COLS.filter((c) => c.def || c.lock).map((c) => c.id);
   const on = cols.length ? cols : DEF;
-  const ORDER = ['date', 'code', 'cust', 'status', 'origin', 'by', 'wh', 'issue', 'deliver', 'gross', 'disc', 'vat', 'grand', 'paid', 'left', 'ret', 'dueAt', 'note', 'inv'];
+  const ORDER = ['date', 'code', 'cust', 'status', 'origin', 'by', 'wh', 'issue', 'deliver', 'gross', 'disc', 'vat', 'grand', 'paid', 'wait', 'left', 'ret', 'dueAt', 'note', 'inv'];
   const vis = ORDER.map((id) => COLS.find((c) => c.id === id)!).filter((c) => c.lock || on.includes(c.id));
   const sumOf = (fn: (o: SalesOrder) => number) => rows.filter((o) => o.status !== 'CANCELLED').reduce((s, o) => s + fn(o), 0);
   const firstSum = vis.findIndex((c) => !!c.sum);
@@ -416,19 +459,22 @@ export function SaleList({ onNew }: { onNew?: () => void }) {
               <thead><tr className="border-b border-[rgb(var(--line))]">
                 <th className={cn(soTh, 'w-10 pl-5')}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={allOn} onChange={() => setPicked(allOn ? picked.filter((id) => !view.some((o) => o.id === id)) : Array.from(new Set([...picked, ...view.map((o) => o.id)])))} aria-label="Chọn cả trang" /></th>
                 <th className={cn(soTh, 'w-8')}>#</th>
-                {vis.map((c) => <th key={c.id} className={cn(soTh, c.right && 'text-right', c.id === vis[vis.length - 1].id && 'pr-5')}>{c.label}</th>)}
+                {vis.map((c) => <th key={c.id} className={cn(soTh, c.right && 'text-right')}>{c.label}</th>)}
+                <th className={cn(soTh, 'w-12 pr-5')}><span className="sr-only">Thao tác</span></th>
               </tr></thead>
               <tbody>
                 {view.map((o, i) => { const pk = picked.includes(o.id); return (
                   <tr key={o.id} className={cn('cursor-pointer border-b border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--ink)/0.03)]', pk && 'bg-[rgb(var(--accent)/0.05)] shadow-[inset_3px_0_0_rgb(var(--accent))]')} onClick={() => setOpenSale(o.id)}>
                     <td className={cn(soTd, 'pl-5')} onClick={(e) => e.stopPropagation()}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={pk} onChange={() => setPicked((p) => (p.includes(o.id) ? p.filter((x) => x !== o.id) : [...p, o.id]))} aria-label={`Chọn ${o.code}`} /></td>
                     <td className={cn(soTd, 'tabular-nums text-[rgb(var(--muted))]')}>{pg * size + i + 1}</td>
-                    {vis.map((c) => <td key={c.id} className={cn(soTd, c.right && 'text-right', c.id === vis[vis.length - 1].id && 'pr-5')}>{c.cell(o)}</td>)}
+                    {vis.map((c) => <td key={c.id} className={cn(soTd, c.right && 'text-right')}>{c.cell(o)}</td>)}
+                    <td className={cn(soTd, 'pr-5')} onClick={(e) => e.stopPropagation()}><RowMenu items={[{ label: 'Xem chi tiết', icon: Eye, onClick: () => setOpenSale(o.id) }, { label: 'Sửa đơn', icon: Pencil, disabled: !R.canEdit(o), onClick: () => onEdit(o.id) }, { label: 'Hủy đơn', icon: XCircle, disabled: !R.canCancel(o), onClick: () => onCancel(o.id) }, ...(R.canDelete(o) ? [{ label: 'Xóa đơn', icon: Trash2, danger: true, onClick: () => R.remove(o) }] : [])]} /></td>
                   </tr>
                 ); })}
                 <tr className="bg-[rgb(var(--ink)/0.03)] font-medium">
                   <td className={cn(soTd, 'pl-5')} colSpan={2 + Math.max(0, firstSum)}>Tổng {rows.length} đơn <span className="font-normal text-[rgb(var(--muted))]">· theo bộ lọc</span></td>
                   {firstSum >= 0 && vis.slice(firstSum).map((c) => <td key={c.id} className={cn(soTd, 'text-right tabular-nums', c.id === 'left' && 'text-[rgb(var(--accent-fg))]')}>{c.sum ? fmtN(sumOf(c.sum)) : ''}</td>)}
+                  <td />
                 </tr>
               </tbody>
             </table>
@@ -439,34 +485,32 @@ export function SaleList({ onNew }: { onNew?: () => void }) {
   );
 }
 
-export function SaleForm({ onDone }: { onDone: (id?: string) => void }) {
-  const { skus, stockItems, stockMoves, priceItems, warehouses, customers, salesOrders, reservations, saveSale, completeSale, me, notify, company, workOrders, setWorkOrders, mfgConfig } = useApp();
+export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit?: SalesOrder }) {
+  const { skus, stockItems, stockMoves, priceItems, warehouses, customers, salesOrders, reservations, saveSale, me, notify, company, workOrders, setWorkOrders, mfgConfig } = useApp();
   const mfg = bizMode(company) === 'MFG';
   const main = warehouses.find((w) => w.main)?.id ?? MAIN_WH;
-  const [lines, setLines] = useState<SaleLine[]>([]);
+  const [lines, setLines] = useState<SaleLine[]>(edit?.lines ?? []);
   const [find, setFind] = useState('');
   const [custQ, setCustQ] = useState('');
-  const [custId, setCustId] = useState<string | undefined>(undefined);
-  const [walkName, setWalkName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
+  const [custId, setCustId] = useState<string | undefined>(edit?.customerId);
+  const [walkName, setWalkName] = useState(edit && !edit.customerId ? edit.customer : '');
+  const [phone, setPhone] = useState(edit?.phone ?? '');
+  const [address, setAddress] = useState(edit?.address ?? '');
   const [tier, setTier] = useState<PriceTier>('BASE');
-  const [pay, setPay] = useState<SalePay>('CASH');
-  const [paidNow, setPaidNow] = useState(0);
-  const [creditDays, setCreditDays] = useState(30);
-  const [delivery, setDelivery] = useState<SaleDelivery>('PICKUP');
-  const [whId, setWhId] = useState(main);
-  const [deliverAt, setDeliverAt] = useState(todayISO());
-  const [invoice, setInvoice] = useState(false);
-  const [issueNow, setIssueNow] = useState(true);
-  const [shipFee, setShipFee] = useState(0);
-  const [note, setNote] = useState('');
-  const { users, wfDef, openCustomerForm } = useApp();
-  const [code, setCode] = useState('');
-  const [origin, setOrigin] = useState('Tại quầy');
-  const [docRef, setDocRef] = useState('');
-  const [receiver, setReceiver] = useState('');
-  const [byId, setById] = useState(me?.id ?? '');
+  const [pay, setPay] = useState<SalePay>(edit ? (edit.pay === 'PARTIAL' ? 'CREDIT' : edit.pay) : 'CASH');
+  const [creditDays, setCreditDays] = useState(edit?.creditDays || 30);
+  const [delivery, setDelivery] = useState<SaleDelivery>(edit?.delivery ?? 'PICKUP');
+  const [whId, setWhId] = useState(edit?.whId ?? main);
+  const [deliverAt, setDeliverAt] = useState(edit?.deliverAt ?? todayISO());
+  const [invoice, setInvoice] = useState(edit?.invoice ?? false);
+  const [shipFee, setShipFee] = useState(edit?.shipFee ?? 0);
+  const [note, setNote] = useState(edit?.note ?? '');
+  const { users, wfDef, openCustomerForm, wfFirstApprovers, dispatch } = useApp();
+  const [code, setCode] = useState(edit?.code ?? '');
+  const [origin, setOrigin] = useState(edit ? edit.origin ?? (edit.source === 'QUOTE' ? 'Từ báo giá' : 'Tại quầy') : 'Tại quầy');
+  const [docRef, setDocRef] = useState(edit?.docRef ?? '');
+  const [receiver, setReceiver] = useState(edit?.receiver ?? '');
+  const [byId, setById] = useState(edit?.by ?? me?.id ?? '');
   const [custOpen, setCustOpen] = useState(false);
   const cust = customers.find((c) => c.id === custId);
   const draft: SalesOrder = { id: 'new', code: '', createdAt: 0, date: todayISO(), source: 'COUNTER', customerId: custId, customer: cust?.name ?? walkName, lines, pay, creditDays, payments: [], delivery, whId, invoice, status: 'PENDING', shipFee };
@@ -515,18 +559,21 @@ export function SaleForm({ onDone }: { onDone: (id?: string) => void }) {
   if (lines.some((l) => !l.name.trim())) errs.push('Dòng hàng chưa có tên');
   if (!name) errs.push('Chọn khách trong CRM hoặc nhập tên khách lẻ');
   if (pay === 'CREDIT' && !cust) errs.push('Khách lẻ không ghi công nợ: chọn khách trong CRM');
-  if (pay === 'PARTIAL' && !(paidNow > 0 && paidNow < t.grand)) errs.push('Nhập số tiền khách trả trước (nhỏ hơn tổng)');
   if (delivery !== 'PICKUP' && !address.trim()) errs.push('Nhập địa chỉ giao hàng');
-  if (code.trim() && salesOrders.some((x) => x.code === code.trim())) errs.push(`Mã đơn ${code.trim()} đã có`);
+  if (code.trim() && salesOrders.some((x) => x.code === code.trim() && x.id !== edit?.id)) errs.push(`Mã đơn ${code.trim()} đã có`);
   const short = stock.filter((x) => x.short > 0);
-  const finish = (complete: boolean) => {
+  const finish = () => {
     if (errs.length) return notify(errs[0], 'red');
     const base = { date: todayISO(), source: 'COUNTER' as const, customerId: cust?.id, customer: name, phone: phone.trim() || undefined, taxCode: cust?.taxCode || undefined, address: address.trim() || undefined,
       lines, pay, creditDays: pay === 'CREDIT' || pay === 'PARTIAL' ? creditDays : 0, payments: [], delivery, whId, deliverAt: delivery === 'PICKUP' ? undefined : deliverAt, invoice, shipFee: shipFee || undefined, note: note.trim() || undefined, status: 'PENDING' as SaleStatus, by: byId || me?.id,
       origin: origin.trim() || undefined, docRef: docRef.trim() || undefined, receiver: receiver.trim() || undefined, ...(code.trim() ? { code: code.trim() } : {}) };
-    let rec = saveSale(base);
+    const now0 = Date.now();
+    const approval: SalesOrder['approval'] = needs ? { status: 'PENDING', reasons, requestedAt: now0, requestedBy: me?.id } : { status: 'PENDING', reasons: ['Người lên đơn tự duyệt'], requestedAt: now0, requestedBy: me?.id, self: true };
+    let rec = edit ? saveSale({ ...edit, ...base, source: edit.source, date: edit.date, payments: edit.payments, code: edit.code, approval }) : saveSale({ ...base, approval });
+    const who = needs ? wfFirstApprovers('SALE', ws).filter((u) => u.id !== me?.id) : [];
+    who.forEach((u) => dispatch('APPROVAL_RESULT', { to: u, title: `Đơn bán chờ duyệt: ${name}`, body: `${rec.code} · ${fmtN(t.grand)} sau VAT. ${reasons.join('; ')}`, module: 'sales' }));
     const make = lines.filter((l) => l.kind === 'MAKE');
-    if (make.length && me) {
+    if (make.length && me && !edit?.woId) {
       const wo: WorkOrder = {
         id: uid('wo'), code: nextCode(workOrders.map((w) => w.code), `LSX-${new Date().getFullYear()}-`, 4), title: `Đơn bán ${rec.code} (${name})`, customerId: cust?.id, stage: 'WAITING', priority: 'NORMAL',
         startDate: todayISO(), dueDate: addDaysISO(todayISO(), mfgConfig.productionDays || 7), items: make.map((l) => ({ id: uid('wi'), name: l.name, spec: l.note ?? '', unit: l.unit, qty: l.qty, done: 0 })),
@@ -535,15 +582,11 @@ export function SaleForm({ onDone }: { onDone: (id?: string) => void }) {
       setWorkOrders((p) => [wo, ...p]);
       rec = saveSale({ ...rec, woId: wo.id });
     }
-    const id = rec.id;
-    if (complete) {
-      const amt = pay === 'CASH' || pay === 'BANK' ? t.grand : pay === 'PARTIAL' ? paidNow : 0;
-      completeSale(rec, amt > 0 ? { amount: amt, method: pay === 'CASH' ? 'CASH' : 'BANK' } : null, issueNow && !make.length);
-    } else notify(`Đã lưu tạm ${rec.code}, hàng đang được giữ`, 'teal');
-    onDone(id);
+    notify(`Đã ${edit ? 'cập nhật' : 'lưu'} ${rec.code} (ghi nhận doanh số). ${needs ? `Chờ duyệt${who.length ? `: ${who.map((u) => u.name).join(', ')}` : ''}` : 'Bấm Duyệt đơn để xác nhận'}`, 'teal');
+    onDone(rec.id);
   };
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'F9') { e.preventDefault(); finish(true); } };
+    const h = (e: KeyboardEvent) => { if (e.key === 'F9') { e.preventDefault(); finish(); } };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   });
@@ -568,10 +611,9 @@ export function SaleForm({ onDone }: { onDone: (id?: string) => void }) {
   const draftO: SalesOrder = { ...draft, by: byId || me?.id };
   return (
     <div>
-      <SoTop crumb="Quản lý đơn hàng" onCrumb={() => onDone()} title="Tạo đơn hàng" chips={<><Code>{code.trim() || autoCode}</Code><Chip>Nháp</Chip></>}>
-        <button className={btnGhost} onClick={() => onDone()}>Hủy</button>
-        <button className={btnGhost} onClick={() => finish(false)} disabled={!lines.length}><FileText className="h-4 w-4" aria-hidden />Lưu nháp</button>
-        <button className={btnPrimary} onClick={() => finish(true)} title="Phím tắt F9"><Send className="h-4 w-4" aria-hidden />{needs ? 'Gửi duyệt' : 'Lưu đơn'}<kbd className="ml-1 rounded border border-current/40 px-1 font-mono text-[10px] opacity-70">F9</kbd></button>
+      <SoTop crumb="Quản lý đơn hàng" onCrumb={() => onDone(edit?.id)} title={edit ? 'Sửa đơn hàng' : 'Tạo đơn hàng'} chips={<><Code>{code.trim() || autoCode}</Code><Chip>{edit ? 'Sửa xong phải duyệt lại' : 'Mới'}</Chip></>}>
+        <button className={btnGhost} onClick={() => onDone(edit?.id)}>Hủy</button>
+        <button className={btnPrimary} onClick={finish} title="Phím tắt F9"><Send className="h-4 w-4" aria-hidden />{edit ? 'Lưu thay đổi' : needs ? 'Lưu & gửi duyệt' : 'Lưu đơn'}<kbd className="ml-1 rounded border border-current/40 px-1 font-mono text-[10px] opacity-70">F9</kbd></button>
       </SoTop>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
         <div className="min-w-0 space-y-4">
@@ -598,7 +640,7 @@ export function SaleForm({ onDone }: { onDone: (id?: string) => void }) {
                   <button className={soIco} onClick={() => openCustomerForm()} title="Thêm khách hàng mới" aria-label="Thêm khách hàng mới"><Plus className="h-4 w-4" aria-hidden /></button>
                 </div>
               </Field>
-              <Field label="Mã đơn hàng"><input className={cn(inputCls, 'font-mono')} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={autoCode} aria-label="Mã đơn hàng" /></Field>
+              <Field label="Mã đơn hàng"><input className={cn(inputCls, 'font-mono')} value={code} disabled={!!edit} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={autoCode} aria-label="Mã đơn hàng" /></Field>
               <Field label="Nguồn đơn hàng"><input className={inputCls} list="so-origins-f" value={origin} onChange={(e) => setOrigin(e.target.value)} /></Field>
               <Field label="Người thực hiện"><select className={inputCls} value={byId} onChange={(e) => setById(e.target.value)}>{users.filter((u) => u.active || u.id === byId).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
               {!mfg ? <Field label="Kho xuất"><select className={inputCls} value={whId} onChange={(e) => setWhId(e.target.value)}>{warehouses.filter((w) => w.active).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field> : <div />}
@@ -675,18 +717,14 @@ export function SaleForm({ onDone }: { onDone: (id?: string) => void }) {
             <SoFlow steps={soSteps(draftO, 'READY', [], users, { needs, reasons })} />
             <div className="mt-3 space-y-2 border-t border-[rgb(var(--line))] pt-3 text-[13px]">
               <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={invoice} onChange={(e) => setInvoice(e.target.checked)} />Khách lấy hóa đơn thuế</label>
-              <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={issueNow} onChange={(e) => setIssueNow(e.target.checked)} />Gửi yêu cầu xuất kho ngay khi đơn được duyệt</label>
             </div>
           </SoCard>
           <SoCard title="Thanh toán">
             <div className={segBox} role="radiogroup" aria-label="Thanh toán">
-              {([['CASH', 'Tiền mặt'], ['BANK', 'Chuyển khoản'], ['CREDIT', 'Công nợ']] as [SalePay, string][]).map(([p, tx]) => <button key={p} role="radio" aria-checked={p === 'CREDIT' ? credit : pay === p} className={seg(p === 'CREDIT' ? credit : pay === p)} onClick={() => { setPay(p === 'CREDIT' && paidNow > 0 ? 'PARTIAL' : p); }}>{tx}</button>)}
+              {([['CASH', 'Tiền mặt'], ['BANK', 'Chuyển khoản'], ['CREDIT', 'Công nợ']] as [SalePay, string][]).map(([p, tx]) => <button key={p} role="radio" aria-checked={p === 'CREDIT' ? credit : pay === p} className={seg(p === 'CREDIT' ? credit : pay === p)} onClick={() => setPay(p)}>{tx}</button>)}
             </div>
             {credit && (
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <Field label="Hạn trả (ngày)"><input className={inputCls} inputMode="numeric" value={creditDays} onChange={(e) => setCreditDays(digits(e.target.value))} /></Field>
-                <Field label="Khách trả trước"><MoneyInput value={paidNow} onChange={(v) => { setPaidNow(v); setPay(v > 0 ? 'PARTIAL' : 'CREDIT'); }} /></Field>
-              </div>
+              <div className="mt-2"><Field label="Hạn trả (ngày)"><input className={inputCls} inputMode="numeric" value={creditDays} onChange={(e) => setCreditDays(digits(e.target.value))} /></Field></div>
             )}
             {delivery !== 'PICKUP' && <div className="mt-2"><Field label="Phí vận chuyển"><MoneyInput value={shipFee} onChange={setShipFee} /></Field></div>}
             <div className="mt-3 border-t border-[rgb(var(--line))] pt-2">
@@ -695,10 +733,10 @@ export function SaleForm({ onDone }: { onDone: (id?: string) => void }) {
               <SoKv label="Thuế GTGT">{fmtN(t.vat)}</SoKv>
               {t.ship > 0 && <SoKv label="Phí vận chuyển">{fmtN(t.ship)}</SoKv>}
               <SoKv label="Khách phải trả" big>{fmtN(t.grand)}</SoKv>
-              {credit && <SoKv label="Ghi công nợ">{fmtN(t.grand - (pay === 'PARTIAL' ? paidNow : 0))}</SoKv>}
+              <SoKv label="Doanh số ghi nhận">{fmtN(t.net)}</SoKv>
             </div>
           </SoCard>
-          <SoDebt customerId={custId} extra={credit ? t.grand - (pay === 'PARTIAL' ? paidNow : 0) : 0} />
+          <SoDebt customerId={custId} extra={credit ? t.grand : 0} exceptId={edit?.id} />
         </div>
       </div>
     </div>
@@ -776,6 +814,8 @@ export function SalePayPage({ o, onBack }: { o: SalesOrder; onBack: () => void }
   const left = due - paidAll;
   const canCash = canDo('cash.manage') || canDo('receipt.confirm');
   const invDone = (o.invReqs ?? []).filter((r) => r.status === 'DONE');
+  const R = useSaleRights();
+  const [voidId, setVoidId] = useState<string | null>(null);
   const [kind, setKind] = useState<'IN' | 'REFUND'>(left < 0 ? 'REFUND' : 'IN');
   const [date, setDate] = useState(todayISO());
   const [method, setMethod] = useState<'CASH' | 'BANK'>('BANK');
@@ -805,7 +845,7 @@ export function SalePayPage({ o, onBack }: { o: SalesOrder; onBack: () => void }
   const cashCode = (pid: string) => cashEntries.find((e) => e.source === 'SALE' && e.sourceId === pid)?.code;
   return (
     <div>
-      <SoTop crumb={`Quản lý đơn hàng › ${o.code}`} onCrumb={onBack} title={kind === 'IN' ? 'Ghi thu' : 'Hoàn tiền'} chips={<><Code>{code}</Code><Chip>Nháp</Chip></>}>
+      <SoTop crumb={`Quản lý đơn hàng › ${o.code}`} onCrumb={onBack} title={kind === 'REFUND' ? 'Hoàn tiền' : canCash ? 'Lập phiếu thu' : 'Báo đã nhận tiền'} chips={<><Code>{code}</Code><Chip>Nháp</Chip></>}>
         {errs.length > 0 && amt > 0 && <span className="text-[13px] text-[rgb(var(--danger-fg))]">{errs[0]}</span>}
         <button className={btnGhost} onClick={onBack}>Hủy</button>
         <button className={btnGhost} disabled={errs.length > 0} onClick={() => save(true)}><Printer className="h-4 w-4" aria-hidden />Lưu & in phiếu</button>
@@ -853,7 +893,7 @@ export function SalePayPage({ o, onBack }: { o: SalesOrder; onBack: () => void }
                         <td className={cn(soTd, 'text-right font-medium tabular-nums')}>{fmtN(p.amount)}</td>
                         <td className={soTd}>{nm(p.by) || '—'}</td>
                         <td className={soTd}>{nm(p.confirmedBy) || '—'}</td>
-                        <td className={soTd}>{p.confirmed ? <Chip tone="teal">Đã xác nhận</Chip> : canCash ? <button className={cn(btnGhost, btnSm)} onClick={() => confirmSalePayment(o.id, p.id)}>Xác nhận</button> : <Chip tone="orange">Chờ kế toán</Chip>}</td>
+                        <td className={soTd}><span className="flex items-center gap-1.5">{p.confirmed ? <Chip tone="teal">Đã xác nhận</Chip> : canCash ? <button className={cn(btnGhost, btnSm)} onClick={() => confirmSalePayment(o.id, p.id)}>Xác nhận</button> : <Chip tone="orange">Chờ kế toán</Chip>}{(R.canVoidPay() || (!p.confirmed && p.by === me?.id)) && (voidId === p.id ? <><button className={cn(btnGhost, btnSm, 'text-[rgb(var(--danger-fg))]')} onClick={() => { R.voidPay(o, p, cashCode(p.id)); setVoidId(null); }}>Xác nhận hủy</button><button className={cn(btnGhost, btnSm)} onClick={() => setVoidId(null)}>Thôi</button></> : <button className={cn(btnGhost, btnSm)} onClick={() => setVoidId(p.id)}>Hủy</button>)}</span></td>
                         <td className={cn(soTd, 'pr-5')}><button className="rounded p-1 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => printHtml(docShell(`${p.refund ? 'Phiếu chi' : 'Phiếu thu'} ${o.code}`, soReceiptHtml(o, p, cashCode(p.id) ?? o.code, company, nm(p.by))))} aria-label="In phiếu" title="In phiếu"><Printer className="h-4 w-4" aria-hidden /></button></td>
                       </tr>
                     ))}
@@ -873,7 +913,7 @@ export function SalePayPage({ o, onBack }: { o: SalesOrder; onBack: () => void }
               <SoKv label="Tổng sau VAT">{fmtN(t.grand)}</SoKv>
               {ret > 0 && <SoKv label="Hàng trả lại">−{fmtN(ret)}</SoKv>}
               <SoKv label="Thực tế phải thu" big>{fmtN(due)}</SoKv>
-              <SoKv label="Đã thu">{fmtN(paidAll)}</SoKv>
+              <SoKv label="Đã thu / báo nhận">{fmtN(paidAll)}</SoKv>
               <SoKv label="Phiếu này">{kind === 'IN' ? fmtN(amt) : `−${fmtN(amt)}`}</SoKv>
               <SoKv label="Còn lại sau phiếu" tone={due - after > 0 ? 'warn' : undefined}>{fmtN(due - after)}</SoKv>
             </div>
@@ -882,8 +922,8 @@ export function SalePayPage({ o, onBack }: { o: SalesOrder; onBack: () => void }
           <SoCard title="Quy trình thu">
             <SoFlow steps={[
               { label: 'Lập phiếu', at: 'đang soạn', sub: me?.name, state: 'now' },
-              { label: 'Kế toán xác nhận', sub: canCash ? 'tự xác nhận khi lưu' : 'đối chiếu sổ quỹ / sao kê', state: 'todo' },
-              { label: 'Vào công nợ', sub: 'giảm phải thu đơn và công nợ khách', state: 'todo' },
+              { label: 'Kế toán xác nhận', sub: canCash ? 'bạn là kế toán: xác nhận khi lưu' : 'đối chiếu sổ quỹ / sao kê', state: 'todo' },
+              { label: 'Ghi nhận doanh thu', sub: 'giảm phải thu đơn và công nợ khách', state: 'todo' },
             ]} />
           </SoCard>
           <SoDebt customerId={o.customerId} exceptId={o.id} />
@@ -902,6 +942,9 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
   const queue = todo.filter((x) => x.kind === 'SALE');
   const item = queue.find((x) => x.key === `so-${o.id}`);
   const idx = item ? queue.indexOf(item) : -1;
+  const R = useSaleRights();
+  const self = !item && R.canSelf(o);
+  const can = !!item || self;
   const [seen, setSeen] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const noteRef = useRef<HTMLTextAreaElement>(null);
@@ -927,7 +970,7 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
   const lineGm = priced.map((l) => ({ l, m: ((saleLineNet(l) / l.qty - costOf(l)) / (saleLineNet(l) / l.qty || 1)) * 100 })).sort((a, b) => a.m - b.m);
   const below = lineGm.filter((x) => x.m < 0);
   const maxDisc = Math.max(0, ...o.lines.map((l) => l.discountPct));
-  const reasons = o.approval?.reasons ?? [];
+  const reasons = o.approval?.self ? [] : o.approval?.reasons ?? [];
   const DLV: Record<SaleDelivery, string> = { PICKUP: 'Tại quầy', DELIVER: 'Giao hàng', CARRIER: 'Chành xe' };
   type Check = { id: string; label: string; bad: boolean; result: string; detail: string; act: string };
   const checks: Check[] = [
@@ -944,7 +987,7 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
   const s: WfSubject = { requesterId: o.approval?.requestedBy ?? o.by, dept: cust?.dept, amount: t.grand, vals: { amount: t.grand, maxDisc } };
   const run = wfRuns.filter((r) => r.key === 'SALE' && r.refId === o.id).sort((a, b) => b.startedAt - a.startedAt)[0];
   const def = wfDef('SALE');
-  const steps = run?.steps ?? (def ? wfPath(def, s) : []);
+  const steps = o.approval?.self ? [] : run?.steps ?? (def ? wfPath(def, s) : []);
   const wctx = app.wfCtx();
   const cur = run ? run.decisions.filter((d) => d.decision === 'APPROVED').length : 0;
   const flow: SoStep[] = [
@@ -955,6 +998,7 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
       const now = !done && i === cur && o.approval?.status === 'PENDING';
       return { label: `Bước ${i + 1} · ${st.name}`, at: d ? soTime(d.at) : undefined, chip: now && item ? <Chip tone="orange">bạn</Chip> : d?.decision === 'REJECTED' ? <Chip tone="red">từ chối</Chip> : undefined, sub: d ? `${nm(d.by)}${d.note ? ` · ${d.note}` : ''}` : wfApprovers(st, s, wctx).map((x) => x.u.name).join(', '), state: done ? 'done' : now ? 'now' : 'todo' };
     }),
+    ...(o.approval?.self ? [{ label: 'Duyệt đơn', at: o.approval.decidedAt ? soTime(o.approval.decidedAt) : undefined, sub: o.approval.decidedBy ? nm(o.approval.decidedBy) : 'người lên đơn hoặc quản lý', chip: self ? <Chip tone="orange">bạn</Chip> : undefined, state: o.approval.status === 'APPROVED' ? 'done' as const : 'now' as const }] : []),
     { label: 'Yêu cầu xuất kho', sub: 'sau khi duyệt đủ', state: o.approval?.status === 'APPROVED' ? 'done' : 'todo' },
   ];
   // ---- CRM 3A phân tích: thói quen trả tiền của khách
@@ -964,12 +1008,12 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
   const avgLate = lates.length ? Math.round(lates.reduce((a, b) => a + Math.max(0, b), 0) / lates.length) : null;
   const tip = !cust ? null : avgLate === null ? 'Chưa có lịch sử thanh toán công nợ trong 6 tháng' : avgLate > 0 ? `Khách trả chậm trung bình ${avgLate} ngày trong 6 tháng (${lates.length} đơn).${credit ? ' Nên nhắc thu trước hạn 3 ngày.' : ''}` : `Khách trả đúng hạn ${lates.length} đơn gần nhất trong 6 tháng.`;
   const act = (kind: 'ok' | 'no' | 'info') => {
-    if (!item) return;
-    if (kind === 'ok') { if (!ready) return notify('Đánh dấu đã xem các điểm cần lưu ý trước khi duyệt', 'red'); item.approve?.(); }
+    if (!can) return;
+    if (kind === 'ok') { if (!ready) return notify('Đánh dấu đã xem các điểm cần lưu ý trước khi duyệt', 'red'); if (item) item.approve?.(); else R.selfApprove(o); }
     else {
       if (note.trim().length < 3) { noteRef.current?.focus(); return notify('Nhập ý kiến duyệt', 'red'); }
-      if (kind === 'no') item.reject?.(note.trim());
-      else if (item.needInfo) item.needInfo(note.trim());
+      if (kind === 'no') { if (item) item.reject?.(note.trim()); else R.selfReject(o, note.trim()); }
+      else if (item?.needInfo) item.needInfo(note.trim());
       else {
         app.setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, notes: [...(x.notes ?? []), { id: uid('sn'), by: app.me?.id, at: Date.now(), text: `Yêu cầu bổ sung: ${note.trim()}` }] } : x)));
         const u = users.find((x) => x.id === (o.approval?.requestedBy ?? o.by));
@@ -979,6 +1023,7 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
         return;
       }
     }
+    if (!item) return onBack();
     const next = queue.filter((x) => x.key !== item.key)[Math.min(idx, queue.length - 2)];
     if (next) onGo(next.refId); else onBack();
   };
@@ -992,7 +1037,7 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
             <button className={cn(soIco, 'h-8 w-8')} disabled={idx >= queue.length - 1} onClick={() => onGo(queue[idx + 1].refId)} aria-label="Đơn sau"><ChevronRight className="h-4 w-4" aria-hidden /></button>
           </span>
         )}
-        {item ? <>
+        {can ? <>
           <button className={cn(btnGhost, 'text-[rgb(var(--danger-fg))]')} onClick={() => act('no')}><X className="h-4 w-4" aria-hidden />Từ chối</button>
           {<button className={btnGhost} onClick={() => act('info')}><Undo2 className="h-4 w-4" aria-hidden />Yêu cầu bổ sung</button>}
           <button className={cn(btnPrimary, !ready && 'opacity-60')} onClick={() => act('ok')} title={ready ? undefined : 'Đánh dấu đã xem các điểm cần lưu ý'}><CheckIcon className="h-4 w-4" aria-hidden />{cur + 1 < steps.length ? 'Duyệt, chuyển bước sau' : 'Duyệt & giữ chỗ'}</button>
@@ -1042,7 +1087,7 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
                 <thead><tr className="border-y border-[rgb(var(--line))]"><th className={cn(soTh, 'w-12 pl-5')} /><th className={soTh}>Hạng mục</th><th className={soTh}>Kết quả</th><th className={soTh}>Chi tiết</th><th className={cn(soTh, 'pr-5')}>Hướng xử lý</th></tr></thead>
                 <tbody>{checks.map((c) => (
                   <tr key={c.id} className="border-b border-[rgb(var(--ink)/0.06)] last:border-0">
-                    <td className={cn(soTd, 'pl-5')}>{c.bad ? <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={seen.includes(c.id)} onChange={() => setSeen((p) => (p.includes(c.id) ? p.filter((x) => x !== c.id) : [...p, c.id]))} aria-label={`Đã xem ${c.label}`} disabled={!item} /> : <CheckIcon className="h-4 w-4 text-[rgb(var(--success-fg))]" aria-hidden />}</td>
+                    <td className={cn(soTd, 'pl-5')}>{c.bad ? <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={seen.includes(c.id)} onChange={() => setSeen((p) => (p.includes(c.id) ? p.filter((x) => x !== c.id) : [...p, c.id]))} aria-label={`Đã xem ${c.label}`} disabled={!can} /> : <CheckIcon className="h-4 w-4 text-[rgb(var(--success-fg))]" aria-hidden />}</td>
                     <td className={cn(soTd, 'font-medium')}>{c.label}</td>
                     <td className={soTd}><Chip tone={c.bad ? 'orange' : 'teal'}>{c.result}</Chip></td>
                     <td className={soTd}><span className="block max-w-[420px] truncate" title={c.detail}>{c.detail}</span></td>
@@ -1051,7 +1096,7 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
               </table>
             </div>
           </SoCard>
-          {item && (
+          {can && (
             <SoCard title="Ý kiến duyệt">
               <textarea ref={noteRef} className={cn(inputCls, 'min-h-[88px]')} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Bắt buộc khi từ chối hoặc yêu cầu bổ sung" aria-label="Ý kiến duyệt" />
             </SoCard>
@@ -1075,7 +1120,8 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
   );
 }
 
-export function SaleDetail({ o, onBack, onApprove, onPay }: { o: SalesOrder; onBack: () => void; onApprove: () => void; onPay: () => void }) {
+export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }: { o: SalesOrder; onBack: () => void; onApprove: () => void; onPay: () => void; onEdit: () => void; startCancel?: boolean }) {
+  const R = useSaleRights();
   const { quotes, openComposer, requestSaleIssue, setSaleStatus, confirmSalePayment, users, company, canDo, pos, stockVouchers, workOrders, go, requestSaleInvoice, decideSaleInvoice, warehouses, me, setSalesOrders, cashEntries } = useApp();
   const { todo } = useApprovalQueue();
   const myTurn = todo.some((x) => x.key === `so-${o.id}`);
@@ -1091,7 +1137,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay }: { o: SalesOrder; onB
   const [msg, setMsg] = useState('');
   const [more, setMore] = useState(false);
   const moreRef = useOutside(more, () => setMore(false));
-  const [cancel, setCancel] = useState<string | null>(null);
+  const [cancel, setCancel] = useState<string | null>(startCancel ? '' : null);
   const [inv, setInv] = useState<{ amount: number; note: string } | null>(null);
   const [dec, setDec] = useState<Record<string, string>>({});
   const q = o.quoteId ? quotes.find((x) => x.id === o.quoteId) : undefined;
@@ -1144,22 +1190,24 @@ export function SaleDetail({ o, onBack, onApprove, onPay }: { o: SalesOrder; onB
             {more && (
               <div className="absolute right-0 top-full z-30 mt-1 w-52 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 text-[13.5px] shadow-xl">
                 {q && <button className="block w-full rounded-md px-3 py-2 text-left hover:bg-[rgb(var(--ink)/0.05)]" onClick={() => { setMore(false); openComposer({ quoteId: q.id, view: true, mode: 'QUOTE' }); }}>Mở báo giá {q.code}</button>}
+                <button className="block w-full rounded-md px-3 py-2 text-left hover:bg-[rgb(var(--ink)/0.05)] disabled:opacity-40" disabled={!R.canEdit(o)} onClick={() => { setMore(false); onEdit(); }}>Sửa đơn</button>
                 {o.status === 'SHIPPING' && <button className="block w-full rounded-md px-3 py-2 text-left hover:bg-[rgb(var(--ink)/0.05)]" onClick={() => { setMore(false); setSaleStatus(o.id, 'DONE'); }}>Đã giao xong</button>}
-                <button className="block w-full rounded-md px-3 py-2 text-left text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--ink)/0.05)] disabled:opacity-40" disabled={o.status !== 'PENDING' || issuedAny} onClick={() => { setMore(false); setCancel(''); }}>Hủy đơn</button>
+                <button className="block w-full rounded-md px-3 py-2 text-left text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--ink)/0.05)] disabled:opacity-40" disabled={!R.canCancel(o)} onClick={() => { setMore(false); setCancel(''); }}>Hủy đơn</button>
+                {R.canDelete(o) && <button className="block w-full rounded-md px-3 py-2 text-left text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--ink)/0.05)]" onClick={() => { setMore(false); R.remove(o); onBack(); }}>Xóa đơn</button>}
               </div>
             )}
           </div>
         </div>
-        {o.status !== 'CANCELLED' && stage !== 'APPROVAL' && <button className={btnGhost} onClick={onPay}><Coins className="h-4 w-4" aria-hidden />Ghi thu</button>}
-        {canReq && <button className={btnGhost} onClick={() => requestSaleIssue(o.id)}><PackageMinus className="h-4 w-4" aria-hidden />Yêu cầu xuất kho</button>}
-        {canInv && <button className={myTurn ? btnGhost : btnPrimary} onClick={() => setInv({ amount: Math.max(0, due - invAsked), note: '' })}><ReceiptIcon className="h-4 w-4" aria-hidden />Yêu cầu xuất hóa đơn</button>}
-        {stage === 'APPROVAL' && <button className={myTurn ? btnPrimary : btnGhost} onClick={onApprove}><CheckIcon className="h-4 w-4" aria-hidden />{myTurn ? 'Duyệt đơn' : 'Xem duyệt'}</button>}
+        {o.status !== 'CANCELLED' && stage !== 'APPROVAL' && <button className={btnGhost} onClick={onPay}><Coins className="h-4 w-4" aria-hidden />{canCash ? 'Lập phiếu thu' : 'Báo đã nhận tiền'}</button>}
+        {canReq && <button className={btnPrimary} onClick={() => requestSaleIssue(o.id)}><PackageMinus className="h-4 w-4" aria-hidden />Yêu cầu xuất kho</button>}
+        {canInv && <button className={btnGhost} onClick={() => setInv({ amount: Math.max(0, due - invAsked), note: '' })}><ReceiptIcon className="h-4 w-4" aria-hidden />Yêu cầu xuất hóa đơn</button>}
+        {stage === 'APPROVAL' && <button className={myTurn || R.canSelf(o) ? btnPrimary : btnGhost} onClick={onApprove}><CheckIcon className="h-4 w-4" aria-hidden />{myTurn || R.canSelf(o) ? 'Duyệt đơn' : 'Xem duyệt'}</button>}
       </SoTop>
       {cancel !== null && (
         <div className="glass-card mb-4 flex flex-wrap items-center gap-2 rounded-xl px-4 py-3">
           <input className={cn(inputBase, 'min-w-[240px] flex-1')} value={cancel} onChange={(e) => setCancel(e.target.value)} placeholder="Lý do hủy đơn" aria-label="Lý do hủy" autoFocus />
           <button className={btnGhost} onClick={() => setCancel(null)}>Thôi</button>
-          <button className={cn(btnPrimary, 'bg-[rgb(var(--danger))]')} disabled={cancel.trim().length < 3} onClick={() => { setSaleStatus(o.id, 'CANCELLED', cancel.trim()); setCancel(null); }}>Hủy đơn</button>
+          <button className={cn(btnPrimary, 'bg-[rgb(var(--danger))]')} disabled={cancel.trim().length < 3} onClick={() => { R.cancelOrder(o, cancel.trim()); setCancel(null); }}>Hủy đơn</button>
         </div>
       )}
       {inv && (
@@ -1268,7 +1316,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay }: { o: SalesOrder; onB
             {t.ship > 0 && <SoKv label="Phí vận chuyển">{fmtN(t.ship)}</SoKv>}
             {ret > 0 && <SoKv label="Hàng trả lại">−{fmtN(ret)}</SoKv>}
             <SoKv label="Thực tế phải thu" big>{fmtN(due)}</SoKv>
-            <SoKv label="Đã thu">{fmtN(paid)}</SoKv>
+            <SoKv label="Doanh thu (kế toán đã thu)">{fmtN(paid)}</SoKv>
             {pend > 0 && <SoKv label="Chờ xác nhận">{fmtN(pend)}</SoKv>}
             <SoKv label="Còn lại" tone={left > 0 ? 'warn' : undefined}>{fmtN(Math.max(0, left))}</SoKv>
             {due > 0 && <div className="mt-2"><SoBar parts={[{ pct: (paid / due) * 100, cls: 'bg-[rgb(var(--fg))]' }, { pct: (pend / due) * 100, cls: 'bg-[rgb(var(--accent)/0.55)]' }]} /></div>}

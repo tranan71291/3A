@@ -310,7 +310,7 @@ export function useApprovalQueue() {
     const t = saleTotals(o).grand;
     const cust = customers.find((c) => c.id === o.customerId);
     const title = `${o.code}: ${o.customer}`;
-    if (o.approval?.status === 'PENDING') {
+    if (o.approval?.status === 'PENDING' && !o.approval.self) {
       const s: WfSubject = { requesterId: o.approval.requestedBy ?? o.by, dept: cust?.dept, amount: t, vals: { amount: t, maxDisc: Math.max(0, ...o.lines.map((l) => l.discountPct)) } };
       const f = flowOf('SALE', o.id, s, o.approval.requestedAt);
       if (f.can.ok) {
