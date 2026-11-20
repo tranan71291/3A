@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Banknote, CalendarDays, Camera, ClipboardCheck, Download, HardHat, MapPin, ShieldCheck, Upload } from 'lucide-react';
-import { Pagination, usePaged } from '../../components/controls';
+import { Banknote, CalendarDays, Camera, ClipboardCheck, Download, HardHat, MapPin, Pencil, ShieldCheck, Trash2, Upload } from 'lucide-react';
+import { removeWithUndo } from '../../app/context';
+import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { Drawer } from '../../components/drawer';
 import { useInRange } from '../../components/filters';
 import { Sla } from '../../components/sla';
@@ -381,7 +382,7 @@ export function InstallDrawer({ id, onClose }: { id: string; onClose: () => void
 }
 
 export function InstallModule() {
-  const { installJobs, workOrders, jobs, customers, receipts, canDo, userName } = useApp();
+  const { installJobs, workOrders, jobs, customers, receipts, canDo, userName, setInstallJobs, notify, me } = useApp();
   const inR = useInRange();
   const [st, setSt] = useState<InstallView | 'ALL'>('ALL');
   const [q, setQ] = useSticky('InstallModule.q', '');
@@ -434,6 +435,7 @@ export function InstallModule() {
                 <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{r.ij ? userName(r.ij.leaderId) : '—'}</td>
                 <td className={tdCls}><Chip tone={INSTALL_VIEW[r.view].tone}>{INSTALL_VIEW[r.view].label}</Chip></td>
                 <td className={cn(tdLast, 'text-right')}>
+                  {r.ij && <span className="inline-block align-middle" onClick={(e) => e.stopPropagation()}><RowMenu items={[{ label: 'Xem / sửa lịch lắp', icon: Pencil, onClick: () => setOpen(r.ij!.id) }, { label: 'Xóa lịch lắp', icon: Trash2, danger: true, disabled: !(me?.role === 'BOD' || canDo('install.delete')) || r.ij.status === 'ACCEPTED', onClick: () => removeWithUndo(setInstallJobs, r.ij!, notify, `Đã xóa ${r.ij!.code}`) }]} /></span>}
                   {r.view === 'WAIT' && <button className={cn(btnGhost, btnSm)} disabled={!canDo('install.manage')} onClick={(e) => { e.stopPropagation(); if (r.wo) setSchedule(r.wo); }}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Hẹn lắp</button>}
                 </td>
               </tr>

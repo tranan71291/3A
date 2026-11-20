@@ -194,7 +194,7 @@ export function useSaleRights() {
     canDelete: (o: SalesOrder) => o.status === 'CANCELLED' && del && !o.payments.length,
     canInfo: (o: SalesOrder) => o.status !== 'CANCELLED' && (own(o) || mgr || bod || canDo('sale.info')),
     canDocs: () => docs,
-    canSelf: (o: SalesOrder) => !!o.approval?.self && o.approval.status === 'PENDING' && o.status === 'PENDING' && (own(o) || mgr),
+    canSelf: (o: SalesOrder) => !!o.approval?.self && o.approval.status === 'PENDING' && o.status === 'PENDING' && ((own(o) && canDo('sale.approve')) || mgr),
     canVoidPay: () => docs,
     selfApprove: (o: SalesOrder) => { decide(o, 'APPROVED'); notify(`Đã duyệt ${o.code}. Bấm Yêu cầu xuất kho khi cần giao hàng`, 'teal'); },
     selfReject: (o: SalesOrder, note: string) => { decide(o, 'REJECTED', note); setSaleStatus(o.id, 'CANCELLED', `Không duyệt: ${note}`); },
@@ -235,7 +235,7 @@ export function SalesModule() {
     : <SalePayPage o={open} onBack={() => setSub(null)} />;
   if (open) return <SaleDetail key={`${open.id}${cancelId === open.id ? '-c' : ''}`} o={open} onBack={() => { setCancelId(null); setOpenSale(null); }} onApprove={() => setSub({ kind: 'approve', id: open.id })} onPay={() => setSub({ kind: 'pay', id: open.id })} onEdit={() => setEditId(open.id)} startCancel={cancelId === open.id} />;
   if (mode === 'new') return <SaleForm onDone={(id) => { setMode('list'); if (id) setOpenSale(id); }} />;
-  return <SaleList onNew={canDo('stock.voucher') || canDo('job.manage') ? () => setMode('new') : undefined} onEdit={(id) => setEditId(id)} onCancel={(id) => { setCancelId(id); setOpenSale(id); }} />;
+  return <SaleList onNew={canDo('sale.create') ? () => setMode('new') : undefined} onEdit={(id) => setEditId(id)} onCancel={(id) => { setCancelId(id); setOpenSale(id); }} />;
 }
 
 export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEdit: (id: string) => void; onCancel: (id: string) => void }) {

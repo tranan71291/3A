@@ -231,7 +231,7 @@ export function TradingCustomersList() {
     { label: `Gọi ${c.contactPhone}`, icon: Phone, onClick: () => { window.location.href = `tel:${c.contactPhone.replace(/\s/g, '')}`; }, disabled: !c.contactPhone },
     { label: 'Sao chép MST', icon: Copy, onClick: () => navigator.clipboard?.writeText(c.taxCode).then(() => notify(`Đã sao chép MST ${c.taxCode}`, 'teal'), () => notify('Trình duyệt chặn sao chép', 'red')) },
     { label: 'Đề xuất tài trợ quỹ 3M', icon: Coins, onClick: () => openProgramForm(c.id), disabled: !canDo('program.create') },
-    { label: 'Xóa khách hàng', icon: Trash2, onClick: () => askDelete(c), danger: true, disabled: !canEdit },
+    { label: 'Xóa khách hàng', icon: Trash2, onClick: () => askDelete(c), danger: true, disabled: !canDo('customer.delete') },
   ];
   const bulkDelete = () => {
     const targets = customers.filter((c) => sel.has(c.id));
@@ -240,7 +240,7 @@ export function TradingCustomersList() {
       title: 'Xóa khách hàng đã chọn',
       message: <>Xóa {ok.length} / {targets.length} khách hàng đã chọn?{ok.length < targets.length ? ` ${targets.length - ok.length} khách đang gắn chứng từ đối soát sẽ được giữ lại.` : ''}</>,
       blocked: ok.length ? undefined : 'Tất cả khách đã chọn đều đang gắn hồ sơ quỹ, đơn Getfly hoặc dự án đã chốt.',
-      onConfirm: () => { setCustomers((p) => p.filter((c) => !ok.some((x) => x.id === c.id))); sel.clear(); notify(`Đã xóa ${ok.length} khách hàng`, 'orange'); },
+      onConfirm: () => { if (!canDo('customer.delete')) { notify('Bạn chưa có quyền xóa khách hàng', 'red'); return; } setCustomers((p) => p.filter((c) => !ok.some((x) => x.id === c.id))); sel.clear(); notify(`Đã xóa ${ok.length} khách hàng`, 'orange'); },
     });
   };
   const over = (c: Customer) => !!c.creditLimit && c.debt > c.creditLimit * 0.9;

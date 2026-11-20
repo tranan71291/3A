@@ -474,17 +474,21 @@ export default function DashboardApp() {
   /** Phạm vi lead theo vai trò (+ bộ lọc toàn cục) */
   /** Phạm vi dữ liệu: ngoại lệ tài khoản > cấu hình vai trò > mặc định (BOD, Marketing toàn bộ; Trưởng phòng theo phòng; Sales của mình; Kế toán đơn đã chốt) */
   const scope: DataScope = (me && (perms.users?.[me.id]?.scope ?? perms.scope?.[role])) || DEFAULT_SCOPE[role];
-  const myLeads = (!me ? [] : scope === 'ALL' ? leads
-    : scope === 'DEPT' ? leads.filter((l) => l.dept === me.dept)
-    : scope === 'OWN' ? leads.filter((l) => l.assignee === me.id)
+  const canX = (a: Action) => role === 'BOD' || (myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role));
+  const leadScope: DataScope = canX('lead.viewAll') ? 'ALL' : scope;
+  const custScope: DataScope = canX('customer.viewAll') ? 'ALL' : scope;
+  const saleScope: DataScope = canX('sale.viewAll') ? 'ALL' : scope;
+  const myLeads = (!me ? [] : leadScope === 'ALL' ? leads
+    : leadScope === 'DEPT' ? leads.filter((l) => l.dept === me.dept)
+    : leadScope === 'OWN' ? leads.filter((l) => l.assignee === me.id)
     : leads.filter((l) => l.status === 'WON')).filter(gfLead);
   /** Phạm vi khách hàng: của mình = khách phụ trách (AM, đơn hàng, lead được giao); phòng ban = khách của phòng */
-  const myCustomers = !me ? [] : scope === 'OWN'
+  const myCustomers = !me ? [] : custScope === 'OWN'
     ? customers.filter((c) => c.amId === me.id || jobs.some((j) => j.customerId === c.id && j.ownerId === me.id) || leads.some((l) => l.assignee === me.id && (l.customerId === c.id || (!!l.taxCode && l.taxCode === c.taxCode))))
-    : scope === 'DEPT' ? customers.filter((c) => c.dept === me.dept || users.find((u) => u.id === c.amId)?.dept === me.dept || jobs.some((j) => j.customerId === c.id && j.dept === me.dept))
+    : custScope === 'DEPT' ? customers.filter((c) => c.dept === me.dept || users.find((u) => u.id === c.amId)?.dept === me.dept || jobs.some((j) => j.customerId === c.id && j.dept === me.dept))
     : customers;
-  const mySales = !me ? [] : scope === 'OWN' ? salesOrders.filter((o) => o.by === me.id)
-    : scope === 'DEPT' ? salesOrders.filter((o) => o.by === me.id || (!!me.dept && users.find((u) => u.id === o.by)?.dept === me.dept))
+  const mySales = !me ? [] : saleScope === 'OWN' ? salesOrders.filter((o) => o.by === me.id)
+    : saleScope === 'DEPT' ? salesOrders.filter((o) => o.by === me.id || (!!me.dept && users.find((u) => u.id === o.by)?.dept === me.dept))
     : salesOrders;
   const myCustomersF = myCustomers.filter((c) => (gf.region === 'ALL' || c.region === gf.region) && (gf.dept === 'ALL' || c.dept === gf.dept));
   /** Trạng thái hoạt động: ghi lastActiveAt mỗi phút khi người dùng còn thao tác (đồng bộ cho đồng nghiệp thấy online / vắng) */
@@ -822,7 +826,7 @@ export default function DashboardApp() {
 
   // ---------------- v46: đơn bán ----------------
   const [openSale, setOpenSale] = useState<string | null>(null);
-  const canAct = (a: Action) => myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role);
+  const canAct = (a: Action) => role === 'BOD' || (myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role));
   const saleCode = (all: SalesOrder[]) => {
     const d = new Date();
     const p = `DH${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(2)}-`;
@@ -1989,7 +1993,7 @@ export default function DashboardApp() {
     },
     workOrders, setWorkOrders, installJobs, setInstallJobs,
     jobs, setJobs, receipts, setReceipts, stockItems, setStockItems, stockMoves, setStockMoves, cashEntries, setCashEntries, priceItems, setPriceItems, mfgConfig, setMfgConfig, openJob: setOpenJobId,
-    canDo: (a) => myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role),
+    canDo: (a) => role === 'BOD' || (myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role)),
     userName, dept, routableDepts, routeLeads, acceptLead,
     getflyOrders, setGetflyOrders, getfly, setGetfly, getflyLogs, addGetflyLog, winLead, winDraftQuote, syncLeadToGetfly, recomputeLinked,
     wfAll, setWfDefs, wfRuns, setWfRuns, wfPolicy, setWfPolicy, wfDelegations, setWfDelegations, wfCtx, wfDef, wfDecide, wfSubmit, wfFinishRequest, openRequest: (id) => { setReqOpen(id); setPage('tasks'); }, reqOpen, setReqOpen, approveVoucher, wfFirstApprovers,
