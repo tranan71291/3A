@@ -8,7 +8,8 @@ import { PluginKey } from '@tiptap/pm/state';
 import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
-import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import { saleReturned, saleTotals } from './getfly';
+import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
@@ -927,6 +928,21 @@ export const saleIssued = (o: SalesOrder) => o.status === 'SHIPPING' || o.status
 export const saleIssQ = (o: Pick<SalesOrder, 'status' | 'issuedQ'>, l: SaleLine) => o.issuedQ?.[l.id] ?? (o.status === 'SHIPPING' || o.status === 'DONE' ? l.qty : 0);
 
 export const saleRetQ = (o: Pick<SalesOrder, 'returnedQ'>, l: SaleLine) => o.returnedQ?.[l.id] ?? 0;
+
+/** v51.2: số phải thu của đơn; đơn đã hủy coi như 0 (tiền khách đã trả thành tiền phải hoàn) */
+export const saleOwed = (o: SalesOrder) => (o.status === 'CANCELLED' ? 0 : saleTotals(o).grand - saleReturned(o));
+
+/** Hàng trừ kho đã xuất cho đơn đã nhập trả hết */
+export const saleGoodsBack = (o: SalesOrder) => o.lines.every((l) => l.kind !== 'SKU' || !l.ref || saleIssQ(o, l) <= saleRetQ(o, l));
+
+/** Phiếu quỹ của một khoản thu / hoàn tiền trên đơn (kể cả phiếu gộp nhiều đơn) */
+export const saleCashOf = (entries: CashEntry[], pid: string) => entries.find((e) => e.source === 'SALE' && !e.reverses && !e.sourceId?.endsWith('-void') && (e.sourceId === pid || !!e.payIds?.includes(pid)));
+
+/** Phiếu đảo (bản mới gắn reverses, bản cũ: phiếu hủy thu đơn bán theo mã) */
+export const isCashReversal = (e: CashEntry) => !!e.reverses || (e.source === 'SALE' && !!e.sourceId?.endsWith('-void'));
+
+/** Tổng đã đảo của một phiếu quỹ */
+export const cashReversed = (entries: CashEntry[], e: CashEntry) => entries.filter((r) => r.id !== e.id && (r.reverses === e.id || (!r.reverses && e.source === 'SALE' && !!e.sourceId && r.source === 'SALE' && r.sourceId === `${e.sourceId}-void`))).reduce((s, r) => s + r.amount, 0);
 
 export const SALE_STAGE: Record<SaleStage, { label: string; tone: Tone }> = {
   APPROVAL: { label: 'Chờ duyệt', tone: 'orange' }, REJECTED: { label: 'Không duyệt', tone: 'red' }, READY: { label: 'Đã duyệt', tone: 'blue' }, WAIT_WH: { label: 'Chờ xuất kho', tone: 'orange' },
@@ -2736,6 +2752,21 @@ export const jobPhone = (j: Job, customers: Customer[]) => j.sitePhone || custom
 
 /** Kỹ thuật / người khảo sát được giao đơn */
 export const techUsers = (users: User[]) => users.filter((u) => u.active && (u.role === 'SALES_REP' || u.role === 'DEPT_HEAD') && u.dept !== 'ACCOUNTING');
+
+// =====================================================================
+//  PHÂN HỆ: THU CHI (sổ quỹ tiền mặt & ngân hàng)
+//  Tiền thu khách hàng lấy tự động từ phiếu thu đơn hàng đã được kế toán xác nhận
+// =====================================================================
+
+export const CASH_SRC: Record<CashSource, string> = { MANUAL: 'Lập tay', RECEIPT: 'Phiếu thu đơn', EXPENSE: 'Công tác phí', ADVANCE: 'Tạm ứng', STOCK: 'Kho', MDF_SURPLUS: 'Quỹ MDF', COMMISSION: 'Hoa hồng', SALE: 'Đơn hàng', REQUEST: 'Đề nghị' };
+
+/** Ảnh hưởng của một phiếu lên số dư một quỹ */
+export const cashEff = (e: Pick<CashEntry, 'kind' | 'account' | 'toAccount' | 'amount'>, a: CashAccount) => (e.kind === 'TRANSFER'
+  ? (e.account === a ? -e.amount : 0) + ((e.toAccount ?? 'BANK') === a ? e.amount : 0)
+  : e.account === a ? (e.kind === 'IN' ? e.amount : -e.amount) : 0);
+
+/** Chuyển quỹ đã có ô diễn giải trong khối bên trái */
+export const noteFor = (k: CashEntry['kind']) => k !== 'TRANSFER';
 
 // =====================================================================
 //  TỔNG QUAN, KHÁCH HÀNG, BÁO CÁO RIÊNG CHO MÔ HÌNH XƯỞNG

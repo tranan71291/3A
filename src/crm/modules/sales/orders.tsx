@@ -5,7 +5,7 @@ import { AlertTriangle, Banknote, Building2, CalendarDays, Check as CheckIcon, C
 import { removeWithUndo } from '../../app/context';
 import { RowMenu } from '../../components/controls';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, useSticky } from '../../components/ui';
-import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, compact, DECISION_LABEL, digits, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, MAIN_WH, nextCode, overdueDays, PRICE_TIER, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleDue, saleIssQ, saleIssued, saleLineNet, salePaid, saleRetQ, soGrid, soIco, soTd, soTh, soTime, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
+import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, compact, DECISION_LABEL, digits, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, MAIN_WH, nextCode, overdueDays, PRICE_TIER, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleCashOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, soGrid, soIco, soTd, soTh, soTime, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { saleHeld, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
 import type { ApprovalDecision, CompanyInfo, Customer, PriceTier, SaleDelivery, SaleFilter, SaleInvBuyer, SaleInvItem, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
@@ -178,7 +178,7 @@ export function soSteps(o: SalesOrder, stage: SaleStage, vs: StockVoucher[], use
 
 /** v50: quyền thao tác trên đơn: người lên đơn với đơn của mình; Giám đốc / người có quyền "Bán hàng: sửa, hủy, xóa đơn" với mọi đơn */
 export function useSaleRights() {
-  const { me, canDo, stockVouchers, setStockVouchers, setSalesOrders, setSaleStatus, notify, postCash, users, dispatch } = useApp();
+  const { me, canDo, stockVouchers, setStockVouchers, setSalesOrders, setSaleStatus, notify, postCash, users, dispatch, cashEntries } = useApp();
   const mgr = canDo('sale.manage');
   const del = canDo('sale.delete');
   const docs = canDo('sale.docs');
@@ -189,9 +189,11 @@ export function useSaleRights() {
   return {
     mgr,
     canEdit: (o: SalesOrder) => o.status === 'PENDING' && !issued(o) && !pendOut(o).length && (own(o) || mgr),
-    canCancel: (o: SalesOrder) => o.status === 'PENDING' && !issued(o) && (own(o) || mgr),
+    canCancel: (o: SalesOrder) => o.status !== 'CANCELLED' && (own(o) || mgr),
+    /** Đủ điều kiện hủy: hàng đã xuất nhập trả hết, tiền đã thu hoàn hết, không còn phiếu thu chờ */
+    cancelReady: (o: SalesOrder) => saleGoodsBack(o) && salePaid(o) === 0 && o.payments.every((p) => p.confirmed),
     canDelete: (o: SalesOrder) => del && !issued(o) && !o.payments.some((p) => p.confirmed),
-    delWhy: (o: SalesOrder) => (!del ? 'chưa có quyền xóa' : issued(o) ? 'đã xuất kho, lập phiếu nhập trả' : o.payments.some((p) => p.confirmed) ? 'đã có phiếu thu, hủy phiếu thu trước' : ''),
+    delWhy: (o: SalesOrder) => (!del ? 'chưa có quyền xóa' : issued(o) ? 'đã xuất kho, dùng Hủy đơn' : o.payments.some((p) => p.confirmed) ? 'đã có phiếu thu, dùng Hủy đơn' : ''),
     canInfo: (o: SalesOrder) => o.status !== 'CANCELLED' && (own(o) || mgr || canDo('sale.info')),
     canDocs: () => docs,
     canSelf: (o: SalesOrder) => !!o.approval?.self && o.approval.status === 'PENDING' && o.status === 'PENDING' && ((own(o) && canDo('sale.approve')) || mgr),
@@ -201,6 +203,7 @@ export function useSaleRights() {
     cancelOrder: (o: SalesOrder, why: string) => {
       const ps = pendOut(o);
       if (ps.length) setStockVouchers((all) => all.map((v) => (ps.some((p) => p.id === v.id) ? { ...v, status: 'CANCELLED' as VoucherStatus, cancelledBy: me?.id, cancelReason: `Hủy đơn ${o.code}: ${why}` } : v)));
+      if ((o.invReqs ?? []).some((r) => r.status === 'PENDING')) setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, invReqs: (x.invReqs ?? []).map((r) => (r.status === 'PENDING' ? { ...r, status: 'REJECTED' as const, why: 'Đơn đã hủy', doneBy: me?.id, doneAt: Date.now() } : r)) } : x)));
       setSaleStatus(o.id, 'CANCELLED', why);
       const u = users.find((x) => x.id === o.by);
       if (u && u.id !== me?.id) dispatch('APPROVAL_RESULT', { to: u, title: `Đơn ${o.code} đã hủy`, body: why, module: 'sales' });
@@ -213,7 +216,8 @@ export function useSaleRights() {
     /** Hủy phiếu thu: bỏ khỏi đơn; phiếu đã vào quỹ thì sinh phiếu đảo (giữ lịch sử sổ quỹ) */
     voidPay: (o: SalesOrder, p: SalePayment, code?: string) => {
       setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, payments: x.payments.filter((y) => y.id !== p.id) } : x)));
-      if (p.confirmed) postCash({ kind: p.refund ? 'IN' : 'OUT', account: p.method === 'CASH' ? 'CASH' : 'BANK', category: p.refund ? 'Hủy phiếu hoàn tiền bán hàng' : 'Hủy phiếu thu bán hàng', amount: Math.abs(p.amount), partner: o.customer, ref: o.code, note: `Hủy ${code ?? 'phiếu thu'} của đơn ${o.code}`, source: 'SALE', sourceId: `${p.id}-void` });
+      const orig = saleCashOf(cashEntries, p.id);
+      if (p.confirmed) postCash({ kind: p.refund ? 'IN' : 'OUT', account: p.method === 'CASH' ? 'CASH' : 'BANK', category: p.refund ? 'Hủy phiếu hoàn tiền bán hàng' : 'Hủy phiếu thu bán hàng', amount: Math.abs(p.amount), partner: o.customer, ref: orig?.code ?? o.code, note: `Hủy ${code ?? 'phiếu thu'} của đơn ${o.code}`, source: 'SALE', sourceId: `${p.id}-void`, reverses: orig?.id, saleId: o.id });
       notify(`Đã hủy ${code ?? 'phiếu thu'} của ${o.code}${p.confirmed ? ', đã sinh phiếu đảo trong sổ quỹ' : ''}`, 'orange');
     },
   };
@@ -915,7 +919,7 @@ export function SalePayPage({ o, onBack }: { o: SalesOrder; onBack: () => void }
   const { addSalePayment, confirmSalePayment, users, me, company, canDo, cashEntries } = useApp();
   const t = saleTotals(o);
   const ret = saleReturned(o);
-  const due = t.grand - ret;
+  const due = saleOwed(o);
   const paidAll = salePaid(o, true);
   const left = due - paidAll;
   const canCash = canDo('cash.manage') || canDo('receipt.confirm');
@@ -948,7 +952,7 @@ export function SalePayPage({ o, onBack }: { o: SalesOrder; onBack: () => void }
   };
   const seg = (on: boolean) => cn('flex flex-1 items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-[13.5px]', on ? 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))]' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.04)]');
   const segBox = 'flex overflow-hidden rounded-lg border border-[rgb(var(--ink)/0.12)] divide-x divide-[rgb(var(--ink)/0.08)]';
-  const cashCode = (pid: string) => cashEntries.find((e) => e.source === 'SALE' && e.sourceId === pid)?.code;
+  const cashCode = (pid: string) => saleCashOf(cashEntries, pid)?.code;
   return (
     <div>
       <SoTop crumb={`Quản lý đơn hàng › ${o.code}`} onCrumb={onBack} title={kind === 'REFUND' ? 'Hoàn tiền' : canCash ? 'Lập phiếu thu' : 'Báo đã nhận tiền'} chips={<><Code>{code}</Code><Chip>Nháp</Chip></>}>
@@ -1226,6 +1230,77 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
   );
 }
 
+/** v51.2: hủy đơn đã có chứng từ: nhập trả đủ hàng, hoàn đủ tiền rồi mới hủy; đơn đóng lại, giữ toàn bộ chứng từ */
+export function SaleCancelCard({ o, why, setWhy }: { o: SalesOrder; why: string; setWhy: (v: string | null) => void }) {
+  const R = useSaleRights();
+  const { stockVouchers, requestSaleReturn, addSalePayment, confirmSalePayment, canDo } = useApp();
+  const canCash = canDo('cash.manage') || canDo('receipt.confirm');
+  const [method, setMethod] = useState<'CASH' | 'BANK'>('BANK');
+  const goods = o.lines.filter((l) => l.kind === 'SKU' && l.ref);
+  const iss = goods.reduce((s, l) => s + saleIssQ(o, l), 0);
+  const back = goods.reduce((s, l) => s + Math.min(saleRetQ(o, l), saleIssQ(o, l)), 0);
+  const mine = stockVouchers.filter((v) => v.saleId === o.id);
+  const retPend = mine.filter((v) => v.type === 'IN' && v.status === 'PENDING');
+  const retDone = mine.filter((v) => v.type === 'IN' && v.status === 'DONE');
+  const outPend = mine.filter((v) => v.type === 'OUT' && v.status === 'PENDING');
+  const paidIn = o.payments.filter((p) => p.confirmed && !p.refund).reduce((s, p) => s + p.amount, 0);
+  const refunded = Math.abs(o.payments.filter((p) => p.confirmed && p.refund).reduce((s, p) => s + p.amount, 0));
+  const net = salePaid(o);
+  const waitP = o.payments.filter((p) => !p.confirmed);
+  const invDone = (o.invReqs ?? []).filter((r) => r.status === 'DONE');
+  const invPend = (o.invReqs ?? []).filter((r) => r.status === 'PENDING');
+  const goodsOk = saleGoodsBack(o);
+  const moneyOk = net === 0 && !waitP.length;
+  const todo = [goodsOk, moneyOk].filter((x) => !x).length;
+  const ready = R.cancelReady(o);
+  const muted = 'text-[13px] text-[rgb(var(--muted))]';
+  type Row = { ok: boolean; warn?: boolean; t: string; sub: string; st: ReactNode; act?: ReactNode };
+  const rows: Row[] = [
+    { ok: goodsOk, t: 'Hàng đã xuất', sub: iss ? `${fmtN(iss)} đơn vị` : 'Chưa xuất kho',
+      st: iss ? <span className="inline-flex flex-wrap items-center gap-1.5">Đã nhập trả {fmtN(back)} / {fmtN(iss)}{retDone.map((v) => <Code key={v.id}>{v.code}</Code>)}</span> : 'Không cần nhập trả',
+      act: goodsOk ? undefined : retPend.length ? <span className={muted}>Chờ kho duyệt {retPend.map((v) => v.code).join(', ')}</span>
+        : <button className={btnPrimary} onClick={() => requestSaleReturn(o.id)}><Undo2 className="h-4 w-4" aria-hidden />Lập phiếu nhập trả</button> },
+    { ok: moneyOk, t: 'Tiền khách đã trả', sub: paidIn ? fmtN(paidIn) : 'Chưa thu', st: paidIn || refunded ? `Đã hoàn ${fmtN(refunded)} / ${fmtN(paidIn)}` : 'Không cần hoàn tiền',
+      act: waitP.length ? (canCash ? <button className={btnGhost} onClick={() => waitP.forEach((p) => confirmSalePayment(o.id, p.id))}>Xác nhận {waitP.length} phiếu chờ</button> : <span className={muted}>{waitP.length} phiếu chờ kế toán xác nhận</span>)
+        : net > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5 text-[12.5px]" role="radiogroup" aria-label="Hình thức hoàn">
+              {([['CASH', 'Tiền mặt'], ['BANK', 'Chuyển khoản']] as const).map(([k, l]) => <button key={k} role="radio" aria-checked={method === k} className={cn('rounded-md px-2.5 py-1', method === k ? 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))]')} onClick={() => setMethod(k)}>{l}</button>)}
+            </div>
+            <button className={btnPrimary} onClick={() => addSalePayment(o.id, net, method, o, { refund: true, payer: o.customer, note: `Hoàn tiền hủy đơn ${o.code}`, date: todayISO() })}><Plus className="h-4 w-4" aria-hidden />{canCash ? 'Lập phiếu chi hoàn tiền' : 'Đề nghị hoàn tiền'}</button>
+          </div>)
+        : net < 0 ? <span className="text-[13px] text-[rgb(var(--danger-fg))]">Đã hoàn thừa {fmtN(-net)}</span> : undefined },
+    { ok: true, warn: invDone.length > 0, t: 'Hóa đơn thuế', sub: invDone.length ? invDone.map((r) => r.no).join(', ') : 'Chưa xuất',
+      st: invDone.length ? 'Kế toán lập hóa đơn điều chỉnh giảm' : invPend.length ? `${invPend.length} yêu cầu chờ, trả lại khi hủy` : 'Không cần điều chỉnh' },
+    { ok: true, t: 'Phiếu xuất chờ kho', sub: String(outPend.length), st: outPend.length ? `Hủy kèm ${outPend.map((v) => v.code).join(', ')}` : 'Không còn phiếu chờ' },
+  ];
+  return (
+    <div className="glass-card mb-4 rounded-xl border border-[rgb(var(--accent)/0.4)] p-5">
+      <div className="flex items-center gap-3">
+        <h3 className="font-semibold">Hủy đơn hàng</h3>
+        <span className={cn(muted, 'max-sm:hidden')}>{iss || paidIn ? 'Đơn đã có chứng từ: hủy để đóng đơn, giữ lịch sử, không xóa' : 'Đơn chưa xuất kho, chưa thu tiền'}</span>
+        <button className={cn(btnGhost, 'ml-auto p-1.5')} onClick={() => setWhy(null)} aria-label="Đóng"><X className="h-4 w-4" aria-hidden /></button>
+      </div>
+      <div className="mt-3">
+        {rows.map((r) => (
+          <div key={r.t} className="grid grid-cols-1 items-center gap-2 border-t border-[rgb(var(--line)/0.6)] py-3 first:border-t-0 sm:grid-cols-[28px_200px_1fr_auto] sm:gap-3">
+            <span className={cn('grid h-6 w-6 place-items-center rounded-full', !r.ok ? 'border-2 border-[rgb(var(--accent))] text-[rgb(var(--accent))]' : r.warn ? 'bg-[rgb(var(--accent))] text-white' : 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]')} aria-label={r.ok ? 'Đạt' : 'Chưa đạt'}>{r.ok ? <CheckIcon className="h-3.5 w-3.5" aria-hidden /> : <X className="h-3.5 w-3.5" aria-hidden />}</span>
+            <div><p className="font-medium">{r.t}</p><p className="text-[12.5px] text-[rgb(var(--muted))]">{r.sub}</p></div>
+            <div className="text-[13.5px] text-[rgb(var(--fg2))]">{r.st}</div>
+            <div className="sm:justify-self-end">{r.act}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input className={cn(inputBase, 'min-w-[240px] flex-1')} value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Lý do hủy đơn" aria-label="Lý do hủy" />
+        <button className={btnGhost} onClick={() => setWhy(null)}>Thôi</button>
+        <button className={cn(btnPrimary, 'bg-[rgb(var(--danger))]')} disabled={!ready || why.trim().length < 3} onClick={() => { R.cancelOrder(o, why.trim()); setWhy(null); }}><XCircle className="h-4 w-4" aria-hidden />Hủy đơn</button>
+      </div>
+      <p className={cn(muted, 'mt-2')}>{ready ? 'Đủ điều kiện hủy. Đơn đóng lại, toàn bộ chứng từ được giữ' : `Còn ${todo} việc trước khi hủy`}</p>
+    </div>
+  );
+}
+
 export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }: { o: SalesOrder; onBack: () => void; onApprove: () => void; onPay: () => void; onEdit: () => void; startCancel?: boolean }) {
   const R = useSaleRights();
   const { quotes, openComposer, requestSaleIssue, setSaleStatus, confirmSalePayment, users, company, canDo, pos, stockVouchers, workOrders, go, decideSaleInvoice, warehouses, me, setSalesOrders, cashEntries } = useApp();
@@ -1233,7 +1308,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const myTurn = todo.some((x) => x.key === `so-${o.id}`);
   const t = saleTotals(o);
   const ret = saleReturned(o);
-  const due = t.grand - ret;
+  const due = saleOwed(o);
   const paid = salePaid(o);
   const pend = salePaid(o, true) - paid;
   const left = due - salePaid(o, true);
@@ -1274,7 +1349,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const sumQ = (f: (l: SaleLine) => number) => goods.reduce((s, l) => s + f(l), 0);
   const ord = sumQ((l) => l.qty), iss = sumQ((l) => saleIssQ(o, l)), rq = sumQ((l) => saleRetQ(o, l));
   const ckd = (l: SaleLine) => Math.round(l.qty * l.price) - saleLineNet(l);
-  const cashCode = (pid: string) => cashEntries.find((e) => e.source === 'SALE' && e.sourceId === pid)?.code;
+  const cashCode = (pid: string) => saleCashOf(cashEntries, pid)?.code;
   type Doc = { key: string; g: 'WH' | 'CASH' | 'INV' | 'OTHER'; code: string; type: ReactNode; date: string; qty?: number; amt?: number; note?: string; who?: string; st: ReactNode; open?: () => void };
   const docs: Doc[] = [
     ...vs.map((v): Doc => ({ key: v.id, g: 'WH', code: v.code, type: <span className="inline-flex items-center gap-1.5">{v.type === 'IN' ? <Undo2 className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /> : <PackageMinus className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />}{v.type === 'IN' ? 'Nhập trả' : 'Phiếu xuất'}</span>, date: v.date, qty: v.lines.reduce((s, l) => s + l.qty, 0), note: v.note, who: nm(v.approvedBy) || undefined, st: <Chip tone={v.status === 'PENDING' ? 'orange' : v.status === 'DONE' ? 'teal' : 'muted'}>{v.status === 'PENDING' ? 'Chờ kho' : v.status === 'DONE' ? (v.type === 'IN' ? 'Đã nhập' : 'Đã xuất') : 'Đã hủy'}</Chip>, open: () => go('warehouse') })),
@@ -1315,18 +1390,13 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
             )}
           </div>
         </div>
+        {o.status === 'CANCELLED' && left < 0 && <button className={btnPrimary} onClick={onPay}><Coins className="h-4 w-4" aria-hidden />Hoàn tiền khách {fmtN(-left)}</button>}
         {o.status !== 'CANCELLED' && stage !== 'APPROVAL' && <button className={btnGhost} onClick={onPay}><Coins className="h-4 w-4" aria-hidden />{canCash ? 'Lập phiếu thu' : 'Báo đã nhận tiền'}</button>}
         {canReq && <button className={btnPrimary} onClick={() => requestSaleIssue(o.id)}><PackageMinus className="h-4 w-4" aria-hidden />Yêu cầu xuất kho</button>}
         {canInv && <button className={btnGhost} onClick={() => setInv(true)}><ReceiptIcon className="h-4 w-4" aria-hidden />Yêu cầu xuất hóa đơn</button>}
         {stage === 'APPROVAL' && <button className={myTurn || R.canSelf(o) ? btnPrimary : btnGhost} onClick={onApprove}><CheckIcon className="h-4 w-4" aria-hidden />{myTurn || R.canSelf(o) ? 'Duyệt đơn' : 'Xem duyệt'}</button>}
       </SoTop>
-      {cancel !== null && (
-        <div className="glass-card mb-4 flex flex-wrap items-center gap-2 rounded-xl px-4 py-3">
-          <input className={cn(inputBase, 'min-w-[240px] flex-1')} value={cancel} onChange={(e) => setCancel(e.target.value)} placeholder="Lý do hủy đơn" aria-label="Lý do hủy" autoFocus />
-          <button className={btnGhost} onClick={() => setCancel(null)}>Thôi</button>
-          <button className={cn(btnPrimary, 'bg-[rgb(var(--danger))]')} disabled={cancel.trim().length < 3} onClick={() => { R.cancelOrder(o, cancel.trim()); setCancel(null); }}>Hủy đơn</button>
-        </div>
-      )}
+      {cancel !== null && <SaleCancelCard o={o} why={cancel} setWhy={setCancel} />}
       {inv && <SaleInvoiceForm o={o} onClose={() => setInv(false)} />}
       {view && (() => {
         const d = docs.find((x) => x.key === view);

@@ -243,18 +243,18 @@ export function SideSheet({ title, sub, onClose, children, footer, width = 'sm:w
   );
 }
 
-export function Modal({ title, onClose, children, footer, wide }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+export function Modal({ title, onClose, children, footer, wide, xl, flush, head }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean; xl?: boolean; flush?: boolean; head?: ReactNode }) {
   const ov = useOverlay();
   useEscClose(ov.id, onClose);
   return portal(
     <div className={cn('fixed inset-0 z-[65] flex items-end justify-center sm:items-center sm:p-4', !ov.top && 'invisible')} aria-hidden={!ov.top || undefined} role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-black/60 motion-safe:animate-[fadeIn_.15s_ease-out]" onClick={onClose} />
-      <div className={cn('relative flex max-h-[92vh] w-full flex-col rounded-t-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] shadow-2xl sm:rounded motion-safe:animate-[popIn_.18s_ease-out]', wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}>
+      <div className={cn('relative flex max-h-[92vh] w-full flex-col rounded-t-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] shadow-2xl sm:rounded motion-safe:animate-[popIn_.18s_ease-out]', xl ? 'sm:max-w-[1120px]' : wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}>
         <header className="flex items-center justify-between gap-3 border-b border-[rgb(var(--line))] px-5 py-4">
-          <h2 className="text-base font-semibold text-[rgb(var(--fg))]">{title}</h2>
+          <div className="flex min-w-0 flex-wrap items-center gap-2"><h2 className="text-base font-semibold text-[rgb(var(--fg))]">{title}</h2>{head}</div>
           <button className={cn(btnGhost, 'p-1.5')} onClick={onClose} aria-label="Đóng"><X className="h-4 w-4" /></button>
         </header>
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className={cn('flex-1 overflow-y-auto', !flush && 'px-5 py-4')}>{children}</div>
         {footer && <footer className="flex flex-wrap justify-end gap-2 max-sm:[&>*]:flex-1 border-t border-[rgb(var(--line))] px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:pb-4">{footer}</footer>}
       </div>
     </div>
