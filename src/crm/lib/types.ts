@@ -225,7 +225,13 @@ export type SaleDelivery = 'PICKUP' | 'DELIVER' | 'CARRIER';
 export type SaleStatus = 'PENDING' | 'SHIPPING' | 'DONE' | 'CANCELLED';
 
 /** Tiền khách trả cho đơn: chỉ tính vào công nợ khi kế toán đã xác nhận (tự sinh phiếu thu quỹ) */
-export type SalePayment = { id: string; amount: number; method: 'CASH' | 'BANK'; at: number; by?: string; confirmed?: boolean; confirmedBy?: string; confirmedAt?: number };
+export type SalePayment = { id: string; amount: number; method: 'CASH' | 'BANK'; at: number; by?: string; confirmed?: boolean; confirmedBy?: string; confirmedAt?: number;
+  /** v50: ngày chứng từ, người nộp, ghi chú, số hóa đơn gắn kèm; refund = hoàn tiền cho khách (amount âm) */
+  date?: string; payer?: string; note?: string; invNo?: string; refund?: boolean };
+
+export type SalePayExtra = Partial<Pick<SalePayment, 'date' | 'payer' | 'note' | 'invNo' | 'refund'>>;
+
+export type SaleNote = { id: string; by?: string; at: number; text: string };
 
 export type SalesOrder = {
   id: string; code: string; createdAt: number; date: string;
@@ -243,6 +249,8 @@ export type SalesOrder = {
   issueRequest?: { by: string; at: number };
   /** v49: số đã xuất / đã trả theo từng dòng (cập nhật khi kho duyệt phiếu), yêu cầu xuất hóa đơn gửi kế toán */
   issuedQ?: Record<string, number>; returnedQ?: Record<string, number>; invReqs?: SaleInvReq[];
+  /** v50: nguồn đơn hàng, nguồn chứng từ (PO / hợp đồng), người nhận hàng, trao đổi trên đơn */
+  origin?: string; docRef?: string; receiver?: string; notes?: SaleNote[];
 };
 
 export type SaleInvReq = { id: string; at: number; by?: string; amount: number; note?: string; status: 'PENDING' | 'DONE' | 'REJECTED'; no?: string; doneBy?: string; doneAt?: number; why?: string };
@@ -1111,7 +1119,7 @@ export type AppCtx = {
   /** Đề xuất mua phần thiếu: lập phiếu đặt hàng nhà cung cấp, hàng về tự giữ chỗ cho khách */
   purchaseForSale: (id: string) => void;
   /** Ghi nhận tiền khách trả; kế toán xác nhận mới vào sổ quỹ */
-  addSalePayment: (id: string, amount: number, method: 'CASH' | 'BANK', given?: SalesOrder) => void;
+  addSalePayment: (id: string, amount: number, method: 'CASH' | 'BANK', given?: SalesOrder, extra?: SalePayExtra) => void;
   confirmSalePayment: (id: string, payId: string) => void;
   setSaleStatus: (id: string, status: SaleStatus, reason?: string) => void;
   /** Bán hàng › mở đơn (từ báo giá / khách hàng) */
@@ -1991,9 +1999,13 @@ export type ReportView = 'mfg' | 'trade' | 'aging' | 'commission' | 'mdf';
 // =====================================================================
 // BÁN HÀNG: ĐƠN BÁN (v46) trực tiếp và đơn tự tạo khi chốt báo giá
 // =====================================================================
-export type SaleTab = 'ALL' | 'APPROVAL' | 'WAIT' | 'PARTIAL' | 'DONE' | 'UNPAID' | 'INV' | 'CANCELLED';
+export type SaleTab = 'ALL' | 'APPROVAL' | 'APPROVED' | 'WAIT' | 'UNPAID' | 'PAID' | 'DONE' | 'CANCELLED';
 
-export type SalePer = 'D' | 'W' | 'M' | 'Q' | 'Y' | 'ALL';
+export type SalePer = 'D' | 'W' | 'M' | 'Q' | 'Y' | 'ALL' | 'C';
+
+export type SaleFilter = { dateBy: 'date' | 'created'; code: string; origin: string; by: string; cust: string; wh: string; issue: 'ALL' | 'NONE' | 'PART' | 'FULL'; pay: SalePay | 'ALL'; paySt: 'ALL' | 'UNPAID' | 'PART' | 'PAID'; inv: 'ALL' | 'NO' | 'NONE' | 'WAIT' | 'DONE'; revOp: 'GT' | 'LT'; rev: number; ret: boolean; overdue: boolean };
+
+export type SoStep = { label: string; at?: string; sub?: ReactNode; state: 'done' | 'now' | 'todo' | 'side'; chip?: ReactNode };
 
 export type SalePick = { kind: SaleLineKind; ref?: string; name: string; unit: string; price: number; sub: string; vat: number };
 
