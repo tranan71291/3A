@@ -298,7 +298,10 @@ export const ACTION_LABEL: Record<Action, string> = {
   'mkt.manage': 'Marketing Hub: chiến dịch, nội dung, phân khúc, kịch bản tự động',
   'stock.manage': 'Lập phiếu nhập / xuất / kiểm kê kho vật tư',
   'cash.manage': 'Lập phiếu thu / chi, chuyển quỹ',
-  'sale.manage': 'Bán hàng: sửa, hủy, xóa đơn của người khác, hủy phiếu thu của đơn',
+  'sale.manage': 'Bán hàng: sửa hàng hóa, hủy đơn của người khác (trước khi xuất kho)',
+  'sale.info': 'Bán hàng: cập nhật thông tin đơn của người khác (cả đơn đã hoàn thành, không đổi hàng hóa)',
+  'sale.delete': 'Bán hàng: xóa đơn đã hủy',
+  'sale.docs': 'Bán hàng: sửa / hủy chứng từ liên quan của đơn (phiếu kho, phiếu thu, hóa đơn); người khác chỉ xem',
 };
 
 export const SOURCE_LABEL: Record<Source, string> = {
@@ -743,6 +746,9 @@ export const INITIAL_PERMS: Perms = {
     'stock.manage': ['BOD', 'DEPT_HEAD', 'ACCOUNTANT'],
     'cash.manage': ['BOD', 'ACCOUNTANT'],
     'sale.manage': ['BOD', 'DEPT_HEAD'],
+    'sale.info': ['BOD', 'DEPT_HEAD', 'ACCOUNTANT'],
+    'sale.delete': ['BOD'],
+    'sale.docs': ['BOD', 'ACCOUNTANT'],
   },
 };
 
@@ -2883,9 +2889,9 @@ export const daysTo = (iso10: string) => Math.ceil((Date.parse(`${iso10}T23:59:5
 export const headRoleFor = (r: Role): Role => (r === 'SALES_REP' ? 'DEPT_HEAD' : r);
 
 export const SCOPE_LABEL: Record<DataScope, { label: string; hint: string }> = {
-  ALL: { label: 'Toàn doanh nghiệp', hint: 'Thấy mọi lead, dự án, khách hàng' },
+  ALL: { label: 'Toàn doanh nghiệp', hint: 'Thấy mọi lead, dự án, khách hàng, đơn hàng' },
   DEPT: { label: 'Phòng ban của mình', hint: 'Chỉ dữ liệu của phòng mình' },
-  OWN: { label: 'Chỉ của mình', hint: 'Lead được giao, khách mình phụ trách' },
+  OWN: { label: 'Chỉ của mình', hint: 'Lead được giao, khách mình phụ trách, đơn mình lên' },
   WON: { label: 'Chỉ đơn đã chốt', hint: 'Dùng cho kế toán: dự án đã chốt, mọi khách hàng' },
 };
 
@@ -2899,7 +2905,7 @@ export const ACTION_MODULE: Record<Action, Module> = {
   'settings.edit': 'settings', 'data.backup': 'settings', 'security.manage': 'settings',
   'po.manage': 'supply', 'stock.deliver': 'supply', 'stock.release': 'supply', 'price.viewCost': 'products', 'stock.voucher': 'warehouse', 'stock.approve': 'warehouse',
   'activity.approve': 'staff', 'production.manage': 'production', 'install.manage': 'install', 'job.manage': 'jobs', 'receipt.confirm': 'jobs', 'priceList.manage': 'jobs',
-  'stock.manage': 'inventory', 'cash.manage': 'cashbook', 'sale.manage': 'sales', 'feed.moderate': 'home', 'feed.poll': 'home', 'zalo.reply': 'zalo', 'zalo.assign': 'zalo', 'mkt.manage': 'marketing',
+  'stock.manage': 'inventory', 'cash.manage': 'cashbook', 'sale.manage': 'sales', 'sale.info': 'sales', 'sale.delete': 'sales', 'sale.docs': 'sales', 'feed.moderate': 'home', 'feed.poll': 'home', 'zalo.reply': 'zalo', 'zalo.assign': 'zalo', 'mkt.manage': 'marketing',
 };
 
 export const LOCKED = (r: Role, m?: Module, a?: Action) => r === 'BOD' && (m === 'settings' || a === 'settings.edit');

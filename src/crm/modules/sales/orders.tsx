@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Banknote, Building2, CalendarDays, Check as CheckIcon, ChevronDown, ChevronLeft, ChevronRight, Coins, Columns3, Download, Eye, FileText, Filter, Lock, MoreVertical, PackageMinus, Pencil, Plus, Printer, Receipt as ReceiptIcon, Search, Send, Trash2, Truck, Undo2, Users, Wallet, Warehouse, X, XCircle } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { RowMenu } from '../../components/controls';
-import { Chip, Code, EmptyState, Field, MoneyInput, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, Modal, MoneyInput, useSticky } from '../../components/ui';
 import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, compact, DECISION_LABEL, digits, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, MAIN_WH, nextCode, overdueDays, PRICE_TIER, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleDue, saleIssQ, saleIssued, saleLineNet, salePaid, saleRetQ, soGrid, soIco, soTd, soTh, soTime, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { saleHeld, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
@@ -179,7 +179,10 @@ export function soSteps(o: SalesOrder, stage: SaleStage, vs: StockVoucher[], use
 /** v50: quyền thao tác trên đơn: người lên đơn với đơn của mình; Giám đốc / người có quyền "Bán hàng: sửa, hủy, xóa đơn" với mọi đơn */
 export function useSaleRights() {
   const { me, canDo, stockVouchers, setStockVouchers, setSalesOrders, setSaleStatus, notify, postCash, users, dispatch } = useApp();
-  const mgr = me?.role === 'BOD' || canDo('sale.manage');
+  const bod = me?.role === 'BOD';
+  const mgr = bod || canDo('sale.manage');
+  const del = bod || canDo('sale.delete');
+  const docs = bod || canDo('sale.docs');
   const own = (o: SalesOrder) => !!me && o.by === me.id;
   const issued = (o: SalesOrder) => o.lines.some((l) => saleIssQ(o, l) > 0);
   const pendOut = (o: SalesOrder) => stockVouchers.filter((v) => v.saleId === o.id && v.type === 'OUT' && v.status === 'PENDING');
@@ -188,9 +191,11 @@ export function useSaleRights() {
     mgr,
     canEdit: (o: SalesOrder) => o.status === 'PENDING' && !issued(o) && !pendOut(o).length && (own(o) || mgr),
     canCancel: (o: SalesOrder) => o.status === 'PENDING' && !issued(o) && (own(o) || mgr),
-    canDelete: (o: SalesOrder) => o.status === 'CANCELLED' && mgr && !o.payments.length,
+    canDelete: (o: SalesOrder) => o.status === 'CANCELLED' && del && !o.payments.length,
+    canInfo: (o: SalesOrder) => o.status !== 'CANCELLED' && (own(o) || mgr || bod || canDo('sale.info')),
+    canDocs: () => docs,
     canSelf: (o: SalesOrder) => !!o.approval?.self && o.approval.status === 'PENDING' && o.status === 'PENDING' && (own(o) || mgr),
-    canVoidPay: () => mgr || canDo('cash.manage'),
+    canVoidPay: () => docs,
     selfApprove: (o: SalesOrder) => { decide(o, 'APPROVED'); notify(`Đã duyệt ${o.code}. Bấm Yêu cầu xuất kho khi cần giao hàng`, 'teal'); },
     selfReject: (o: SalesOrder, note: string) => { decide(o, 'REJECTED', note); setSaleStatus(o.id, 'CANCELLED', `Không duyệt: ${note}`); },
     cancelOrder: (o: SalesOrder, why: string) => {
@@ -219,6 +224,10 @@ export function SalesModule() {
   const [cancelId, setCancelId] = useState<string | null>(null);
   const open = openSale ? salesOrders.find((o) => o.id === openSale) : undefined;
   useEffect(() => { window.scrollTo({ top: 0 }); }, [openSale, sub, mode]);
+  const { todo } = useApprovalQueue();
+  if (open && !ctx.mySales.some((o) => o.id === open.id) && !todo.some((t) => t.refId === open.id) && !ctx.canDo('stock.approve') && ctx.me?.role !== 'BOD') return (
+    <div className="glass-card mx-auto mt-10 max-w-md rounded-xl p-6 text-center"><Lock className="mx-auto h-6 w-6 text-[rgb(var(--muted))]" aria-hidden /><p className="mt-2 font-medium">Đơn {open.code} ngoài phạm vi xem của bạn</p><p className="mt-1 text-[13px] text-[rgb(var(--muted))]">Giám đốc cấp phạm vi ở Cài đặt › Phân quyền</p><button className={cn(btnGhost, 'mt-4')} onClick={() => setOpenSale(null)}>Về danh sách</button></div>
+  );
   const editO = editId ? salesOrders.find((o) => o.id === editId) : undefined;
   if (editO) return <SaleForm key={editO.id} edit={editO} onDone={(id) => { setEditId(null); if (id) setOpenSale(id); }} />;
   if (open && sub?.id === open.id) return sub.kind === 'approve'
@@ -231,7 +240,7 @@ export function SalesModule() {
 
 export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEdit: (id: string) => void; onCancel: (id: string) => void }) {
   const R = useSaleRights();
-  const { salesOrders, setOpenSale, users, quotes, warehouses, stockVouchers, customers } = useApp();
+  const { mySales: salesOrders, setOpenSale, users, quotes, warehouses, stockVouchers, customers } = useApp();
   const [tab0, setTab] = useSticky<SaleTab>('Sales.tab50', 'ALL');
   const [per, setPer] = useSticky<SalePer>('Sales.per50', 'M');
   const [range, setRange] = useSticky<{ from: string; to: string }>('Sales.range50', { from: addDaysISO(todayISO(), -14), to: todayISO() });
@@ -794,6 +803,21 @@ export function SaleStockCard({ o, compact: small, onOpen }: { o: SalesOrder; co
   );
 }
 
+/** v50.2: bản xem (file) của chứng từ liên quan: phiếu kho, phiếu thu, yêu cầu hóa đơn, đặt hàng, lệnh sản xuất */
+export function soVoucherHtml(v: StockVoucher, skus: SkuItem[], wh: string, nm: (id?: string) => string, company: CompanyInfo) {
+  const rows = v.lines.map((l, i) => { const s = skus.find((x) => x.sku === l.sku); return `<tr><td class="c">${i + 1}</td><td>${esc(l.sku)}</td><td>${esc(s?.name ?? '')}</td><td class="c">${esc(s?.unit ?? '')}</td>${l.req != null ? `<td class="r">${fmtN(l.req)}</td>` : ''}<td class="r">${fmtN(l.qty)}</td></tr>`; }).join('');
+  const req = v.lines.some((l) => l.req != null);
+  const title = v.type === 'IN' ? 'PHIẾU NHẬP KHO' : v.type === 'OUT' ? 'PHIẾU XUẤT KHO' : 'PHIẾU KHO';
+  return `<p><b>${esc(company.legalName)}</b><br>${esc(company.address)}</p><h1>${title}</h1><p class="c">Số ${esc(v.code)} · ngày ${fmtDate(v.date)} · ${v.status === 'PENDING' ? 'chờ duyệt' : v.status === 'DONE' ? 'đã duyệt' : 'đã hủy'}</p>
+<p>Kho: ${esc(wh)}<br>Lý do: ${esc(v.reason)}${v.partner ? `<br>Đối tác: ${esc(v.partner)}` : ''}${v.ref ? `<br>Chứng từ gốc: ${esc(v.ref)}` : ''}${v.note ? `<br>Diễn giải: ${esc(v.note)}` : ''}${v.cancelReason ? `<br>Lý do hủy: ${esc(v.cancelReason)}` : ''}</p>
+<table class="items"><thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>ĐVT</th>${req ? '<th>Yêu cầu</th>' : ''}<th>${v.type === 'OUT' ? 'Thực xuất' : 'Số lượng'}</th></tr></thead><tbody>${rows}</tbody></table>
+<table class="layout sign"><tr><td>Người lập<br><br><br>${esc(nm(v.requestedBy))}</td><td>Người duyệt<br><br><br>${esc(nm(v.approvedBy))}</td></tr></table>`;
+}
+
+export function soInfoHtml(title: string, code: string, rows: [string, string][], company: CompanyInfo) {
+  return `<p><b>${esc(company.legalName)}</b></p><h1>${esc(title)}</h1><p class="c">Số ${esc(code)}</p><table class="items"><tbody>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</tbody></table>`;
+}
+
 /** v50: bản in phiếu thu / phiếu chi của đơn */
 export function soReceiptHtml(o: SalesOrder, p: Pick<SalePayment, 'amount' | 'method' | 'refund' | 'payer' | 'note' | 'date' | 'at'>, code: string, company: CompanyInfo, by: string) {
   const amt = Math.abs(p.amount);
@@ -1151,8 +1175,19 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const invAsked = (o.invReqs ?? []).filter((r) => r.status !== 'REJECTED').reduce((s, r) => s + r.amount, 0);
   const invDone = (o.invReqs ?? []).filter((r) => r.status === 'DONE');
   const canReq = o.status === 'PENDING' && stage !== 'APPROVAL' && stage !== 'REJECTED' && remain > 0;
-  const canInv = o.status !== 'CANCELLED' && o.invoice !== false && due - invAsked > 0 && stage !== 'APPROVAL' && stage !== 'REJECTED';
+  const canInv = o.status !== 'CANCELLED' && due - invAsked > 0 && stage !== 'APPROVAL' && stage !== 'REJECTED';
   const nm = (id?: string) => users.find((u) => u.id === id)?.name ?? '';
+  const { skus } = useApp();
+  const [view, setView] = useState<string | null>(null);
+  type Info = { origin: string; docRef: string; by: string; receiver: string; phone: string; address: string; deliverAt: string; note: string; invoice: boolean };
+  const [info, setInfo] = useState<Info | null>(null);
+  const startInfo = () => setInfo({ origin: o.origin ?? (o.source === 'QUOTE' ? 'Từ báo giá' : 'Tại quầy'), docRef: o.docRef ?? '', by: o.by ?? '', receiver: o.receiver ?? '', phone: o.phone ?? '', address: o.address ?? '', deliverAt: o.deliverAt ?? '', note: o.note ?? '', invoice: o.invoice });
+  const saveInfo = () => {
+    if (!info) return;
+    setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, origin: info.origin.trim() || undefined, docRef: info.docRef.trim() || undefined, by: info.by || x.by, receiver: info.receiver.trim() || undefined, phone: info.phone.trim() || undefined, address: info.address.trim() || undefined, deliverAt: info.deliverAt || undefined, note: info.note.trim() || undefined, invoice: info.invoice,
+      notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: 'Cập nhật thông tin đơn (không đổi hàng hóa, giá)' }] } : x)));
+    setInfo(null);
+  };
   const goods = o.lines.filter((l) => l.kind !== 'FREE');
   const sumQ = (f: (l: SaleLine) => number) => goods.reduce((s, l) => s + f(l), 0);
   const ord = sumQ((l) => l.qty), iss = sumQ((l) => saleIssQ(o, l)), rq = sumQ((l) => saleRetQ(o, l));
@@ -1219,9 +1254,46 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
           <button className={btnPrimary} disabled={!(inv.amount > 0)} onClick={() => { requestSaleInvoice(o.id, inv.amount, inv.note); setInv(null); }}><Send className="h-4 w-4" aria-hidden />Gửi kế toán</button>
         </div>
       )}
+      {view && (() => {
+        const d = docs.find((x) => x.key === view);
+        if (!d) return null;
+        const v = vs.find((x) => x.id === view);
+        const p = o.payments.find((x) => x.id === view);
+        const r = (o.invReqs ?? []).find((x) => x.id === view);
+        const po = pos.find((x) => x.id === view);
+        const html = v ? soVoucherHtml(v, skus, warehouses.find((w) => w.id === v.whId)?.name ?? '', nm, company)
+          : p ? soReceiptHtml(o, p, d.code, company, nm(p.by))
+          : r ? soInfoHtml('YÊU CẦU XUẤT HÓA ĐƠN', r.no ?? '—', [['Đơn hàng', o.code], ['Khách hàng', `${o.customer}${o.taxCode ? ` · MST ${o.taxCode}` : ''}`], ['Số tiền', `${fmtN(r.amount)} đ`], ['Người yêu cầu', nm(r.by)], ['Ngày yêu cầu', soTime(r.at)], ['Trạng thái', r.status === 'DONE' ? `Đã xuất ${r.no}` : r.status === 'PENDING' ? 'Chờ kế toán' : `Trả lại: ${r.why ?? ''}`], ['Ghi chú', r.note ?? '']], company)
+          : po ? soInfoHtml('ĐẶT HÀNG NHÀ CUNG CẤP', po.code, [['Nhà cung cấp', po.vendor], ['Ngày đặt', fmtDate(po.orderDate)], ['Dự kiến về', fmtDate(po.expectedDate)], ['Số dòng', String(po.lines.length)]], company)
+          : soInfoHtml(String(d.code), d.code, [['Loại', typeof d.type === 'string' ? d.type : ''], ['Ngày', fmtDate(d.date)], ['Ghi chú', d.note ?? '']], company);
+        const doc = docShell(d.code, html);
+        return (
+          <Modal wide title={`Chứng từ ${d.code}`} onClose={() => setView(null)} footer={<>
+            <button className={cn(btnGhost, 'mr-auto')} onClick={() => printHtml(doc)}><Printer className="h-4 w-4" aria-hidden />In / lưu PDF</button>
+            <button className={btnGhost} onClick={() => setView(null)}>Đóng</button>
+            {R.canDocs() && d.open && <button className={btnPrimary} onClick={() => { setView(null); d.open?.(); }}><Pencil className="h-4 w-4" aria-hidden />Sửa chứng từ</button>}
+          </>}>
+            <iframe title={`Chứng từ ${d.code}`} srcDoc={doc} className="h-[65vh] w-full rounded-lg border border-[rgb(var(--line))] bg-white" />
+          </Modal>
+        );
+      })()}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
         <div className="min-w-0 space-y-4">
-          <SoCard title="Thông tin đơn hàng">
+          {info ? (
+            <SoCard title="Cập nhật thông tin đơn hàng" action={<><button className={btnGhost} onClick={() => setInfo(null)}>Thôi</button><button className={btnPrimary} onClick={saveInfo}><CheckIcon className="h-4 w-4" aria-hidden />Lưu</button></>}>
+              <div className={soGrid}>
+                <Field label="Nguồn đơn hàng"><input className={inputCls} value={info.origin} onChange={(e) => setInfo({ ...info, origin: e.target.value })} /></Field>
+                <Field label="Nguồn chứng từ"><input className={inputCls} value={info.docRef} onChange={(e) => setInfo({ ...info, docRef: e.target.value })} placeholder="PO, hợp đồng" /></Field>
+                <Field label="Người thực hiện"><select className={inputCls} value={info.by} onChange={(e) => setInfo({ ...info, by: e.target.value })}>{users.filter((u) => u.active || u.id === info.by).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
+                <Field label="Hóa đơn thuế"><label className="flex h-[38px] items-center gap-2 text-[14px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={info.invoice} onChange={(e) => setInfo({ ...info, invoice: e.target.checked })} />Khách lấy hóa đơn</label></Field>
+                <Field label="Người nhận"><input className={inputCls} value={info.receiver} onChange={(e) => setInfo({ ...info, receiver: e.target.value })} /></Field>
+                <Field label="Số điện thoại"><input className={inputCls} value={info.phone} onChange={(e) => setInfo({ ...info, phone: e.target.value })} /></Field>
+                <Field label="Ngày giao"><input type="date" className={inputCls} value={info.deliverAt} onChange={(e) => setInfo({ ...info, deliverAt: e.target.value })} /></Field>
+                <Field label="Địa chỉ giao"><input className={inputCls} value={info.address} onChange={(e) => setInfo({ ...info, address: e.target.value })} /></Field>
+                <Field label="Ghi chú" className="sm:col-span-2 xl:col-span-4"><input className={inputCls} value={info.note} onChange={(e) => setInfo({ ...info, note: e.target.value })} /></Field>
+              </div>
+            </SoCard>
+          ) : <SoCard title="Thông tin đơn hàng" action={R.canInfo(o) ? <button className={cn(btnGhost, btnSm)} onClick={startInfo}><Pencil className="h-3.5 w-3.5" aria-hidden />Cập nhật thông tin</button> : undefined}>
             <div className={soGrid}>
               <SoInfo label="Khách hàng" span={2}><Building2 className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden /><span className="truncate">{o.customer}</span><span className="truncate text-[12.5px] text-[rgb(var(--muted))]">{[o.taxCode && `MST ${o.taxCode}`, o.phone].filter(Boolean).join(' · ')}</span></SoInfo>
               <SoInfo label="Mã đơn hàng"><Code>{o.code}</Code></SoInfo>
@@ -1231,7 +1303,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
               <SoInfo label="Nguồn chứng từ"><FileText className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />{o.docRef || '—'}</SoInfo>
               <SoInfo label="Số hóa đơn thuế">{invDone.length ? <>{invDone.map((r) => <Code key={r.id}>{r.no}</Code>)}{due - invDone.reduce((s, r) => s + r.amount, 0) > 0 && <span className="text-[12.5px] text-[rgb(var(--muted))]">còn {compact(due - invDone.reduce((s, r) => s + r.amount, 0))}</span>}</> : o.invoice ? '—' : <span className="text-[rgb(var(--muted))]">Không lấy</span>}</SoInfo>
             </div>
-          </SoCard>
+          </SoCard>}
           <section className="glass-card min-w-0 overflow-hidden rounded-xl">
             <div className="flex flex-wrap items-center gap-3 border-b border-[rgb(var(--line))] px-5">
               <SoTabs tabs={[{ id: 'goods', label: 'Hàng hóa', count: o.lines.length }, { id: 'docs', label: 'Chứng từ liên quan', count: docs.length }]} value={tab} onChange={setTab} />
@@ -1278,11 +1350,11 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
                 <table className="w-full min-w-[900px] text-[13.5px]">
                   <thead><tr className="border-b border-[rgb(var(--line))]"><th className={cn(soTh, 'pl-5')}>Mã chứng từ</th><th className={soTh}>Loại</th><th className={soTh}>Ngày</th><th className={cn(soTh, 'text-right')}>Số lượng</th><th className={cn(soTh, 'text-right')}>Giá trị</th><th className={soTh}>Ghi chú</th><th className={soTh}>Người xử lý</th><th className={soTh}>Trạng thái</th><th className={cn(soTh, 'w-8 pr-5')} /></tr></thead>
                   <tbody>{docsV.map((d) => (
-                    <tr key={d.key} className={cn('border-b border-[rgb(var(--ink)/0.06)]', d.open && 'cursor-pointer hover:bg-[rgb(var(--ink)/0.03)]')} onClick={d.open}>
+                    <tr key={d.key} className="cursor-pointer border-b border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--ink)/0.03)]" onClick={() => setView(d.key)}>
                       <td className={cn(soTd, 'pl-5')}><Code>{d.code}</Code></td><td className={soTd}>{d.type}</td><td className={cn(soTd, 'tabular-nums text-[rgb(var(--fg2))]')}>{fmtDate(d.date)}</td>
                       <td className={cn(soTd, 'text-right tabular-nums')}>{d.qty !== undefined ? fmtN(d.qty) : '—'}</td><td className={cn(soTd, 'text-right tabular-nums')}>{d.amt !== undefined ? fmtN(d.amt) : '—'}</td>
                       <td className={soTd}><span className="block max-w-[220px] truncate text-[rgb(var(--fg2))]" title={d.note}>{d.note || '—'}</span></td><td className={soTd}>{d.who ?? '—'}</td><td className={soTd}>{d.st}</td>
-                      <td className={cn(soTd, 'pr-5 text-[rgb(var(--muted))]')}>{d.open && <ChevronRight className="h-4 w-4" aria-hidden />}</td>
+                      <td className={cn(soTd, 'pr-5 text-[rgb(var(--muted))]')}><Eye className="h-4 w-4" aria-label="Xem" /></td>
                     </tr>))}</tbody>
                 </table>
               </div>

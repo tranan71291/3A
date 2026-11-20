@@ -483,6 +483,9 @@ export default function DashboardApp() {
     ? customers.filter((c) => c.amId === me.id || jobs.some((j) => j.customerId === c.id && j.ownerId === me.id) || leads.some((l) => l.assignee === me.id && (l.customerId === c.id || (!!l.taxCode && l.taxCode === c.taxCode))))
     : scope === 'DEPT' ? customers.filter((c) => c.dept === me.dept || users.find((u) => u.id === c.amId)?.dept === me.dept || jobs.some((j) => j.customerId === c.id && j.dept === me.dept))
     : customers;
+  const mySales = !me ? [] : scope === 'OWN' ? salesOrders.filter((o) => o.by === me.id)
+    : scope === 'DEPT' ? salesOrders.filter((o) => o.by === me.id || (!!me.dept && users.find((u) => u.id === o.by)?.dept === me.dept))
+    : salesOrders;
   const myCustomersF = myCustomers.filter((c) => (gf.region === 'ALL' || c.region === gf.region) && (gf.dept === 'ALL' || c.dept === gf.dept));
   /** Trạng thái hoạt động: ghi lastActiveAt mỗi phút khi người dùng còn thao tác (đồng bộ cho đồng nghiệp thấy online / vắng) */
   const lastInput = useRef(Date.now());
@@ -1138,7 +1141,7 @@ export default function DashboardApp() {
     const o = salesOrders.find((x) => x.id === id);
     if (!o || !(amount > 0)) return;
     const r: SaleInvReq = { id: uid('ir'), at: Date.now(), by: me?.id, amount: Math.round(amount), note: note?.trim() || undefined, status: 'PENDING' };
-    setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, invReqs: [...(x.invReqs ?? []), r] } : x)));
+    setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, invoice: true, invReqs: [...(x.invReqs ?? []), r] } : x)));
     const acc = accountantsOf().filter((u) => u.id !== me?.id);
     acc.forEach((u) => dispatch('APPROVAL_RESULT', { to: u, title: `Yêu cầu xuất hóa đơn: ${o.code}`, body: `${o.customer}${o.taxCode ? ` (MST ${o.taxCode})` : ''}, ${fmtN(r.amount)} đ${r.note ? `. ${r.note}` : ''}`, module: 'sales' }));
     notify(`Đã gửi yêu cầu xuất hóa đơn ${o.code}${acc.length ? ` cho ${acc.map((u) => u.name).join(', ')}` : ''}`, 'teal');
@@ -1936,7 +1939,7 @@ export default function DashboardApp() {
     leads, setLeads, customers, setCustomers, users, setUsers, departments, setDepartments,
     budget, setBudget, budgets, setBudgets, setFiscalYear, activities, setActivities, policy, setPolicy, programs, setPrograms, claims, setClaims, perms, setPerms,
     segRules, segments, setSegments, tierRules, setTierRules, categories, setCategories, popDocs, setPopDocs, sources, setSources,
-    mktItems, setMktItems, company, setCompany, quotes, setQuotes, myLeads, myCustomers: myCustomersF, gf, setGf,
+    mktItems, setMktItems, company, setCompany, quotes, setQuotes, myLeads, myCustomers: myCustomersF, mySales, gf, setGf,
     range, setRange, skus, setSkus, pos, setPos,
     docTemplates, setDocTemplates, genDocs, setGenDocs, openComposer: (o) => setComposer(o), openWin: (id) => setWinFor(id),
     reservations, moves, receiveShipment, deliverReservation, requestRelease, decideRelease, reserveFromStock, canRelease, reopenLead,

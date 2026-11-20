@@ -2,6 +2,12 @@
 
 > Không đổi bảng, SQL, không thêm thư viện. Trường mới đều tùy chọn trong dữ liệu doanh nghiệp: đơn bán `origin` (nguồn đơn), `docRef` (nguồn chứng từ PO / hợp đồng), `receiver` (người nhận), `notes` (trao đổi); phiếu thu của đơn `date`, `payer`, `note`, `invNo`, `refund` (hoàn tiền, số âm). Đơn cũ mở bình thường, mã cũ giữ nguyên.
 
+## Sửa v50.2 (20/11, phân quyền đơn hàng)
+1. **Đơn đã hoàn thành vẫn cập nhật được thông tin** (nguồn đơn, nguồn chứng từ, người thực hiện, người nhận, SĐT, ngày / địa chỉ giao, ghi chú, khách lấy hóa đơn) bằng nút "Cập nhật thông tin" ở khối Thông tin đơn hàng; không đổi hàng hóa, giá; ghi vào nhật ký đơn. Yêu cầu xuất hóa đơn gửi được cả khi đơn đã hoàn thành (và cả đơn trước đó chọn không lấy hóa đơn).
+2. **Chứng từ liên quan chỉ xem**: bấm dòng chứng từ mở bản xem dạng file (phiếu xuất / nhập trả, phiếu thu / chi, yêu cầu hóa đơn, đặt hàng), có In / lưu PDF. Nút "Sửa chứng từ" chỉ hiện với Giám đốc và người có quyền "Bán hàng: sửa / hủy chứng từ liên quan" (mặc định Kế toán). Hủy phiếu thu của đơn cũng theo quyền này.
+3. **Phân quyền chi tiết** ở Cài đặt › Phân quyền, nhóm Bán hàng: sửa hàng hóa / hủy đơn của người khác; cập nhật thông tin đơn của người khác; xóa đơn đã hủy; sửa / hủy chứng từ liên quan. Giám đốc luôn có toàn quyền.
+4. **Phạm vi xem đơn** theo "Phạm vi dữ liệu" (vai trò hoặc từng tài khoản, do Giám đốc cấp): Chỉ của mình = đơn mình lên; Phòng ban = đơn của người cùng phòng; Toàn doanh nghiệp = mọi đơn. Kế toán xem mọi đơn để thu tiền, xuất hóa đơn. Người đang phải duyệt đơn / duyệt kho vẫn mở được đơn đó; đơn ngoài phạm vi hiện thông báo không có quyền. Lưu ý: phạm vi xem đơn đang lọc ở giao diện; dữ liệu giữa các doanh nghiệp vẫn tách bằng RLS như cũ, nhưng máy chủ chưa chặn theo từng đơn trong cùng doanh nghiệp.
+
 ## Sửa luồng v50.1 (20/11, sau góp ý)
 1. **Lưu đơn chỉ ghi nhận doanh số**: không còn tự sinh phiếu xuất kho, không tự sinh phiếu thu (bỏ "Khách trả trước" và "gửi xuất kho ngay" trên form). Luồng: Lưu đơn → Duyệt → Yêu cầu xuất kho (bấm tay) → kho Duyệt / Từ chối → kế toán lập / xác nhận phiếu thu.
 2. **Duyệt đơn luôn là một bước**: đơn chạm điều kiện quy trình "Đơn bán" thì chờ người duyệt theo quy trình (có báo); đơn trong ngưỡng thì người lên đơn (hoặc Giám đốc / người có quyền) bấm Duyệt đơn.
