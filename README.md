@@ -1,3 +1,21 @@
+# 3A CRM v49 (luồng đơn bán: duyệt → yêu cầu xuất kho → kho duyệt một phần / toàn bộ → nhập trả theo mã đơn → yêu cầu xuất hóa đơn — dựa trên v48)
+
+> Bản thử nghiệm luồng. Không đổi bảng, SQL, không thêm thư viện. Trường mới đều tùy chọn trong dữ liệu doanh nghiệp: đơn bán `issuedQ` (đã xuất theo dòng), `returnedQ` (đã trả), `invReqs` (yêu cầu xuất hóa đơn); phiếu kho `saleId`, dòng phiếu `lineId` / `req` / `held`. Đơn cũ mở bình thường (đơn đã xuất trước đây coi như xuất đủ).
+
+## Cập nhật v49 (20/11)
+1. **Bán hàng (NV kinh doanh)**: lên đơn → duyệt theo quy trình "Đơn bán" (Cài đặt › Quy trình & phê duyệt: điều kiện cần duyệt, người duyệt; đơn không chạm điều kiện thì tự duyệt) → bấm **Yêu cầu xuất kho**. Hệ thống tạo phiếu xuất chờ duyệt (số còn lại của từng dòng) và báo người duyệt kho.
+2. **Kho**: mở phiếu ở Kho › Phiếu kho › Xuất (hoặc Trung tâm phê duyệt), sửa số thực xuất nếu xuất một phần (không vượt số yêu cầu) → **Duyệt**: trừ tồn (dùng hàng giữ chỗ theo PO trước), đơn tự ghi "Đã xuất", trạng thái **Xuất một phần** hoặc **Hoàn thành** khi xuất đủ; báo người lên đơn. Phần chưa xuất: NV kinh doanh bấm Yêu cầu xuất kho tiếp.
+3. **Trả hàng**: kho lập **phiếu nhập kho**, chọn **Đơn hàng trả lại** (nạp các dòng đã xuất), nhập số trả, chọn kho nhận → duyệt: cộng tồn, đơn ghi cột "Trả", giảm số phải thu (giá sau chiết khấu + VAT); báo người lên đơn (và kế toán nếu đơn đã thu tiền). Hủy phiếu đã duyệt thì đơn trừ lại số đã xuất / đã trả.
+4. **Kế toán**: mở đơn ở Bán hàng → **Ghi thu** (tự sinh phiếu thu quỹ); tab "Chưa thu đủ" lọc đơn còn phải thu; báo khi khách trả thừa (sau trả hàng).
+5. **Hóa đơn**: trong đơn có **Yêu cầu xuất hóa đơn** (số tiền, ghi chú) gửi kế toán; kế toán nhập số hóa đơn → "Đã xuất", hoặc trả lại có lý do; tab "Chờ xuất HĐ".
+6. **Danh sách đơn bán**: bỏ hàng chỉ số; tab Tất cả / Chờ duyệt / Chờ xuất kho / Xuất một phần / Hoàn thành / Chưa thu đủ / Chờ xuất HĐ / Đã hủy; lọc thời gian (hôm nay … năm nay); bộ lọc gom vào nút phễu (thanh toán, NV bán, kho); mỗi trường 1 cột, 8 cột ẩn sẵn bật ở nút chọn cột; dòng tổng.
+7. **Chi tiết đơn**: thanh bước Tạo đơn → Duyệt → Yêu cầu xuất kho → Kho xuất → Hoàn thành; bảng hàng có Đặt / Đã xuất / Chờ kho / Còn lại / Trả; khối "Phiếu kho của đơn"; khối Hóa đơn; khóa sửa khi đã xuất.
+8. Bảng dùng chung: nút chọn cột không còn đè lên tiêu đề cột cuối khi các cột cuối đang ẩn.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict); chạy thử trên trình duyệt: NV kinh doanh lên đơn 5 cuộn → yêu cầu xuất kho → kế toán (quyền duyệt kho) duyệt xuất 2 → đơn "Xuất một phần" → yêu cầu tiếp → duyệt 3 từ Trung tâm phê duyệt → "Hoàn thành"; yêu cầu xuất hóa đơn → kế toán ghi số HĐ; ghi thu; kho nhập trả 1 cuộn theo mã đơn → đơn ghi Trả 1, giảm phải thu 307.800. Chạy lại kiểm tra v48 (duyệt đơn giảm giá, đề nghị 3 bước, ủy quyền) không lỗi.
+**Giới hạn**: đơn có vật tư xưởng / hàng gia công (MFG) vẫn xuất theo cách cũ; hủy phiếu xuất đã duyệt không trả lại hàng giữ chỗ theo PO (chỉ hoàn phần tồn tự do); "Hoàn thành" tính theo xuất đủ, chưa xét thu tiền / hóa đơn (theo dõi riêng); chưa kết nối nhà cung cấp hóa đơn điện tử (kế toán nhập số HĐ tay).
+
+
 # 3A CRM v48 (Quy trình & phê duyệt, Đề nghị, bảng chọn nhiều, ảnh nổi / con dấu, nhập Excel — dựa trên v46)
 
 > Không đổi bảng, SQL. Không thêm thư viện. Dữ liệu mới nằm trong dữ liệu doanh nghiệp: `wfDefs` (quy trình đã sửa / tự tạo), `wfRuns` (tiến trình duyệt nhiều bước, đề nghị), `wfPolicy`, `wfDelegations`. Dữ liệu cũ mở bình thường; yêu cầu đang chờ từ bản trước vẫn duyệt được.

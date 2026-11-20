@@ -6,7 +6,7 @@ import { useIntent } from '../../components/command-palette';
 import { Pagination, usePaged } from '../../components/controls';
 import { useInRange } from '../../components/filters';
 import { Chip, Code, EmptyState, Field, Modal, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
-import { addWh, btnDanger, btnGhost, btnPrimary, btnSm, C, compact, downloadBlob, esc, fmtDate, fold, inputBase, inputCls, kpiGrid, MAIN_WH, MOVE_LABEL, moveEffect, nextVoucherCode, rangeText, reservedInStock, rowCls, tdCls, tdFirst, tdLast, todayISO, uid, useApp, V_STATUS, VOUCHER_META, vStatusLabel, whQty } from '../../lib/core';
+import { addWh, btnDanger, btnGhost, btnPrimary, btnSm, C, compact, downloadBlob, esc, fmtDate, fold, inputBase, inputCls, kpiGrid, MAIN_WH, MOVE_LABEL, moveEffect, nextVoucherCode, rangeText, reservedInStock, rowCls, saleIssQ, saleRetQ, tdCls, tdFirst, tdLast, todayISO, uid, useApp, V_STATUS, VOUCHER_META, vStatusLabel, whQty } from '../../lib/core';
 import { xlsxBlob } from '../../lib/csv';
 import type { SkuItem, StockMove, StockVoucher, SvLine, VoucherStatus, VoucherType, WarehouseInfo, WhTab } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -58,8 +58,10 @@ export function useWarehouseData() {
 /** Lập / xem / duyệt phiếu kho */
 export function VoucherModal({ type, voucher, preset, onClose }: { type: VoucherType; voucher?: StockVoucher; preset?: Partial<StockVoucher>; onClose: () => void }) {
   const app = useApp();
-  const { skus, setSkus, warehouses, stockVouchers, setStockVouchers, addMoves, me, userName, notify, canDo, customers, pos, company } = app;
+  const { skus, setSkus, warehouses, stockVouchers, setStockVouchers, addMoves, me, userName, notify, canDo, customers, pos, company, salesOrders } = app;
   const { canApprove: canApprove0 } = useWarehouseData();
+  /** v49: đơn có hàng đã xuất, chưa trả hết (để lập phiếu nhập trả) */
+  const retOrders = salesOrders.filter((o) => o.status !== 'CANCELLED' && o.lines.some((l) => l.kind === 'SKU' && l.ref && saleIssQ(o, l) - saleRetQ(o, l) > 0));
   /** v48: không tự duyệt phiếu chờ của mình (Giám đốc duy nhất thì được); "Lập & duyệt" khi tự lập vẫn giữ */
   const canApprove = (v: StockVoucher) => canApprove0(v) && !(!!voucher && voucher.status === 'PENDING' && voucher.requestedBy === me?.id && (app.wfPolicy.noSelf && !(app.me?.role === 'BOD' && app.wfPolicy.soleBodSelf && app.users.filter((u) => u.active && u.role === 'BOD').length === 1)));
   const act = warehouses.filter((w) => w.active);
@@ -75,9 +77,11 @@ export function VoucherModal({ type, voucher, preset, onClose }: { type: Voucher
   const loadAll = () => setF((p) => ({ ...p, lines: skus.filter((s) => !s.archived && whQty(s, p.whId, warehouses) > 0).map((s) => ({ sku: s.sku, qty: whQty(s, p.whId, warehouses), system: whQty(s, p.whId, warehouses) })) }));
   const errs: string[] = [];
   if (!f.lines.length) errs.push('Chưa có dòng hàng');
-  if (f.lines.some((l) => !(l.qty >= 0) || (type !== 'COUNT' && l.qty <= 0) || !Number.isInteger(l.qty))) errs.push('Số lượng phải là số nguyên dương');
+  if (f.lines.some((l) => !(l.qty >= 0) || (type !== 'COUNT' && !f.saleId && l.qty <= 0) || !Number.isInteger(l.qty))) errs.push('Số lượng phải là số nguyên dương');
+  if (f.saleId && f.lines.length && !f.lines.some((l) => l.qty > 0)) errs.push(type === 'IN' ? 'Nhập số lượng trả' : 'Nhập số lượng thực xuất');
+  if (f.saleId) f.lines.forEach((l) => { if (l.req != null && l.qty > l.req) errs.push(`${l.sku} vượt ${type === 'IN' ? 'số được trả' : 'số yêu cầu'} (${l.req})`); });
   if (type === 'TRANSFER' && (!f.toWhId || f.toWhId === f.whId)) errs.push('Chọn kho đến khác kho đi');
-  if ((type === 'OUT' || type === 'TRANSFER') && !ro) f.lines.forEach((l) => { const s = skuOf(l.sku); if (s && l.qty > whQty(s, f.whId, warehouses)) errs.push(`${l.sku} vượt tồn kho (${whQty(s, f.whId, warehouses)})`); });
+  if ((type === 'OUT' || type === 'TRANSFER') && !ro && !f.saleId) f.lines.forEach((l) => { const s = skuOf(l.sku); if (s && l.qty > whQty(s, f.whId, warehouses)) errs.push(`${l.sku} vượt tồn kho (${whQty(s, f.whId, warehouses)})`); });
   const total = f.lines.reduce((a, l) => a + l.qty * (l.price ?? 0), 0);
   const persist = (v: StockVoucher) => setStockVouchers((all) => (all.some((x) => x.id === v.id) ? all.map((x) => (x.id === v.id ? v : x)) : [v, ...all]));
   const submit = () => {
@@ -92,6 +96,7 @@ export function VoucherModal({ type, voucher, preset, onClose }: { type: Voucher
   };
   const approve = () => {
     if (errs.length) return notify(errs[0], 'red');
+    if (f.saleId) { const v: StockVoucher = { ...f, id: f.id || uid('sv'), lines: f.lines.map((l) => ({ ...l })) }; if (type === 'IN' ? app.approveSaleReturn(v) : app.approveSaleVoucher(v)) onClose(); return; }
     const v: StockVoucher = { ...f, id: f.id || uid('sv'), lines: f.lines.map((l) => ({ ...l })) };
     const r = applyVoucher(v, 1, skus, warehouses, me?.id);
     if (r.error) return notify(r.error, 'red');
@@ -102,9 +107,12 @@ export function VoucherModal({ type, voucher, preset, onClose }: { type: Voucher
   const cancel = () => {
     if (cancelWhy.trim().length < 3) return notify('Nhập lý do hủy', 'red');
     if (f.status === 'DONE') {
-      const r = applyVoucher(f, -1, skus, warehouses, me?.id);
-      if (r.error) return notify(`Không hoàn được tồn: ${r.error}`, 'red');
+      /** v49: phần lấy từ hàng giữ chỗ không hoàn vào tồn tự do */
+      const back: StockVoucher = { ...f, lines: f.lines.map((l) => ({ ...l, qty: l.qty - (l.held ?? 0) })).filter((l) => l.qty > 0) };
+      const r = back.lines.length ? applyVoucher(back, -1, skus, warehouses, me?.id) : { skus, moves: [] as Omit<StockMove, 'id'>[] };
+      if ('error' in r && r.error) return notify(`Không hoàn được tồn: ${r.error}`, 'red');
       setSkus(r.skus); addMoves(r.moves);
+      if (f.saleId) app.saleVoucherUndo(f);
     }
     persist({ ...f, status: 'CANCELLED', cancelledBy: me?.id, cancelReason: cancelWhy.trim() });
     notify(`Đã hủy ${f.code}${f.status === 'DONE' ? ', đã hoàn tồn kho' : ''}`, 'orange'); onClose();
@@ -140,10 +148,23 @@ export function VoucherModal({ type, voucher, preset, onClose }: { type: Voucher
           {type === 'TRANSFER' ? <Field label="Kho đến"><select className={inputCls} value={f.toWhId ?? ''} onChange={(e) => set('toWhId', e.target.value)}>{act.filter((w) => w.id !== f.whId).map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}</select></Field>
             : <Field label="Loại phiếu"><select className={inputCls} value={f.reason} onChange={(e) => set('reason', e.target.value)}>{meta.reasons.map((r) => <option key={r}>{r}</option>)}</select></Field>}
           <Field label="Chứng từ gốc" hint={type === 'IN' ? 'Mã PO / hóa đơn' : 'Mã đơn hàng / dự án'}><input className={inputCls} value={f.ref ?? ''} onChange={(e) => set('ref', e.target.value || undefined)} placeholder={type === 'IN' ? 'VD: PO-0012' : 'VD: DH52163'} /></Field>
-          {(type === 'IN' || type === 'OUT') && <Field label={type === 'IN' ? 'Nhà cung cấp' : 'Khách hàng'} className="sm:col-span-2"><input className={inputCls} list={`vp-${type}`} value={f.partner ?? ''} onChange={(e) => set('partner', e.target.value || undefined)} /><datalist id={`vp-${type}`}>{partnerList.map((p) => <option key={p} value={p} />)}</datalist></Field>}
+          {(type === 'IN' || type === 'OUT') && <Field label={type === 'IN' && !f.saleId ? 'Nhà cung cấp' : 'Khách hàng'} className="sm:col-span-2"><input className={inputCls} list={`vp-${type}`} value={f.partner ?? ''} onChange={(e) => set('partner', e.target.value || undefined)} /><datalist id={`vp-${type}`}>{partnerList.map((p) => <option key={p} value={p} />)}</datalist></Field>}
           <Field label="Diễn giải" className={type === 'IN' || type === 'OUT' ? 'sm:col-span-2' : 'sm:col-span-4'}><input className={inputCls} value={f.note ?? ''} onChange={(e) => set('note', e.target.value || undefined)} /></Field>
         </fieldset>
-        {!ro && (
+        {f.saleId && (() => { const so = salesOrders.find((x) => x.id === f.saleId); return (
+          <p className="rounded-lg bg-[rgb(var(--ink)/0.05)] px-3 py-2 text-[13px]">{type === 'IN' ? 'Hàng bán trả lại của đơn' : 'Phiếu xuất từ yêu cầu xuất kho của đơn'} <Code>{so?.code ?? f.ref}</Code> · {so?.customer ?? f.partner}. {type === 'IN' ? 'Nhập số trả từng dòng (không vượt số đã xuất còn lại); duyệt xong đơn tự ghi số trả và giảm phải thu.' : 'Duyệt một phần: giảm số thực xuất (không vượt số yêu cầu); phần còn lại vẫn ở đơn, NV kinh doanh gửi yêu cầu tiếp.'}</p>
+        ); })()}
+        {!ro && type === 'IN' && !voucher && (
+          <Field label="Đơn hàng trả lại" hint="Chọn đơn để nạp các dòng đã xuất; bỏ trống nếu không phải hàng bán trả lại">
+            <select className={inputCls} value={f.saleId ?? ''} onChange={(e) => { const so = salesOrders.find((x) => x.id === e.target.value); if (!so) { setF((p) => ({ ...p, saleId: undefined, lines: p.saleId ? [] : p.lines })); return; }
+              setF((p) => ({ ...p, saleId: so.id, ref: so.code, partner: so.customer, reason: 'Khách trả hàng', note: p.note || `Hàng bán trả lại đơn ${so.code}`,
+                lines: so.lines.filter((l) => l.kind === 'SKU' && l.ref && saleIssQ(so, l) - saleRetQ(so, l) > 0).map((l) => ({ sku: l.ref!, qty: 0, req: saleIssQ(so, l) - saleRetQ(so, l), price: skuOf(l.ref!)?.costPrice ?? 0, lineId: l.id })) })); }} aria-label="Đơn hàng trả lại">
+              <option value="">Không gắn đơn hàng</option>
+              {retOrders.map((o) => <option key={o.id} value={o.id}>{o.code} · {o.customer}</option>)}
+            </select>
+          </Field>
+        )}
+        {!ro && !f.saleId && (
           <div className="flex flex-wrap gap-2">
             <input className={cn(inputBase, 'min-w-0 flex-1')} list="vp-skus" value={pick} onChange={(e) => { setPick(e.target.value); const code = e.target.value.split(' · ')[0]; if (skuOf(code)) addLine(code); }} placeholder="Gõ mã SKU hoặc tên hàng để thêm dòng…" aria-label="Thêm hàng" />
             <datalist id="vp-skus">{skus.filter((s) => !s.archived).map((s) => <option key={s.sku} value={`${s.sku} · ${s.name}`} />)}</datalist>
@@ -152,21 +173,22 @@ export function VoucherModal({ type, voucher, preset, onClose }: { type: Voucher
         )}
         <div className="overflow-x-auto rounded-md border border-[rgb(var(--line))]">
           <table className="dt w-full min-w-[640px] text-left text-sm">
-            <thead className="bg-[rgb(var(--raised))] text-[11px] text-[rgb(var(--muted))]"><tr><th className="px-3 py-2">Mã / tên hàng</th><th className="px-3 py-2 text-right">{type === 'COUNT' ? 'Sổ sách' : 'Tồn kho đi/nhận'}</th><th className="px-3 py-2 text-right">{type === 'COUNT' ? 'Thực tế đếm' : 'Số lượng'}</th>{type === 'COUNT' ? <th className="px-3 py-2 text-right">Chênh lệch</th> : <><th className="px-3 py-2 text-right">Đơn giá</th><th className="px-3 py-2 text-right">Thành tiền</th></>}<th /></tr></thead>
+            <thead className="bg-[rgb(var(--raised))] text-[11px] text-[rgb(var(--muted))]"><tr><th className="px-3 py-2">Mã / tên hàng</th>{f.saleId && <th className="px-3 py-2 text-right">{type === 'IN' ? 'Được trả tối đa' : 'Yêu cầu'}</th>}<th className="px-3 py-2 text-right">{type === 'COUNT' ? 'Sổ sách' : 'Tồn kho đi/nhận'}</th><th className="px-3 py-2 text-right">{type === 'COUNT' ? 'Thực tế đếm' : 'Số lượng'}</th>{type === 'COUNT' ? <th className="px-3 py-2 text-right">Chênh lệch</th> : <><th className="px-3 py-2 text-right">Đơn giá</th><th className="px-3 py-2 text-right">Thành tiền</th></>}<th /></tr></thead>
             <tbody>
               {f.lines.map((l, i) => { const s = skuOf(l.sku); const sys = type === 'COUNT' ? (ro ? l.system ?? 0 : whQty(s ?? ({} as SkuItem), f.whId, warehouses)) : s ? whQty(s, f.whId, warehouses) : 0; const diff = ro && type === 'COUNT' ? l.diff ?? l.qty - sys : l.qty - sys; return (
-                <tr key={l.sku} className="border-t border-[rgb(var(--line))]">
+                <tr key={l.lineId ?? l.sku} className="border-t border-[rgb(var(--line))]">
                   <td className="px-3 py-2"><p className="code-chip">{l.sku}</p><p className="max-w-[260px] truncate text-xs text-[rgb(var(--muted))]">{s?.name} · {s?.unit}</p></td>
+                  {f.saleId && <td className="px-3 py-2 text-right tabular-nums">{(l.req ?? 0).toLocaleString('vi-VN')}</td>}
                   <td className="px-3 py-2 text-right tabular-nums text-[rgb(var(--muted))]">{s ? sys.toLocaleString('vi-VN') : '—'}</td>
                   <td className="px-3 py-2 text-right"><input type="number" min={0} disabled={ro} className={cn(inputBase, 'w-24 py-1 text-right')} value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} aria-label={`Số lượng ${l.sku}`} /></td>
                   {type === 'COUNT' ? <td className={cn('px-3 py-2 text-right font-semibold tabular-nums', diff > 0 ? 'text-[rgb(var(--success-fg))]' : diff < 0 ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')}>{diff > 0 ? '+' : ''}{diff.toLocaleString('vi-VN')}</td>
                     : <><td className="px-3 py-2 text-right"><input type="number" min={0} disabled={ro} className={cn(inputBase, 'w-32 py-1 text-right')} value={l.price ?? 0} onChange={(e) => setLine(i, { price: Number(e.target.value) })} aria-label={`Đơn giá ${l.sku}`} /></td><td className="px-3 py-2 text-right tabular-nums">{(l.qty * (l.price ?? 0)).toLocaleString('vi-VN')}</td></>}
-                  <td className="px-2 py-2 text-right">{!ro && <button className="rounded p-1 text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => setF((p) => ({ ...p, lines: p.lines.filter((_, j) => j !== i) }))} aria-label={`Bỏ ${l.sku}`}><X className="h-4 w-4" aria-hidden /></button>}</td>
+                  <td className="px-2 py-2 text-right">{!ro && !f.saleId && <button className="rounded p-1 text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => setF((p) => ({ ...p, lines: p.lines.filter((_, j) => j !== i) }))} aria-label={`Bỏ ${l.sku}`}><X className="h-4 w-4" aria-hidden /></button>}</td>
                 </tr>
               ); })}
               {!f.lines.length && <tr><td colSpan={6} className="px-3 py-6 text-center text-sm text-[rgb(var(--muted))]">Chưa có dòng hàng. Gõ mã hoặc tên hàng ở ô phía trên.</td></tr>}
             </tbody>
-            {type !== 'COUNT' && f.lines.length > 0 && <tfoot><tr className="border-t border-[rgb(var(--line))] font-semibold"><td className="px-3 py-2" colSpan={4}>Tổng cộng ({f.lines.reduce((a, l) => a + l.qty, 0).toLocaleString('vi-VN')} đơn vị)</td><td className="px-3 py-2 text-right tabular-nums">{total.toLocaleString('vi-VN')}</td><td /></tr></tfoot>}
+            {type !== 'COUNT' && f.lines.length > 0 && <tfoot><tr className="border-t border-[rgb(var(--line))] font-semibold"><td className="px-3 py-2" colSpan={f.saleId ? 5 : 4}>Tổng cộng ({f.lines.reduce((a, l) => a + l.qty, 0).toLocaleString('vi-VN')} đơn vị)</td><td className="px-3 py-2 text-right tabular-nums">{total.toLocaleString('vi-VN')}</td><td /></tr></tfoot>}
           </table>
         </div>
         {!ro && errs.length > 0 && f.lines.length > 0 && <p className="text-sm text-[rgb(var(--danger-fg))]">{errs.join(' · ')}</p>}

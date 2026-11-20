@@ -1,27 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Coins, Download, Minus, PackageMinus, Plus, Printer, Trash2, XCircle } from 'lucide-react';
-import { Chip, Code, EmptyState, Field, MoneyInput, Panel, SetBlock, SideCard, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { addDaysISO, bizMode, btnGhost, btnPrimary, btnSm, compact, digits, esc, fmtDate, fmtN, fold, inputBase, inputCls, kpiGrid, MAIN_WH, nextCode, overdueDays, PRICE_TIER, rowCls, SALE_DELIVERY, SALE_PAY, SALE_STATUS, saleDay, saleDue, saleGoods, saleIssued, saleLineNet, salePaid, tdCls, tdFirst, tdLast, tierPrice, todayISO, uid, useApp, whQty } from '../../lib/core';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Check as CheckIcon, Coins, Download, Filter, Lock, Minus, PackageMinus, Plus, Printer, Receipt as ReceiptIcon, Send, Trash2, XCircle } from 'lucide-react';
+import { Chip, Code, EmptyState, Field, MoneyInput, Panel, SetBlock, SideCard, Table, Tabs, useSticky } from '../../components/ui';
+import { addDaysISO, bizMode, btnGhost, btnPrimary, btnSm, digits, esc, fmtDate, fmtN, fold, inputBase, inputCls, MAIN_WH, nextCode, overdueDays, PRICE_TIER, rowCls, SALE_DELIVERY, SALE_PAY, SALE_STAGE, SALE_STATUS, saleDay, saleDue, saleGoods, saleIssQ, saleIssued, saleLineNet, salePaid, saleRetQ, tdCls, tdFirst, tdLast, tierPrice, todayISO, uid, useApp, whQty } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
-import { saleHeld, saleStock, saleTotals } from '../../lib/getfly';
-import type { CompanyInfo, Customer, PriceTier, SaleDelivery, SaleLine, SaleLineKind, SalePay, SalePick, SalesOrder, SaleStatus, SaleTab, Tone, WorkOrder } from '../../lib/types';
+import { saleHeld, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
+import type { CompanyInfo, Customer, PriceTier, SaleDelivery, SaleLine, SaleLineKind, SalePay, SalePer, SalePick, SalesOrder, SaleStatus, SaleTab, WorkOrder } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { stockOf } from '../../lib/workshop';
 import { SearchBox } from '../alux/orders';
 import { useArItems } from '../finance/ar-aging';
 import { docShell, moneyToWordsVN, printHtml } from './templates';
-
-export function salePayLabel(o: SalesOrder) {
-  const t = saleTotals(o).grand;
-  const paid = salePaid(o, true);
-  if (o.status === 'CANCELLED') return { text: SALE_PAY[o.pay], tone: 'muted' as Tone };
-  if (paid >= t && t > 0) return { text: o.pay === 'BANK' ? 'Chuyển khoản' : o.pay === 'CASH' ? 'Tiền mặt' : 'Đã thu đủ', tone: 'teal' as Tone };
-  if (paid > 0) return { text: `Đã trả ${fmtN(paid)}`, tone: 'blue' as Tone };
-  if (o.pay === 'CREDIT') return { text: `Công nợ ${o.creditDays} ngày`, tone: 'orange' as Tone };
-  return { text: `${SALE_PAY[o.pay]}, chưa thu`, tone: 'orange' as Tone };
-}
 
 /** Bản in phiếu bán hàng */
 export function saleHtml(o: SalesOrder, company: CompanyInfo) {
@@ -50,82 +40,111 @@ export function SalesModule() {
 }
 
 export function SaleList({ onNew }: { onNew?: () => void }) {
-  const { salesOrders, setOpenSale, users, quotes, warehouses, company, setSaleStatus } = useApp();
-  const [tab, setTab] = useSticky<SaleTab>('Sales.tab', 'ALL');
+  const { salesOrders, setOpenSale, users, quotes, warehouses, company, setSaleStatus, stockVouchers } = useApp();
+  const [tab0, setTab] = useSticky<SaleTab>('Sales.tab49', 'ALL');
+  const [per, setPer] = useSticky<SalePer>('Sales.per49', 'M');
+  const [pay, setPay] = useSticky<SalePay | 'ALL'>('Sales.pay49', 'ALL');
+  const [by, setBy] = useSticky('Sales.by49', 'ALL');
+  const [wh, setWh] = useSticky('Sales.wh49', 'ALL');
   const [q, setQ] = useState('');
-  const [pay, setPay] = useState<SalePay | 'ALL'>('ALL');
+  const [fOpen, setFOpen] = useState(false);
+  const tabIds: SaleTab[] = ['ALL', 'APPROVAL', 'WAIT', 'PARTIAL', 'DONE', 'UNPAID', 'INV', 'CANCELLED'];
+  const tab: SaleTab = tabIds.includes(tab0) ? tab0 : 'ALL';
   const today = todayISO();
-  const yest = addDaysISO(today, -1);
-  const month = today.slice(0, 7);
-  const live = salesOrders.filter((o) => o.status !== 'CANCELLED');
-  const sum = (l: SalesOrder[]) => l.reduce((s, o) => s + saleTotals(o).grand, 0);
-  const tDay = live.filter((o) => o.date === today);
-  const tYest = sum(live.filter((o) => o.date === yest));
-  const tMonth = live.filter((o) => o.date.startsWith(month));
-  const pending = salesOrders.filter((o) => o.status === 'PENDING');
-  const credit = tMonth.filter((o) => saleIssued(o)).map((o) => ({ o, left: saleTotals(o).grand - salePaid(o) })).filter((x) => x.left > 0);
-  const cnt = (t: SaleTab) => (t === 'ALL' ? salesOrders.length : t === 'QUOTE' ? salesOrders.filter((o) => o.source === 'QUOTE').length : salesOrders.filter((o) => o.status === t).length);
+  const mon = Number(today.slice(5, 7));
+  const from = per === 'D' ? today : per === 'W' ? addDaysISO(today, -((new Date().getDay() + 6) % 7)) : per === 'M' ? `${today.slice(0, 8)}01` : per === 'Q' ? `${today.slice(0, 5)}${String(Math.floor((mon - 1) / 3) * 3 + 1).padStart(2, '0')}-01` : per === 'Y' ? `${today.slice(0, 5)}01-01` : '';
+  const stage = (o: SalesOrder) => saleStage(o, stockVouchers);
+  const leftOf = (o: SalesOrder) => saleTotals(o).grand - saleReturned(o) - salePaid(o);
+  const units = (o: SalesOrder) => { const ls = o.lines.filter((l) => l.kind !== 'FREE'); return { done: ls.reduce((s, l) => s + saleIssQ(o, l), 0), all: ls.reduce((s, l) => s + l.qty, 0) }; };
+  const inTab = (o: SalesOrder, t: SaleTab) => {
+    const s = stage(o);
+    switch (t) {
+      case 'ALL': return true;
+      case 'APPROVAL': return s === 'APPROVAL' || s === 'REJECTED';
+      case 'WAIT': return s === 'READY' || s === 'WAIT_WH';
+      case 'PARTIAL': return s === 'PARTIAL';
+      case 'DONE': return s === 'DONE' || s === 'SHIPPING';
+      case 'CANCELLED': return s === 'CANCELLED';
+      case 'UNPAID': return s !== 'CANCELLED' && saleIssued(o) && leftOf(o) > 0;
+      case 'INV': return (o.invReqs ?? []).some((r) => r.status === 'PENDING');
+    }
+  };
   const key = fold(q.trim());
-  const rows = salesOrders
-    .filter((o) => (tab === 'ALL' ? true : tab === 'QUOTE' ? o.source === 'QUOTE' : o.status === tab))
-    .filter((o) => pay === 'ALL' || o.pay === pay)
-    .filter((o) => !key || fold(`${o.code} ${o.customer} ${o.phone ?? ''} ${o.lines.map((l) => `${l.ref ?? ''} ${l.name}`).join(' ')}`).includes(key))
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const tabs: { id: SaleTab; label: string; count?: number }[] = [
-    { id: 'ALL', label: 'Tất cả', count: cnt('ALL') }, { id: 'PENDING', label: 'Chờ xuất kho', count: cnt('PENDING') }, { id: 'SHIPPING', label: 'Đang giao', count: cnt('SHIPPING') },
-    { id: 'DONE', label: 'Hoàn thành', count: cnt('DONE') }, { id: 'CANCELLED', label: 'Đã hủy', count: cnt('CANCELLED') }, { id: 'QUOTE', label: 'Từ báo giá', count: cnt('QUOTE') },
-  ];
-  const csv = () => downloadCsv(`don-ban-${today}.csv`, [['Mã đơn', 'Ngày', 'Nguồn', 'Khách hàng', 'Điện thoại', 'Hàng hóa', 'Tiền hàng', 'Thuế GTGT', 'Tổng sau VAT', 'Đã thu', 'Thanh toán', 'Trạng thái', 'Người lên đơn'],
-    ...rows.map((o) => { const t = saleTotals(o); return [o.code, o.date, o.source === 'QUOTE' ? quotes.find((x) => x.id === o.quoteId)?.code ?? 'Báo giá' : 'Tại quầy', o.customer, o.phone ?? '', saleGoods(o), t.net, t.vat, t.grand, salePaid(o), SALE_PAY[o.pay], SALE_STATUS[o.status].label, users.find((u) => u.id === o.by)?.name ?? '']; })]);
+  const base = salesOrders
+    .filter((o) => !from || o.date >= from)
+    .filter((o) => (pay === 'ALL' || o.pay === pay) && (by === 'ALL' || o.by === by) && (wh === 'ALL' || o.whId === wh))
+    .filter((o) => !key || fold(`${o.code} ${o.customer} ${o.phone ?? ''} ${o.lines.map((l) => `${l.ref ?? ''} ${l.name}`).join(' ')}`).includes(key));
+  const rows = base.filter((o) => inTab(o, tab)).sort((a, b) => b.createdAt - a.createdAt);
+  const tabs: { id: SaleTab; label: string; count?: number }[] = ([['ALL', 'Tất cả'], ['APPROVAL', 'Chờ duyệt'], ['WAIT', 'Chờ xuất kho'], ['PARTIAL', 'Xuất một phần'], ['DONE', 'Hoàn thành'], ['UNPAID', 'Chưa thu đủ'], ['INV', 'Chờ xuất HĐ'], ['CANCELLED', 'Đã hủy']] as [SaleTab, string][])
+    .map(([id, label]) => ({ id, label, count: base.filter((o) => inTab(o, id)).length }));
+  const nF = [pay, by, wh].filter((x) => x !== 'ALL').length;
+  const sellers = Array.from(new Set(salesOrders.map((o) => o.by).filter((x): x is string => !!x)));
+  const sum = (f: (o: SalesOrder) => number) => rows.filter((o) => o.status !== 'CANCELLED').reduce((s, o) => s + f(o), 0);
+  const csv = () => downloadCsv(`don-ban-${today}.csv`, [['Mã đơn', 'Ngày', 'NV bán', 'Khách hàng', 'Trạng thái', 'Đã xuất', 'Tổng SL', 'Tổng sau VAT', 'Hàng trả lại', 'Đã thu', 'Còn lại', 'Nguồn', 'Thanh toán', 'Kho xuất'],
+    ...rows.map((o) => { const t = saleTotals(o); const u = units(o); return [o.code, o.date, users.find((x) => x.id === o.by)?.name ?? '', o.customer, SALE_STAGE[stage(o)].label, u.done, u.all, t.grand, saleReturned(o), salePaid(o), leftOf(o), o.source === 'QUOTE' ? quotes.find((x) => x.id === o.quoteId)?.code ?? 'Báo giá' : 'Tại quầy', SALE_PAY[o.pay], warehouses.find((w) => w.id === o.whId)?.code ?? '']; })]);
+  const segCls = (on: boolean) => cn('rounded-md px-2 py-1.5 text-center text-[13px]', on ? 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))]' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)]');
+  const PER: [SalePer, string][] = [['D', 'Hôm nay'], ['W', 'Tuần này'], ['M', 'Tháng này'], ['Q', 'Quý này'], ['Y', 'Năm nay'], ['ALL', 'Tất cả']];
   return (
-    <div className="space-y-5">
-      <div className={kpiGrid('lg:grid-cols-4')}>
-        <StatCard label="Doanh số hôm nay" value={fmtN(sum(tDay))} sub={`${tDay.length} đơn${tYest ? ` · ${sum(tDay) >= tYest ? '+' : ''}${Math.round(((sum(tDay) - tYest) / tYest) * 100)}% so với hôm qua` : ''}`} />
-        <StatCard label={`Doanh số tháng ${Number(month.slice(5))}`} value={compact(sum(tMonth))} sub={`${tMonth.length} đơn, sau VAT`} />
-        <StatCard label="Chờ xuất kho" value={fmtN(pending.length)} sub={`${pending.filter((o) => o.deliverAt === today).length} đơn hẹn giao hôm nay`} />
-        <StatCard label="Ghi công nợ trong tháng" value={fmtN(credit.reduce((s, x) => s + x.left, 0))} sub={`${credit.length} đơn · ${new Set(credit.map((x) => x.o.customerId ?? x.o.customer)).size} khách`} />
-      </div>
-      <Tabs tabs={tabs} value={tab} onChange={setTab} aside={
-        <span className="flex gap-2">
-          <button className={cn(btnGhost, btnSm)} onClick={csv} disabled={!rows.length}><Download className="h-3.5 w-3.5" aria-hidden />Xuất CSV</button>
-          {onNew && <button className={cn(btnPrimary, btnSm)} onClick={onNew}><Plus className="h-3.5 w-3.5" aria-hidden />Lên đơn bán</button>}
-        </span>
-      } />
-      <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
-        <SearchBox value={q} onChange={setQ} placeholder="Tìm mã đơn, khách hàng, số điện thoại, mã hàng" />
-        <select className={cn(inputBase, 'w-auto py-1.5 text-sm')} value={pay} onChange={(e) => setPay(e.target.value as SalePay | 'ALL')} aria-label="Lọc theo thanh toán">
-          <option value="ALL">Mọi hình thức thanh toán</option>
-          {(Object.keys(SALE_PAY) as SalePay[]).map((p) => <option key={p} value={p}>{SALE_PAY[p]}</option>)}
-        </select>
+    <div className="space-y-3">
+      <Tabs tabs={tabs} value={tab} onChange={setTab} aside={onNew && <button className={cn(btnPrimary, btnSm)} onClick={onNew}><Plus className="h-3.5 w-3.5" aria-hidden />Lên đơn bán</button>} />
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <div className="flex overflow-x-auto rounded-lg bg-[rgb(var(--ink)/0.05)] p-0.5" role="radiogroup" aria-label="Thời gian">
+          {PER.map(([k, t]) => <button key={k} role="radio" aria-checked={per === k} className={cn(segCls(per === k), 'whitespace-nowrap px-3')} onClick={() => setPer(k)}>{t}</button>)}
+        </div>
+        {from && <span className="text-[12.5px] tabular-nums text-[rgb(var(--muted))]">từ {fmtDate(from)}</span>}
+        <div className="flex items-center gap-2 lg:ml-auto">
+          <div className="min-w-0 flex-1 lg:w-[300px] lg:flex-none"><SearchBox value={q} onChange={setQ} placeholder="Mã đơn, khách, SĐT, mã hàng" /></div>
+          <div className="relative">
+            <button className={cn(btnGhost, btnSm, 'relative px-2.5')} onClick={() => setFOpen((v) => !v)} aria-label="Bộ lọc" aria-expanded={fOpen} title="Bộ lọc"><Filter className="h-4 w-4" aria-hidden />{nF > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[rgb(var(--fg))] px-1 text-[10px] text-[rgb(var(--bg))]">{nF}</span>}</button>
+            {fOpen && (
+              <div className="absolute right-0 top-full z-30 mt-1 w-[280px] space-y-2 rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-3 shadow-lg">
+                <Field label="Thanh toán"><select className={inputCls} value={pay} onChange={(e) => setPay(e.target.value as SalePay | 'ALL')}><option value="ALL">Mọi hình thức</option>{(Object.keys(SALE_PAY) as SalePay[]).map((p) => <option key={p} value={p}>{SALE_PAY[p]}</option>)}</select></Field>
+                <Field label="NV bán"><select className={inputCls} value={by} onChange={(e) => setBy(e.target.value)}><option value="ALL">Tất cả</option>{sellers.map((id) => <option key={id} value={id}>{users.find((u) => u.id === id)?.name ?? id}</option>)}</select></Field>
+                <Field label="Kho xuất"><select className={inputCls} value={wh} onChange={(e) => setWh(e.target.value)}><option value="ALL">Mọi kho</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}</select></Field>
+                <div className="flex justify-between pt-1"><button className={cn(btnGhost, btnSm)} onClick={() => { setPay('ALL'); setBy('ALL'); setWh('ALL'); }}>Xóa lọc</button><button className={cn(btnPrimary, btnSm)} onClick={() => setFOpen(false)}>Xong</button></div>
+              </div>
+            )}
+          </div>
+          <button className={cn(btnGhost, btnSm, 'px-2.5')} onClick={csv} disabled={!rows.length} aria-label="Xuất CSV" title="Xuất CSV"><Download className="h-4 w-4" aria-hidden /></button>
+        </div>
       </div>
       <Panel>
-        <Table id="sales-orders" title="Đơn bán" head={['Mã đơn', 'Thời gian', 'Nguồn', 'Khách hàng', 'Hàng hóa', <span key="t" className="block text-right">Tổng sau VAT</span>, 'Thanh toán', 'Giao nhận', 'NV bán', 'Kho xuất', 'Hẹn giao', 'Hạn công nợ']} optional={[8, 9, 10, 11]} minW={1080}
+        <Table id="sales-orders49" title="Đơn bán" head={['Mã đơn', 'Ngày', 'NV bán', 'Khách hàng', 'Trạng thái', <span key="x" className="block text-right">Đã xuất</span>, <span key="t" className="block text-right">Tổng sau VAT</span>, <span key="p" className="block text-right">Đã thu</span>, <span key="l" className="block text-right">Còn lại</span>, 'Nguồn', 'Hàng hóa', 'Thanh toán', 'Kho xuất', 'Hẹn giao', 'Hạn công nợ', 'Hóa đơn', <span key="r" className="block text-right">Hàng trả lại</span>]} optional={[9, 10, 11, 12, 13, 14, 15, 16]} minW={1000}
           bulk={[
             { label: 'In phiếu bán hàng', icon: Printer, run: (ks) => { const os = rows.filter((o) => ks.includes(o.id)); printHtml(docShell(`Phiếu bán hàng (${os.length})`, os.map((o) => saleHtml(o, company)).join('<div style="page-break-after:always"></div>'))); } },
-            { label: 'Hủy đơn chưa xuất kho', icon: XCircle, danger: true, run: (ks) => rows.filter((o) => ks.includes(o.id) && o.status === 'PENDING').forEach((o) => setSaleStatus(o.id, 'CANCELLED', 'Hủy hàng loạt từ danh sách')) },
+            { label: 'Hủy đơn chưa xuất kho', icon: XCircle, danger: true, run: (ks) => rows.filter((o) => ks.includes(o.id) && o.status === 'PENDING' && !saleIssued(o)).forEach((o) => setSaleStatus(o.id, 'CANCELLED', 'Hủy hàng loạt từ danh sách')) },
           ]}>
           {rows.map((o) => {
-            const p = salePayLabel(o);
+            const s = stage(o);
+            const u = units(o);
+            const left = leftOf(o);
             const qc = o.quoteId ? quotes.find((x) => x.id === o.quoteId)?.code : undefined;
+            const inv = o.invReqs ?? [];
             return (
               <tr key={o.id} className={cn(rowCls, 'cursor-pointer hover:bg-[rgb(var(--ink)/0.03)]')} onClick={() => setOpenSale(o.id)}>
                 <td className={tdFirst}><Code>{o.code}</Code></td>
-                <td className={cn(tdCls, 'whitespace-nowrap tabular-nums text-[rgb(var(--fg2))]')}>{saleDay(o)}</td>
-                <td className={tdCls}>{o.source === 'QUOTE' ? <Chip tone="orange">{qc ?? 'Báo giá'}</Chip> : <span className="text-[rgb(var(--muted))]">Tại quầy</span>}</td>
-                <td className={tdCls}><span className="block max-w-[220px] truncate">{o.customer}</span></td>
+                <td className={cn(tdCls, 'whitespace-nowrap tabular-nums text-[rgb(var(--fg2))]')}>{fmtDate(o.date)}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap')}>{users.find((x) => x.id === o.by)?.name ?? '—'}</td>
+                <td className={tdCls}><span className="block max-w-[220px] truncate font-medium" title={o.customer}>{o.customer}</span></td>
+                <td className={cn(tdCls, 'whitespace-nowrap')}><Chip tone={SALE_STAGE[s].tone}>{s === 'DONE' && o.delivery === 'PICKUP' && !o.issuedQ ? 'Đã lấy tại cửa hàng' : SALE_STAGE[s].label}</Chip></td>
+                <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{u.all ? `${fmtN(u.done)} / ${fmtN(u.all)}` : '—'}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{fmtN(saleTotals(o).grand)}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{fmtN(salePaid(o))}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums', left > 0 && saleIssued(o) && o.status !== 'CANCELLED' && 'text-[rgb(var(--accent-fg))]')}>{o.status === 'CANCELLED' ? '—' : fmtN(Math.max(0, left))}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap')}>{o.source === 'QUOTE' ? <Code>{qc ?? 'Báo giá'}</Code> : <span className="text-[rgb(var(--muted))]">Tại quầy</span>}</td>
                 <td className={cn(tdCls, 'text-[rgb(var(--muted))]')}><span className="block max-w-[240px] truncate" title={saleGoods(o)}>{saleGoods(o)}</span></td>
-                <td className={cn(tdCls, 'text-right tabular-nums')}>{fmtN(saleTotals(o).grand)}</td>
-                <td className={tdCls}><Chip tone={p.tone}>{p.text}</Chip></td>
-                <td className={tdCls}><Chip tone={SALE_STATUS[o.status].tone}>{o.status === 'DONE' && o.delivery === 'PICKUP' ? 'Đã lấy tại cửa hàng' : o.approval?.status === 'PENDING' ? 'Chờ duyệt đơn' : o.issueRequest ? 'Chờ duyệt xuất kho' : SALE_STATUS[o.status].label}</Chip></td>
-                <td className={tdCls}>{users.find((u) => u.id === o.by)?.name ?? '—'}</td>
-                <td className={tdCls}>{warehouses.find((w) => w.id === o.whId)?.code ?? '—'}</td>
-                <td className={cn(tdCls, 'tabular-nums')}>{o.deliverAt ? fmtDate(o.deliverAt) : '—'}</td>
-                <td className={cn(tdLast, 'tabular-nums')}>{o.creditDays ? (o.issuedAt ? fmtDate(saleDue(o)) : `${o.creditDays} ngày`) : '—'}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap')}>{SALE_PAY[o.pay]}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap')}>{warehouses.find((w) => w.id === o.whId)?.code ?? '—'}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap tabular-nums')}>{o.deliverAt ? fmtDate(o.deliverAt) : '—'}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap tabular-nums')}>{o.creditDays ? (o.issuedAt ? fmtDate(saleDue(o)) : `${o.creditDays} ngày`) : '—'}</td>
+                <td className={cn(tdCls, 'whitespace-nowrap')}>{inv.some((r) => r.status === 'PENDING') ? <Chip tone="orange">Chờ kế toán</Chip> : inv.some((r) => r.status === 'DONE') ? inv.filter((r) => r.status === 'DONE').map((r) => r.no).join(', ') : o.invoice ? <span className="text-[rgb(var(--muted))]">Chưa yêu cầu</span> : '—'}</td>
+                <td className={cn(tdLast, 'whitespace-nowrap text-right tabular-nums')}>{saleReturned(o) ? fmtN(saleReturned(o)) : '—'}</td>
               </tr>
             );
           })}
         </Table>
-        {!rows.length && <EmptyState text={salesOrders.length ? 'Không có đơn khớp bộ lọc.' : 'Chưa có đơn bán.'} hint={salesOrders.length ? undefined : 'Lên đơn bán tại quầy, hoặc ghi nhận chốt một báo giá để CRM tự tạo đơn.'} art="box" action={!salesOrders.length && onNew ? 'Lên đơn bán' : undefined} onAction={onNew} />}
+        {rows.length > 0 && <p className="border-t border-[rgb(var(--line))] px-4 py-2.5 text-right text-[12.5px] tabular-nums text-[rgb(var(--fg2))]">{rows.length} đơn · tổng {fmtN(sum((o) => saleTotals(o).grand))} · đã thu {fmtN(sum((o) => salePaid(o)))} · còn lại <span className="font-medium text-[rgb(var(--fg))]">{fmtN(sum((o) => (saleIssued(o) ? Math.max(0, leftOf(o)) : 0)))}</span></p>}
+        {!rows.length && <EmptyState text={salesOrders.length ? 'Không có đơn khớp bộ lọc.' : 'Chưa có đơn bán.'} hint={salesOrders.length ? 'Thử đổi thời gian, tab hoặc bộ lọc.' : 'Lên đơn bán tại quầy, hoặc ghi nhận chốt một báo giá để CRM tự tạo đơn.'} art="box" action={!salesOrders.length && onNew ? 'Lên đơn bán' : undefined} onAction={onNew} />}
       </Panel>
     </div>
   );
@@ -360,7 +379,7 @@ export function SaleForm({ onDone }: { onDone: (id?: string) => void }) {
               </div>
             )}
             <label className="mt-3 flex items-center gap-2 text-[13px]"><input type="checkbox" checked={invoice} onChange={(e) => setInvoice(e.target.checked)} />Xuất hóa đơn VAT</label>
-            <label className="mt-1.5 flex items-center gap-2 text-[13px]"><input type="checkbox" checked={issueNow} onChange={(e) => setIssueNow(e.target.checked)} />Xuất kho ngay khi hoàn tất</label>
+            <label className="mt-1.5 flex items-center gap-2 text-[13px]"><input type="checkbox" checked={issueNow} onChange={(e) => setIssueNow(e.target.checked)} />Gửi yêu cầu xuất kho ngay khi lưu (nếu không phải chờ duyệt)</label>
             <dl className="mt-4 space-y-1 text-[13px]">
               <div className="flex justify-between"><dt className="text-[rgb(var(--muted))]">Tiền hàng</dt><dd className="tabular-nums">{fmtN(t.gross)}</dd></div>
               {t.discount > 0 && <div className="flex justify-between"><dt className="text-[rgb(var(--muted))]">Chiết khấu</dt><dd className="tabular-nums">−{fmtN(t.discount)}</dd></div>}
@@ -374,8 +393,9 @@ export function SaleForm({ onDone }: { onDone: (id?: string) => void }) {
           </SetBlock>
           <SideCard title="Khi hoàn tất, CRM tự">
             <ul className="list-disc space-y-1 pl-4 text-[13px] text-[rgb(var(--fg2))]">
-              {issueNow && <li>{lines.some((l) => l.kind === 'MAKE') ? 'Tạo lệnh sản xuất cho hàng gia công, xuất kho khi xưởng làm xong' : mfg ? 'Trừ tồn vật tư, lập phiếu xuất' : `Trừ tồn ${warehouses.find((w) => w.id === whId)?.name ?? 'kho'}, lập phiếu xuất kho`}</li>}
-              {!issueNow && <li>Giữ hàng cho đơn, chờ Thủ kho xuất</li>}
+              <li>Duyệt đơn theo quy trình "Đơn bán" (Cài đặt › Quy trình & phê duyệt); đơn trong ngưỡng thì tự duyệt</li>
+              {issueNow && <li>{lines.some((l) => l.kind === 'MAKE') ? 'Tạo lệnh sản xuất cho hàng gia công, xuất kho khi xưởng làm xong' : mfg ? 'Trừ tồn vật tư, lập phiếu xuất' : `Lập phiếu xuất gửi ${warehouses.find((w) => w.id === whId)?.name ?? 'kho'}, kho duyệt một phần hoặc toàn bộ`}</li>}
+              {!issueNow && <li>Giữ hàng cho đơn; bấm Yêu cầu xuất kho ở đơn khi cần giao</li>}
               <li>{pay === 'CASH' || pay === 'BANK' ? 'Ghi nhận tiền thu, tự sinh phiếu thu quỹ (Kế toán xác nhận nếu bạn không có quyền quỹ)' : pay === 'PARTIAL' ? 'Ghi nhận tiền trả trước, phần còn lại vào công nợ phải thu' : 'Ghi công nợ phải thu khi xuất kho'}</li>
               {short.length > 0 && <li>Báo {short.length} mặt hàng thiếu để đề xuất mua</li>}
               <li>Lưu giá đã bán để gợi ý cho lần bán sau</li>
@@ -439,37 +459,62 @@ export function SaleStockCard({ o, compact: small, onOpen }: { o: SalesOrder; co
 }
 
 export function SaleDetail({ o, onBack }: { o: SalesOrder; onBack: () => void }) {
-  const { quotes, openComposer, issueSale, setSaleStatus, addSalePayment, confirmSalePayment, users, company, canDo, pos, stockVouchers, workOrders, go, me, warehouses } = useApp();
+  const { quotes, openComposer, requestSaleIssue, setSaleStatus, addSalePayment, confirmSalePayment, users, company, canDo, pos, stockVouchers, workOrders, go, requestSaleInvoice, decideSaleInvoice } = useApp();
   const t = saleTotals(o);
+  const ret = saleReturned(o);
+  const due = t.grand - ret;
   const paid = salePaid(o);
   const pend = salePaid(o, true) - paid;
-  const left = t.grand - salePaid(o, true);
+  const left = due - salePaid(o, true);
   const [amt, setAmt] = useState(0);
   const [method, setMethod] = useState<'CASH' | 'BANK'>('BANK');
   const [cancel, setCancel] = useState<string | null>(null);
+  const [inv, setInv] = useState<{ amount: number; note: string } | null>(null);
+  const [dec, setDec] = useState<Record<string, string>>({});
   const q = o.quoteId ? quotes.find((x) => x.id === o.quoteId) : undefined;
-  const canIssue = canDo('stock.deliver') || canDo('stock.manage') || canDo('stock.approve') || canDo('stock.voucher');
-  /** v48: người không có quyền duyệt phiếu kho thì gửi yêu cầu xuất kho cho Thủ kho / Kế toán */
-  const direct = bizMode(company) === 'MFG' ? canDo('stock.manage') : canDo('stock.approve') || warehouses.find((w) => w.id === o.whId)?.managerId === me?.id;
-  const held = o.approval?.status === 'PENDING' || o.approval?.status === 'REJECTED';
+  const stage = saleStage(o, stockVouchers);
+  const pq = salePendingQ(o, stockVouchers);
   const canCash = canDo('cash.manage') || canDo('receipt.confirm');
-  const vouchers = stockVouchers.filter((v) => v.ref === o.code);
+  const vs = stockVouchers.filter((v) => v.saleId === o.id || (!v.saleId && v.ref === o.code)).sort((a, b) => a.createdAt - b.createdAt);
   const wo = o.woId ? workOrders.find((w) => w.id === o.woId) : undefined;
+  const remain = o.lines.reduce((s, l) => s + Math.max(0, l.qty - saleIssQ(o, l) - (pq[l.id] ?? 0)), 0);
+  const issuedAny = o.lines.some((l) => saleIssQ(o, l) > 0);
+  const invAsked = (o.invReqs ?? []).filter((r) => r.status !== 'REJECTED').reduce((s, r) => s + r.amount, 0);
+  const canReq = o.status !== 'CANCELLED' && stage !== 'APPROVAL' && stage !== 'REJECTED' && remain > 0 && o.status === 'PENDING';
+  const steps: { label: string; sub: string; state: 'done' | 'now' | 'todo' }[] = [
+    { label: 'Tạo đơn', sub: `${saleDay(o)}${o.by ? ` · ${users.find((u) => u.id === o.by)?.name ?? ''}` : ''}`, state: 'done' },
+    { label: 'Duyệt đơn', sub: o.approval ? (o.approval.status === 'PENDING' ? 'chờ người duyệt' : o.approval.status === 'REJECTED' ? 'không duyệt' : `${users.find((u) => u.id === o.approval?.decidedBy)?.name ?? 'đã duyệt'}`) : 'tự duyệt', state: stage === 'APPROVAL' || stage === 'REJECTED' ? 'now' : 'done' },
+    { label: 'Yêu cầu xuất kho', sub: vs.some((v) => v.type === 'OUT') ? vs.filter((v) => v.type === 'OUT').map((v) => v.code).join(', ') : 'chưa gửi', state: stage === 'READY' ? 'now' : stage === 'APPROVAL' || stage === 'REJECTED' ? 'todo' : 'done' },
+    { label: 'Kho xuất', sub: stage === 'PARTIAL' ? 'một phần' : stage === 'WAIT_WH' ? 'chờ kho duyệt' : issuedAny || o.status !== 'PENDING' ? 'đã xuất' : '', state: stage === 'WAIT_WH' || stage === 'PARTIAL' ? 'now' : stage === 'DONE' || stage === 'SHIPPING' ? 'done' : 'todo' },
+    { label: o.status === 'CANCELLED' ? 'Đã hủy' : 'Hoàn thành', sub: o.status === 'CANCELLED' ? o.cancelReason ?? '' : 'khi kho xuất đủ', state: stage === 'DONE' || stage === 'SHIPPING' || stage === 'CANCELLED' ? 'done' : 'todo' },
+  ];
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <button className={cn(btnGhost, btnSm)} onClick={onBack}><ArrowLeft className="h-3.5 w-3.5" aria-hidden />Bán hàng</button>
-        <h2 className="text-[17px] font-medium">Đơn bán</h2><Code>{o.code}</Code><Chip tone={SALE_STATUS[o.status].tone}>{SALE_STATUS[o.status].label}</Chip>
+        <h2 className="text-[17px] font-medium">Đơn bán</h2><Code>{o.code}</Code><Chip tone={SALE_STAGE[stage].tone}>{SALE_STAGE[stage].label}</Chip>
         {q && <button className="text-[13px] text-[rgb(var(--accent-fg))] hover:underline" onClick={() => openComposer({ quoteId: q.id, view: true, mode: 'QUOTE' })}>từ {q.code}</button>}
         <span className="ml-auto flex flex-wrap gap-2">
-          <button className={btnGhost} onClick={() => printHtml(docShell(`Phiếu bán hàng ${o.code}`, saleHtml(o, company)))}><Printer className="h-4 w-4" aria-hidden />In phiếu</button>
-          {o.status === 'PENDING' && <button className={btnGhost} onClick={() => setCancel('')}>Hủy đơn</button>}
+          <button className={cn(btnGhost, 'px-2.5')} onClick={() => printHtml(docShell(`Phiếu bán hàng ${o.code}`, saleHtml(o, company)))} aria-label="In phiếu bán hàng" title="In phiếu bán hàng"><Printer className="h-4 w-4" aria-hidden /></button>
+          {o.status === 'PENDING' && !issuedAny && <button className={btnGhost} onClick={() => setCancel('')}>Hủy đơn</button>}
           {o.status === 'SHIPPING' && <button className={btnGhost} onClick={() => setSaleStatus(o.id, 'DONE')}>Đã giao xong</button>}
-          {o.status === 'PENDING' && <button className={btnPrimary} onClick={() => issueSale(o.id)} disabled={!canIssue || held || (!direct && !!o.issueRequest)} title={held ? 'Đơn chờ duyệt' : !canIssue ? 'Cần quyền xuất kho' : direct ? 'Trừ tồn, lập phiếu xuất kho' : 'Gửi Thủ kho / Kế toán duyệt xuất kho'}><PackageMinus className="h-4 w-4" aria-hidden />{direct ? 'Xuất kho' : o.issueRequest ? 'Đã gửi yêu cầu xuất kho' : 'Gửi yêu cầu xuất kho'}</button>}
+          {o.status !== 'CANCELLED' && o.invoice !== false && due - invAsked > 0 && stage !== 'APPROVAL' && stage !== 'REJECTED' && <button className={btnGhost} onClick={() => setInv({ amount: Math.max(0, due - invAsked), note: '' })}><ReceiptIcon className="h-4 w-4" aria-hidden />Yêu cầu xuất hóa đơn</button>}
+          {canReq && <button className={btnPrimary} onClick={() => requestSaleIssue(o.id)} title="Tạo phiếu xuất gửi kho duyệt"><PackageMinus className="h-4 w-4" aria-hidden />Yêu cầu xuất kho</button>}
         </span>
       </div>
-      {o.approval && o.approval.status !== 'APPROVED' && <p className="rounded-lg bg-[rgb(var(--accent)/0.08)] px-4 py-2.5 text-[13px]">{o.approval.status === 'PENDING' ? 'Đơn chờ duyệt' : 'Đơn không được duyệt'}: {o.approval.reasons.join('; ')}{o.approval.note ? ` · ${o.approval.note}` : ''}. Duyệt ở Công việc theo quy trình "Đơn bán: giảm giá, vượt hạn mức nợ".</p>}
-      {o.issueRequest && o.status === 'PENDING' && <p className="rounded-lg bg-[rgb(var(--ink)/0.05)] px-4 py-2.5 text-[13px]">Đã gửi yêu cầu xuất kho lúc {new Date(o.issueRequest.at).toLocaleString('vi-VN')}, chờ Thủ kho / Kế toán duyệt.</p>}
+      <div className="glass-card flex flex-wrap items-center gap-x-2 gap-y-3 rounded-xl px-4 py-3">
+        {steps.map((s, i) => (
+          <Fragment key={s.label}>
+            {i > 0 && <span className={cn('hidden h-0.5 w-6 rounded sm:block', s.state === 'todo' ? 'bg-[rgb(var(--line))]' : 'bg-[rgb(var(--fg)/0.6)]')} aria-hidden />}
+            <div className="flex items-center gap-2">
+              <span className={cn('grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-[11px]', s.state === 'done' ? 'border-[rgb(var(--fg))] bg-[rgb(var(--fg))] text-[rgb(var(--bg))]' : s.state === 'now' ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent))] text-white' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))]')}>{s.state === 'done' ? <CheckIcon className="h-3 w-3" aria-hidden /> : i + 1}</span>
+              <div className="leading-tight"><p className={cn('text-[13px]', s.state === 'now' && 'font-medium', s.state === 'todo' && 'text-[rgb(var(--muted))]')}>{s.label}</p>{s.sub && <p className="text-[11.5px] text-[rgb(var(--muted))]">{s.sub}</p>}</div>
+            </div>
+          </Fragment>
+        ))}
+      </div>
+      {o.approval && o.approval.status !== 'APPROVED' && <p className="rounded-lg bg-[rgb(var(--accent)/0.08)] px-4 py-2.5 text-[13px]">{o.approval.status === 'PENDING' ? 'Đơn chờ duyệt' : 'Đơn không được duyệt'}: {o.approval.reasons.join('; ')}{o.approval.note ? ` · ${o.approval.note}` : ''}. Người duyệt theo quy trình "Đơn bán" ở Cài đặt › Quy trình & phê duyệt; duyệt ở Công việc.</p>}
+      {issuedAny && o.status !== 'CANCELLED' && <p className="flex items-center gap-2 rounded-lg border border-dashed border-[rgb(var(--line))] px-4 py-2.5 text-[13px] text-[rgb(var(--fg2))]"><Lock className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />Đã xuất kho: khóa hàng hóa, số lượng, giá; không hủy đơn. Hàng trả lại do kho lập phiếu nhập trả theo mã đơn này, đơn tự ghi số trả.</p>}
       {cancel !== null && (
         <div className="glass-card flex flex-wrap items-center gap-2 rounded-xl px-4 py-3">
           <input className={cn(inputBase, 'min-w-[240px] flex-1')} value={cancel} onChange={(e) => setCancel(e.target.value)} placeholder="Lý do hủy đơn" aria-label="Lý do hủy" autoFocus />
@@ -477,17 +522,57 @@ export function SaleDetail({ o, onBack }: { o: SalesOrder; onBack: () => void })
           <button className={cn(btnPrimary, 'bg-[rgb(var(--danger))]')} disabled={cancel.trim().length < 3} onClick={() => { setSaleStatus(o.id, 'CANCELLED', cancel.trim()); setCancel(null); }}>Hủy đơn</button>
         </div>
       )}
+      {inv && (
+        <div className="glass-card flex flex-wrap items-center gap-2 rounded-xl px-4 py-3">
+          <span className="text-[13px] font-medium">Yêu cầu xuất hóa đơn</span>
+          <div className="w-44"><MoneyInput value={inv.amount} onChange={(v) => setInv({ ...inv, amount: v })} /></div>
+          <input className={cn(inputBase, 'min-w-[220px] flex-1')} value={inv.note} onChange={(e) => setInv({ ...inv, note: e.target.value })} placeholder="Ghi chú cho kế toán: gộp phiếu, ngày xuất, email nhận HĐ" aria-label="Ghi chú cho kế toán" />
+          <button className={btnGhost} onClick={() => setInv(null)}>Thôi</button>
+          <button className={btnPrimary} disabled={!(inv.amount > 0)} onClick={() => { requestSaleInvoice(o.id, inv.amount, inv.note); setInv(null); }}><Send className="h-4 w-4" aria-hidden />Gửi kế toán</button>
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0 space-y-4">
-          <SaleStockCard o={o} />
-          <SetBlock title="Chi tiết đơn" sub={`${o.lines.length} dòng · lên đơn ${saleDay(o)}${o.by ? ` bởi ${users.find((u) => u.id === o.by)?.name ?? ''}` : ''}`}>
+          <SetBlock title="Hàng hóa" sub={`${o.lines.length} dòng${o.by ? ` · lên đơn bởi ${users.find((u) => u.id === o.by)?.name ?? ''}` : ''}`}>
             <div className="-mx-5 overflow-x-auto">
-              <table className="w-full min-w-[640px] text-[13px]">
-                <thead><tr className="border-b border-[rgb(var(--line))] text-left text-[12px] text-[rgb(var(--muted))]"><th className="py-2 pl-5 pr-2 font-normal">Hàng hóa</th><th className="px-2 font-normal">ĐVT</th><th className="px-2 font-normal text-right">SL</th><th className="px-2 font-normal text-right">Đơn giá</th><th className="px-2 font-normal text-right">CK</th><th className="px-2 font-normal text-center">VAT</th><th className="pl-2 pr-5 text-right font-normal">Thành tiền</th></tr></thead>
-                <tbody>{o.lines.map((l) => <tr key={l.id} className="border-b border-[rgb(var(--ink)/0.05)]"><td className="py-2 pl-5 pr-2">{l.name}{l.ref && l.kind === 'SKU' && <span className="ml-2 font-mono text-[11.5px] text-[rgb(var(--muted))]">{l.ref}</span>}</td><td className="px-2">{l.unit}</td><td className="px-2 text-right tabular-nums">{fmtN(l.qty)}</td><td className="px-2 text-right tabular-nums">{fmtN(l.price)}</td><td className="px-2 text-right tabular-nums">{l.discountPct ? `${l.discountPct}%` : ''}</td><td className="px-2 text-center tabular-nums">{l.vat}%</td><td className="pl-2 pr-5 text-right tabular-nums">{fmtN(saleLineNet(l))}</td></tr>)}</tbody>
+              <table className="w-full min-w-[760px] text-[13px]">
+                <thead><tr className="whitespace-nowrap border-b border-[rgb(var(--line))] text-left text-[12px] text-[rgb(var(--muted))]"><th className="py-2 pl-5 pr-2 font-normal">Mã hàng</th><th className="px-2 font-normal">Hàng hóa</th><th className="px-2 font-normal">ĐVT</th><th className="px-2 text-right font-normal">Đặt</th><th className="px-2 text-right font-normal">Đã xuất</th><th className="px-2 text-right font-normal">Chờ kho</th><th className="px-2 text-right font-normal">Còn lại</th><th className="px-2 text-right font-normal">Trả</th><th className="px-2 text-right font-normal">Đơn giá</th><th className="px-2 text-right font-normal">CK</th><th className="pl-2 pr-5 text-right font-normal">Thành tiền</th></tr></thead>
+                <tbody>{o.lines.map((l) => { const iss = saleIssQ(o, l); const p = pq[l.id] ?? 0; const rest = Math.max(0, l.qty - iss - p); const r = saleRetQ(o, l); return (
+                  <tr key={l.id} className="border-b border-[rgb(var(--ink)/0.05)]">
+                    <td className="whitespace-nowrap py-2 pl-5 pr-2">{l.ref ? <Code>{l.ref}</Code> : <span className="text-[rgb(var(--muted))]">—</span>}</td>
+                    <td className="px-2"><span className="block max-w-[220px] truncate" title={l.name}>{l.name}</span></td>
+                    <td className="whitespace-nowrap px-2 text-[rgb(var(--muted))]">{l.unit}</td>
+                    <td className="px-2 text-right tabular-nums">{fmtN(l.qty)}</td>
+                    <td className="px-2 text-right tabular-nums">{fmtN(iss)}</td>
+                    <td className="px-2 text-right tabular-nums">{p ? fmtN(p) : '—'}</td>
+                    <td className={cn('px-2 text-right tabular-nums', rest > 0 && o.status !== 'CANCELLED' && 'text-[rgb(var(--accent-fg))]')}>{fmtN(rest)}</td>
+                    <td className="px-2 text-right tabular-nums">{r ? fmtN(r) : '—'}</td>
+                    <td className="px-2 text-right tabular-nums">{fmtN(l.price)}</td>
+                    <td className="px-2 text-right tabular-nums">{l.discountPct ? `${l.discountPct}%` : '—'}</td>
+                    <td className="whitespace-nowrap pl-2 pr-5 text-right tabular-nums">{fmtN(saleLineNet(l))}</td>
+                  </tr>); })}</tbody>
               </table>
             </div>
             {o.note && <p className="mt-3 text-[12.5px] text-[rgb(var(--muted))]">{o.note}</p>}
+          </SetBlock>
+          {o.status === 'PENDING' && remain > 0 && <SaleStockCard o={o} />}
+          <SetBlock title="Phiếu kho của đơn" sub="Tạo khi bấm Yêu cầu xuất kho; kho duyệt một phần hoặc toàn bộ. Phiếu nhập trả do kho lập theo mã đơn.">
+            {vs.length ? (
+              <div className="-mx-5 overflow-x-auto">
+                <table className="w-full min-w-[620px] text-[13px]">
+                  <thead><tr className="border-b border-[rgb(var(--line))] text-left text-[12px] text-[rgb(var(--muted))]"><th className="py-2 pl-5 pr-2 font-normal">Mã phiếu</th><th className="px-2 font-normal">Loại</th><th className="px-2 font-normal">Ngày</th><th className="px-2 text-right font-normal">Số lượng</th><th className="px-2 font-normal">Trạng thái</th><th className="pl-2 pr-5 font-normal">Người duyệt</th></tr></thead>
+                  <tbody>{vs.map((v) => (
+                    <tr key={v.id} className="cursor-pointer border-b border-[rgb(var(--ink)/0.05)] hover:bg-[rgb(var(--ink)/0.03)]" onClick={() => go('warehouse')}>
+                      <td className="whitespace-nowrap py-2 pl-5 pr-2"><Code>{v.code}</Code></td>
+                      <td className="whitespace-nowrap px-2">{v.type === 'IN' ? 'Nhập trả' : 'Xuất bán'}</td>
+                      <td className="whitespace-nowrap px-2 tabular-nums text-[rgb(var(--fg2))]">{fmtDate(v.date)}</td>
+                      <td className="px-2 text-right tabular-nums">{fmtN(v.lines.reduce((s, l) => s + l.qty, 0))}{v.status === 'PENDING' && v.type === 'OUT' ? '' : ''}</td>
+                      <td className="whitespace-nowrap px-2"><Chip tone={v.status === 'PENDING' ? 'orange' : v.status === 'DONE' ? 'teal' : 'muted'}>{v.status === 'PENDING' ? 'Chờ kho duyệt' : v.status === 'DONE' ? (v.type === 'IN' ? 'Đã nhập' : 'Đã xuất') : 'Đã hủy'}</Chip></td>
+                      <td className="whitespace-nowrap pl-2 pr-5">{v.approvedBy ? users.find((u) => u.id === v.approvedBy)?.name ?? '—' : '—'}</td>
+                    </tr>))}</tbody>
+                </table>
+              </div>
+            ) : <p className="text-[13px] text-[rgb(var(--muted))]">{stage === 'APPROVAL' ? 'Đơn chờ duyệt, chưa gửi kho.' : 'Chưa có phiếu kho. Bấm Yêu cầu xuất kho để gửi kho.'}</p>}
           </SetBlock>
         </div>
         <div className="space-y-4">
@@ -495,17 +580,18 @@ export function SaleDetail({ o, onBack }: { o: SalesOrder; onBack: () => void })
             <p className="font-medium">{o.customer}</p>
             <p className="text-[12.5px] text-[rgb(var(--muted))]">{[o.taxCode && `MST ${o.taxCode}`, o.phone].filter(Boolean).join(' · ') || (o.customerId ? 'Khách hàng trong CRM' : 'Khách lẻ')}</p>
             <p className="mt-2 text-[13px] text-[rgb(var(--fg2))]">{SALE_DELIVERY[o.delivery]}{o.deliverAt ? `, ${fmtDate(o.deliverAt)}` : ''}{o.address ? ` · ${o.address}` : ''}</p>
-            {o.invoice && <p className="mt-1 text-[12.5px] text-[rgb(var(--muted))]">Xuất hóa đơn VAT</p>}
           </SetBlock>
           <SetBlock title="Thanh toán" sub={SALE_PAY[o.pay]}>
             <dl className="space-y-1 text-[13px]">
               <div className="flex justify-between"><dt className="text-[rgb(var(--muted))]">Tiền hàng</dt><dd className="tabular-nums">{fmtN(t.net)}</dd></div>
               {t.groups.filter((g) => g.rate > 0).map((g) => <div key={g.rate} className="flex justify-between"><dt className="text-[rgb(var(--muted))]">Thuế GTGT {g.rate}%</dt><dd className="tabular-nums">{fmtN(g.vat)}</dd></div>)}
               {t.ship > 0 && <div className="flex justify-between"><dt className="text-[rgb(var(--muted))]">Phí giao hàng</dt><dd className="tabular-nums">{fmtN(t.ship)}</dd></div>}
-              <div className="flex items-baseline justify-between border-t border-[rgb(var(--line))] pt-2"><dt className="font-medium">Tổng</dt><dd className="text-[17px] font-medium tabular-nums">{fmtN(t.grand)}</dd></div>
+              {ret > 0 && <div className="flex justify-between"><dt className="text-[rgb(var(--muted))]">Hàng trả lại</dt><dd className="tabular-nums">−{fmtN(ret)}</dd></div>}
+              <div className="flex items-baseline justify-between border-t border-[rgb(var(--line))] pt-2"><dt className="font-medium">Thực tế phải thu</dt><dd className="text-[17px] font-medium tabular-nums">{fmtN(due)}</dd></div>
               <div className="flex justify-between"><dt className="text-[rgb(var(--muted))]">Đã thu (kế toán xác nhận)</dt><dd className="tabular-nums">{fmtN(paid)}</dd></div>
               {pend > 0 && <div className="flex justify-between"><dt className="text-[rgb(var(--muted))]">Chờ xác nhận</dt><dd className="tabular-nums">{fmtN(pend)}</dd></div>}
               <div className="flex justify-between"><dt className="text-[rgb(var(--muted))]">Còn phải thu</dt><dd className="font-medium tabular-nums">{fmtN(Math.max(0, left))}</dd></div>
+              {left < 0 && <div className="flex justify-between text-[rgb(var(--accent-fg))]"><dt>Khách trả thừa (hoàn tiền ở Thu chi)</dt><dd className="tabular-nums">{fmtN(-left)}</dd></div>}
               {o.creditDays > 0 && <div className="flex justify-between"><dt className="text-[rgb(var(--muted))]">Hạn trả</dt><dd className="tabular-nums">{o.issuedAt ? fmtDate(saleDue(o)) : `${o.creditDays} ngày từ khi xuất kho`}</dd></div>}
             </dl>
             {o.payments.length > 0 && (
@@ -521,19 +607,40 @@ export function SaleDetail({ o, onBack }: { o: SalesOrder; onBack: () => void })
             )}
             {o.status !== 'CANCELLED' && left > 0 && (
               <div className="mt-3 space-y-2 border-t border-[rgb(var(--line))] pt-3">
+                <p className="text-[12px] text-[rgb(var(--muted))]">{canCash ? 'Ghi thu (kế toán): tự sinh phiếu thu quỹ' : 'Ghi nhận tiền khách trả, chờ kế toán xác nhận'}</p>
                 <MoneyInput value={amt} onChange={setAmt} />
                 <div className="flex gap-2">
-                <select className={cn(inputBase, 'min-w-0 flex-1')} value={method} onChange={(e) => setMethod(e.target.value as 'CASH' | 'BANK')} aria-label="Hình thức thu"><option value="BANK">Chuyển khoản</option><option value="CASH">Tiền mặt</option></select>
-                <button className={btnGhost} onClick={() => setAmt(left)}>Đủ</button>
-                <button className={btnPrimary} disabled={!(amt > 0 && amt <= left)} onClick={() => { addSalePayment(o.id, amt, method); setAmt(0); }}><Coins className="h-4 w-4" aria-hidden />Thu tiền</button>
+                  <select className={cn(inputBase, 'min-w-0 flex-1')} value={method} onChange={(e) => setMethod(e.target.value as 'CASH' | 'BANK')} aria-label="Hình thức thu"><option value="BANK">Chuyển khoản</option><option value="CASH">Tiền mặt</option></select>
+                  <button className={btnGhost} onClick={() => setAmt(Math.max(0, left))}>Đủ</button>
+                  <button className={btnPrimary} disabled={!(amt > 0 && amt <= left)} onClick={() => { addSalePayment(o.id, amt, method); setAmt(0); }}><Coins className="h-4 w-4" aria-hidden />Ghi thu</button>
                 </div>
               </div>
             )}
           </SetBlock>
-          {(vouchers.length > 0 || (o.poIds?.length ?? 0) > 0 || wo || o.issueRefs?.length) && (
+          {((o.invReqs?.length ?? 0) > 0 || o.invoice) && (
+            <SetBlock title="Hóa đơn" sub={o.invoice ? 'Khách lấy hóa đơn VAT' : undefined}>
+              {(o.invReqs ?? []).length ? (
+                <ul className="space-y-2 text-[13px]">
+                  {(o.invReqs ?? []).map((r) => (
+                    <li key={r.id} className="space-y-1.5">
+                      <div className="flex items-center gap-2"><span className="tabular-nums">{new Date(r.at).toLocaleDateString('vi-VN')}</span><span className="tabular-nums">{fmtN(r.amount)}</span>
+                        <span className="ml-auto">{r.status === 'PENDING' ? <Chip tone="orange">Chờ kế toán</Chip> : r.status === 'DONE' ? <Chip tone="teal">Đã xuất {r.no}</Chip> : <Chip tone="muted">Trả lại</Chip>}</span></div>
+                      {r.note && <p className="text-[12px] text-[rgb(var(--muted))]">{r.note}</p>}
+                      {r.why && <p className="text-[12px] text-[rgb(var(--danger-fg))]">{r.why}</p>}
+                      {r.status === 'PENDING' && canCash && (
+                        <div className="flex gap-2"><input className={cn(inputBase, 'min-w-0 flex-1 py-1 text-[13px]')} value={dec[r.id] ?? ''} onChange={(e) => setDec({ ...dec, [r.id]: e.target.value })} placeholder="Số hóa đơn, hoặc lý do trả lại" aria-label="Số hóa đơn hoặc lý do" />
+                          <button className={cn(btnGhost, btnSm)} onClick={() => decideSaleInvoice(o.id, r.id, false, dec[r.id] ?? '')}>Trả lại</button>
+                          <button className={cn(btnPrimary, btnSm)} onClick={() => decideSaleInvoice(o.id, r.id, true, dec[r.id] ?? '')}>Đã xuất</button></div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="text-[13px] text-[rgb(var(--muted))]">Chưa gửi yêu cầu. NV kinh doanh bấm Yêu cầu xuất hóa đơn khi muốn xuất.</p>}
+            </SetBlock>
+          )}
+          {((o.poIds?.length ?? 0) > 0 || wo || o.issueRefs?.some((r) => r.startsWith('PX-'))) && (
             <SideCard title="Chứng từ liên quan">
               <ul className="space-y-1.5 text-[13px]">
-                {vouchers.map((v) => <li key={v.id}><button className="hover:underline" onClick={() => go('warehouse')}><Code>{v.code}</Code> phiếu xuất kho</button></li>)}
                 {o.issueRefs?.filter((r) => r.startsWith('PX-')).map((r) => <li key={r}><button className="hover:underline" onClick={() => go('inventory')}><Code>{r}</Code> phiếu xuất vật tư</button></li>)}
                 {pos.filter((p) => o.poIds?.includes(p.id)).map((p) => <li key={p.id}><button className="hover:underline" onClick={() => go('supply')}><Code>{p.code}</Code> đặt hàng {p.vendor}</button></li>)}
                 {wo && <li><button className="hover:underline" onClick={() => go('production')}><Code>{wo.code}</Code> lệnh sản xuất</button></li>}

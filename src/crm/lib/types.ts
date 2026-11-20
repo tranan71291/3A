@@ -83,9 +83,13 @@ export type VoucherType = 'IN' | 'OUT' | 'TRANSFER' | 'COUNT';
 
 export type VoucherStatus = 'PENDING' | 'DONE' | 'CANCELLED';
 
-export type SvLine = { sku: string; qty: number; price?: number; system?: number; diff?: number };
+export type SvLine = { sku: string; qty: number; price?: number; system?: number; diff?: number;
+  /** v49: dòng của đơn bán; req = số yêu cầu (phiếu xuất) hoặc tối đa được trả (phiếu nhập trả); held = phần lấy từ hàng giữ chỗ theo PO */
+  lineId?: string; req?: number; held?: number };
 
-export type StockVoucher = { id: string; code: string; type: VoucherType; status: VoucherStatus; date: string; whId: string; toWhId?: string; reason: string; partner?: string; ref?: string; note?: string; lines: SvLine[]; requestedBy?: string; approvedBy?: string; approvedAt?: number; cancelledBy?: string; cancelReason?: string; createdAt: number };
+export type StockVoucher = { id: string; code: string; type: VoucherType; status: VoucherStatus; date: string; whId: string; toWhId?: string; reason: string; partner?: string; ref?: string; note?: string; lines: SvLine[]; requestedBy?: string; approvedBy?: string; approvedAt?: number; cancelledBy?: string; cancelReason?: string; createdAt: number;
+  /** v49: phiếu xuất / nhập trả gắn với đơn bán */
+  saleId?: string };
 
 /** v28: danh mục kho (đa kho) */
 export type WarehouseInfo = { id: string; code: string; name: string; address: string; managerId?: string; active: boolean; main?: boolean };
@@ -237,7 +241,11 @@ export type SalesOrder = {
   /** v48: duyệt đơn (giảm giá / vượt hạn mức nợ) và yêu cầu xuất kho chờ Thủ kho / Kế toán */
   approval?: { status: 'PENDING' | ApprovalDecision; reasons: string[]; requestedAt: number; requestedBy?: string; decidedBy?: string; decidedAt?: number; note?: string };
   issueRequest?: { by: string; at: number };
+  /** v49: số đã xuất / đã trả theo từng dòng (cập nhật khi kho duyệt phiếu), yêu cầu xuất hóa đơn gửi kế toán */
+  issuedQ?: Record<string, number>; returnedQ?: Record<string, number>; invReqs?: SaleInvReq[];
 };
+
+export type SaleInvReq = { id: string; at: number; by?: string; amount: number; note?: string; status: 'PENDING' | 'DONE' | 'REJECTED'; no?: string; doneBy?: string; doneAt?: number; why?: string };
 
 export type VendorPO = { id: string; code: string; vendor: string; orderDate: string; expectedDate: string; purpose: PoPurpose; note: string; lines: PoLine[]; shipments: Shipment[]; createdBy?: string; cancelled?: boolean };
 
@@ -834,6 +842,8 @@ export type Perms = { modules: Record<Role, Record<Module, boolean>>; actions: R
 
 export type Catalog = { segments: SegmentDef[]; tiers: TierRule[]; categories: BudgetCategory[]; popDocs: PopDocDef[]; sources: CustomerSource[] };
 
+export type SaleStage = 'APPROVAL' | 'REJECTED' | 'READY' | 'WAIT_WH' | 'PARTIAL' | 'SHIPPING' | 'DONE' | 'CANCELLED';
+
 export type SaleStockData = { skus: SkuItem[]; warehouses: WarehouseInfo[]; reservations: StockReservation[]; stockMoves: InvMove[]; orders: SalesOrder[] };
 
 export type XlsxSheet = { name: string; rows: (string | number | null | undefined)[][]; widths?: number[] };
@@ -1087,6 +1097,13 @@ export type AppCtx = {
   saveSale: (o: Omit<SalesOrder, 'id' | 'code' | 'createdAt'> & { id?: string; code?: string; createdAt?: number }) => SalesOrder;
   /** Xuất kho đơn: dùng hàng đã giữ chỗ cho khách / dự án trước, phần còn lại lập phiếu xuất kho */
   issueSale: (id: string, given?: SalesOrder) => boolean;
+  /** v49: luồng kho */
+  requestSaleIssue: (id: string, given?: SalesOrder) => boolean;
+  approveSaleVoucher: (v: StockVoucher) => boolean;
+  approveSaleReturn: (v: StockVoucher) => boolean;
+  saleVoucherUndo: (v: StockVoucher) => void;
+  requestSaleInvoice: (id: string, amount: number, note?: string) => void;
+  decideSaleInvoice: (id: string, reqId: string, ok: boolean, text: string) => void;
   /** Đơn vừa lưu: thu tiền và / hoặc xuất kho ngay */
   completeSale: (o: SalesOrder, pay: { amount: number; method: 'CASH' | 'BANK' } | null, issue: boolean) => void;
   /** Giao trước phần có sẵn: tách phần thiếu sang đơn giao sau */
@@ -1974,7 +1991,9 @@ export type ReportView = 'mfg' | 'trade' | 'aging' | 'commission' | 'mdf';
 // =====================================================================
 // BÁN HÀNG: ĐƠN BÁN (v46) trực tiếp và đơn tự tạo khi chốt báo giá
 // =====================================================================
-export type SaleTab = 'ALL' | SaleStatus | 'QUOTE';
+export type SaleTab = 'ALL' | 'APPROVAL' | 'WAIT' | 'PARTIAL' | 'DONE' | 'UNPAID' | 'INV' | 'CANCELLED';
+
+export type SalePer = 'D' | 'W' | 'M' | 'Q' | 'Y' | 'ALL';
 
 export type SalePick = { kind: SaleLineKind; ref?: string; name: string; unit: string; price: number; sub: string; vat: number };
 

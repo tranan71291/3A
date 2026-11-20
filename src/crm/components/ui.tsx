@@ -435,6 +435,7 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
   const csv = () => downloadCsv(`${(title ?? 'danh-sach').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}-${todayISO()}.csv`, grab());
   const print = () => { const g = grab(); printHtml(docShell(title ?? 'Danh sách', `<h1>${esc(title ?? 'Danh sách')}</h1><table class="items"><thead><tr>${g[0].map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${g.slice(1).map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`)); };
   const colBtn = 'inline-flex h-7 items-center gap-1 rounded-md px-2 text-[12px] text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.05)] hover:text-[rgb(var(--fg))]';
+  const lastVis = Math.max(0, ...head.map((_, i) => i).filter((i) => !vis.includes(i)));
   return (
     <div className={cn('relative -mx-5', stack && 'max-md:mx-0')}>
       {css && <style>{css}</style>}
@@ -474,7 +475,7 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
               const on = can && sort?.sort?.col === i ? sort.sort.dir : 0;
               const Ico = on === 1 ? ArrowUp : on === -1 ? ArrowDown : ArrowUpDown;
               return (
-                <th key={i} aria-sort={on === 1 ? 'ascending' : on === -1 ? 'descending' : undefined} className={cn('whitespace-nowrap py-2.5 font-normal', i === 0 && !showStt && !useSel ? 'pl-5 pr-3' : i === head.length - 1 ? 'pl-3 pr-12' : 'px-3', (alignR.includes(i) || (actCol && i === head.length - 1)) && 'text-right')}>
+                <th key={i} aria-sort={on === 1 ? 'ascending' : on === -1 ? 'descending' : undefined} className={cn('whitespace-nowrap py-2.5 font-normal', i === 0 && !showStt && !useSel ? 'pl-5 pr-3' : i === lastVis ? 'pl-3 pr-12' : 'px-3', (alignR.includes(i) || (actCol && i === head.length - 1)) && 'text-right')}>
                   {can ? <button type="button" onClick={() => sort!.onSort(i)} className={cn('group inline-flex items-center gap-1 hover:text-[rgb(var(--fg))]', on !== 0 && 'text-[rgb(var(--fg))]', alignR.includes(i) && 'flex-row-reverse')}>{h}<Ico className={cn('h-3 w-3', on ? 'opacity-100' : 'opacity-40 group-hover:opacity-80')} aria-hidden /></button> : h}
                 </th>
               );

@@ -6,7 +6,7 @@ import { ChipFilter } from '../../components/filters';
 import { Chip, Code, EmptyState, Panel, Table } from '../../components/ui';
 import { addDaysISO, AGING, bizMode, btnGhost, btnSm, compact, esc, fmtDate, iso, jobCustName, jobPhone, overdueDays, pct, rowCls, saleDue, saleIssued, salePaid, tdCls, tdFirst, tdLast, todayISO, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
-import { saleTotals } from '../../lib/getfly';
+import { saleReturned, saleTotals } from '../../lib/getfly';
 import type { ArBucketDef, ArItem, CompanyInfo, Customer, GeneratedDoc, GetflyOrderRec, InstallJob, Job, MfgConfig, PayTrigger, Receipt, SalesOrder } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { SearchBox } from '../alux/orders';
@@ -55,7 +55,7 @@ export function tradingArItems(orders: GetflyOrderRec[], customers: Customer[], 
 
 /** v46: đơn bán đã xuất kho chưa thu đủ (tiền kế toán đã xác nhận) */
 export function saleArItems(orders: SalesOrder[], customers: Customer[]): ArItem[] {
-  return orders.filter((o) => saleIssued(o)).map((o) => ({ o, t: saleTotals(o).grand, paid: salePaid(o) })).filter((x) => x.t > x.paid).map(({ o, t, paid }) => {
+  return orders.filter((o) => saleIssued(o)).map((o) => ({ o, t: saleTotals(o).grand - saleReturned(o), paid: salePaid(o) })).filter((x) => x.t > x.paid).map(({ o, t, paid }) => {
     const c = customers.find((x) => x.id === o.customerId);
     return { key: o.code, customerId: o.customerId ?? `walk:${o.phone || o.code}`, customer: c?.name ?? o.customer, phone: c?.contactPhone ?? o.phone, docCode: o.code, docLabel: `Đơn bán ${o.code}, ${o.lines.length} dòng hàng${o.creditDays ? ` (công nợ ${o.creditDays} ngày)` : ''}`,
       docDate: o.issuedAt ? iso(new Date(o.issuedAt)) : o.date, dueDate: saleDue(o), amount: t, paid, outstanding: t - paid };

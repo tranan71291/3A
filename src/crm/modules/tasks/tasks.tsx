@@ -294,7 +294,7 @@ export function useApprovalQueue() {
     const f = flowOf('VOUCHER', v.id, s, v.createdAt);
     if (!f.can.ok) continue;
     const meta = VOUCHER_META[v.type];
-    const title = `${v.code}: ${meta.label.toLowerCase()}, ${app.warehouses.find((w) => w.id === v.whId)?.name ?? ''}`;
+    const title = `${v.code}: ${v.saleId ? (v.type === 'IN' ? `nhập trả đơn ${v.ref ?? ''}` : `xuất cho đơn ${v.ref ?? ''}`) : meta.label.toLowerCase()}, ${app.warehouses.find((w) => w.id === v.whId)?.name ?? ''}`;
     todo.push({
       key: `sv-${v.id}`, kind: 'VOUCHER', refId: v.id, title, sub: `${v.reason}${v.partner ? `, ${v.partner}` : ''} · ${v.lines.length} dòng: ${v.lines.slice(0, 3).map((l) => `${l.sku} ×${fmtN(l.qty)}`).join(', ')}${stepSub(f)}`,
       requesterId: v.requestedBy, requestedAt: f.at, slaMin: f.step?.slaMin ?? HUB_SLA.VOUCHER, amount: amount || undefined, flagged: flagOf(f), nextStep: f.idx < f.steps.length - 1 ? `Chuyển ${f.steps[f.idx + 1].name}` : `${meta.done}, cập nhật tồn kho`,
