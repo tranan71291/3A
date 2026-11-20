@@ -8,7 +8,7 @@ import { Chip, Code, EmptyState, Field, Modal, MoneyInput, useSticky } from '../
 import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, compact, DECISION_LABEL, digits, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, MAIN_WH, nextCode, overdueDays, PRICE_TIER, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleDue, saleIssQ, saleIssued, saleLineNet, salePaid, saleRetQ, soGrid, soIco, soTd, soTh, soTime, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { saleHeld, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
-import type { ApprovalDecision, CompanyInfo, Customer, PriceTier, SaleDelivery, SaleFilter, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
+import type { ApprovalDecision, CompanyInfo, Customer, PriceTier, SaleDelivery, SaleFilter, SaleInvBuyer, SaleInvItem, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
 import { cn, wfApprovers, wfPath } from '../../lib/utils';
 import { stockOf } from '../../lib/workshop';
 import { SearchBox } from '../alux/orders';
@@ -179,10 +179,9 @@ export function soSteps(o: SalesOrder, stage: SaleStage, vs: StockVoucher[], use
 /** v50: quyền thao tác trên đơn: người lên đơn với đơn của mình; Giám đốc / người có quyền "Bán hàng: sửa, hủy, xóa đơn" với mọi đơn */
 export function useSaleRights() {
   const { me, canDo, stockVouchers, setStockVouchers, setSalesOrders, setSaleStatus, notify, postCash, users, dispatch } = useApp();
-  const bod = me?.role === 'BOD';
-  const mgr = bod || canDo('sale.manage');
-  const del = bod || canDo('sale.delete');
-  const docs = bod || canDo('sale.docs');
+  const mgr = canDo('sale.manage');
+  const del = canDo('sale.delete');
+  const docs = canDo('sale.docs');
   const own = (o: SalesOrder) => !!me && o.by === me.id;
   const issued = (o: SalesOrder) => o.lines.some((l) => saleIssQ(o, l) > 0);
   const pendOut = (o: SalesOrder) => stockVouchers.filter((v) => v.saleId === o.id && v.type === 'OUT' && v.status === 'PENDING');
@@ -191,8 +190,9 @@ export function useSaleRights() {
     mgr,
     canEdit: (o: SalesOrder) => o.status === 'PENDING' && !issued(o) && !pendOut(o).length && (own(o) || mgr),
     canCancel: (o: SalesOrder) => o.status === 'PENDING' && !issued(o) && (own(o) || mgr),
-    canDelete: (o: SalesOrder) => o.status === 'CANCELLED' && del && !o.payments.length,
-    canInfo: (o: SalesOrder) => o.status !== 'CANCELLED' && (own(o) || mgr || bod || canDo('sale.info')),
+    canDelete: (o: SalesOrder) => del && !issued(o) && !o.payments.some((p) => p.confirmed),
+    delWhy: (o: SalesOrder) => (!del ? 'chưa có quyền xóa' : issued(o) ? 'đã xuất kho, lập phiếu nhập trả' : o.payments.some((p) => p.confirmed) ? 'đã có phiếu thu, hủy phiếu thu trước' : ''),
+    canInfo: (o: SalesOrder) => o.status !== 'CANCELLED' && (own(o) || mgr || canDo('sale.info')),
     canDocs: () => docs,
     canSelf: (o: SalesOrder) => !!o.approval?.self && o.approval.status === 'PENDING' && o.status === 'PENDING' && ((own(o) && canDo('sale.approve')) || mgr),
     canVoidPay: () => docs,
@@ -205,7 +205,11 @@ export function useSaleRights() {
       const u = users.find((x) => x.id === o.by);
       if (u && u.id !== me?.id) dispatch('APPROVAL_RESULT', { to: u, title: `Đơn ${o.code} đã hủy`, body: why, module: 'sales' });
     },
-    remove: (o: SalesOrder) => removeWithUndo(setSalesOrders, o, notify, `Đã xóa đơn ${o.code}`),
+    remove: (o: SalesOrder) => {
+      const ps = pendOut(o);
+      if (ps.length) setStockVouchers((all) => all.map((v) => (ps.some((p) => p.id === v.id) ? { ...v, status: 'CANCELLED' as VoucherStatus, cancelledBy: me?.id, cancelReason: `Xóa đơn ${o.code}` } : v)));
+      removeWithUndo(setSalesOrders, o, notify, `Đã xóa đơn ${o.code}${ps.length ? `, hủy ${ps.map((p) => p.code).join(', ')}` : ''}`);
+    },
     /** Hủy phiếu thu: bỏ khỏi đơn; phiếu đã vào quỹ thì sinh phiếu đảo (giữ lịch sử sổ quỹ) */
     voidPay: (o: SalesOrder, p: SalePayment, code?: string) => {
       setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, payments: x.payments.filter((y) => y.id !== p.id) } : x)));
@@ -477,7 +481,7 @@ export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEd
                     <td className={cn(soTd, 'pl-5')} onClick={(e) => e.stopPropagation()}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={pk} onChange={() => setPicked((p) => (p.includes(o.id) ? p.filter((x) => x !== o.id) : [...p, o.id]))} aria-label={`Chọn ${o.code}`} /></td>
                     <td className={cn(soTd, 'tabular-nums text-[rgb(var(--muted))]')}>{pg * size + i + 1}</td>
                     {vis.map((c) => <td key={c.id} className={cn(soTd, c.right && 'text-right')}>{c.cell(o)}</td>)}
-                    <td className={cn(soTd, 'pr-5')} onClick={(e) => e.stopPropagation()}><RowMenu items={[{ label: 'Xem chi tiết', icon: Eye, onClick: () => setOpenSale(o.id) }, { label: 'Sửa đơn', icon: Pencil, disabled: !R.canEdit(o), onClick: () => onEdit(o.id) }, { label: 'Hủy đơn', icon: XCircle, disabled: !R.canCancel(o), onClick: () => onCancel(o.id) }, ...(R.canDelete(o) ? [{ label: 'Xóa đơn', icon: Trash2, danger: true, onClick: () => R.remove(o) }] : [])]} /></td>
+                    <td className={cn(soTd, 'pr-5')} onClick={(e) => e.stopPropagation()}><RowMenu items={[{ label: 'Xem chi tiết', icon: Eye, onClick: () => setOpenSale(o.id) }, { label: 'Sửa đơn', icon: Pencil, disabled: !R.canEdit(o), onClick: () => onEdit(o.id) }, { label: 'Hủy đơn', icon: XCircle, disabled: !R.canCancel(o), onClick: () => onCancel(o.id) }, { label: R.canDelete(o) ? 'Xóa đơn' : `Xóa đơn (${R.delWhy(o)})`, icon: Trash2, danger: true, disabled: !R.canDelete(o), onClick: () => R.remove(o) }]} /></td>
                   </tr>
                 ); })}
                 <tr className="bg-[rgb(var(--ink)/0.03)] font-medium">
@@ -800,6 +804,84 @@ export function SaleStockCard({ o, compact: small, onOpen }: { o: SalesOrder; co
         </ol>
       )}
     </section>
+  );
+}
+
+/** v51: phiếu yêu cầu xuất hóa đơn: thông tin người mua kế thừa từ khách hàng, hàng hóa kế thừa từ đơn (đổi được tên trên hóa đơn) */
+export function SaleInvoiceForm({ o, onClose }: { o: SalesOrder; onClose: () => void }) {
+  const { customers, setCustomers, requestSaleInvoice, notify } = useApp();
+  const cust = customers.find((c) => c.id === o.customerId);
+  const prev = (o.invReqs ?? []).filter((r) => r.status !== 'REJECTED');
+  const usedQ = (id: string) => prev.reduce((s, r) => s + (r.items ?? []).filter((x) => x.lineId === id).reduce((a, x) => a + x.qty, 0), 0);
+  const init: SaleInvBuyer = { name: cust?.name ?? o.customer, taxCode: o.taxCode || cust?.taxCode || '', address: cust?.address || o.address || '', email: cust?.invoiceEmail || cust?.contactEmail || '', buyerName: cust?.contactName || o.receiver || '' };
+  const [b, setB] = useState<SaleInvBuyer>(init);
+  const [rows, setRows] = useState(() => o.lines.map((l) => { const left = Math.max(0, l.qty - usedQ(l.id)); return { l, on: left > 0, qty: left, max: left, name: l.name }; }));
+  const [note, setNote] = useState('');
+  const [keep, setKeep] = useState(!!cust && (!cust.taxCode || !cust.address || !(cust.invoiceEmail || cust.contactEmail)));
+  const unit = (l: SaleLine) => (l.qty ? saleLineNet(l) / l.qty : 0);
+  const items = rows.filter((r) => r.on && r.qty > 0).map((r): SaleInvItem => ({ lineId: r.l.id, name: r.name.trim() || r.l.name, unit: r.l.unit, qty: r.qty, amount: Math.round(unit(r.l) * r.qty), vat: r.l.vat }));
+  const net = items.reduce((s, x) => s + x.amount, 0);
+  const vat = items.reduce((s, x) => s + Math.round((x.amount * x.vat) / 100), 0);
+  const miss = { name: !b.name.trim(), taxCode: !b.noTax && !/^\d{10}(-\d{3})?$/.test((b.taxCode ?? '').replace(/\s/g, '')), address: !b.address.trim(), email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email.trim()) };
+  const bad = Object.values(miss).some(Boolean) || !items.length || rows.some((r) => r.on && (r.qty > r.max || !r.name.trim()));
+  const auto = (k: keyof typeof miss) => !!(init as Record<string, unknown>)[k] && !miss[k];
+  const send = () => {
+    if (bad) return notify('Điền đủ thông tin xuất hóa đơn và chọn hàng hóa', 'red');
+    const buyer: SaleInvBuyer = { ...b, name: b.name.trim(), taxCode: b.noTax ? undefined : (b.taxCode ?? '').replace(/\s/g, ''), address: b.address.trim(), email: b.email.trim(), buyerName: b.buyerName?.trim() || undefined };
+    requestSaleInvoice(o.id, net + vat, note, { buyer, items });
+    if (keep && cust) setCustomers((all) => all.map((c) => (c.id === cust.id ? { ...c, taxCode: c.taxCode || buyer.taxCode || '', address: c.address || buyer.address, invoiceEmail: buyer.email } : c)));
+    onClose();
+  };
+  const fld = (k: keyof typeof miss, label: string, el: ReactNode) => (
+    <Field label={label} className={k === 'name' || k === 'address' ? 'sm:col-span-2' : undefined}>
+      <div className={cn('rounded-lg', miss[k] && 'ring-1 ring-[rgb(var(--danger))]')}>{el}</div>
+      {miss[k] ? <p className="mt-1 text-[12px] text-[rgb(var(--danger-fg))]">Bắt buộc{k === 'taxCode' ? ': 10 hoặc 13 số' : k === 'email' ? ': email hợp lệ' : ''}</p> : auto(k) ? <p className="mt-1 text-[12px] text-[rgb(var(--muted))]">{cust ? 'Lấy từ hồ sơ khách hàng' : 'Lấy từ đơn hàng'}</p> : null}
+    </Field>
+  );
+  return (
+    <Modal wide title={`Yêu cầu xuất hóa đơn · ${o.code}`} onClose={onClose} footer={<>
+      <span className="mr-auto text-[13px] tabular-nums text-[rgb(var(--muted))]">Tiền hàng {fmtN(net)} · VAT {fmtN(vat)} · <b className="font-medium text-[rgb(var(--fg))]">Tổng {fmtN(net + vat)}</b></span>
+      <button className={btnGhost} onClick={onClose}>Hủy</button>
+      <button className={btnPrimary} disabled={bad} onClick={send}><Send className="h-4 w-4" aria-hidden />Gửi kế toán</button>
+    </>}>
+      <div className="space-y-5">
+        <section>
+          <p className="mb-2 text-[14px] font-medium">Thông tin xuất hóa đơn</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+            {fld('name', 'Tên đơn vị / người mua', <input className={inputCls} value={b.name} onChange={(e) => setB({ ...b, name: e.target.value })} />)}
+            {fld('taxCode', 'Mã số thuế', <input className={cn(inputCls, 'font-mono')} value={b.noTax ? '' : b.taxCode ?? ''} disabled={b.noTax} onChange={(e) => setB({ ...b, taxCode: e.target.value })} placeholder={b.noTax ? 'Không có MST' : '0312345678'} />)}
+            <Field label="Người mua hàng"><input className={inputCls} value={b.buyerName ?? ''} onChange={(e) => setB({ ...b, buyerName: e.target.value })} /></Field>
+            {fld('address', 'Địa chỉ', <input className={inputCls} value={b.address} onChange={(e) => setB({ ...b, address: e.target.value })} />)}
+            {fld('email', 'Email nhận hóa đơn', <input className={inputCls} type="email" value={b.email} onChange={(e) => setB({ ...b, email: e.target.value })} />)}
+            <div className="flex flex-col justify-center gap-1.5 text-[13px]">
+              <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={!!b.noTax} onChange={(e) => setB({ ...b, noTax: e.target.checked })} />Khách cá nhân, không có MST</label>
+              {cust && <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={keep} onChange={(e) => setKeep(e.target.checked)} />Lưu vào hồ sơ khách hàng</label>}
+            </div>
+          </div>
+        </section>
+        <section>
+          <p className="mb-2 text-[14px] font-medium">Hàng hóa trên hóa đơn</p>
+          <div className="overflow-x-auto rounded-lg border border-[rgb(var(--line))]">
+            <table className="w-full min-w-[620px] text-[13.5px]">
+              <thead><tr className="border-b border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.03)] text-left text-[12.5px] text-[rgb(var(--muted))]"><th className="w-10 py-2 pl-3" /><th className="font-normal">Mã</th><th className="font-normal">Tên hàng trên hóa đơn</th><th className="font-normal">ĐVT</th><th className="text-right font-normal">Còn xuất HĐ</th><th className="w-20 text-right font-normal">Số lượng</th><th className="text-right font-normal">VAT%</th><th className="pr-3 text-right font-normal">Thành tiền</th></tr></thead>
+              <tbody>{rows.map((r, i) => (
+                <tr key={r.l.id} className={cn('border-b border-[rgb(var(--ink)/0.06)]', !r.on && 'text-[rgb(var(--muted))]')}>
+                  <td className="py-2 pl-3"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={r.on} disabled={!r.max} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, on: e.target.checked } : x)))} aria-label={`Chọn ${r.l.name}`} /></td>
+                  <td className="whitespace-nowrap pr-2">{r.l.ref ? <Code>{r.l.ref}</Code> : '—'}</td>
+                  <td className="py-1.5 pr-2"><input className={cn(inputBase, 'w-full min-w-[180px] py-1', r.name !== r.l.name && 'border-[rgb(var(--accent))]')} value={r.name} disabled={!r.on} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} aria-label={`Tên trên hóa đơn dòng ${i + 1}`} title={r.name !== r.l.name ? `Tên trên đơn: ${r.l.name}` : undefined} /></td>
+                  <td className="whitespace-nowrap pr-2">{r.l.unit}</td>
+                  <td className="pr-2 text-right tabular-nums">{fmtN(r.max)}</td>
+                  <td className="py-1.5 pr-2"><input className={cn(inputBase, 'w-full py-1 text-right tabular-nums', r.qty > r.max && 'border-[rgb(var(--danger))]')} inputMode="decimal" value={r.qty} disabled={!r.on} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, qty: Math.max(0, Number(e.target.value.replace(',', '.')) || 0) } : x)))} aria-label={`Số lượng xuất hóa đơn dòng ${i + 1}`} /></td>
+                  <td className="pr-2 text-right tabular-nums">{r.l.vat}</td>
+                  <td className="pr-3 text-right font-medium tabular-nums">{r.on ? fmtN(Math.round(unit(r.l) * r.qty)) : '—'}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </section>
+        <Field label="Ghi chú cho kế toán"><input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ngày xuất, gộp hóa đơn…" /></Field>
+      </div>
+    </Modal>
   );
 }
 
@@ -1146,7 +1228,7 @@ export function SaleApprove({ o, onBack, onGo }: { o: SalesOrder; onBack: () => 
 
 export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }: { o: SalesOrder; onBack: () => void; onApprove: () => void; onPay: () => void; onEdit: () => void; startCancel?: boolean }) {
   const R = useSaleRights();
-  const { quotes, openComposer, requestSaleIssue, setSaleStatus, confirmSalePayment, users, company, canDo, pos, stockVouchers, workOrders, go, requestSaleInvoice, decideSaleInvoice, warehouses, me, setSalesOrders, cashEntries } = useApp();
+  const { quotes, openComposer, requestSaleIssue, setSaleStatus, confirmSalePayment, users, company, canDo, pos, stockVouchers, workOrders, go, decideSaleInvoice, warehouses, me, setSalesOrders, cashEntries } = useApp();
   const { todo } = useApprovalQueue();
   const myTurn = todo.some((x) => x.key === `so-${o.id}`);
   const t = saleTotals(o);
@@ -1162,7 +1244,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const [more, setMore] = useState(false);
   const moreRef = useOutside(more, () => setMore(false));
   const [cancel, setCancel] = useState<string | null>(startCancel ? '' : null);
-  const [inv, setInv] = useState<{ amount: number; note: string } | null>(null);
+  const [inv, setInv] = useState(false);
   const [dec, setDec] = useState<Record<string, string>>({});
   const q = o.quoteId ? quotes.find((x) => x.id === o.quoteId) : undefined;
   const stage = saleStage(o, stockVouchers);
@@ -1228,14 +1310,14 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
                 <button className="block w-full rounded-md px-3 py-2 text-left hover:bg-[rgb(var(--ink)/0.05)] disabled:opacity-40" disabled={!R.canEdit(o)} onClick={() => { setMore(false); onEdit(); }}>Sửa đơn</button>
                 {o.status === 'SHIPPING' && <button className="block w-full rounded-md px-3 py-2 text-left hover:bg-[rgb(var(--ink)/0.05)]" onClick={() => { setMore(false); setSaleStatus(o.id, 'DONE'); }}>Đã giao xong</button>}
                 <button className="block w-full rounded-md px-3 py-2 text-left text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--ink)/0.05)] disabled:opacity-40" disabled={!R.canCancel(o)} onClick={() => { setMore(false); setCancel(''); }}>Hủy đơn</button>
-                {R.canDelete(o) && <button className="block w-full rounded-md px-3 py-2 text-left text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--ink)/0.05)]" onClick={() => { setMore(false); R.remove(o); onBack(); }}>Xóa đơn</button>}
+                <button className="block w-full rounded-md px-3 py-2 text-left text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--ink)/0.05)] disabled:opacity-40" disabled={!R.canDelete(o)} title={R.delWhy(o) || undefined} onClick={() => { setMore(false); R.remove(o); onBack(); }}>Xóa đơn{R.canDelete(o) ? '' : <span className="block text-[11.5px]">{R.delWhy(o)}</span>}</button>
               </div>
             )}
           </div>
         </div>
         {o.status !== 'CANCELLED' && stage !== 'APPROVAL' && <button className={btnGhost} onClick={onPay}><Coins className="h-4 w-4" aria-hidden />{canCash ? 'Lập phiếu thu' : 'Báo đã nhận tiền'}</button>}
         {canReq && <button className={btnPrimary} onClick={() => requestSaleIssue(o.id)}><PackageMinus className="h-4 w-4" aria-hidden />Yêu cầu xuất kho</button>}
-        {canInv && <button className={btnGhost} onClick={() => setInv({ amount: Math.max(0, due - invAsked), note: '' })}><ReceiptIcon className="h-4 w-4" aria-hidden />Yêu cầu xuất hóa đơn</button>}
+        {canInv && <button className={btnGhost} onClick={() => setInv(true)}><ReceiptIcon className="h-4 w-4" aria-hidden />Yêu cầu xuất hóa đơn</button>}
         {stage === 'APPROVAL' && <button className={myTurn || R.canSelf(o) ? btnPrimary : btnGhost} onClick={onApprove}><CheckIcon className="h-4 w-4" aria-hidden />{myTurn || R.canSelf(o) ? 'Duyệt đơn' : 'Xem duyệt'}</button>}
       </SoTop>
       {cancel !== null && (
@@ -1245,15 +1327,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
           <button className={cn(btnPrimary, 'bg-[rgb(var(--danger))]')} disabled={cancel.trim().length < 3} onClick={() => { R.cancelOrder(o, cancel.trim()); setCancel(null); }}>Hủy đơn</button>
         </div>
       )}
-      {inv && (
-        <div className="glass-card mb-4 flex flex-wrap items-center gap-2 rounded-xl px-4 py-3">
-          <span className="text-[13.5px] font-medium">Yêu cầu xuất hóa đơn</span>
-          <div className="w-44"><MoneyInput value={inv.amount} onChange={(v) => setInv({ ...inv, amount: v })} /></div>
-          <input className={cn(inputBase, 'min-w-[220px] flex-1')} value={inv.note} onChange={(e) => setInv({ ...inv, note: e.target.value })} placeholder="Ghi chú cho kế toán" aria-label="Ghi chú cho kế toán" />
-          <button className={btnGhost} onClick={() => setInv(null)}>Thôi</button>
-          <button className={btnPrimary} disabled={!(inv.amount > 0)} onClick={() => { requestSaleInvoice(o.id, inv.amount, inv.note); setInv(null); }}><Send className="h-4 w-4" aria-hidden />Gửi kế toán</button>
-        </div>
-      )}
+      {inv && <SaleInvoiceForm o={o} onClose={() => setInv(false)} />}
       {view && (() => {
         const d = docs.find((x) => x.key === view);
         if (!d) return null;
@@ -1263,7 +1337,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
         const po = pos.find((x) => x.id === view);
         const html = v ? soVoucherHtml(v, skus, warehouses.find((w) => w.id === v.whId)?.name ?? '', nm, company)
           : p ? soReceiptHtml(o, p, d.code, company, nm(p.by))
-          : r ? soInfoHtml('YÊU CẦU XUẤT HÓA ĐƠN', r.no ?? '—', [['Đơn hàng', o.code], ['Khách hàng', `${o.customer}${o.taxCode ? ` · MST ${o.taxCode}` : ''}`], ['Số tiền', `${fmtN(r.amount)} đ`], ['Người yêu cầu', nm(r.by)], ['Ngày yêu cầu', soTime(r.at)], ['Trạng thái', r.status === 'DONE' ? `Đã xuất ${r.no}` : r.status === 'PENDING' ? 'Chờ kế toán' : `Trả lại: ${r.why ?? ''}`], ['Ghi chú', r.note ?? '']], company)
+          : r ? soInfoHtml('YÊU CẦU XUẤT HÓA ĐƠN', r.no ?? '—', [['Đơn hàng', o.code], ['Khách hàng', `${o.customer}${o.taxCode ? ` · MST ${o.taxCode}` : ''}`], ['Số tiền', `${fmtN(r.amount)} đ`], ['Người yêu cầu', nm(r.by)], ['Ngày yêu cầu', soTime(r.at)], ['Trạng thái', r.status === 'DONE' ? `Đã xuất ${r.no}` : r.status === 'PENDING' ? 'Chờ kế toán' : `Trả lại: ${r.why ?? ''}`], ['Ghi chú', r.note ?? ''], ...(r.buyer ? [['Người mua', r.buyer.name], ['Mã số thuế', r.buyer.noTax ? 'Không có' : r.buyer.taxCode ?? ''], ['Địa chỉ', r.buyer.address], ['Email nhận hóa đơn', r.buyer.email]] as [string, string][] : []), ...(r.items ?? []).map((x): [string, string] => [`${x.name} (${x.unit})`, `${fmtN(x.qty)} × · ${fmtN(x.amount)} đ · VAT ${x.vat}%`])], company)
           : po ? soInfoHtml('ĐẶT HÀNG NHÀ CUNG CẤP', po.code, [['Nhà cung cấp', po.vendor], ['Ngày đặt', fmtDate(po.orderDate)], ['Dự kiến về', fmtDate(po.expectedDate)], ['Số dòng', String(po.lines.length)]], company)
           : soInfoHtml(String(d.code), d.code, [['Loại', typeof d.type === 'string' ? d.type : ''], ['Ngày', fmtDate(d.date)], ['Ghi chú', d.note ?? '']], company);
         const doc = docShell(d.code, html);
@@ -1410,6 +1484,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
               {(o.invReqs ?? []).filter((r) => r.status === 'PENDING').map((r) => (
                 <div key={r.id} className="space-y-2 text-[13px]">
                   <div className="flex justify-between"><span className="text-[rgb(var(--muted))]">{nm(r.by)} · {soTime(r.at)}</span><span className="font-medium tabular-nums">{fmtN(r.amount)}</span></div>
+                  {r.buyer && <div className="rounded-lg bg-[rgb(var(--ink)/0.04)] px-3 py-2 text-[12.5px]"><p className="font-medium">{r.buyer.name}</p><p className="text-[rgb(var(--fg2))]">{r.buyer.noTax ? 'Không MST' : `MST ${r.buyer.taxCode}`} · {r.buyer.email}</p><p className="text-[rgb(var(--fg2))]">{r.buyer.address}</p>{(r.items ?? []).map((x) => <p key={x.lineId} className="flex justify-between gap-2 text-[rgb(var(--muted))]"><span className="truncate">{x.name} × {fmtN(x.qty)}</span><span className="tabular-nums">{fmtN(x.amount)}</span></p>)}</div>}
                   {r.note && <p className="text-[rgb(var(--fg2))]">{r.note}</p>}
                   <input className={inputCls} value={dec[r.id] ?? ''} onChange={(e) => setDec({ ...dec, [r.id]: e.target.value })} placeholder="Số hóa đơn hoặc lý do trả lại" aria-label="Số hóa đơn hoặc lý do" />
                   <div className="flex gap-2"><button className={cn(btnGhost, 'flex-1 justify-center')} onClick={() => decideSaleInvoice(o.id, r.id, false, dec[r.id] ?? '')}>Trả lại</button><button className={cn(btnPrimary, 'flex-1 justify-center')} onClick={() => decideSaleInvoice(o.id, r.id, true, dec[r.id] ?? '')}>Đã xuất</button></div>

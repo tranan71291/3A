@@ -154,7 +154,7 @@ export function WorkOrderDrawer({ id, onClose, onSchedule }: { id: string; onClo
 }
 
 export function ProductionModule() {
-  const { workOrders, jobs, customers, installJobs, userName, setWorkOrders, canDo, notify, me } = useApp();
+  const { workOrders, jobs, customers, installJobs, userName, setWorkOrders, canDo, notify } = useApp();
   const inR = useInRange();
   const [st, setSt] = useState<WoStage | 'ALL'>('WAITING');
   const [q, setQ] = useSticky('ProductionModule.q', '');
@@ -197,7 +197,7 @@ export function ProductionModule() {
                   <td className={tdCls}>{woLate(w) ? <Sla tone="over">{fmtDate(w.dueDate)} · trễ</Sla> : <span className="font-mono text-xs text-[rgb(var(--fg2))]">{fmtDate(w.dueDate)}</span>}</td>
                   <td className={tdCls}><Chip tone={WO_STAGE[w.stage].tone}>{WO_STAGE[w.stage].label}</Chip></td>
                   <td className={cn(tdCls, 'text-[13px] text-[rgb(var(--muted))]')}>{w.design && w.stage !== 'DONE' ? DESIGN_STATUS[w.design.status].label : '—'}</td>
-                  <td className={tdLast}><div className="flex items-center justify-end gap-1"><WoActionButton w={w} onSchedule={setSchedule} /><span onClick={(e) => e.stopPropagation()}><RowMenu items={[{ label: 'Xem / sửa lệnh', icon: Pencil, onClick: () => setOpen(w.id) }, { label: 'Xóa lệnh', icon: Trash2, danger: true, disabled: !(me?.role === 'BOD' || canDo('production.delete')) || w.stage !== 'WAITING' || installJobs.some((i) => i.workOrderId === w.id), onClick: () => removeWithUndo(setWorkOrders, w, notify, `Đã xóa ${w.code}`) }]} /></span></div></td>
+                  <td className={tdLast}><div className="flex items-center justify-end gap-1"><WoActionButton w={w} onSchedule={setSchedule} /><span onClick={(e) => e.stopPropagation()}><RowMenu items={[{ label: 'Xem / sửa lệnh', icon: Pencil, onClick: () => setOpen(w.id) }, { label: 'Xóa lệnh', icon: Trash2, danger: true, disabled: !canDo('production.delete') || w.stage !== 'WAITING' || installJobs.some((i) => i.workOrderId === w.id), onClick: () => removeWithUndo(setWorkOrders, w, notify, `Đã xóa ${w.code}`) }]} /></span></div></td>
                 </tr>
               );
             })}

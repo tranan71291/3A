@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useState } from 'react';
-import { Check as CheckIcon, History, Lock, Minus, RefreshCw, Sparkles, Undo2 } from 'lucide-react';
+import { Check as CheckIcon, History, Minus, RefreshCw, Sparkles, Undo2 } from 'lucide-react';
 import { Avatar } from '../../components/controls';
 import { Chip, useSticky } from '../../components/ui';
 import { ACTION_LABEL, ACTION_MODULE, btnGhost, btnPrimary, btnSm, DEFAULT_SCOPE, fold, INITIAL_PERMS, inputBase, LOCKED, MODULE_LABEL, moduleEnabled, MODULES, NAV_GROUPS, pActOf, PFEATS, pModOf, PTASKS, ROLE_LABEL, ROLES, SCOPE_LABEL, useApp } from '../../lib/core';
@@ -46,7 +46,6 @@ export function PermAiReview({ summary }: { summary: string }) {
 export function pCell(P: Perms, c: PCtx, f: PFeat, t: PTask): { on: boolean; part: boolean; own: boolean } | null {
   const cell = t === 'access' && !f.sub ? 'MOD' : f.cells[t];
   if (!cell) return null;
-  if (c.role === 'BOD') return { on: true, part: false, own: false };
   const up = c.uid ? P.users?.[c.uid] : undefined;
   if (cell === 'MOD') { const o = up?.modules?.[f.mod]; return { on: o ?? pModOf(P, c.role, f.mod), part: false, own: o !== undefined }; }
   const vs = cell.map((a) => up?.actions?.[a] ?? pActOf(P, c.role, a));
@@ -56,7 +55,8 @@ export function pCell(P: Perms, c: PCtx, f: PFeat, t: PTask): { on: boolean; par
 
 export function pSet(P: Perms, c: PCtx, f: PFeat, t: PTask, v: boolean): Perms {
   const cell = t === 'access' && !f.sub ? 'MOD' : f.cells[t];
-  if (!cell || c.role === 'BOD') return P;
+  if (!cell) return P;
+  if (cell === 'MOD' ? LOCKED(c.role, f.mod) : cell.some((a) => LOCKED(c.role, undefined, a))) return P;
   if (c.uid) {
     const up: UserPerm = { ...(P.users?.[c.uid] ?? {}) };
     if (cell === 'MOD') { const n = { ...(up.modules ?? {}) }; if (v === pModOf(P, c.role, f.mod)) delete n[f.mod]; else n[f.mod] = v; up.modules = n; }
@@ -73,7 +73,7 @@ export function pSet(P: Perms, c: PCtx, f: PFeat, t: PTask, v: boolean): Perms {
 export function PermMatrix({ P, ctx, feats, onSet, canEdit, q }: { P: Perms; ctx: PCtx; feats: { title: string; rows: PFeat[] }[]; onSet: (f: PFeat, t: PTask, v: boolean) => void; canEdit: boolean; q: string }) {
   const k = fold(q.trim());
   const groups = feats.map((g) => ({ ...g, rows: g.rows.filter((f) => !k || fold(f.label).includes(k) || (f.sub ? false : g.rows.some((x) => x.sub && x.mod === f.mod && fold(x.label).includes(k)))) })).filter((g) => g.rows.length);
-  const lockAll = ctx.role === 'BOD' || !canEdit;
+  const lockAll = !canEdit;
   const colAll = (t: PTask) => { const cs = groups.flatMap((g) => g.rows.map((f) => pCell(P, ctx, f, t))).filter((x): x is NonNullable<typeof x> => !!x); return { on: cs.length > 0 && cs.every((x) => x.on && !x.part), some: cs.some((x) => x.on) }; };
   const box = (on: boolean, part: boolean, own: boolean, dis: boolean, label: string, click: () => void) => (
     <button type="button" role="checkbox" aria-checked={part ? 'mixed' : on} aria-label={label} disabled={dis} onClick={click}
@@ -105,7 +105,7 @@ export function PermMatrix({ P, ctx, feats, onSet, canEdit, q }: { P: Perms; ctx
                       {f.hint && <span className="ml-2 text-[12px] text-[rgb(var(--faint))]">{f.hint}</span>}
                     </td>
                     {PTASKS.map(([t, l]) => { const c = pCell(P, ctx, f, t); return c ? (
-                      <td key={t} className="border-l border-[rgb(var(--ink)/0.04)] text-center">{box(c.on, c.part, c.own, lockAll || (off && t !== 'access') || (t === 'access' && !f.sub && LOCKED(ctx.role, f.mod)), `${f.label}: ${l}`, () => onSet(f, t, !c.on || c.part))}</td>
+                      <td key={t} className="border-l border-[rgb(var(--ink)/0.04)] text-center">{box(c.on, c.part, c.own, lockAll || (off && t !== 'access') || (t === 'access' && !f.sub && LOCKED(ctx.role, f.mod)) || (t !== 'access' && Array.isArray(f.cells[t]) && (f.cells[t] as Action[]).some((a) => LOCKED(ctx.role, undefined, a))), `${f.label}: ${l}`, () => onSet(f, t, !c.on || c.part))}</td>
                     ) : <td key={t} className="border-l border-[rgb(var(--ink)/0.04)] bg-[repeating-linear-gradient(135deg,transparent_0_6px,rgb(var(--ink)/0.035)_6px_7px)]" aria-label="Không áp dụng" />; })}
                   </tr>
                 );
@@ -167,7 +167,7 @@ export function PermissionsSettings() {
           {TREE.map(([r, lv]) => (
             <button key={r} onClick={() => { setRole(r); setUid(null); if (view === 'LOG') setView('MATRIX'); }} className={cn('relative flex h-9 w-full items-center gap-2 pr-4 text-left text-[13.5px]', lv ? 'pl-9' : 'pl-4', role === r && view !== 'LOG' ? 'bg-[rgb(var(--accent)/0.08)] font-medium shadow-[inset_2px_0_0_rgb(var(--accent))]' : 'hover:bg-[rgb(var(--ink)/0.03)]')}>
               {lv > 0 && <span className="absolute left-5 top-0 h-[18px] w-2.5 rounded-bl border-b border-l border-[rgb(var(--ink)/0.2)]" aria-hidden />}
-              <span className="min-w-0 flex-1 truncate">{ROLE_LABEL[r]}</span>{r === 'BOD' && <Lock className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-label="Toàn quyền" />}<span className="text-[12px] tabular-nums text-[rgb(var(--muted))]">{users.filter((u) => u.role === r && u.active).length}</span>
+              <span className="min-w-0 flex-1 truncate">{ROLE_LABEL[r]}</span><span className="text-[12px] tabular-nums text-[rgb(var(--muted))]">{users.filter((u) => u.role === r && u.active).length}</span>
             </button>
           ))}
           <div className="my-2 border-t border-[rgb(var(--line))]" />
@@ -179,12 +179,12 @@ export function PermissionsSettings() {
             <section className="glass-card flex flex-wrap items-start gap-4 rounded-xl p-5">
               <div className="min-w-0">
                 <h2 className="text-[18px] font-medium">{ROLE_LABEL[role]}</h2>
-                <div className="mt-2 flex items-center gap-2"><span className="flex -space-x-1.5">{members.slice(0, 6).map((u) => <span key={u.id} className="rounded-full ring-2 ring-[rgb(var(--surface))]" title={u.name}><Avatar name={u.name} size={26} /></span>)}</span><span className="text-[12.5px] text-[rgb(var(--muted))]">{members.filter((u) => u.active).length} tài khoản{role === 'BOD' ? ' · luôn toàn quyền' : ''}</span></div>
+                <div className="mt-2 flex items-center gap-2"><span className="flex -space-x-1.5">{members.slice(0, 6).map((u) => <span key={u.id} className="rounded-full ring-2 ring-[rgb(var(--surface))]" title={u.name}><Avatar name={u.name} size={26} /></span>)}</span><span className="text-[12.5px] text-[rgb(var(--muted))]">{members.filter((u) => u.active).length} tài khoản</span></div>
               </div>
               <div className="ml-auto flex flex-col items-end gap-1.5">
                 <p className="text-[12.5px] text-[rgb(var(--muted))]">Phạm vi dữ liệu</p>
                 <div className="flex overflow-hidden rounded-lg border border-[rgb(var(--ink)/0.12)] divide-x divide-[rgb(var(--ink)/0.08)]" role="radiogroup" aria-label="Phạm vi dữ liệu">
-                  {(Object.keys(SCOPE_LABEL) as DataScope[]).map((sc) => <button key={sc} role="radio" aria-checked={scopeOf(role) === sc} title={SCOPE_LABEL[sc].hint} disabled={!canEdit || role === 'BOD'} className={seg(scopeOf(role) === sc)} onClick={() => edit((p) => ({ ...p, scope: { ...(p.scope ?? {}), [role]: sc } }))}>{SCOPE_LABEL[sc].label}</button>)}
+                  {(Object.keys(SCOPE_LABEL) as DataScope[]).map((sc) => <button key={sc} role="radio" aria-checked={scopeOf(role) === sc} title={SCOPE_LABEL[sc].hint} disabled={!canEdit} className={seg(scopeOf(role) === sc)} onClick={() => edit((p) => ({ ...p, scope: { ...(p.scope ?? {}), [role]: sc } }))}>{SCOPE_LABEL[sc].label}</button>)}
                 </div>
               </div>
             </section>
@@ -197,7 +197,7 @@ export function PermissionsSettings() {
               {view !== 'LOG' && (
                 <div className="ml-auto flex items-center gap-2 py-2">
                   <div className="w-56"><SearchBox value={q} onChange={setQ} placeholder="Tìm chức năng" /></div>
-                  {view === 'MATRIX' && role !== 'BOD' && canEdit && <select className={cn(inputBase, 'w-48')} value="" onChange={(e) => { if (e.target.value) copyFrom(e.target.value as Role); }} aria-label="Sao chép từ nhóm"><option value="">Sao chép từ nhóm…</option>{ROLES.filter((r) => r !== role && r !== 'BOD').map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>}
+                  {view === 'MATRIX' && canEdit && <select className={cn(inputBase, 'w-48')} value="" onChange={(e) => { if (e.target.value) copyFrom(e.target.value as Role); }} aria-label="Sao chép từ nhóm"><option value="">Sao chép từ nhóm…</option>{ROLES.filter((r) => r !== role).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>}
                 </div>
               )}
             </div>
@@ -210,7 +210,7 @@ export function PermissionsSettings() {
                     <tbody>{members.map((u) => { const n = overrides(u); const up = P.users?.[u.id] ?? {}; return (
                       <tr key={u.id} className={cn('cursor-pointer border-b border-[rgb(var(--ink)/0.06)]', uid === u.id ? 'bg-[rgb(var(--accent)/0.06)]' : 'hover:bg-[rgb(var(--ink)/0.02)]')} onClick={() => setUid(u.id)}>
                         <td className="py-2.5 pl-5"><span className="flex items-center gap-2.5"><Avatar name={u.name} size={28} /><span><span className="block font-medium">{u.name}</span><span className="block text-[12px] text-[rgb(var(--muted))]">{u.email}</span></span></span></td>
-                        <td onClick={(e) => e.stopPropagation()}><select className={cn(inputBase, 'w-52 py-1')} value={up.scope ?? ''} disabled={!canEdit || role === 'BOD'} onChange={(e) => { const v = (e.target.value || undefined) as DataScope | undefined; edit((p) => ({ ...p, users: { ...(p.users ?? {}), [u.id]: { ...(p.users?.[u.id] ?? {}), scope: v } } })); }} aria-label={`Phạm vi của ${u.name}`}><option value="">Theo nhóm</option>{(Object.keys(SCOPE_LABEL) as DataScope[]).map((sc) => <option key={sc} value={sc}>{SCOPE_LABEL[sc].label}</option>)}</select></td>
+                        <td onClick={(e) => e.stopPropagation()}><select className={cn(inputBase, 'w-52 py-1')} value={up.scope ?? ''} disabled={!canEdit} onChange={(e) => { const v = (e.target.value || undefined) as DataScope | undefined; edit((p) => ({ ...p, users: { ...(p.users ?? {}), [u.id]: { ...(p.users?.[u.id] ?? {}), scope: v } } })); }} aria-label={`Phạm vi của ${u.name}`}><option value="">Theo nhóm</option>{(Object.keys(SCOPE_LABEL) as DataScope[]).map((sc) => <option key={sc} value={sc}>{SCOPE_LABEL[sc].label}</option>)}</select></td>
                         <td>{n ? <span className="rounded-md border border-[rgb(var(--accent)/0.4)] px-2 py-0.5 text-[12px] text-[rgb(var(--accent-fg))]">{n} quyền riêng</span> : <span className="text-[rgb(var(--muted))]">Theo nhóm</span>}</td>
                         <td><Chip tone={u.active ? 'teal' : 'muted'}>{u.active ? 'Hoạt động' : 'Đã khóa'}</Chip></td>
                         <td className="pr-5 text-right">{n > 0 && canEdit && <button className={cn(btnGhost, btnSm)} onClick={(e) => { e.stopPropagation(); edit((p) => { const us = { ...(p.users ?? {}) }; delete us[u.id]; return { ...p, users: us }; }); }}><Undo2 className="h-3.5 w-3.5" aria-hidden />Đưa về theo nhóm</button>}</td>

@@ -90,7 +90,7 @@ if ($BoQuaBuild) { Write-Host "Bo qua build thu (Vercel se build)." -ForegroundC
 git add -A src README.md env.local.example package.json package-lock.json scripts/cai-dat-v51.ps1
 Check "git add"
 git status --short
-git commit -m "v51: phan quyen theo tac vu (truy cap, them, sua, xoa, duyet, thanh toan, xem tat ca), thao tac xoa o xuong / san xuat / lap dat"
+git commit -m "v51.1: nhom Giam doc cau hinh duoc, xoa don hang theo quyen, bang yeu cau xuat hoa don"
 Check "git commit"
 git push -u origin v51
 Check "git push"
