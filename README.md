@@ -2,6 +2,13 @@
 
 > Không đổi bảng, SQL, không thêm thư viện. Trường mới đều tùy chọn trong dữ liệu doanh nghiệp: đơn bán `origin` (nguồn đơn), `docRef` (nguồn chứng từ PO / hợp đồng), `receiver` (người nhận), `notes` (trao đổi); phiếu thu của đơn `date`, `payer`, `note`, `invNo`, `refund` (hoàn tiền, số âm). Đơn cũ mở bình thường, mã cũ giữ nguyên.
 
+## Sửa luồng v50.1 (20/11, sau góp ý)
+1. **Lưu đơn chỉ ghi nhận doanh số**: không còn tự sinh phiếu xuất kho, không tự sinh phiếu thu (bỏ "Khách trả trước" và "gửi xuất kho ngay" trên form). Luồng: Lưu đơn → Duyệt → Yêu cầu xuất kho (bấm tay) → kho Duyệt / Từ chối → kế toán lập / xác nhận phiếu thu.
+2. **Duyệt đơn luôn là một bước**: đơn chạm điều kiện quy trình "Đơn bán" thì chờ người duyệt theo quy trình (có báo); đơn trong ngưỡng thì người lên đơn (hoặc Giám đốc / người có quyền) bấm Duyệt đơn.
+3. **Doanh thu = tiền kế toán đã thu**: danh sách đổi cột thành Doanh số (trước VAT) · VAT · Tổng đơn · Doanh thu (phiếu thu kế toán đã xác nhận) · Còn lại; thêm cột tùy chọn "Chờ kế toán thu". Nhân viên không phải kế toán chỉ "Báo đã nhận tiền" (chờ kế toán xác nhận); kế toán "Lập phiếu thu" thì vào quỹ ngay.
+4. **Phiếu kho**: danh sách phiếu có cột Thao tác (Duyệt / Từ chối) cho người có quyền duyệt; trong phiếu có nút Từ chối (bắt buộc lý do), báo người lập phiếu / người lên đơn; đơn trở về "Đã duyệt" để gửi lại. Giám đốc duyệt được cả phiếu do mình lập.
+5. **Quyền mới "Bán hàng: sửa, hủy, xóa đơn"** (Cài đặt › Phân quyền; mặc định Giám đốc, Trưởng phòng; Giám đốc luôn có): menu ⋯ ở từng dòng đơn và trong đơn: Sửa đơn (khi chưa xuất kho, sửa xong phải duyệt lại), Hủy đơn (hủy luôn phiếu xuất đang chờ kho), Xóa đơn (đơn đã hủy, chưa có phiếu thu, có Hoàn tác). Người lên đơn sửa / hủy được đơn của mình. Hủy phiếu thu của đơn (Giám đốc / kế toán / quyền trên): phiếu đã vào quỹ thì sinh phiếu đảo, giữ lịch sử sổ quỹ.
+
 ## Cập nhật v50 (20/11)
 1. **Danh sách đơn hàng**: tiêu đề "Quản lý đơn hàng", ô tìm kiếm ở giữa, chọn thời gian (Tất cả, Hôm nay … Năm nay, Thời gian khác có Từ / Đến ngày + Áp dụng), nút bộ lọc mở khung 2 cột (theo ngày đặt / ngày tạo, mã đơn, nguồn đơn, NV bán, khách, kho, trạng thái xuất kho, phương thức / trạng thái thanh toán, hóa đơn thuế, doanh thu lớn hơn / nhỏ hơn, có hàng trả lại, quá hạn), nút chọn cột theo 3 nhóm (cột cố định có khóa, Mặc định, Lưu cho tôi), xuất CSV / in (đơn đã chọn hoặc cả danh sách), Lên đơn bán (phím N). Tab Tất cả / Chờ duyệt / Đã duyệt / Chờ xuất kho / Chưa thanh toán / Đã thanh toán / Hoàn thành / Đã hủy nằm cùng hàng với phân trang 20 / 50 / 100. Mã đơn 2 dòng (mã / NV bán), dòng tổng theo bộ lọc.
 2. **Mã đơn mới** dạng `DHddmmyy-NN` (vd. DH201126-01); có thể tự nhập khi tạo đơn (kiểm tra trùng).

@@ -44,6 +44,7 @@ export type Verification = 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type Module = 'home' | 'contacts' | 'warehouse' | 'overview' | 'tasks' | 'leads' | 'customers' | 'jobs' | 'projects' | 'products' | 'supply' | 'claims' | 'production' | 'install' | 'inventory' | 'cashbook' | 'staff' | 'docs' | 'reports' | 'settings' | 'messages' | 'zalo' | 'marketing' | 'sales';
 
 export type Action =
+  | 'sale.manage'
   | 'lead.create' | 'lead.route' | 'lead.assign' | 'lead.accept' | 'customer.edit' | 'docs.manage'
   | 'program.create' | 'program.approveInternal' | 'program.vendorDecision'
   | 'claim.uploadPop' | 'claim.verify' | 'claim.submit' | 'claim.accounting'
@@ -245,7 +246,7 @@ export type SalesOrder = {
   /** Phiếu đặt hàng / lệnh sản xuất sinh từ đơn; đơn tách phần giao sau */
   poIds?: string[]; woId?: string; splitFrom?: string;
   /** v48: duyệt đơn (giảm giá / vượt hạn mức nợ) và yêu cầu xuất kho chờ Thủ kho / Kế toán */
-  approval?: { status: 'PENDING' | ApprovalDecision; reasons: string[]; requestedAt: number; requestedBy?: string; decidedBy?: string; decidedAt?: number; note?: string };
+  approval?: { status: 'PENDING' | ApprovalDecision; reasons: string[]; requestedAt: number; requestedBy?: string; decidedBy?: string; decidedAt?: number; note?: string; /** v50: đơn trong ngưỡng: người lên đơn / quản lý bấm duyệt */ self?: boolean };
   issueRequest?: { by: string; at: number };
   /** v49: số đã xuất / đã trả theo từng dòng (cập nhật khi kho duyệt phiếu), yêu cầu xuất hóa đơn gửi kế toán */
   issuedQ?: Record<string, number>; returnedQ?: Record<string, number>; invReqs?: SaleInvReq[];

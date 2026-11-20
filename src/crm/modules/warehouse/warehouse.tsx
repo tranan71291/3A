@@ -1,7 +1,7 @@
 'use client';
 
-import { Fragment, useState } from 'react';
-import { AlertTriangle, ArrowRight, Boxes, CheckCircle2, ClipboardCheck, Download, PackageMinus, PackagePlus, Plus, Printer, RefreshCw, Search, Warehouse, X } from 'lucide-react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { AlertTriangle, ArrowRight, Boxes, CheckCircle2, ClipboardCheck, Download, PackageMinus, PackagePlus, Plus, Printer, RefreshCw, Search, Warehouse, X, XCircle } from 'lucide-react';
 import { useIntent } from '../../components/command-palette';
 import { Pagination, usePaged } from '../../components/controls';
 import { useInRange } from '../../components/filters';
@@ -56,14 +56,16 @@ export function useWarehouseData() {
 }
 
 /** Lập / xem / duyệt phiếu kho */
-export function VoucherModal({ type, voucher, preset, onClose }: { type: VoucherType; voucher?: StockVoucher; preset?: Partial<StockVoucher>; onClose: () => void }) {
+export function VoucherModal({ type, voucher, preset, onClose, focusReject }: { type: VoucherType; voucher?: StockVoucher; preset?: Partial<StockVoucher>; onClose: () => void; focusReject?: boolean }) {
   const app = useApp();
   const { skus, setSkus, warehouses, stockVouchers, setStockVouchers, addMoves, me, userName, notify, canDo, customers, pos, company, salesOrders } = app;
   const { canApprove: canApprove0 } = useWarehouseData();
   /** v49: đơn có hàng đã xuất, chưa trả hết (để lập phiếu nhập trả) */
   const retOrders = salesOrders.filter((o) => o.status !== 'CANCELLED' && o.lines.some((l) => l.kind === 'SKU' && l.ref && saleIssQ(o, l) - saleRetQ(o, l) > 0));
   /** v48: không tự duyệt phiếu chờ của mình (Giám đốc duy nhất thì được); "Lập & duyệt" khi tự lập vẫn giữ */
-  const canApprove = (v: StockVoucher) => canApprove0(v) && !(!!voucher && voucher.status === 'PENDING' && voucher.requestedBy === me?.id && (app.wfPolicy.noSelf && !(app.me?.role === 'BOD' && app.wfPolicy.soleBodSelf && app.users.filter((u) => u.active && u.role === 'BOD').length === 1)));
+  const canApprove = (v: StockVoucher) => canApprove0(v) && (app.me?.role === 'BOD' || !(!!voucher && voucher.status === 'PENDING' && voucher.requestedBy === me?.id && app.wfPolicy.noSelf));
+  const whyRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (focusReject) whyRef.current?.focus(); }, [focusReject]);
   const act = warehouses.filter((w) => w.active);
   const meta = VOUCHER_META[type];
   const ro = !!voucher && voucher.status !== 'PENDING';
@@ -115,6 +117,8 @@ export function VoucherModal({ type, voucher, preset, onClose }: { type: Voucher
       if (f.saleId) app.saleVoucherUndo(f);
     }
     persist({ ...f, status: 'CANCELLED', cancelledBy: me?.id, cancelReason: cancelWhy.trim() });
+    const req = app.users.find((u) => u.id === f.requestedBy);
+    if (f.status === 'PENDING' && req && req.id !== me?.id) app.dispatch('APPROVAL_RESULT', { to: req, title: `Kho từ chối ${f.code}${f.ref ? ` (${f.ref})` : ''}`, body: cancelWhy.trim(), module: f.saleId ? 'sales' : 'warehouse' });
     notify(`Đã hủy ${f.code}${f.status === 'DONE' ? ', đã hoàn tồn kho' : ''}`, 'orange'); onClose();
   };
   const print = () => {
@@ -138,6 +142,7 @@ export function VoucherModal({ type, voucher, preset, onClose }: { type: Voucher
       <button className={cn(btnGhost, 'mr-auto')} onClick={print}><Printer className="h-4 w-4" aria-hidden />In phiếu</button>
       <button className={btnGhost} onClick={onClose}>Đóng</button>
       {!ro && canCreate && <button className={btnGhost} onClick={submit}>{voucher ? 'Lưu' : 'Lập phiếu (chờ duyệt)'}</button>}
+      {voucher && voucher.status === 'PENDING' && appr && <button className={cn(btnGhost, 'text-[rgb(var(--danger-fg))]')} onClick={() => { if (cancelWhy.trim().length < 3) { whyRef.current?.focus(); notify('Nhập lý do từ chối', 'red'); return; } cancel(); }}><XCircle className="h-4 w-4" aria-hidden />Từ chối</button>}
       {!ro && appr && <button className={btnPrimary} onClick={approve}><CheckCircle2 className="h-4 w-4" aria-hidden />{voucher ? 'Duyệt' : 'Lập & duyệt'}</button>}
     </>}>
       <div className="space-y-4">
@@ -194,7 +199,7 @@ export function VoucherModal({ type, voucher, preset, onClose }: { type: Voucher
         {!ro && errs.length > 0 && f.lines.length > 0 && <p className="text-sm text-[rgb(var(--danger-fg))]">{errs.join(' · ')}</p>}
         {voucher && voucher.status !== 'CANCELLED' && (appr || (voucher.status === 'PENDING' && voucher.requestedBy === me?.id)) && (
           <div className="flex flex-col gap-2 rounded-md border border-[rgb(var(--danger)/0.3)] p-3 sm:flex-row sm:items-center">
-            <input className={cn(inputBase, 'flex-1')} value={cancelWhy} onChange={(e) => setCancelWhy(e.target.value)} placeholder={voucher.status === 'DONE' ? 'Lý do hủy (tồn kho sẽ được hoàn lại)' : 'Lý do hủy phiếu'} aria-label="Lý do hủy" />
+            <input ref={whyRef} className={cn(inputBase, 'flex-1')} value={cancelWhy} onChange={(e) => setCancelWhy(e.target.value)} placeholder={voucher.status === 'DONE' ? 'Lý do hủy (tồn kho sẽ được hoàn lại)' : 'Lý do từ chối / hủy phiếu'} aria-label="Lý do hủy" />
             <button className={cn(btnDanger, btnSm)} onClick={cancel}>Hủy phiếu</button>
           </div>
         )}
@@ -211,6 +216,7 @@ export function VoucherList({ type }: { type: VoucherType }) {
   const [st, setSt] = useSticky<'ALL' | VoucherStatus>(`Voucher.${type}.st`, 'ALL');
   const [wh, setWh] = useSticky(`Voucher.${type}.wh`, 'ALL');
   const [open, setOpen] = useState<StockVoucher | 'new' | null>(null);
+  const [rej, setRej] = useState(false);
   const meta = VOUCHER_META[type];
   const whName = (id?: string) => warehouses.find((w) => w.id === id)?.name ?? '—';
   const t = fold(q.trim());
@@ -231,7 +237,7 @@ export function VoucherList({ type }: { type: VoucherType }) {
       <Panel>
         {list.length ? (
           <>
-            <Table stt={Math.max(0, paged.from - 1)} head={['Mã phiếu', 'Chứng từ gốc', 'Ngày', type === 'TRANSFER' ? 'Kho đi → kho đến' : 'Kho', type === 'IN' ? 'Nhà cung cấp' : type === 'OUT' ? 'Khách hàng' : 'Diễn giải', 'Lý do', <span key="m" className="block text-right">Số mã</span>, <span key="q" className="block text-right">{type === 'COUNT' ? 'Lệch' : 'Số lượng'}</span>, 'Người lập', 'Trạng thái']} minW={1200} sort={srt.th}>
+            <Table stt={Math.max(0, paged.from - 1)} head={['Mã phiếu', 'Chứng từ gốc', 'Ngày', type === 'TRANSFER' ? 'Kho đi → kho đến' : 'Kho', type === 'IN' ? 'Nhà cung cấp' : type === 'OUT' ? 'Khách hàng' : 'Diễn giải', 'Lý do', <span key="m" className="block text-right">Số mã</span>, <span key="q" className="block text-right">{type === 'COUNT' ? 'Lệch' : 'Số lượng'}</span>, 'Người lập', 'Trạng thái', 'Thao tác']} minW={1120} sort={srt.th}>
               {paged.slice.map((v) => (
                 <tr key={v.id} className={cn(rowCls, 'cursor-pointer')} onClick={() => setOpen(v)}>
                   <td className={tdFirst}><Code>{v.code}</Code></td>
@@ -243,7 +249,11 @@ export function VoucherList({ type }: { type: VoucherType }) {
                   <td className={cn(tdCls, 'text-right tabular-nums')} title={v.lines.map((l) => l.sku).join(', ')}>{v.lines.length}</td>
                   <td className={cn(tdCls, 'text-right tabular-nums')}>{v.lines.reduce((a, l) => a + (type === 'COUNT' ? Math.abs(l.diff ?? 0) : l.qty), 0).toLocaleString('vi-VN')}</td>
                   <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{userName(v.requestedBy)}</td>
-                  <td className={tdLast}><Chip tone={V_STATUS[v.status].tone}>{vStatusLabel(v)}</Chip></td>
+                  <td className={tdCls}><Chip tone={V_STATUS[v.status].tone}>{vStatusLabel(v)}</Chip></td>
+                  <td className={cn(tdLast, 'whitespace-nowrap text-right')} onClick={(e) => e.stopPropagation()}>
+                    {v.status === 'PENDING' && canApprove(v) ? <span className="inline-flex gap-1"><button className={cn(btnGhost, btnSm, 'px-1.5 text-[rgb(var(--danger-fg))]')} onClick={() => { setRej(true); setOpen(v); }} aria-label={`Từ chối ${v.code}`} title="Từ chối"><X className="h-3.5 w-3.5" aria-hidden /></button><button className={cn(btnPrimary, btnSm)} onClick={() => { setRej(false); setOpen(v); }}>Duyệt</button></span>
+                      : <button className={cn(btnGhost, btnSm)} onClick={() => { setRej(false); setOpen(v); }}>Xem</button>}
+                  </td>
                 </tr>
               ))}
             </Table>
@@ -251,7 +261,7 @@ export function VoucherList({ type }: { type: VoucherType }) {
           </>
         ) : <EmptyState art="doc" text={`Chưa có ${meta.label.toLowerCase()} trong kỳ`} hint="Đổi kỳ dữ liệu trên thanh trên cùng hoặc lập phiếu mới." />}
       </Panel>
-      {open && <VoucherModal type={type} voucher={open === 'new' ? undefined : open} onClose={() => setOpen(null)} />}
+      {open && <VoucherModal type={type} voucher={open === 'new' ? undefined : open} focusReject={rej} onClose={() => { setOpen(null); setRej(false); }} />}
     </div>
   );
 }
