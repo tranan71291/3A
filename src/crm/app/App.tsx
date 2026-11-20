@@ -15,7 +15,7 @@ import { LoginScreen, orgDefaults, pathOrgOf, registerOrgs, regsFromStored, setP
 import { initialNotices } from '../lib/notify';
 import { encryptBackup, hashPassword, verifyPassword } from '../lib/security';
 import { listSnapshots, migrateData, takeSnapshot, withDefaults } from '../lib/storage';
-import type { Action, Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, InvMoveType, Job, KbItem, KpiTarget, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SaleDelivery, SaleInvReq, SaleLine, SalePay, SalePayment, SalesOrder, SaleStatus, SaleStockData, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WfCtx, WfDecideArgs, WfDecision, WfDef, WfDelegation, WfPolicy, WfRun, WfRunStatus, WfSubject, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
+import type { Action, Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, InvMoveType, Job, KbItem, KpiTarget, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SaleDelivery, SaleInvReq, SaleLine, SalePay, SalePayExtra, SalePayment, SalesOrder, SaleStatus, SaleStockData, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WfCtx, WfDecideArgs, WfDecision, WfDef, WfDelegation, WfPolicy, WfRun, WfRunStatus, WfSubject, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
 import { cn, initialLeads, initialMoves, initialPOs, initialQuotes, initialReservations, syncCatalog, wfApprovers, wfMerge, wfPath } from '../lib/utils';
 import { stockOf } from '../lib/workshop';
 import { AiChatBot } from '../modules/ai/copilot-plus';
@@ -822,8 +822,8 @@ export default function DashboardApp() {
   const canAct = (a: Action) => myPerm?.actions?.[a] ?? (perms.actions[a] ?? INITIAL_PERMS.actions[a] ?? []).includes(role);
   const saleCode = (all: SalesOrder[]) => {
     const d = new Date();
-    const p = `DB-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}-`;
-    return nextCode(all.filter((x) => x.code.startsWith(p)).map((x) => x.code), p, 4);
+    const p = `DH${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(2)}-`;
+    return nextCode(all.filter((x) => x.code.startsWith(p)).map((x) => x.code), p, 2);
   };
   const mainWhId = () => warehouses.find((w) => w.main)?.id ?? MAIN_WH;
   const saveSale: AppCtx['saveSale'] = (o) => {
@@ -981,15 +981,15 @@ export default function DashboardApp() {
     notify(`Đã lập ${made.map((p) => p.code).join(', ')}. Hàng về sẽ tự giữ chỗ cho ${o.customer}`, 'teal');
   };
 
-  const saleCash = (o: SalesOrder, p: SalePayment): CashDraft => ({ kind: 'IN', account: p.method === 'CASH' ? 'CASH' : 'BANK', category: 'Thu tiền bán hàng', amount: p.amount, partner: o.customer, ref: o.code, note: `Đơn bán ${o.code}`, source: 'SALE', sourceId: p.id });
-  const addSalePayment = (id: string, amount: number, method: 'CASH' | 'BANK', given?: SalesOrder) => {
+  const saleCash = (o: SalesOrder, p: SalePayment): CashDraft => ({ kind: p.refund ? 'OUT' : 'IN', account: p.method === 'CASH' ? 'CASH' : 'BANK', category: p.refund ? 'Hoàn tiền bán hàng' : 'Thu tiền bán hàng', amount: Math.abs(p.amount), partner: p.payer || o.customer, ref: o.code, note: p.note || `Đơn bán ${o.code}`, date: p.date, source: 'SALE', sourceId: p.id });
+  const addSalePayment = (id: string, amount: number, method: 'CASH' | 'BANK', given?: SalesOrder, extra?: SalePayExtra) => {
     const o = given ?? salesOrders.find((x) => x.id === id);
     if (!o || !(amount > 0)) return;
     const ok = canAct('cash.manage') || canAct('receipt.confirm');
-    const p: SalePayment = { id: uid('sp'), amount: Math.round(amount), method, at: Date.now(), by: me?.id, confirmed: ok, confirmedBy: ok ? me?.id : undefined, confirmedAt: ok ? Date.now() : undefined };
+    const p: SalePayment = { id: uid('sp'), amount: (extra?.refund ? -1 : 1) * Math.round(amount), method, at: Date.now(), by: me?.id, confirmed: ok, confirmedBy: ok ? me?.id : undefined, confirmedAt: ok ? Date.now() : undefined, ...extra };
     setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, payments: [...x.payments, p] } : x)));
     if (ok) postCash(saleCash(o, p));
-    notify(ok ? `Đã thu ${vnd(p.amount)} cho ${o.code}, tự sinh phiếu thu quỹ` : `Đã ghi nhận ${vnd(p.amount)}, chờ Kế toán xác nhận`, 'teal');
+    notify(ok ? `Đã ${p.refund ? 'hoàn' : 'thu'} ${vnd(Math.abs(p.amount))} cho ${o.code}, tự sinh phiếu ${p.refund ? 'chi' : 'thu'} quỹ` : `Đã ghi nhận ${vnd(Math.abs(p.amount))}, chờ Kế toán xác nhận`, 'teal');
   };
   const confirmSalePayment = (id: string, payId: string) => {
     const o = salesOrders.find((x) => x.id === id);
