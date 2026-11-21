@@ -1,19 +1,21 @@
 'use client';
 
-import { Building2, CalendarDays, CheckCircle2, ChevronRight, Copy, Download, KeyRound, Link2, LogIn, Pencil, Plug, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, Users, XCircle } from 'lucide-react';
-import { Fragment, useState } from 'react';
+import { Fragment, type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, ArrowDown, ArrowUp, Bold, Building2, CalendarDays, Check as CheckIcon, CheckCircle2, ChevronLeft, ChevronRight, Copy, Download, Eye, FileText, GripVertical, Hash, Heading2, Info, Italic, KeyRound, LayoutGrid, LayoutTemplate, Link2, List, ListChecks, Lock, LogIn, MessageSquare, Monitor, Paperclip, Pencil, Plug, Plus, Redo2, RefreshCw, Rocket, Rows3, Scale, Search, Settings, SlidersHorizontal, Smartphone, StickyNote, Tablet, Trash2, TrendingUp, Truck, Undo2, Users, Wallet, X, XCircle } from 'lucide-react';
 import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { cloudMessage } from '../../lib/cloud';
-import { btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, isPlatformEmail, kpiGrid, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, CF_FILTERABLE, CF_TYPE, cfSlug, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, fold, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, isPlatformEmail, kpiGrid, L_DS, L_GAP, L_ICON, L_LATER, L_PAGES, L_PERIOD, L_ROLES, L_ROW, L_STAGE, L_TYPES, lAssignLabel, lCondOk, lDrag, lEnsureCore, lHasData, lIsCore, lNewBlock, lOrderSm, lRoleProfit, lRoleSees, lSaleSampleShows, lStarter, lStarterSale, lToneCls, lType, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, portal, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, SO_INFO_F, SO_LINE_F, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, verLabel, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { AddTenantModal, OrgMark } from '../../lib/modules';
 import { hashPassword } from '../../lib/security';
 import { listSnapshots, tenantStats } from '../../lib/storage';
-import type { AnyRec, ConfirmState, ConsoleTab, Department, DeptCode, MfgConfig, Module, Org, PayStage, PayTrigger, Perms, PriceItem, PriceUnit, Role, SecurityPolicy, StoredData, TenantPlan, TenantReg, Tone, User } from '../../lib/types';
+import type { AnyRec, AppCtx, CfDef, CfType, ConfirmState, ConsoleTab, Department, DeptCode, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LDataset, LDevice, LDrop, LIconAct, LPage, LPeriod, LPos, LPtr, LRow, LStage, LTypeDef, MfgConfig, Module, Org, PayStage, PayTrigger, Perms, PriceItem, PriceUnit, Role, SecurityPolicy, StoredData, TenantPlan, TenantReg, Tone, User } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { SearchBox } from '../alux/orders';
+import { CbSeg } from '../finance/cashbook';
+import { LayoutView, LBlockBody, LBusinessView, lRowsSample, lSaleSample, lSettle } from '../messages/messenger';
 
 export function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (
@@ -36,8 +38,690 @@ export function PlatformConsole() {
       {tab === 'tenants' && <ConsoleTenants />}
       {tab === 'modules' && <ConsoleModules />}
       {tab === 'users' && <ConsoleUsers />}
+      {tab === 'design' && <ConsoleDesign />}
       {tab === 'data' && <ConsoleData />}
       {tab === 'admins' && <ConsoleAdmins />}
+    </div>
+  );
+}
+
+export function usePlatformWho() {
+  const { platform } = useApp();
+  return platform.admins.find((a) => a.id === platform.userId)?.email ?? 'platform';
+}
+
+export function ConsoleDesign() {
+  const { platform, notify } = useApp();
+  const who = usePlatformWho();
+  const [view, setView] = useSticky<'pages' | 'cf'>('Platform.design53', 'pages');
+  const [kind, setKind] = useState<'ALL' | 'SUMMARY' | 'BUSINESS'>('ALL');
+  const [q, setQ] = useState('');
+  const [edit, setEdit] = useState<LPage | null>(null);
+  const [side, setSide] = useState<{ page: LPage; tab: 'pub' | 'hist' } | null>(null);
+  const vers = (p: LPage) => platform.layouts.filter((v) => v.page === p).sort((a, b) => b.version - a.version);
+  const draftOf = (p: LPage) => vers(p).find((v) => v.status === 'DRAFT');
+  const asg = (p: LPage) => platform.layoutAssigns.filter((a) => a.page === p);
+  const verLabel = (id: string) => { const v = platform.layouts.find((x) => x.id === id); return v ? `v${v.version}` : '—'; };
+  const cell = (p: LPage, lv: LayoutAssign['level'], prof?: 'TRADING' | 'MFG') => {
+    const xs = asg(p).filter((a) => a.level === lv && (!prof || a.profile === prof));
+    if (lv === 'TENANT') return xs.length ? `${xs.length} DN` : '—';
+    return xs[0] ? verLabel(xs[0].verId) : lv === 'SYSTEM' ? <span className="text-[rgb(var(--muted))]">Giao diện gốc</span> : '—';
+  };
+  const list = L_PAGES.filter((p) => (kind === 'ALL' || p.kind === kind) && (!q.trim() || fold(p.label).includes(fold(q.trim()))));
+  const editor = edit ? portal(<LayoutEditor page={edit} onClose={(pub) => { const p = edit; setEdit(null); if (pub) setSide({ page: p, tab: 'pub' }); }} />) : null;
+  return (
+    <div className="space-y-4">
+      {editor}
+      <div className="flex flex-wrap items-center gap-3">
+        <div><h2 className="text-[17px] font-medium">Thiết kế giao diện</h2><p className="text-[13px] text-[rgb(var(--muted))]">Bố cục do 3A thiết kế, áp dụng xuống doanh nghiệp. Doanh nghiệp chỉ xem, không sửa</p></div>
+        <div className="ml-4 flex gap-5 self-end" role="tablist">{([['pages', 'Trang'], ['cf', 'Trường tùy chỉnh']] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} className={cn('-mb-px border-b-2 py-2 text-[14px]', view === k ? 'border-[rgb(var(--accent))] font-medium' : 'border-transparent text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>{l}</button>)}</div>
+      </div>
+      {view === 'cf' ? <ConsoleCustomFields /> : <div className={cn('grid grid-cols-1 gap-4', side && 'xl:grid-cols-[1fr_380px]')}>
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-[300px]"><CbSeg label="Loại trang" items={[['ALL', 'Tất cả trang'], ['SUMMARY', 'Tổng hợp'], ['BUSINESS', 'Nghiệp vụ']]} value={kind} onChange={setKind} /></div>
+            <div className="ml-auto w-[280px]"><SearchBox value={q} onChange={setQ} placeholder="Tìm trang" /></div>
+          </div>
+          <div className="glass-card overflow-x-auto rounded-xl">
+            <table className="w-full min-w-[900px] whitespace-nowrap text-[13.5px]">
+              <thead><tr className="border-b border-[rgb(var(--line))] text-left text-[12px] text-[rgb(var(--muted))]"><th className="px-4 py-2.5 font-normal">Trang</th><th className="px-3 py-2.5 font-normal">Loại</th><th className="px-3 py-2.5 font-normal">Toàn hệ thống</th><th className="px-3 py-2.5 font-normal">Thương mại</th><th className="px-3 py-2.5 font-normal">Xưởng</th><th className="px-3 py-2.5 font-normal">Riêng doanh nghiệp</th><th className="px-3 py-2.5 font-normal">Trạng thái</th><th className="px-4 py-2.5 text-right font-normal">Thao tác</th></tr></thead>
+              <tbody>{list.map((p) => { const d = draftOf(p.id); const pub = asg(p.id).length > 0; return (
+                <tr key={p.id} className={cn('border-b border-[rgb(var(--line)/0.6)]', side?.page === p.id && 'bg-[rgb(var(--accent)/0.05)]')}>
+                  <td className="px-4 py-2.5 font-medium">{p.label}</td>
+                  <td className="px-3 py-2.5 text-[rgb(var(--fg2))]">{p.kind === 'SUMMARY' ? 'Tổng hợp' : 'Nghiệp vụ'}</td>
+                  <td className="px-3 py-2.5 tabular-nums">{p.open ? cell(p.id, 'SYSTEM') : <span className="text-[rgb(var(--muted))]">Giao diện gốc</span>}</td>
+                  <td className="px-3 py-2.5 tabular-nums">{cell(p.id, 'PROFILE', 'TRADING')}</td>
+                  <td className="px-3 py-2.5 tabular-nums">{cell(p.id, 'PROFILE', 'MFG')}</td>
+                  <td className="px-3 py-2.5 tabular-nums">{cell(p.id, 'TENANT')}</td>
+                  <td className="px-3 py-2.5">{!p.open ? <Chip tone="muted">{p.plan}</Chip> : d ? <Chip tone="orange">Nháp v{d.version}</Chip> : pub ? <Chip tone="teal">Đã phát hành</Chip> : <Chip tone="muted">Chưa thiết kế</Chip>}</td>
+                  <td className="px-4 py-2 text-right">{p.open ? (
+                    <div className="inline-flex gap-2">
+                      <button className={cn(btnGhost, btnSm)} onClick={() => setEdit(p.id)}><LayoutTemplate className="h-3.5 w-3.5" aria-hidden />Thiết kế</button>
+                      <button className={cn(btnGhost, btnSm)} disabled={!vers(p.id).length} onClick={() => setSide({ page: p.id, tab: 'pub' })}><Rocket className="h-3.5 w-3.5" aria-hidden />Phát hành</button>
+                    </div>) : <span className="text-[12.5px] text-[rgb(var(--muted))]">chưa mở</span>}</td>
+                </tr>
+              ); })}</tbody>
+            </table>
+          </div>
+          <p className="text-[12.5px] text-[rgb(var(--muted))]">Trang nghiệp vụ dùng chung một bố cục cho mọi vai trò, tự ẩn khối người xem không có quyền. Khối lõi của luồng (Duyệt, Xuất kho, Thu tiền, Hủy đơn, trường bắt buộc) di chuyển được, không xóa được. Chưa phát hành thì doanh nghiệp dùng giao diện gốc.</p>
+        </div>
+        {side && <LayoutPublishPanel page={side.page} tab={side.tab} setTab={(t) => setSide({ ...side, tab: t })} onClose={() => setSide(null)} onEdit={() => setEdit(side.page)} notify={notify} who={who} />}
+      </div>}
+    </div>
+  );
+}
+
+/** 3A Platform › Thiết kế giao diện › Trường tùy chỉnh: 3A định nghĩa, doanh nghiệp chỉ nhập giá trị */
+export function ConsoleCustomFields() {
+  const { platform, notify } = useApp();
+  const who = usePlatformWho();
+  const [scope, setScope] = useState<'HEAD' | 'LINE'>('HEAD');
+  const [q, setQ] = useState('');
+  const [ed, setEd] = useState<CfDef | null>(null);
+  const [isNew, setIsNew] = useState(false);
+  const [opt, setOpt] = useState('');
+  const tenants = platform.tenants.filter((t) => t.status !== 'SUSPENDED');
+  const defs = platform.customFields.filter((d) => d.entity === 'sale' && d.scope === scope).sort((a, b) => a.order - b.order);
+  const list = defs.filter((d) => !q.trim() || fold(`${d.label} ${d.key}`).includes(fold(q.trim())));
+  const blank = (): CfDef => ({ id: uid('cf'), entity: 'sale', scope, key: '', label: '', type: 'text', options: [], required: 'NONE', levels: { sys: true, tr: false, mfg: false, tenants: [] },
+    where: { form: true, info: true, list: scope === 'HEAD', filter: false }, status: 'ACTIVE', order: Math.max(0, ...platform.customFields.map((d) => d.order)) + 1, at: Date.now(), by: who });
+  const lvText = (d: CfDef) => [d.levels.sys && 'Toàn hệ thống', d.levels.tr && 'Mô hình Thương mại', d.levels.mfg && 'Mô hình Xưởng', d.levels.tenants.length > 0 && `Riêng ${d.levels.tenants.map((t) => orgOf(t).shortName).join(', ')}`].filter(Boolean).join(' · ') || '—';
+  const whereText = (d: CfDef) => (d.scope === 'LINE' ? [d.where.form && 'Nhập ở Cập nhật thông tin', d.where.info && 'Bảng hàng hóa'] : [d.where.form && 'Form', d.where.info && 'Thông tin', d.where.list && 'Danh sách', d.where.filter && 'Lọc']).filter(Boolean).join(' · ') || '—';
+  const REQ: Record<CfDef['required'], string> = { NONE: 'Không', SAVE: 'Khi lưu đơn', APPROVE: 'Khi duyệt đơn' };
+  const keyTaken = (k: string, id: string) => platform.customFields.some((d) => d.entity === 'sale' && d.key === k && d.id !== id);
+  const errs: string[] = [];
+  if (ed) {
+    if (!ed.label.trim()) errs.push('Nhập tên trường');
+    if (!/^[a-z][a-z0-9_]{1,31}$/.test(ed.key)) errs.push('Mã lưu trữ: chữ thường không dấu, số, gạch dưới, bắt đầu bằng chữ, 2–32 ký tự');
+    else if (keyTaken(ed.key, ed.id)) errs.push(`Mã lưu trữ ${ed.key} đã dùng cho trường khác`);
+    if (ed.type === 'select' && !(ed.options ?? []).length) errs.push('Danh sách chọn cần ít nhất 1 lựa chọn');
+    if (!ed.levels.sys && !ed.levels.tr && !ed.levels.mfg && !ed.levels.tenants.length) errs.push('Chọn nơi áp dụng');
+  }
+  const open = (d: CfDef | null) => { setEd(d); setIsNew(false); setOpt(''); };
+  const save = () => {
+    if (!ed) return;
+    if (errs.length) return notify(errs[0], 'red');
+    const line = ed.scope === 'LINE';
+    const d: CfDef = { ...ed, label: ed.label.trim(), at: Date.now(), by: who, options: ed.type === 'select' ? ed.options : undefined, required: line ? 'NONE' : ed.required,
+      where: { form: ed.where.form, info: ed.where.info, list: line ? false : ed.where.list, filter: line || !CF_FILTERABLE.includes(ed.type) ? false : ed.where.filter } };
+    platform.setCustomFields((all) => (all.some((x) => x.id === d.id) ? all.map((x) => (x.id === d.id ? d : x)) : [...all, d]));
+    platform.log(isNew ? 'CF_CREATE' : 'CF_UPDATE', `Đơn bán · ${line ? 'dòng hàng' : 'đầu đơn'}: ${d.label} (${d.key}, ${CF_TYPE[d.type]}) · ${lvText(d)}`);
+    notify(`Đã lưu trường ${d.label}`, 'teal');
+    setIsNew(false); setEd(d);
+  };
+  const toggle = (d: CfDef) => {
+    const st: CfDef['status'] = d.status === 'ACTIVE' ? 'OFF' : 'ACTIVE';
+    platform.setCustomFields((all) => all.map((x) => (x.id === d.id ? { ...x, status: st, at: Date.now(), by: who } : x)));
+    platform.log('CF_STATUS', `${d.label} (${d.key}): ${st === 'OFF' ? 'ngừng dùng, giữ dữ liệu cũ' : 'dùng lại'}`);
+    notify(st === 'OFF' ? `Đã ngừng dùng ${d.label}. Dữ liệu cũ vẫn xem được trong đơn` : `Đã dùng lại ${d.label}`, st === 'OFF' ? 'orange' : 'teal');
+    if (ed?.id === d.id) setEd({ ...ed, status: st });
+  };
+  const move = (d: CfDef, dir: -1 | 1) => { const i = defs.indexOf(d); const o = defs[i + dir]; if (!o) return; platform.setCustomFields((all) => all.map((x) => (x.id === d.id ? { ...x, order: o.order } : x.id === o.id ? { ...x, order: d.order } : x))); };
+  const setE = (p: Partial<CfDef>) => ed && setEd({ ...ed, ...p });
+  const box = (on: boolean, t: string, set: (v: boolean) => void, dis?: boolean, sub?: string) => (
+    <label className={cn('flex items-start gap-2.5 py-1 text-[13.5px]', dis && 'opacity-50')}><input type="checkbox" className="mt-0.5 h-4 w-4 accent-[rgb(var(--fg))]" checked={on} disabled={dis} onChange={(e) => set(e.target.checked)} /><span className="flex-1">{t}</span>{sub && <span className="text-[12px] text-[rgb(var(--muted))]">{sub}</span>}</label>
+  );
+  const nOf = (prof: 'TRADING' | 'MFG') => tenants.filter((t) => (orgOf(t.id).profile === 'MANUFACTURING' ? 'MFG' : 'TRADING') === prof).length;
+  return (
+    <div className={cn('grid grid-cols-1 gap-4', ed && 'xl:grid-cols-[1fr_400px]')}>
+      <div className="min-w-0 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5 text-[13px]"><span className="rounded-md bg-[rgb(var(--fg))] px-3 py-1 text-[rgb(var(--surface))]">Đơn bán hàng</span>{['Khách hàng', 'Lead', 'Hồ sơ MDF'].map((x) => <span key={x} className="px-3 py-1 text-[rgb(var(--muted))]" title="Bản sau">{x}</span>)}</div>
+          <div className="w-[260px]"><CbSeg label="Vị trí trường" items={[['HEAD', 'Đầu đơn'], ['LINE', 'Dòng hàng']]} value={scope} onChange={(v) => { setScope(v); setEd(null); }} /></div>
+          <div className="ml-auto w-[240px]"><SearchBox value={q} onChange={setQ} placeholder="Tìm trường" /></div>
+          <button className={btnPrimary} onClick={() => { setEd(blank()); setIsNew(true); setOpt(''); }}><Plus className="h-4 w-4" aria-hidden />Thêm trường</button>
+        </div>
+        <div className="glass-card overflow-x-auto rounded-xl">
+          <table className="w-full min-w-[860px] whitespace-nowrap text-[13.5px]">
+            <thead><tr className="border-b border-[rgb(var(--line))] text-left text-[12px] text-[rgb(var(--muted))]"><th className="px-4 py-2.5 font-normal">Trường</th><th className="px-3 py-2.5 font-normal">Kiểu</th>{scope === 'HEAD' && <th className="px-3 py-2.5 font-normal">Bắt buộc</th>}<th className="px-3 py-2.5 font-normal">Áp dụng cho</th><th className="px-3 py-2.5 font-normal">Hiện ở</th><th className="px-3 py-2.5 font-normal">Trạng thái</th><th className="px-4 py-2.5 text-right font-normal">Thao tác</th></tr></thead>
+            <tbody>{list.map((d) => (
+              <tr key={d.id} className={cn('border-b border-[rgb(var(--line)/0.6)]', ed?.id === d.id && 'bg-[rgb(var(--accent)/0.05)]', d.status === 'OFF' && 'text-[rgb(var(--muted))]')}>
+                <td className="px-4 py-2"><span className="block font-medium">{d.label}</span><Code>{d.key}</Code></td>
+                <td className="px-3 py-2">{CF_TYPE[d.type]}{d.type === 'select' ? ` · ${(d.options ?? []).length}` : ''}</td>
+                {scope === 'HEAD' && <td className="px-3 py-2">{REQ[d.required]}</td>}
+                <td className="max-w-[220px] truncate px-3 py-2" title={lvText(d)}>{lvText(d)}</td>
+                <td className="px-3 py-2 text-[rgb(var(--fg2))]">{whereText(d)}</td>
+                <td className="px-3 py-2"><Chip tone={d.status === 'ACTIVE' ? 'teal' : 'muted'}>{d.status === 'ACTIVE' ? 'Đang dùng' : 'Ngừng dùng'}</Chip></td>
+                <td className="px-4 py-1.5 text-right"><div className="inline-flex gap-1">
+                  <button className={cn(btnGhost, 'p-1.5')} disabled={defs.indexOf(d) === 0} onClick={() => move(d, -1)} aria-label={`Đưa ${d.label} lên`}><ArrowUp className="h-3.5 w-3.5" aria-hidden /></button>
+                  <button className={cn(btnGhost, 'p-1.5')} disabled={defs.indexOf(d) === defs.length - 1} onClick={() => move(d, 1)} aria-label={`Đưa ${d.label} xuống`}><ArrowDown className="h-3.5 w-3.5" aria-hidden /></button>
+                  <button className={cn(btnGhost, 'p-1.5')} onClick={() => open(d)} aria-label={`Sửa ${d.label}`}><Pencil className="h-3.5 w-3.5" aria-hidden /></button>
+                </div></td>
+              </tr>
+            ))}{!list.length && <tr><td colSpan={7} className="px-4 py-8 text-center text-[13px] text-[rgb(var(--muted))]">Chưa có trường {scope === 'HEAD' ? 'đầu đơn' : 'dòng hàng'}. Bấm Thêm trường</td></tr>}</tbody>
+          </table>
+        </div>
+        <p className="text-[12.5px] text-[rgb(var(--muted))]">Trường đã dùng không xóa được, chỉ ngừng dùng: dữ liệu cũ vẫn giữ và xem được trong đơn. Trường gốc (Khách hàng, Kho xuất, Đơn giá, CK, VAT…) không nằm ở đây. Trường dòng hàng chỉ để ghi chú, không cộng vào tiền.</p>
+      </div>
+      {ed && (
+        <aside className="glass-card h-fit space-y-4 rounded-xl p-4" aria-label="Sửa trường">
+          <div className="flex items-center gap-2"><h3 className="font-medium">{isNew ? 'Trường mới' : ed.label}</h3>{!isNew && <Chip tone={ed.status === 'ACTIVE' ? 'teal' : 'muted'}>{ed.status === 'ACTIVE' ? 'Đang dùng' : 'Ngừng dùng'}</Chip>}<button className={cn(btnGhost, 'ml-auto p-1.5')} onClick={() => open(null)} aria-label="Đóng"><X className="h-4 w-4" aria-hidden /></button></div>
+          <Field label="Tên trường"><input className={inputCls} value={ed.label} onChange={(e) => setE({ label: e.target.value, ...(isNew ? { key: cfSlug(e.target.value) } : {}) })} placeholder="VD: Hình thức vận chuyển" /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Mã lưu trữ"><input className={cn(inputCls, 'font-mono text-[13px]')} value={ed.key} disabled={!isNew} onChange={(e) => setE({ key: e.target.value.toLowerCase() })} /></Field>
+            <Field label="Kiểu"><select className={inputCls} value={ed.type} disabled={!isNew} onChange={(e) => setE({ type: e.target.value as CfType })}>{(Object.keys(CF_TYPE) as CfType[]).map((t) => <option key={t} value={t}>{CF_TYPE[t]}</option>)}</select></Field>
+          </div>
+          {!isNew && <p className="-mt-2 text-[12px] text-[rgb(var(--muted))]">Mã lưu trữ và kiểu cố định sau khi tạo để không lệch dữ liệu đã nhập</p>}
+          {ed.type === 'select' && (
+            <Field label="Lựa chọn">
+              <div className="space-y-1.5">
+                {(ed.options ?? []).map((o, i) => <div key={o} className="flex items-center gap-2 rounded-lg border border-[rgb(var(--line))] px-2.5 py-1.5 text-[13.5px]"><span className="flex-1">{o}</span><button className="text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => setE({ options: (ed.options ?? []).filter((_, j) => j !== i) })} aria-label={`Bỏ ${o}`}><X className="h-3.5 w-3.5" aria-hidden /></button></div>)}
+                <div className="flex gap-2"><input className={inputCls} value={opt} onChange={(e) => setOpt(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && opt.trim() && !(ed.options ?? []).includes(opt.trim())) { setE({ options: [...(ed.options ?? []), opt.trim()] }); setOpt(''); } }} placeholder="Thêm lựa chọn" aria-label="Thêm lựa chọn" /><button className={btnGhost} disabled={!opt.trim() || (ed.options ?? []).includes(opt.trim())} onClick={() => { setE({ options: [...(ed.options ?? []), opt.trim()] }); setOpt(''); }}><Plus className="h-4 w-4" aria-hidden />Thêm</button></div>
+                {!isNew && <p className="text-[12px] text-[rgb(var(--muted))]">Bỏ lựa chọn không xóa giá trị đã nhập trong đơn cũ</p>}
+              </div>
+            </Field>
+          )}
+          {ed.scope === 'HEAD' && <Field label="Bắt buộc"><CbSeg label="Bắt buộc" items={[['NONE', 'Không'], ['SAVE', 'Khi lưu đơn'], ['APPROVE', 'Khi duyệt đơn']]} value={ed.required} onChange={(v) => setE({ required: v })} /></Field>}
+          {ed.scope === 'HEAD' && ed.type === 'check' && ed.required !== 'NONE' && <p className="-mt-2 text-[12px] text-[rgb(var(--muted))]">Tích chọn bắt buộc: phải tích mới lưu / duyệt được</p>}
+          <div className="border-t border-[rgb(var(--line))] pt-3">
+            <p className="mb-1 text-[12px] text-[rgb(var(--muted))]">Áp dụng cho</p>
+            {box(ed.levels.sys, 'Toàn hệ thống', (v) => setE({ levels: { ...ed.levels, sys: v } }))}
+            {box(ed.levels.tr, 'Mô hình Thương mại', (v) => setE({ levels: { ...ed.levels, tr: v } }), ed.levels.sys, `${nOf('TRADING')} doanh nghiệp`)}
+            {box(ed.levels.mfg, 'Mô hình Xưởng', (v) => setE({ levels: { ...ed.levels, mfg: v } }), ed.levels.sys, `${nOf('MFG')} doanh nghiệp`)}
+            <p className="mb-1 mt-2 text-[12px] text-[rgb(var(--muted))]">Riêng doanh nghiệp</p>
+            <div className="max-h-40 overflow-y-auto rounded-lg border border-[rgb(var(--line))] px-2.5 py-1">{tenants.map((t) => <Fragment key={t.id}>{box(ed.levels.tenants.includes(t.id), orgOf(t.id).name, (v) => setE({ levels: { ...ed.levels, tenants: v ? [...ed.levels.tenants, t.id] : ed.levels.tenants.filter((x) => x !== t.id) } }), ed.levels.sys)}</Fragment>)}</div>
+          </div>
+          <div className="border-t border-[rgb(var(--line))] pt-3">
+            <p className="mb-1 text-[12px] text-[rgb(var(--muted))]">Hiện ở</p>
+            {ed.scope === 'HEAD' ? (
+              <>
+                {box(ed.where.form, 'Form lên đơn và Cập nhật thông tin', (v) => setE({ where: { ...ed.where, form: v } }))}
+                {box(ed.where.info, 'Khối Thông tin đơn hàng', (v) => setE({ where: { ...ed.where, info: v } }))}
+                {box(ed.where.list, 'Cột trong Quản lý đơn hàng (ẩn sẵn, bật ở Cột hiển thị)', (v) => setE({ where: { ...ed.where, list: v } }))}
+                {box(ed.where.filter && CF_FILTERABLE.includes(ed.type), 'Bộ lọc trong Quản lý đơn hàng', (v) => setE({ where: { ...ed.where, filter: v } }), !CF_FILTERABLE.includes(ed.type), CF_FILTERABLE.includes(ed.type) ? undefined : 'kiểu này chưa lọc')}
+              </>
+            ) : (
+              <>
+                {box(ed.where.form, 'Nhập ở Cập nhật thông tin đơn', (v) => setE({ where: { ...ed.where, form: v } }))}
+                {box(ed.where.info, 'Cột trong bảng Hàng hóa', (v) => setE({ where: { ...ed.where, info: v } }))}
+              </>
+            )}
+          </div>
+          <div className="flex gap-2 border-t border-[rgb(var(--line))] pt-3">
+            {!isNew && <button className={btnGhost} onClick={() => toggle(ed)}>{ed.status === 'ACTIVE' ? 'Ngừng dùng' : 'Dùng lại'}</button>}
+            <button className={cn(btnPrimary, 'ml-auto')} onClick={save}>{isNew ? 'Tạo trường' : 'Lưu trường'}</button>
+          </div>
+          {errs.length > 0 && <p className="text-[12.5px] text-[rgb(var(--danger-fg))]">{errs[0]}</p>}
+        </aside>
+      )}
+    </div>
+  );
+}
+
+export function LayoutPublishPanel({ page, tab, setTab, onClose, onEdit, notify, who }: { page: LPage; tab: 'pub' | 'hist'; setTab: (t: 'pub' | 'hist') => void; onClose: () => void; onEdit: () => void; notify: AppCtx['notify']; who: string }) {
+  const { platform } = useApp();
+  const pg = L_PAGES.find((p) => p.id === page)!;
+  const vers = platform.layouts.filter((v) => v.page === page).sort((a, b) => b.version - a.version);
+  const draft = vers.find((v) => v.status === 'DRAFT');
+  const target = draft ?? vers[0];
+  const asg = platform.layoutAssigns.filter((a) => a.page === page);
+  const tenants = platform.tenants.filter((t) => t.status !== 'SUSPENDED');
+  const profOf = (id: string) => (orgOf(id).profile === 'MANUFACTURING' ? 'MFG' : 'TRADING');
+  const [lv, setLv] = useState<{ sys: boolean; tr: boolean; mfg: boolean; ten: boolean }>({ sys: true, tr: false, mfg: false, ten: false });
+  const [pilot, setPilot] = useState(false);
+  const [tenant, setTenant] = useState(tenants[0]?.id ?? '');
+  const [note, setNote] = useState(draft?.note ?? '');
+  const eff = pilot ? { sys: false, tr: false, mfg: false, ten: true } : lv;
+  const any = eff.sys || eff.tr || eff.mfg || (eff.ten && !!tenant);
+  const publish = () => {
+    if (!target || !any) return;
+    const now = Date.now();
+    platform.setLayouts((all) => all.map((v) => (v.id === target.id ? { ...v, status: 'PUBLISHED', note: note.trim() || v.note, publishedAt: now, publishedBy: who } : v)));
+    const mk = (level: LayoutAssign['level'], profile: 'TRADING' | 'MFG' | null, tenantId: string | null): LayoutAssign => ({ id: `${page}|${level}|${profile ?? ''}|${tenantId ?? ''}|`, page, level, profile, tenantId, role: null, verId: target.id, at: now, by: who });
+    const add = [...(eff.sys ? [mk('SYSTEM', null, null)] : []), ...(eff.tr ? [mk('PROFILE', 'TRADING', null)] : []), ...(eff.mfg ? [mk('PROFILE', 'MFG', null)] : []), ...(eff.ten && tenant ? [mk('TENANT', null, tenant)] : [])];
+    platform.setLayoutAssigns((all) => [...all.filter((a) => !add.some((x) => x.id === a.id)), ...add]);
+    platform.log('LAYOUT_PUBLISH', `${pg.label} v${target.version} → ${add.map(lAssignLabel).join(', ')}${note.trim() ? `: ${note.trim()}` : ''}`);
+    notify(`Đã phát hành ${pg.label} v${target.version} cho ${add.map(lAssignLabel).join(', ')}`, 'teal');
+    setNote('');
+  };
+  const unassign = (a: LayoutAssign) => { platform.setLayoutAssigns((all) => all.filter((x) => x.id !== a.id)); platform.log('LAYOUT_UNASSIGN', `${pg.label}: gỡ ${lAssignLabel(a)}, dùng cấp trên / giao diện gốc`); notify(`Đã gỡ ${lAssignLabel(a)}`, 'orange'); };
+  const restore = (v: LayoutVer) => {
+    const max = Math.max(0, ...vers.map((x) => x.version));
+    platform.setLayouts((all) => (draft ? all.map((x) => (x.id === draft.id ? { ...x, blocks: v.blocks, at: Date.now(), by: who, note: `Khôi phục từ v${v.version}` } : x))
+      : [{ id: uid('lv'), schema: 1, page, version: max + 1, status: 'DRAFT', role: null, blocks: v.blocks, by: who, at: Date.now(), note: `Khôi phục từ v${v.version}` }, ...all]));
+    platform.log('LAYOUT_RESTORE', `${pg.label}: khôi phục v${v.version} thành bản nháp`);
+    notify(`Đã chép v${v.version} thành bản nháp, phát hành để áp dụng`, 'teal');
+  };
+  const box = (on: boolean, dis: boolean, t: string, s: string, set: () => void) => (
+    <label className={cn('flex cursor-pointer items-start gap-3 rounded-lg border border-[rgb(var(--line))] px-3 py-2.5', dis && 'cursor-not-allowed opacity-50')}>
+      <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[rgb(var(--fg))]" checked={on} disabled={dis} onChange={set} />
+      <span><span className="block text-[13.5px] font-medium">{t}</span><span className="block text-[12px] text-[rgb(var(--muted))]">{s}</span></span>
+    </label>
+  );
+  const inUse = (v: LayoutVer) => asg.filter((a) => a.verId === v.id);
+  return (
+    <aside className="glass-card h-fit space-y-4 rounded-xl p-4" aria-label={`Phát hành ${pg.label}`}>
+      <div className="flex items-center gap-2"><h3 className="font-medium">{pg.label}</h3>{draft ? <Chip tone="orange">Nháp v{draft.version}</Chip> : target ? <Chip tone="teal">v{target.version}</Chip> : null}<button className={cn(btnGhost, 'ml-auto p-1.5')} onClick={onClose} aria-label="Đóng"><X className="h-4 w-4" aria-hidden /></button></div>
+      <div className="flex gap-5 border-b border-[rgb(var(--line))]" role="tablist">
+        {([['pub', 'Phát hành'], ['hist', `Lịch sử ${vers.length}`]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn('-mb-px border-b-2 py-2 text-[13.5px]', tab === k ? 'border-[rgb(var(--accent))] font-medium' : 'border-transparent text-[rgb(var(--muted))]')}>{l}</button>)}
+      </div>
+      {tab === 'pub' ? (!target ? <p className="text-[13px] text-[rgb(var(--muted))]">Chưa có bản thiết kế. <button className="text-[rgb(var(--accent))] hover:underline" onClick={onEdit}>Thiết kế trang</button></p> : (
+        <>
+          <p className="text-[12px] text-[rgb(var(--muted))]">Phát hành v{target.version}{target.status === 'DRAFT' ? ' (bản nháp)' : ''} cho</p>
+          <div className="space-y-2">
+            {box(eff.sys, pilot, 'Toàn hệ thống', 'mọi doanh nghiệp chưa có bố cục riêng', () => setLv({ ...lv, sys: !lv.sys }))}
+            {box(eff.tr, pilot, 'Mô hình Thương mại', `${tenants.filter((t) => profOf(t.id) === 'TRADING').length} doanh nghiệp`, () => setLv({ ...lv, tr: !lv.tr }))}
+            {box(eff.mfg, pilot, 'Mô hình Xưởng', `${tenants.filter((t) => profOf(t.id) === 'MFG').length} doanh nghiệp`, () => setLv({ ...lv, mfg: !lv.mfg }))}
+            {box(eff.ten, pilot, 'Riêng doanh nghiệp', 'chọn doanh nghiệp bên dưới', () => setLv({ ...lv, ten: !lv.ten }))}
+          </div>
+          <p className="text-[12px] text-[rgb(var(--muted))]">Cấp nhỏ đè cấp lớn: riêng doanh nghiệp → mô hình → toàn hệ thống</p>
+          <label className="flex items-center gap-2 text-[13.5px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={pilot} onChange={(e) => setPilot(e.target.checked)} />Phát hành thử cho 1 doanh nghiệp trước</label>
+          {(pilot || lv.ten) && <select className={inputCls} value={tenant} onChange={(e) => setTenant(e.target.value)} aria-label="Doanh nghiệp">{tenants.map((t) => <option key={t.id} value={t.id}>{orgOf(t.id).name}</option>)}</select>}
+          <Field label="Ghi chú phiên bản"><input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="VD: thêm khối Còn phải thu" /></Field>
+          <button className={cn(btnPrimary, 'w-full justify-center')} disabled={!any} onClick={publish}><Rocket className="h-4 w-4" aria-hidden />Phát hành v{target.version}</button>
+          {asg.length > 0 && (
+            <div className="border-t border-[rgb(var(--line))] pt-3">
+              <p className="mb-1 text-[12px] text-[rgb(var(--muted))]">Đang áp dụng</p>
+              {asg.map((a) => <div key={a.id} className="flex items-center gap-2 py-1 text-[13px]"><span>{lAssignLabel(a)}</span><Code>{verLabel(platform.layouts, a.verId)}</Code><button className="ml-auto text-[12.5px] text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => unassign(a)}>Gỡ</button></div>)}
+            </div>
+          )}
+        </>
+      )) : (
+        <div>{vers.map((v) => { const use = inUse(v); return (
+          <div key={v.id} className="flex items-start gap-3 border-t border-[rgb(var(--line)/0.6)] py-2.5 first:border-t-0">
+            <Code>v{v.version}</Code>
+            <div className="min-w-0 flex-1"><p className="text-[13.5px]">{v.status === 'DRAFT' ? 'Nháp' : use.length ? `Đang áp dụng: ${use.map(lAssignLabel).join(', ')}` : 'Đã thay'}</p><p className="text-[12px] text-[rgb(var(--muted))]">{v.publishedBy ?? v.by} · {new Date(v.publishedAt ?? v.at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · {v.blocks.length} khối</p>{v.note && <p className="text-[12.5px]">{v.note}</p>}</div>
+            {v.status === 'DRAFT' ? <button className={cn(btnGhost, btnSm)} onClick={onEdit}>Mở</button> : <button className={cn(btnGhost, btnSm)} onClick={() => restore(v)}>Khôi phục</button>}
+          </div>
+        ); })}</div>
+      )}
+    </aside>
+  );
+}
+
+export function LGridEditor({ blocks, commit, sel, setSel, page, stage, cf }: { blocks: LBlock[]; commit: (b: LBlock[]) => void; sel: string | null; setSel: (id: string | null) => void; page: LPage; stage: LStage; cf: CfDef[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [W, setW] = useState(1100);
+  useEffect(() => { const el = ref.current; if (!el) return; const ro = new ResizeObserver(() => setW(el.clientWidth)); ro.observe(el); setW(el.clientWidth); return () => ro.disconnect(); }, []);
+  const colW = (W - 11 * L_GAP) / 12, cx = colW + L_GAP, cy = L_ROW + L_GAP;
+  type Drag = { id: string; mode: 'move' | 'resize'; sx: number; sy: number; o: LPos; dx: number; dy: number };
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const [drop, setDrop] = useState<LPos | null>(null);
+  const sample = useMemo(() => new Map<LDataset, LRow[]>(), []);
+  const rowsOf = (ds: LDataset) => { if (!sample.has(ds)) sample.set(ds, lRowsSample(ds)); return sample.get(ds)!; };
+  const want = (d: Drag): LPos => (d.mode === 'move'
+    ? { ...d.o, x: Math.max(0, Math.min(12 - d.o.w, Math.round(d.o.x + d.dx / cx))), y: Math.max(0, Math.round(d.o.y + d.dy / cy)) }
+    : { ...d.o, w: Math.max(1, Math.min(12 - d.o.x, Math.round(d.o.w + d.dx / cx))), h: Math.max(1, Math.min(12, Math.round(d.o.h + d.dy / cy))) });
+  const live = drag ? lSettle(blocks.map((b) => (b.id === drag.id ? { ...b, pos: { ...b.pos, lg: want(drag) } } : b)), drag.id) : blocks;
+  const bottom = Math.max(4, ...live.map((b) => b.pos.lg.y + b.pos.lg.h)) + 3;
+  const px = (p: LPos): CSSProperties => ({ left: p.x * cx, top: p.y * cy, width: p.w * colW + (p.w - 1) * L_GAP, height: p.h * L_ROW + (p.h - 1) * L_GAP });
+  const start = (e: LPtr, b: LBlock, mode: Drag['mode']) => { e.preventDefault(); e.stopPropagation(); (e.currentTarget as Element).setPointerCapture(e.pointerId); setSel(b.id); setDrag({ id: b.id, mode, sx: e.clientX, sy: e.clientY, o: b.pos.lg, dx: 0, dy: 0 }); };
+  const move = (e: LPtr) => { if (drag) setDrag({ ...drag, dx: e.clientX - drag.sx, dy: e.clientY - drag.sy }); };
+  const end = () => { if (!drag) return; const moved = drag.dx || drag.dy; const next = live; setDrag(null); if (moved) commit(next); };
+  const dropPos = (e: LDrop): LPos | null => {
+    if (!lDrag.type || !ref.current) return null;
+    const r = ref.current.getBoundingClientRect(); const d = lType(lDrag.type).def;
+    return { x: Math.max(0, Math.min(12 - d.w, Math.floor((e.clientX - r.left) / cx))), y: Math.max(0, Math.floor((e.clientY - r.top) / cy)), w: d.w, h: d.h };
+  };
+  return (
+    <div ref={ref} className="relative select-none" style={{ height: bottom * cy }}
+      onDragOver={(e) => { const p = dropPos(e); if (p) { e.preventDefault(); setDrop(p); } }} onDragLeave={() => setDrop(null)}
+      onDrop={(e) => { const p = dropPos(e); setDrop(null); if (!p || !lDrag.type) return; e.preventDefault(); const nb = lNewBlock(lDrag.type, p, page); lDrag.type = null; commit(lSettle([...blocks, nb], nb.id)); setSel(nb.id); }}
+      onPointerDown={(e) => { if (e.target === e.currentTarget) setSel(null); }}>
+      <div className="pointer-events-none absolute inset-0 flex" style={{ gap: L_GAP }} aria-hidden>{Array.from({ length: 12 }, (_, i) => <div key={i} className="h-full flex-1 border-x border-dashed border-[rgb(var(--accent)/0.22)] bg-[rgb(var(--accent)/0.035)]" />)}</div>
+      {drop && <div className="absolute rounded-xl border-[1.5px] border-dashed border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.08)]" style={px(drop)} />}
+      {live.map((b) => {
+        const on = drag?.id === b.id;
+        const p = b.pos.lg;
+        const float: CSSProperties = on ? (drag!.mode === 'move' ? { ...px(drag!.o), transform: `translate(${drag!.dx}px, ${drag!.dy}px) rotate(-0.6deg)`, zIndex: 5 } : { ...px({ ...p }), zIndex: 5 }) : px(p);
+        return (
+          <Fragment key={b.id}>
+            {on && <div className="absolute rounded-xl border-[1.5px] border-dashed border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.08)]" style={px(p)} />}
+            <section className={cn('absolute flex flex-col overflow-hidden rounded-xl border bg-[rgb(var(--surface))]', sel === b.id ? 'border-[rgb(var(--accent))] ring-[3px] ring-[rgb(var(--accent)/0.18)]' : 'border-[rgb(var(--line))]', on && 'opacity-95 shadow-2xl')} style={float} onClick={() => setSel(b.id)} aria-label={`Khối ${b.config.title}`}>
+              <div className="flex items-center gap-1.5 px-2 pt-2 text-[rgb(var(--muted))]">
+                <button className="cursor-grab touch-none rounded p-0.5 hover:bg-[rgb(var(--ink)/0.06)] active:cursor-grabbing" onPointerDown={(e) => start(e, b, 'move')} onPointerMove={move} onPointerUp={end} onPointerCancel={end} aria-label={`Kéo ${b.config.title}`}><GripVertical className="h-3.5 w-3.5" aria-hidden /></button>
+                <span className="min-w-0 truncate text-[12.5px] font-medium text-[rgb(var(--fg))]">{b.config.title || 'Chưa đặt tiêu đề'}</span>
+                {lIsCore(b.type) ? <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-[rgb(var(--line))] px-1 text-[10.5px]" title="Khối lõi: không xóa được"><Lock className="h-2.5 w-2.5" aria-hidden />lõi</span> : <span className="shrink-0 rounded border border-[rgb(var(--line))] px-1 font-mono text-[10.5px]">span {p.w}</span>}
+                {(b.config.stages?.length || b.config.roles?.length) ? <span className="shrink-0 text-[10.5px] text-[rgb(var(--accent))]" title="Có điều kiện hiện">có điều kiện</span> : null}
+                <span className="ml-auto flex shrink-0 gap-0.5">
+                  <button className={cn('rounded p-1 hover:bg-[rgb(var(--ink)/0.06)]', sel === b.id && 'bg-[rgb(var(--accent)/0.12)] text-[rgb(var(--accent))]')} onClick={(e) => { e.stopPropagation(); setSel(b.id); }} aria-label="Cài đặt khối"><Settings className="h-3.5 w-3.5" aria-hidden /></button>
+                  {sel === b.id && !b.type.startsWith('K-Order-') && <button className="rounded p-1 hover:bg-[rgb(var(--ink)/0.06)]" onClick={(e) => { e.stopPropagation(); const c = { ...b, id: uid('lb'), pos: { ...b.pos, lg: { ...p, y: p.y + p.h } } }; commit(lSettle([...blocks, c], c.id)); setSel(c.id); }} aria-label="Nhân bản khối"><Copy className="h-3.5 w-3.5" aria-hidden /></button>}
+                  {lIsCore(b.type) ? <span className="p-1" title="Khối lõi: không xóa được"><Lock className="h-3.5 w-3.5" aria-label="Khối lõi" /></span>
+                    : sel === b.id && <button className="rounded p-1 hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--danger-fg))]" onClick={(e) => { e.stopPropagation(); commit(lSettle(blocks.filter((x) => x.id !== b.id))); setSel(null); }} aria-label="Xóa khối"><Trash2 className="h-3.5 w-3.5" aria-hidden /></button>}
+                </span>
+              </div>
+              <div className={cn('pointer-events-none min-h-0 flex-1 overflow-hidden px-3 pb-3 pt-1', b.type === 'K-Text' && lToneCls(b.config), b.type === 'K-Text' && 'mx-2 mb-2 rounded-lg border')}>{page === 'sale-detail' ? lSaleSample({ b, stage, cf }) : <LBlockBody b={b} rows={lHasData(b.type) ? rowsOf(b.config.ds) : []} />}</div>
+              <button className="absolute bottom-0.5 right-0.5 h-4 w-4 cursor-se-resize touch-none" onPointerDown={(e) => start(e, b, 'resize')} onPointerMove={move} onPointerUp={end} onPointerCancel={end} aria-label={`Đổi kích thước ${b.config.title}`}>
+                <span className={cn('absolute bottom-0.5 right-0.5 h-2.5 w-2.5 rounded-br border-b-2 border-r-2', sel === b.id ? 'border-[rgb(var(--accent))]' : 'border-[rgb(var(--muted))]')} />
+              </button>
+            </section>
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Danh sách sắp thứ tự + bật / tắt (trường của khối Thông tin, cột của bảng Hàng hóa); trường khóa luôn bật */
+export function LFieldList({ all, c, onCfg, cfIds }: { all: { id: string; label: string; lock?: boolean }[]; c: LBlockCfg; onCfg: (p: Partial<LBlockCfg>) => void; cfIds: string[] }) {
+  const ids = all.map((x) => x.id);
+  const ord = [...(c.fields ?? []).filter((x) => ids.includes(x)), ...ids.filter((x) => !(c.fields ?? []).includes(x))];
+  const off = c.off ?? [];
+  const mv = (id: string, d: -1 | 1) => { const i = ord.indexOf(id); const j = i + d; if (j < 0 || j >= ord.length) return; const n = [...ord]; [n[i], n[j]] = [n[j], n[i]]; onCfg({ fields: n }); };
+  return (
+    <div className="space-y-1">{ord.map((id, i) => { const f = all.find((x) => x.id === id)!; const on = f.lock || !off.includes(id); return (
+      <div key={id} className="flex items-center gap-1.5 rounded-lg border border-[rgb(var(--line)/0.7)] px-2 py-1 text-[13px]">
+        <span className="min-w-0 flex-1 truncate">{f.label}{cfIds.includes(id) && <i className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-[rgb(var(--accent))] align-middle" title="Trường tùy chỉnh" />}</span>
+        <button className="rounded p-0.5 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] disabled:opacity-30" disabled={i === 0} onClick={() => mv(id, -1)} aria-label={`Đưa ${f.label} lên`}><ArrowUp className="h-3.5 w-3.5" aria-hidden /></button>
+        <button className="rounded p-0.5 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] disabled:opacity-30" disabled={i === ord.length - 1} onClick={() => mv(id, 1)} aria-label={`Đưa ${f.label} xuống`}><ArrowDown className="h-3.5 w-3.5" aria-hidden /></button>
+        {f.lock ? <span className="inline-flex w-[74px] items-center justify-end gap-1 text-[11.5px] text-[rgb(var(--muted))]"><Lock className="h-3 w-3" aria-hidden />bắt buộc</span>
+          : <label className="flex w-[74px] items-center justify-end gap-1.5 text-[11.5px] text-[rgb(var(--muted))]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={on} onChange={() => onCfg({ off: on ? [...off, id] : off.filter((x) => x !== id) })} aria-label={`Hiện ${f.label}`} />hiện</label>}
+      </div>
+    ); })}</div>
+  );
+}
+
+export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf }: { b: LBlock; onCfg: (c: Partial<LBlockCfg>) => void; onBlock: (p: Partial<LBlock>) => void; onPos: (p: Partial<LPos>) => void; page: LPage; cf: CfDef[] }) {
+  const c = b.config; const ds = L_DS[c.ds];
+  const core = lIsCore(b.type);
+  const data = lHasData(b.type);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  /** Chèn định dạng vào ô nội dung: bọc phần đang chọn, hoặc thêm tiền tố đầu dòng */
+  const fmt = (kind: 'b' | 'i' | 'ul' | 'h' | 'a') => {
+    const el = taRef.current; const v = c.text ?? ''; const s = el?.selectionStart ?? v.length, e = el?.selectionEnd ?? v.length; const sel = v.slice(s, e);
+    let next = v;
+    if (kind === 'b' || kind === 'i') { const m = kind === 'b' ? '**' : '*'; next = `${v.slice(0, s)}${m}${sel || 'chữ'}${m}${v.slice(e)}`; }
+    else if (kind === 'a') next = `${v.slice(0, s)}[${sel || 'chữ'}](https://)${v.slice(e)}`;
+    else { const ls = v.lastIndexOf('\n', s - 1) + 1; const pre = kind === 'ul' ? '- ' : '## '; next = v.slice(ls, ls + pre.length) === pre ? v.slice(0, ls) + v.slice(ls + pre.length) : `${v.slice(0, ls)}${pre}${v.slice(ls)}`; }
+    onCfg({ text: next });
+    requestAnimationFrame(() => el?.focus());
+  };
+  const icons: LIconAct[] = (Object.keys(L_ICON) as LIconAct[]).filter((a) => L_ICON[a].pages.includes(page));
+  const cfInfo = cf.filter((d) => d.scope === 'HEAD' && d.status === 'ACTIVE' && d.where.info);
+  const cfLine = cf.filter((d) => d.scope === 'LINE' && d.status === 'ACTIVE' && d.where.info);
+  const chk = (on: boolean, t: string, set: () => void) => <label key={t} className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={on} onChange={set} />{t}</label>;
+  const num = (k: keyof LPos, label: string, max: number) => <Field label={label}><input className={inputCls} type="number" min={k === 'w' || k === 'h' ? 1 : k === 'x' ? 1 : 1} max={max} value={k === 'x' || k === 'y' ? b.pos.lg[k] + 1 : b.pos.lg[k]} onChange={(e) => { const n = Number(e.target.value) || 1; onPos({ [k]: k === 'x' || k === 'y' ? n - 1 : n }); }} /></Field>;
+  const fieldSel = (label: string, v: string | undefined, set: (x: string) => void, none?: boolean) => (
+    <Field label={label}><select className={inputCls} value={v ?? ''} onChange={(e) => set(e.target.value)}>{none && <option value="">Không</option>}{ds.fields.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select></Field>
+  );
+  const typeLabel = lType(b.type).label;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2"><Settings className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><h3 className="font-medium">Cài đặt khối</h3></div>
+      <div className="flex items-center gap-2"><Code>{b.type}</Code><span className="text-[12.5px] text-[rgb(var(--muted))]">{typeLabel}</span>{core && <span className="inline-flex items-center gap-1 rounded border border-[rgb(var(--line))] px-1.5 text-[11.5px] text-[rgb(var(--muted))]"><Lock className="h-3 w-3" aria-hidden />Khối lõi</span>}</div>
+      {core && <p className="flex gap-2 rounded-lg bg-[rgb(var(--ink)/0.04)] px-3 py-2 text-[12.5px] text-[rgb(var(--fg2))]"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />Khối lõi của luồng bán hàng: được di chuyển, đổi kích thước, ẩn trường không bắt buộc. Không xóa được, luôn hiện trên mọi thiết bị. Nút thao tác theo trạng thái đơn do luồng nghiệp vụ điều khiển</p>}
+      {b.type !== 'K-Icons' && <Field label="Tiêu đề"><input className={inputCls} value={c.title} onChange={(e) => onCfg({ title: e.target.value })} /></Field>}
+      {b.type === 'K-Text' && (
+        <>
+          <label className="-mt-2 flex items-center gap-2 text-[12.5px] text-[rgb(var(--muted))]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={!!c.hideTitle} onChange={(e) => onCfg({ hideTitle: e.target.checked })} />Ẩn tiêu đề khi hiển thị</label>
+          <Field label="Nội dung">
+            <div className="overflow-hidden rounded-lg border border-[rgb(var(--line))]">
+              <div className="flex gap-0.5 border-b border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.03)] p-1">{([['b', Bold, 'Đậm'], ['i', Italic, 'Nghiêng'], ['ul', List, 'Danh sách'], ['h', Heading2, 'Tiêu đề nhỏ'], ['a', Link2, 'Liên kết']] as const).map(([k, I, l]) => <button key={k} type="button" className="grid h-7 w-8 place-items-center rounded-md text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.06)]" onClick={() => fmt(k)} aria-label={l} title={l}><I className="h-4 w-4" aria-hidden /></button>)}</div>
+              <textarea ref={taRef} className="block min-h-[150px] w-full resize-y bg-transparent px-3 py-2 text-[13px] outline-none" value={c.text ?? ''} onChange={(e) => onCfg({ text: e.target.value })} aria-label="Nội dung khối text" />
+            </div>
+            <p className="mt-1.5 text-[12px] text-[rgb(var(--muted))]">**đậm**, *nghiêng*, dòng bắt đầu bằng "- " là danh sách, "## " là tiêu đề nhỏ, [chữ](https://…) là liên kết. Không chèn mã, không chèn ảnh</p>
+          </Field>
+          <Field label="Kiểu khung"><CbSeg label="Kiểu khung" items={[['plain', 'Thường'], ['note', 'Lưu ý'], ['warn', 'Cảnh báo']]} value={c.tone ?? 'plain'} onChange={(v) => onCfg({ tone: v })} /></Field>
+        </>
+      )}
+      {b.type === 'K-Icons' && (
+        <>
+          <Field label="Nút (theo thứ tự)">
+            <div className="space-y-1">{[...(c.icons ?? []), ...icons.filter((a) => !(c.icons ?? []).includes(a))].map((a) => { const on = (c.icons ?? []).includes(a); const I = L_ICON[a].icon; const i = (c.icons ?? []).indexOf(a); return (
+              <div key={a} className="flex items-center gap-2 rounded-lg border border-[rgb(var(--line)/0.7)] px-2 py-1 text-[13px]">
+                <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={on} onChange={() => onCfg({ icons: on ? (c.icons ?? []).filter((x) => x !== a) : [...(c.icons ?? []), a] })} aria-label={L_ICON[a].label} />
+                <I className="h-4 w-4 text-[rgb(var(--fg2))]" aria-hidden /><span className="min-w-0 flex-1 truncate">{L_ICON[a].label}</span>
+                {on && <><button className="rounded p-0.5 text-[rgb(var(--muted))] disabled:opacity-30" disabled={i === 0} onClick={() => { const n = [...(c.icons ?? [])]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; onCfg({ icons: n }); }} aria-label={`Đưa ${L_ICON[a].label} lên`}><ArrowUp className="h-3.5 w-3.5" aria-hidden /></button><button className="rounded p-0.5 text-[rgb(var(--muted))] disabled:opacity-30" disabled={i === (c.icons ?? []).length - 1} onClick={() => { const n = [...(c.icons ?? [])]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; onCfg({ icons: n }); }} aria-label={`Đưa ${L_ICON[a].label} xuống`}><ArrowDown className="h-3.5 w-3.5" aria-hidden /></button></>}
+              </div>
+            ); })}</div>
+          </Field>
+          <Field label="Căn"><CbSeg label="Căn" items={[['left', 'Trái'], ['right', 'Phải']]} value={c.align ?? 'right'} onChange={(v) => onCfg({ align: v })} /></Field>
+          <p className="text-[12px] text-[rgb(var(--muted))]">{page === 'sale-detail' ? 'Lùi / tiến: đơn trước / sau theo danh sách. Tải xuống: thông tin + hàng hóa ra Excel. Tải lên: tệp đính kèm của đơn. Xổ xuống: Sửa, Hủy, Xóa đơn theo quyền. Khi có nút In / Xổ xuống ở đây, thanh trên không lặp lại' : 'In trang; tải số liệu các khối ra Excel'}</p>
+        </>
+      )}
+      {b.type === 'K-Order-Info' && (
+        <>
+          <Field label="Trường hiển thị"><LFieldList all={[...SO_INFO_F, ...cfInfo.map((d) => ({ id: `cf:${d.key}`, label: d.label }))]} c={c} onCfg={onCfg} cfIds={cfInfo.map((d) => `cf:${d.key}`)} /></Field>
+          <Field label="Số cột trường trên máy tính"><CbSeg label="Số cột trường" items={[['2', '2'], ['3', '3'], ['4', '4']]} value={String(c.gridCols ?? 4) as '2' | '3' | '4'} onChange={(v) => onCfg({ gridCols: Number(v) as 2 | 3 | 4 })} /></Field>
+          <p className="-mt-2 text-[12px] text-[rgb(var(--muted))]">Điện thoại luôn 1–2 cột. Chấm cam: trường tùy chỉnh (tạo ở tab Trường tùy chỉnh)</p>
+        </>
+      )}
+      {b.type === 'K-Order-Lines' && (
+        <>
+          <Field label="Cột của bảng Hàng hóa"><LFieldList all={[...SO_LINE_F, ...cfLine.map((d) => ({ id: `cf:${d.key}`, label: d.label }))]} c={c} onCfg={onCfg} cfIds={cfLine.map((d) => `cf:${d.key}`)} /></Field>
+          <p className="flex gap-2 rounded-lg bg-[rgb(var(--ink)/0.04)] px-3 py-2 text-[12.5px] text-[rgb(var(--fg2))]"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />Cột tính tiền (Đơn giá, CK, VAT, Thành tiền) là trường gốc nối với tổng đơn và bút toán. Tắt cột chỉ ẩn khỏi màn hình, không đổi cách tính tiền. Trường tùy chỉnh dòng hàng chỉ để ghi chú</p>
+          <Field label="Trên điện thoại"><CbSeg label="Trên điện thoại" items={[['card', 'Dạng thẻ'], ['table', 'Bảng (cuộn ngang)']]} value={c.smView ?? 'card'} onChange={(v) => onCfg({ smView: v })} /></Field>
+        </>
+      )}
+      {!data && !core && page === 'sale-detail' && (
+        <div className="border-t border-[rgb(var(--line))] pt-3">
+          <p className="mb-2 text-[12px] text-[rgb(var(--muted))]">Hiện khi đơn ở trạng thái (không chọn = luôn hiện)</p>
+          <div className="grid grid-cols-2 gap-1.5">{(Object.keys(L_STAGE) as LStage[]).map((s) => chk((c.stages ?? []).includes(s), L_STAGE[s], () => onCfg({ stages: (c.stages ?? []).includes(s) ? (c.stages ?? []).filter((x) => x !== s) : [...(c.stages ?? []), s] })))}</div>
+        </div>
+      )}
+      {!data && !core && (
+        <div className="border-t border-[rgb(var(--line))] pt-3">
+          <p className="mb-2 text-[12px] text-[rgb(var(--muted))]">Hiện với vai trò (không chọn = mọi vai trò)</p>
+          <div className="grid grid-cols-2 gap-1.5">{L_ROLES.map((r) => chk((c.roles ?? []).includes(r), ROLE_LABEL[r], () => onCfg({ roles: (c.roles ?? []).includes(r) ? (c.roles ?? []).filter((x) => x !== r) : [...(c.roles ?? []), r] })))}</div>
+          {b.type === 'K-Order-Profit' && <p className="mt-2 text-[12px] text-[rgb(var(--muted))]">Ngoài điều kiện này, Lãi trên đơn chỉ hiện với người có quyền quản lý bán hàng, kế toán, Giám đốc</p>}
+        </div>
+      )}
+      {data && <Field label="Nguồn dữ liệu"><select className={inputCls} value={c.ds} onChange={(e) => { const d = e.target.value as LDataset; onCfg({ ds: d, field: L_DS[d].fields[1]?.id ?? 'count', series: [L_DS[d].fields[1]?.id ?? 'count'], filter: '', group: L_DS[d].dims[0].id, cols: [], sort: undefined }); }}>{(Object.keys(L_DS) as LDataset[]).map((k) => <option key={k} value={k}>{L_DS[k].label}</option>)}</select></Field>}
+      {data && ds.filters.length > 1 && <Field label="Lọc"><select className={inputCls} value={c.filter ?? ''} onChange={(e) => onCfg({ filter: e.target.value })}>{ds.filters.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select></Field>}
+      {b.type === 'K-Stat-Simple' && (
+        <>
+          {fieldSel('Chỉ tiêu', c.field, (x) => onCfg({ field: x, agg: x === 'count' ? 'count' : c.agg === 'count' ? 'sum' : c.agg }))}
+          <Field label="Cách tính"><CbSeg label="Cách tính" items={[['sum', 'Tổng'], ['count', 'Đếm'], ['avg', 'Trung bình']]} value={c.field === 'count' ? 'count' : c.agg ?? 'sum'} onChange={(v) => onCfg({ agg: v, field: v === 'count' ? 'count' : c.field === 'count' ? ds.fields[1]?.id ?? 'count' : c.field })} /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Kỳ"><select className={inputCls} value={c.period ?? 'month'} onChange={(e) => onCfg({ period: e.target.value as LPeriod })}>{(Object.keys(L_PERIOD) as LPeriod[]).map((k) => <option key={k} value={k}>{L_PERIOD[k]}</option>)}</select></Field>
+            <Field label="So sánh"><select className={inputCls} value={c.compare ? '1' : ''} onChange={(e) => onCfg({ compare: !!e.target.value })}><option value="1">Kỳ trước</option><option value="">Không</option></select></Field>
+          </div>
+        </>
+      )}
+      {b.type === 'K-Chart-Line' && (
+        <>
+          {fieldSel('Đường 1', c.series?.[0], (x) => onCfg({ series: [x, c.series?.[1] ?? ''] }))}
+          {fieldSel('Đường 2', c.series?.[1], (x) => onCfg({ series: [c.series?.[0] ?? ds.fields[0].id, x] }), true)}
+          <Field label="Khoảng thời gian"><CbSeg label="Số tháng" items={[['6', '6 tháng'], ['12', '12 tháng']]} value={String(c.months ?? 12) as '6' | '12'} onChange={(v) => onCfg({ months: Number(v) })} /></Field>
+        </>
+      )}
+      {b.type === 'K-Table-Compact' && (
+        <>
+          <Field label="Kiểu bảng"><CbSeg label="Kiểu bảng" items={[['rows', 'Danh sách'], ['group', 'Nhóm theo']]} value={c.mode ?? 'rows'} onChange={(v) => onCfg({ mode: v })} /></Field>
+          {(c.mode ?? 'rows') === 'group' ? (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Nhóm theo"><select className={inputCls} value={c.group ?? ds.dims[0].id} onChange={(e) => onCfg({ group: e.target.value })}>{ds.dims.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}</select></Field>
+              {fieldSel('Chỉ tiêu', c.field, (x) => onCfg({ field: x }))}
+            </div>
+          ) : (
+            <Field label="Cột (tối đa 5)">
+              <div className="flex flex-wrap gap-1.5">{[...ds.dims, ...ds.fields.filter((f) => f.id !== 'count')].map((x) => { const on = (c.cols ?? []).includes(x.id); return (
+                <button key={x.id} type="button" className={cn('rounded-md border px-2 py-1 text-[12.5px]', on ? 'border-[rgb(var(--fg))] bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'border-[rgb(var(--line))] text-[rgb(var(--fg2))]')} disabled={!on && (c.cols ?? []).length >= 5} onClick={() => onCfg({ cols: on ? (c.cols ?? []).filter((y) => y !== x.id) : [...(c.cols ?? []), x.id] })}>{x.label}</button>
+              ); })}</div>
+            </Field>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            {(c.mode ?? 'rows') === 'rows' && <Field label="Sắp xếp"><select className={inputCls} value={c.sort ?? ''} onChange={(e) => onCfg({ sort: e.target.value || undefined })}><option value="">Mới nhất</option>{ds.fields.filter((f) => f.id !== 'count').map((f) => <option key={f.id} value={f.id}>{f.label} lớn nhất</option>)}</select></Field>}
+            <Field label="Số dòng"><select className={inputCls} value={c.limit ?? 5} onChange={(e) => onCfg({ limit: Number(e.target.value) })}>{[5, 8, 10].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
+          </div>
+          <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={!!c.stt} onChange={(e) => onCfg({ stt: e.target.checked })} />Cột STT</label>
+          {(c.mode ?? 'rows') === 'rows' && <Field label="Trên điện thoại"><CbSeg label="Trên điện thoại" items={[['card', 'Dạng thẻ'], ['table', 'Bảng']]} value={c.smView ?? 'card'} onChange={(v) => onCfg({ smView: v })} /></Field>}
+        </>
+      )}
+      {data && <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={c.open !== false} onChange={(e) => onCfg({ open: e.target.checked })} />Có nút mở {MODULE_LABEL[ds.module]}</label>}
+      {data && <p className="flex gap-2 rounded-lg bg-[rgb(var(--ink)/0.04)] px-3 py-2 text-[12.5px] text-[rgb(var(--fg2))]"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />Người xem chỉ thấy số trong phạm vi dữ liệu của mình. Không có quyền {MODULE_LABEL[ds.module]}{ds.perm ? ' hoặc quyền quỹ' : ''} thì khối tự ẩn.</p>}
+      <div className="border-t border-[rgb(var(--line))] pt-3">
+        <p className="mb-2 text-[12px] text-[rgb(var(--muted))]">Vị trí trên lưới 12 cột</p>
+        <div className="grid grid-cols-4 gap-2">{num('x', 'Cột', 12)}{num('y', 'Hàng', 99)}{num('w', 'Rộng', 12)}{num('h', 'Cao', 12)}</div>
+      </div>
+      <Field label="Hiển thị trên">
+        <div className="grid grid-cols-3 gap-2">{([['lg', 'Máy tính', Monitor], ['md', 'Tablet', Tablet], ['sm', 'Điện thoại', Smartphone]] as const).map(([k, l, I]) => (
+          <button key={k} type="button" aria-pressed={b.show[k]} disabled={core} title={core ? 'Khối lõi luôn hiện' : undefined} className={cn('inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-2 py-1.5 text-[12.5px]', b.show[k] ? 'border-[rgb(var(--fg))] text-[rgb(var(--fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))] line-through')} onClick={() => onBlock({ show: { ...b.show, [k]: !b.show[k] } })}><I className="h-3.5 w-3.5" aria-hidden />{l}</button>
+        ))}</div>
+      </Field>
+      <Field label="Độ rộng trên điện thoại"><CbSeg label="Độ rộng trên điện thoại" items={[['12', 'Cả hàng'], ['6', '1/2'], ['4', '1/3'], ['3', '1/4']]} value={String(b.pos.sm.w || 12) as '12' | '6' | '4' | '3'} onChange={(v) => onBlock({ pos: { ...b.pos, sm: { ...b.pos.sm, w: Number(v) } } })} /></Field>
+    </div>
+  );
+}
+
+export function LayoutEditor({ page, onClose }: { page: LPage; onClose: (openPublish: boolean) => void }) {
+  const { platform, notify } = useApp();
+  const who = usePlatformWho();
+  const pg = L_PAGES.find((p) => p.id === page)!;
+  const vers = platform.layouts.filter((v) => v.page === page).sort((a, b) => b.version - a.version);
+  const draft = vers.find((v) => v.status === 'DRAFT');
+  const live = platform.layoutAssigns.find((a) => a.page === page && a.level === 'SYSTEM');
+  const liveVer = live ? platform.layouts.find((v) => v.id === live.verId) : undefined;
+  const init = lEnsureCore(page, draft?.blocks ?? vers[0]?.blocks ?? (page === 'sale-detail' ? lStarterSale() : lStarter()));
+  const biz = page === 'sale-detail';
+  const [stage, setStage] = useState<LStage>('ISSUE');
+  const cfAll = platform.customFields.filter((d) => d.entity === 'sale');
+  const [blocks, setBlocks] = useState<LBlock[]>(init);
+  const [saved, setSaved] = useState(JSON.stringify(draft ? init : null));
+  const [past, setPast] = useState<LBlock[][]>([]);
+  const [future, setFuture] = useState<LBlock[][]>([]);
+  const [sel, setSel] = useState<string | null>(null);
+  const [preview, setPreview] = useState(false);
+  const [dev, setDev] = useState<LDevice>('lg');
+  const [role, setRole] = useState<Role>('BOD');
+  const [later, setLater] = useState(false);
+  const smKey = (bs: LBlock[]) => [...bs].sort((p, q) => (p.pos.sm.order || 99) - (q.pos.sm.order || 99)).map((x) => x.id).join();
+  const [smCustom, setSmCustom] = useState(() => smKey(init) !== smKey(lOrderSm(init)));
+  const commit = (n: LBlock[], manualSm = false) => { if (manualSm) setSmCustom(true); const v = manualSm || smCustom ? n : lOrderSm(n); setPast((p) => [...p.slice(-40), blocks]); setFuture([]); setBlocks(v); };
+  const undo = () => { const p = past[past.length - 1]; if (!p) return; setFuture((f) => [blocks, ...f]); setPast(past.slice(0, -1)); setBlocks(p); };
+  const redo = () => { const f = future[0]; if (!f) return; setPast((p) => [...p, blocks]); setFuture(future.slice(1)); setBlocks(f); };
+  const dirty = JSON.stringify(blocks) !== saved;
+  const nextNo = Math.max(0, ...vers.map((v) => v.version)) + 1;
+  const saveDraft = (): number => {
+    const now = Date.now();
+    if (draft) platform.setLayouts((all) => all.map((v) => (v.id === draft.id ? { ...v, blocks, at: now, by: who } : v)));
+    else platform.setLayouts((all) => [{ id: uid('lv'), schema: 1, page, version: nextNo, status: 'DRAFT', role: null, blocks, by: who, at: now }, ...all]);
+    const no = draft?.version ?? nextNo;
+    platform.log('LAYOUT_DRAFT', `${pg.label} v${no}: lưu nháp ${blocks.length} khối`);
+    setSaved(JSON.stringify(blocks));
+    return no;
+  };
+  const b = blocks.find((x) => x.id === sel);
+  const setB = (patch: Partial<LBlock>) => b && setBlocks(blocks.map((x) => (x.id === b.id ? { ...x, ...patch } : x)));
+  const setCfg = (c: Partial<LBlockCfg>) => b && setB({ config: { ...b.config, ...c } });
+  const setPos = (p: Partial<LPos>) => b && commit(lSettle(blocks.map((x) => (x.id === b.id ? { ...x, pos: { ...x.pos, lg: { ...x.pos.lg, ...p } } } : x)), b.id));
+  const add = (t: LBlockType) => {
+    const has = blocks.find((x) => x.type === t);
+    if (has && t.startsWith('K-Order-')) { setSel(has.id); return; }
+    const nb = lNewBlock(t, { y: Math.max(0, ...blocks.map((x) => x.pos.lg.y + x.pos.lg.h)) }, page); nb.pos.sm.order = blocks.length + 1; commit(lSettle([...blocks, nb], nb.id)); setSel(nb.id);
+  };
+  const libTypes = L_TYPES.filter((t) => t.pages.includes(page));
+  const libIcon = (t: LBlockType) => ({ 'K-Stat-Simple': Hash, 'K-Chart-Line': TrendingUp, 'K-Table-Compact': Rows3, 'K-Text': StickyNote, 'K-Icons': LayoutGrid, 'K-Order-Info': FileText, 'K-Order-Lines': Rows3, 'K-Order-Flow': ListChecks, 'K-Order-Pay': Wallet, 'K-Order-Profit': TrendingUp, 'K-Order-Debt': Scale, 'K-Order-Log': MessageSquare, 'K-Order-Ship': Truck, 'K-Order-Files': Paperclip } as Record<LBlockType, typeof Hash>)[t];
+  const sample = useMemo(() => new Map<LDataset, LRow[]>(), []);
+  const rowsAs = (r: Role) => (ds: LDataset) => { if (!lRoleSees(r, ds)) return null; if (!sample.has(ds)) sample.set(ds, lRowsSample(ds)); return sample.get(ds)!; };
+  const hiddenFor = (r: Role) => blocks.filter((x) => (biz ? !lSaleSampleShows(x, stage, r) : (lHasData(x.type) && !lRoleSees(r, x.config.ds)) || !lCondOk(x.config, null, r)));
+  const sm = [...blocks].sort((p, q) => (p.pos.sm.order || 99) - (q.pos.sm.order || 99));
+  const [dragSm, setDragSm] = useState<string | null>(null);
+  const reorder = (from: string, to: string) => { if (from === to) return; const ids = sm.map((x) => x.id).filter((x) => x !== from); ids.splice(ids.indexOf(to), 0, from); commit(blocks.map((x) => ({ ...x, pos: { ...x.pos, sm: { ...x.pos.sm, order: ids.indexOf(x.id) + 1 } } })), true); };
+  const back = () => { if (dirty) { const no = saveDraft(); notify(`Đã lưu nháp ${pg.label} v${no}`, 'teal'); } onClose(false); };
+  const iconBtn = 'grid h-9 w-9 place-items-center rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))] disabled:opacity-40';
+  const devs: [LDevice, typeof Monitor, string][] = [['lg', Monitor, 'Máy tính'], ['md', Tablet, 'Máy tính bảng'], ['sm', Smartphone, 'Điện thoại']];
+  const frameW = dev === 'sm' ? 390 : dev === 'md' ? 768 : undefined;
+  const checks: { tone: 'ok' | 'warn' | 'info'; t: string }[] = [
+    { tone: 'ok', t: 'Không hàng nào vượt 12 cột' },
+    { tone: blocks.every((x) => x.config.title.trim()) ? 'ok' : 'warn', t: blocks.every((x) => x.config.title.trim()) ? 'Mọi khối đã có tiêu đề và nguồn dữ liệu' : 'Có khối chưa đặt tiêu đề' },
+    { tone: 'ok', t: `Điện thoại: ${blocks.filter((x) => x.show.sm).length} khối, ${blocks.filter((x) => x.show.sm && (x.pos.sm.w || 12) < 12).length} khối xếp chung hàng` },
+    { tone: 'ok', t: 'Máy tính bảng: lưới 6 cột, khối rộng hơn 6 tự co về 6' },
+    ...(hiddenFor(role).length ? [{ tone: 'warn' as const, t: `${ROLE_LABEL[role]} không thấy ${hiddenFor(role).length} khối: ${hiddenFor(role).map((x) => x.config.title).join(', ')}` }] : []),
+    biz ? { tone: 'ok' as const, t: `Đủ ${blocks.filter((x) => lIsCore(x.type)).length} khối lõi: ${L_TYPES.filter((x) => x.core).map((x) => x.label).join(', ')}` } : { tone: 'info' as const, t: 'Khối lõi luồng nghiệp vụ: không áp dụng cho trang tổng hợp' },
+    ...(biz ? [{ tone: 'ok' as const, t: 'Nút theo trạng thái đơn (Duyệt, Xuất kho, Thu tiền, Hóa đơn) giữ ở thanh trên, hiện theo quyền' }, { tone: 'info' as const, t: `Đơn mẫu ${L_STAGE[stage]}${stage === 'CANCEL' ? ': tự ẩn Trao đổi, Lãi, Công nợ và hiện Quy trình hủy' : ''}` }] : []),
+  ];
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col bg-[rgb(var(--bg))]" role="dialog" aria-modal="true" aria-label={`Thiết kế ${pg.label}`}>
+      <header className="flex h-[60px] shrink-0 items-center gap-2 border-b border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-4">
+        <button className={btnGhost} onClick={back}><ChevronLeft className="h-4 w-4" aria-hidden />Quay lại</button>
+        {!preview && <span className="text-[13px] text-[rgb(var(--muted))] max-lg:hidden">Thiết kế giao diện ›</span>}
+        <span className="whitespace-nowrap font-medium">{pg.label}</span>
+        {preview && !biz ? (
+          <div className="ml-2 flex items-center gap-2"><span className="whitespace-nowrap text-[12.5px] text-[rgb(var(--muted))]">Xem với vai trò</span>
+            <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Vai trò xem trước">{L_ROLES.map((r) => <button key={r} role="radio" aria-checked={role === r} className={cn('whitespace-nowrap rounded-md px-2.5 py-1 text-[12.5px]', role === r ? 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))]')} onClick={() => setRole(r)}>{ROLE_LABEL[r].split(' ')[0] === 'Nhân' ? 'Sales' : ROLE_LABEL[r].replace(' BOD', '')}</button>)}</div>
+          </div>
+        ) : preview ? null : <span className="whitespace-nowrap rounded-lg border border-[rgb(var(--line))] px-2.5 py-1 text-[12.5px] text-[rgb(var(--muted))]" title="Bản 1 dùng chung một bố cục cho mọi vai trò">Vai trò: Tất cả</span>}
+        <Chip tone="orange">{preview ? 'Xem trước · dữ liệu mẫu' : draft || dirty ? `Nháp v${draft?.version ?? nextNo}${dirty ? ' · chưa lưu' : ''}` : `v${vers[0]?.version ?? 1}`}</Chip>
+
+        {liveVer && <span className="text-[12px] text-[rgb(var(--muted))] max-xl:hidden">đang phát hành v{liveVer.version}</span>}
+        <div className="ml-auto flex items-center gap-2">
+          {!preview && <><button className={iconBtn} disabled={!past.length} onClick={undo} aria-label="Hoàn tác" title="Hoàn tác"><Undo2 className="h-4 w-4" aria-hidden /></button><button className={iconBtn} disabled={!future.length} onClick={redo} aria-label="Làm lại" title="Làm lại"><Redo2 className="h-4 w-4" aria-hidden /></button></>}
+          <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Thiết bị">{devs.map(([k, I, l]) => <button key={k} role="radio" aria-checked={dev === k} aria-label={l} title={l} className={cn('grid h-7 w-8 place-items-center rounded-md', dev === k ? 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))]')} onClick={() => { setDev(k); if (k !== 'lg') setPreview(true); }}><I className="h-4 w-4" aria-hidden /></button>)}</div>
+          <button className={preview ? cn(btnPrimary, 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]') : btnGhost} onClick={() => { setPreview(!preview); if (preview) setDev('lg'); }}><Eye className="h-4 w-4" aria-hidden />{preview ? 'Thoát xem trước' : 'Xem trước'}</button>
+          <button className={btnGhost} disabled={!dirty} onClick={() => { const no = saveDraft(); notify(`Đã lưu nháp ${pg.label} v${no}`, 'teal'); }}>Lưu nháp</button>
+          <button className={btnPrimary} onClick={() => { if (dirty || !draft) saveDraft(); onClose(true); }}><Rocket className="h-4 w-4" aria-hidden />Phát hành</button>
+        </div>
+      </header>
+      {biz && (
+        <div className="flex h-12 shrink-0 items-center gap-5 overflow-x-auto border-b border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-4">
+          {preview && <div className="flex items-center gap-2"><span className="whitespace-nowrap text-[12.5px] text-[rgb(var(--muted))]">Xem với vai trò</span><div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Vai trò xem trước">{L_ROLES.map((r) => <button key={r} role="radio" aria-checked={role === r} className={cn('whitespace-nowrap rounded-md px-2.5 py-1 text-[12.5px]', role === r ? 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))]')} onClick={() => setRole(r)}>{ROLE_LABEL[r].split(' ')[0] === 'Nhân' ? 'Sales' : ROLE_LABEL[r].replace(' BOD', '')}</button>)}</div></div>}
+          <div className="flex items-center gap-2"><span className="whitespace-nowrap text-[12.5px] text-[rgb(var(--muted))]">Đơn mẫu</span><div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Trạng thái đơn mẫu">{(Object.keys(L_STAGE) as LStage[]).map((s) => <button key={s} role="radio" aria-checked={stage === s} className={cn('whitespace-nowrap rounded-md px-2.5 py-1 text-[12.5px]', stage === s ? 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))]')} onClick={() => setStage(s)}>{L_STAGE[s]}</button>)}</div></div>
+          <span className="ml-auto whitespace-nowrap text-[12px] text-[rgb(var(--muted))]">{preview ? 'Xem trước theo vai trò và trạng thái đơn' : 'Đơn mẫu chỉ để xem cách khối hiện theo trạng thái'}</span>
+        </div>
+      )}
+      <div className={cn('grid min-h-0 flex-1', preview ? 'grid-cols-[1fr_380px]' : 'grid-cols-[260px_1fr_340px]')}>
+        {!preview && (
+          <aside className="overflow-y-auto border-r border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4" aria-label="Thư viện khối">
+            <div className="mb-3 flex items-center"><h3 className="font-medium">Thư viện khối</h3><span className="ml-auto text-[12px] text-[rgb(var(--muted))]">{biz ? 'Trang đơn hàng' : `${libTypes.length} sẵn sàng`}</span></div>
+            {([
+              ...(biz ? [['Khối lõi · luôn có trên trang', libTypes.filter((t) => t.core)], ['Khối thêm · kéo vào lưới', libTypes.filter((t) => !t.core && t.type.startsWith('K-Order-'))]] : [['Kéo vào lưới hoặc bấm để thêm', libTypes.filter((t) => t.data)]]),
+              ['Khối chung', libTypes.filter((t) => t.type === 'K-Text' || t.type === 'K-Icons')],
+            ] as [string, LTypeDef[]][]).map(([g, ts]) => (
+              <div key={g} className="mb-2">
+                <p className="mb-2 flex items-center gap-1.5 text-[12px] text-[rgb(var(--muted))]">{g.startsWith('Khối lõi') && <Lock className="h-3 w-3" aria-hidden />}{g}</p>
+                {ts.map((t) => { const I = libIcon(t.type); const on = blocks.some((x) => x.type === t.type); const uniq = t.type.startsWith('K-Order-'); return (
+                  <button key={t.type} draggable={!(uniq && on)} onDragStart={(e) => { lDrag.type = t.type; e.dataTransfer.setData('text/plain', t.type); e.dataTransfer.effectAllowed = 'copy'; }} onDragEnd={() => { lDrag.type = null; }} onClick={() => add(t.type)}
+                    className={cn('mb-2 flex w-full items-center gap-3 rounded-lg border border-[rgb(var(--line))] px-2.5 py-2 text-left hover:border-[rgb(var(--ink)/0.25)]', t.core && 'bg-[rgb(var(--ink)/0.03)]')} title={t.desc}>
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[rgb(var(--ink)/0.05)] text-[rgb(var(--fg2))]"><I className="h-4 w-4" aria-hidden /></span>
+                    <span className="min-w-0"><span className="block text-[13px] font-medium">{t.label}</span><span className="block truncate text-[11.5px] text-[rgb(var(--muted))]">{t.type}{uniq ? (on ? ' · trên trang' : '') : ` · span ${t.def.w}`}</span></span>
+                    {t.core ? <Lock className="ml-auto h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-label="Khối lõi" /> : uniq && on ? <CheckIcon className="ml-auto h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-label="Đã có trên trang" /> : <GripVertical className="ml-auto h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />}
+                  </button>
+                ); })}
+              </div>
+            ))}
+            {biz && <p className="mb-2 flex gap-2 rounded-lg bg-[rgb(var(--ink)/0.04)] px-3 py-2 text-[12px] text-[rgb(var(--fg2))]"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />Khung Quy trình hủy và các nút theo trạng thái đơn do luồng nghiệp vụ điều khiển, không kéo thả</p>}
+            <button className="mt-2 flex w-full items-center gap-1.5 border-t border-[rgb(var(--line))] pt-3 text-[13px] text-[rgb(var(--fg2))]" onClick={() => setLater(!later)} aria-expanded={later}><ChevronRight className={cn('h-4 w-4 transition-transform', later && 'rotate-90')} aria-hidden />Bản sau<span className="ml-auto text-[12px] text-[rgb(var(--muted))]">{L_LATER.length} khối</span></button>
+            {later && <ul className="mt-2 space-y-1 text-[12.5px] text-[rgb(var(--muted))]">{L_LATER.map((x) => <li key={x} className="rounded border border-dashed border-[rgb(var(--line))] px-2 py-1">{x}</li>)}</ul>}
+          </aside>
+        )}
+        <main className="min-w-0 overflow-y-auto p-5">
+          {preview ? (
+            <div className="mx-auto" style={{ maxWidth: frameW ?? 1400 }}>
+              <p className="mb-3 text-center text-[12px] text-[rgb(var(--muted))]">{dev === 'sm' ? 'Điện thoại · 390 px · khối theo độ rộng 1/1, 1/2, 1/3, 1/4' : dev === 'md' ? 'Máy tính bảng · 768 px · 6 cột' : 'Máy tính · 12 cột'}</p>
+              <div className={cn(dev === 'sm' && 'overflow-hidden rounded-[36px] border-[10px] border-[rgb(var(--fg))] bg-[rgb(var(--bg))] p-3 shadow-2xl', dev === 'md' && 'rounded-2xl border-[8px] border-[rgb(var(--fg)/0.85)] bg-[rgb(var(--bg))] p-4')}>
+                {biz ? (
+                  <div className={cn(dev !== 'lg' && 'text-[13px]')}>
+                    <div className="mb-3 flex flex-wrap items-center gap-2"><span className="text-[12.5px] text-[rgb(var(--muted))]">Quản lý đơn hàng ›</span><span className="font-medium">DH201126-02</span><Chip tone={stage === 'DONE' ? 'teal' : stage === 'CANCEL' ? 'muted' : 'orange'}>{L_STAGE[stage]}</Chip>
+                      <span className="ml-auto flex gap-1.5">{stage === 'APPROVAL' && <span className={cn(btnPrimary, 'pointer-events-none')}>Duyệt đơn</span>}{stage === 'ISSUE' && role === 'SALES_REP' && <span className={cn(btnPrimary, 'pointer-events-none')}>Yêu cầu xuất kho</span>}{(stage === 'ISSUE' || stage === 'PAY') && <span className={cn(btnGhost, 'pointer-events-none')}>{lRoleProfit(role) && role !== 'SALES_REP' ? 'Lập phiếu thu' : 'Báo đã nhận tiền'}</span>}</span></div>
+                    <LBusinessView blocks={blocks} narrow={dev !== 'lg'} dev={dev} node={(x) => (!lSaleSampleShows(x, stage, role) ? null : x.type === 'K-Icons' ? lSaleSample({ b: x, stage, cf: cfAll }) : (
+                      <section className={cn('glass-card rounded-xl px-4 py-3', x.type === 'K-Text' && lToneCls(x.config))}>{!(x.type === 'K-Text' && x.config.hideTitle) && <h3 className="mb-2 text-[14px] font-medium">{x.type === 'K-Order-Flow' && stage === 'CANCEL' ? 'Quy trình hủy' : x.type === 'K-Order-Info' && stage === 'CANCEL' ? 'Hủy đơn' : x.config.title}</h3>}{lSaleSample({ b: x, stage, cf: cfAll, narrow: dev === 'sm' })}</section>
+                    ))} />
+                  </div>
+                ) : <LayoutView blocks={blocks} rowsOf={rowsAs(role)} device={dev} role={role} />}
+              </div>
+              {hiddenFor(role).length > 0 && <p className="mt-3 text-center text-[12px] text-[rgb(var(--muted))]">Đang xem như {ROLE_LABEL[role]}: {hiddenFor(role).length} khối không có quyền đã tự ẩn</p>}
+            </div>
+          ) : (
+            <>
+              <p className="mb-3 flex items-center gap-1.5 text-[12.5px] text-[rgb(var(--muted))]"><Info className="h-3.5 w-3.5" aria-hidden />{biz ? `Trang nghiệp vụ dùng chung cho mọi vai trò. Đơn mẫu ở trạng thái ${L_STAGE[stage]}; chiều cao thật theo nội dung` : 'Kéo khối bằng tay nắm, kéo góc phải dưới để đổi độ rộng 1–12 cột. Đang hiển thị dữ liệu mẫu'}<span className="ml-auto">Lưới 12 cột · {blocks.length} khối{biz ? ` · ${blocks.filter((x) => lIsCore(x.type)).length} lõi` : ''}</span></p>
+              <LGridEditor blocks={blocks} commit={commit} sel={sel} setSel={setSel} page={page} stage={stage} cf={cfAll} />
+            </>
+          )}
+        </main>
+        <aside className="overflow-y-auto border-l border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4" aria-label={preview ? 'Kiểm tra trước khi phát hành' : 'Cài đặt khối'}>
+          {preview ? (
+            <div className="space-y-4">
+              <h3 className="flex items-center gap-2 font-medium"><CheckCircle2 className="h-4 w-4" aria-hidden />Kiểm tra trước khi phát hành</h3>
+              <div className="space-y-2">{checks.map((x, i) => <p key={i} className="flex gap-2 text-[13px]"><span className={cn('mt-0.5 shrink-0', x.tone === 'ok' ? 'text-[rgb(var(--success-fg))]' : x.tone === 'warn' ? 'text-[rgb(var(--accent))]' : 'text-[rgb(var(--muted))]')}>{x.tone === 'ok' ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : x.tone === 'warn' ? <AlertTriangle className="h-4 w-4" aria-hidden /> : <Info className="h-4 w-4" aria-hidden />}</span>{x.t}</p>)}</div>
+              <div className="border-t border-[rgb(var(--line))] pt-3">
+                <div className="mb-2 flex items-center"><p className="text-[13px] font-medium">Khối trên từng thiết bị</p><span className="ml-auto text-[12px] text-[rgb(var(--muted))]">kéo đổi thứ tự trên điện thoại</span></div>
+                {sm.map((x, i) => { const hid = biz ? !lSaleSampleShows(x, stage, role) : (lHasData(x.type) && !lRoleSees(role, x.config.ds)) || !lCondOk(x.config, null, role); return (
+                  <div key={x.id} draggable onDragStart={() => setDragSm(x.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => { if (dragSm) reorder(dragSm, x.id); setDragSm(null); }}
+                    className={cn('mb-1.5 flex items-center gap-2 rounded-lg border border-[rgb(var(--line))] px-2 py-1.5', hid && 'opacity-50')}>
+                    <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-[rgb(var(--muted))]" aria-hidden />
+                    <div className="min-w-0 flex-1"><p className="truncate text-[13px]">{i + 1}. {x.config.title}</p><p className="text-[11.5px] text-[rgb(var(--muted))]">{({ 12: 'Cả hàng', 6: '1/2', 4: '1/3', 3: '1/4' } as Record<number, string>)[x.pos.sm.w || 12]}{hid ? ` · ẩn với ${ROLE_LABEL[role]}` : ''}</p></div>
+                    {lIsCore(x.type) && <Lock className="h-3.5 w-3.5 shrink-0 text-[rgb(var(--muted))]" aria-label="Khối lõi" />}
+                    {devs.map(([k, I, l]) => <button key={k} disabled={lIsCore(x.type)} aria-pressed={x.show[k]} aria-label={`${x.config.title}: ${l}`} title={l} className={cn('grid h-7 w-7 place-items-center rounded-md border', x.show[k] ? 'border-[rgb(var(--fg))] text-[rgb(var(--fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))] opacity-60')} onClick={() => commit(blocks.map((y) => (y.id === x.id ? { ...y, show: { ...y.show, [k]: !y.show[k] } } : y)))}><I className="h-3.5 w-3.5" aria-hidden /></button>)}
+                  </div>
+                ); })}
+              </div>
+            </div>
+          ) : b ? <LBlockSettings b={b} onCfg={setCfg} onBlock={setB} onPos={setPos} page={page} cf={cfAll} /> : (
+            <div className="space-y-2 text-[13px] text-[rgb(var(--fg2))]"><h3 className="font-medium text-[rgb(var(--fg))]">Cài đặt khối</h3><p>Bấm vào một khối để đổi tiêu đề, nguồn dữ liệu, cách hiển thị trên từng thiết bị.</p><p className="text-[rgb(var(--muted))]">{blocks.length} khối · {blocks.filter((x) => x.show.sm).length} khối hiện trên điện thoại</p></div>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

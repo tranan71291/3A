@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, ArrowLeftRight, AtSign, Banknote, Bell, BookUser, Boxes, Briefcase, Building2, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Coins, Columns3, Copy, Database, Download, Factory, FileCheck2, FileText, FolderOpen, HardHat, House, Inbox, LayoutDashboard, Lightbulb, Megaphone, MessageCircle, MessagesSquare, Newspaper, Package, PackageMinus, PackagePlus, Plane, Receipt as ReceiptIcon, RefreshCw, Rows3, Ruler, Settings, ShieldCheck, Ship, ShoppingBag, SlidersHorizontal, Sparkles, SquarePlay, Target, ThumbsUp, Truck, Users, Vote, Wallet, Warehouse, XCircle, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowLeftRight, AtSign, Banknote, Bell, BookUser, Boxes, Briefcase, Building2, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Clock, Coins, Columns3, Copy, Database, Download, Factory, FileCheck2, FileText, FolderOpen, HardHat, House, Inbox, LayoutDashboard, LayoutTemplate, Lightbulb, Megaphone, MessageCircle, MessagesSquare, MoreVertical, Newspaper, Package, PackageMinus, PackagePlus, Plane, Printer, Receipt as ReceiptIcon, RefreshCw, Rows3, Ruler, Settings, ShieldCheck, Ship, ShoppingBag, SlidersHorizontal, Sparkles, SquarePlay, Target, ThumbsUp, Truck, Upload, Users, Vote, Wallet, Warehouse, XCircle, Zap } from 'lucide-react';
 import { Component, Fragment, createContext, memo, type ReactNode, useContext, useDeferredValue, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { type JSONContent } from '@tiptap/core';
@@ -8,12 +8,13 @@ import { PluginKey } from '@tiptap/pm/state';
 import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
-import { saleReturned, saleTotals } from './getfly';
-import type { Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, Lead, LeadStatus, LeaveKind, LostReason, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import { acctList, saleReturned, saleTotals } from './getfly';
+import type { AcctConfig, AcctEvent, AcctStd, Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, CfDef, CfType, CfVal, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LDataset, LDevice, Lead, LeadStatus, LeaveKind, LField, LIconAct, LostReason, LPage, LPeriod, LPos, LRow, LStage, LTypeDef, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
 import { useContentExport, vGroups, vPicked, vWords, wsDocHtml, wsDocToSections, wsInline } from '../modules/marketing/content-workspace';
+import { lDefaultCfg } from '../modules/messages/messenger';
 
 // =====================================================================
 //  DESIGN TOKENS & HELPERS
@@ -943,6 +944,95 @@ export const isCashReversal = (e: CashEntry) => !!e.reverses || (e.source === 'S
 
 /** Tổng đã đảo của một phiếu quỹ */
 export const cashReversed = (entries: CashEntry[], e: CashEntry) => entries.filter((r) => r.id !== e.id && (r.reverses === e.id || (!r.reverses && e.source === 'SALE' && !!e.sourceId && r.source === 'SALE' && r.sourceId === `${e.sourceId}-void`))).reduce((s, r) => s + r.amount, 0);
+
+// =====================================================================
+//  KẾ TOÁN (v51.3): bộ tài khoản mẫu, quy tắc định khoản, sổ nhật ký
+//  Danh mục đối chiếu Phụ lục hệ thống tài khoản của TT 99/2025/TT-BTC và TT 133/2016/TT-BTC;
+//  doanh nghiệp thêm tài khoản chi tiết (cấp 2, 3…) dưới tài khoản cha, không sửa tài khoản của thông tư.
+// =====================================================================
+export const COA_TT99: [string, string][] = [
+  ['111', 'Tiền mặt'], ['112', 'Tiền gửi không kỳ hạn'], ['113', 'Tiền đang chuyển'], ['121', 'Chứng khoán kinh doanh'],
+  ['128', 'Đầu tư nắm giữ đến ngày đáo hạn'], ['1281', 'Tiền gửi có kỳ hạn'], ['1282', 'Trái phiếu'], ['1283', 'Cho vay'], ['1288', 'Các khoản đầu tư khác nắm giữ đến ngày đáo hạn'],
+  ['131', 'Phải thu của khách hàng'], ['133', 'Thuế GTGT được khấu trừ'], ['1331', 'Thuế GTGT được khấu trừ của hàng hóa, dịch vụ'], ['1332', 'Thuế GTGT được khấu trừ của TSCĐ'],
+  ['136', 'Phải thu nội bộ'], ['1361', 'Vốn kinh doanh ở đơn vị trực thuộc'], ['1362', 'Phải thu nội bộ về chênh lệch tỷ giá'], ['1363', 'Phải thu nội bộ về chi phí đi vay đủ điều kiện được vốn hoá'], ['1368', 'Phải thu nội bộ khác'],
+  ['138', 'Phải thu khác'], ['1381', 'Tài sản thiếu chờ xử lý'], ['1383', 'Thuế TTĐB của hàng nhập khẩu'], ['1388', 'Phải thu khác'],
+  ['141', 'Tạm ứng'], ['151', 'Hàng mua đang đi đường'], ['152', 'Nguyên liệu, vật liệu'], ['153', 'Công cụ, dụng cụ'], ['154', 'Chi phí sản xuất, kinh doanh dở dang'], ['155', 'Sản phẩm'], ['156', 'Hàng hóa'], ['157', 'Hàng gửi đi bán'], ['158', 'Nguyên liệu, vật tư tại kho bảo thuế'],
+  ['171', 'Giao dịch mua, bán lại trái phiếu chính phủ'], ['211', 'Tài sản cố định hữu hình'], ['212', 'Tài sản cố định thuê tài chính'], ['213', 'Tài sản cố định vô hình'],
+  ['214', 'Hao mòn tài sản cố định'], ['2141', 'Hao mòn TSCĐ hữu hình'], ['2142', 'Hao mòn TSCĐ thuê tài chính'], ['2143', 'Hao mòn TSCĐ vô hình'], ['2147', 'Hao mòn BĐSĐT'],
+  ['215', 'Tài sản sinh học'], ['2151', 'Súc vật nuôi cho sản phẩm định kỳ'], ['2152', 'Súc vật nuôi lấy sản phẩm một lần'], ['2153', 'Cây trồng theo mùa vụ hoặc lấy sản phẩm một lần'],
+  ['217', 'Bất động sản đầu tư'], ['221', 'Đầu tư vào công ty con'], ['222', 'Đầu tư vào công ty liên doanh, liên kết'], ['228', 'Đầu tư khác'], ['2281', 'Đầu tư góp vốn vào đơn vị khác'], ['2288', 'Đầu tư khác'],
+  ['229', 'Dự phòng tổn thất tài sản'], ['2291', 'Dự phòng giảm giá chứng khoán kinh doanh'], ['2292', 'Dự phòng tổn thất đầu tư vào đơn vị khác'], ['2293', 'Dự phòng phải thu khó đòi'], ['2294', 'Dự phòng giảm giá hàng tồn kho'], ['2295', 'Dự phòng tổn thất tài sản sinh học'],
+  ['241', 'Xây dựng cơ bản dở dang'], ['2411', 'Mua sắm TSCĐ'], ['2412', 'Xây dựng cơ bản'], ['2413', 'Sửa chữa, bảo dưỡng định kỳ TSCĐ'], ['2414', 'Nâng cấp, cải tạo TSCĐ'],
+  ['242', 'Chi phí chờ phân bổ'], ['243', 'Tài sản thuế thu nhập hoãn lại'], ['244', 'Ký quỹ, ký cược'],
+  ['331', 'Phải trả cho người bán'], ['332', 'Phải trả cổ tức, lợi nhuận'], ['333', 'Thuế và các khoản phải nộp Nhà nước'], ['3331', 'Thuế giá trị gia tăng phải nộp'], ['33311', 'Thuế GTGT đầu ra'], ['33312', 'Thuế GTGT hàng nhập khẩu'],
+  ['3332', 'Thuế tiêu thụ đặc biệt'], ['3333', 'Thuế xuất, nhập khẩu'], ['3334', 'Thuế thu nhập doanh nghiệp'], ['3335', 'Thuế thu nhập cá nhân'], ['3336', 'Thuế tài nguyên'], ['3337', 'Thuế nhà đất, tiền thuê đất'],
+  ['3338', 'Thuế bảo vệ môi trường và các loại thuế khác'], ['33381', 'Thuế bảo vệ môi trường'], ['33382', 'Các loại thuế khác'], ['3339', 'Phí, lệ phí và các khoản phải nộp khác'],
+  ['334', 'Phải trả người lao động'], ['335', 'Chi phí phải trả'], ['336', 'Phải trả nội bộ'], ['3361', 'Phải trả nội bộ về vốn kinh doanh'], ['3362', 'Phải trả nội bộ về chênh lệch tỷ giá'], ['3363', 'Phải trả nội bộ về chi phí đi vay đủ điều kiện được vốn hóa'], ['3368', 'Phải trả nội bộ khác'],
+  ['337', 'Thanh toán theo tiến độ hợp đồng xây dựng'], ['338', 'Phải trả, phải nộp khác'], ['3381', 'Tài sản thừa chờ giải quyết'], ['3382', 'Kinh phí công đoàn'], ['3383', 'Bảo hiểm xã hội'], ['3384', 'Bảo hiểm y tế'], ['3386', 'Bảo hiểm thất nghiệp'], ['3387', 'Doanh thu chờ phân bổ'], ['3388', 'Phải trả, phải nộp khác'],
+  ['341', 'Vay và nợ thuê tài chính'], ['3411', 'Các khoản đi vay'], ['3412', 'Nợ thuê tài chính'], ['343', 'Trái phiếu phát hành'], ['3431', 'Trái phiếu thường'], ['3432', 'Trái phiếu chuyển đổi'], ['344', 'Nhận ký quỹ, ký cược'], ['347', 'Thuế thu nhập hoãn lại phải trả'],
+  ['352', 'Dự phòng phải trả'], ['3521', 'Dự phòng bảo hành sản phẩm, hàng hóa'], ['3522', 'Dự phòng bảo hành công trình xây dựng'], ['3523', 'Dự phòng tái cơ cấu doanh nghiệp'], ['3525', 'Dự phòng phải trả khác'],
+  ['353', 'Quỹ khen thưởng, phúc lợi'], ['3531', 'Quỹ khen thưởng'], ['3532', 'Quỹ phúc lợi'], ['3533', 'Quỹ phúc lợi đã hình thành TSCĐ'], ['3534', 'Quỹ thưởng ban quản lý điều hành công ty'],
+  ['356', 'Quỹ phát triển khoa học và công nghệ'], ['3561', 'Quỹ phát triển khoa học và công nghệ'], ['3562', 'Quỹ phát triển khoa học và công nghệ đã hình thành tài sản'], ['357', 'Quỹ bình ổn giá'],
+  ['411', 'Vốn đầu tư của chủ sở hữu'], ['4111', 'Vốn góp của chủ sở hữu'], ['4112', 'Thặng dư vốn'], ['4113', 'Quyền chọn chuyển đổi trái phiếu'], ['4118', 'Vốn khác'],
+  ['412', 'Chênh lệch đánh giá lại tài sản'], ['413', 'Chênh lệch tỷ giá hối đoái'], ['414', 'Quỹ đầu tư phát triển'], ['418', 'Các quỹ khác thuộc vốn chủ sở hữu'], ['419', 'Cổ phiếu mua lại của chính mình'],
+  ['421', 'Lợi nhuận sau thuế chưa phân phối'], ['4211', 'Lợi nhuận sau thuế chưa phân phối lũy kế đến cuối năm trước'], ['4212', 'Lợi nhuận sau thuế chưa phân phối năm nay'],
+  ['511', 'Doanh thu bán hàng và cung cấp dịch vụ'], ['515', 'Doanh thu hoạt động tài chính'], ['521', 'Các khoản giảm trừ doanh thu'],
+  ['621', 'Chi phí nguyên liệu, vật liệu trực tiếp'], ['622', 'Chi phí nhân công trực tiếp'], ['623', 'Chi phí sử dụng máy thi công'], ['627', 'Chi phí sản xuất chung'], ['632', 'Giá vốn hàng bán'], ['635', 'Chi phí tài chính'],
+  ['641', 'Chi phí bán hàng'], ['6411', 'Chi phí nhân viên'], ['6412', 'Chi phí vật liệu, bao bì'], ['6413', 'Chi phí dụng cụ, đồ dùng'], ['6414', 'Chi phí khấu hao TSCĐ'], ['6415', 'Thuế, phí, lệ phí'], ['6417', 'Chi phí dịch vụ mua ngoài'], ['6418', 'Chi phí bằng tiền khác'],
+  ['642', 'Chi phí quản lý doanh nghiệp'], ['6421', 'Chi phí nhân viên quản lý'], ['6422', 'Chi phí vật liệu quản lý'], ['6423', 'Chi phí đồ dùng văn phòng'], ['6424', 'Chi phí khấu hao TSCĐ'], ['6425', 'Thuế, phí và lệ phí'], ['6426', 'Chi phí dự phòng'], ['6427', 'Chi phí dịch vụ mua ngoài'], ['6428', 'Chi phí bằng tiền khác'],
+  ['711', 'Thu nhập khác'], ['811', 'Chi phí khác'], ['821', 'Chi phí thuế thu nhập doanh nghiệp'], ['8211', 'Chi phí thuế TNDN hiện hành'], ['8212', 'Chi phí thuế TNDN hoãn lại'], ['911', 'Xác định kết quả kinh doanh'],
+];
+
+export const COA_TT133: [string, string][] = [
+  ['111', 'Tiền mặt'], ['1111', 'Tiền Việt Nam'], ['1112', 'Ngoại tệ'], ['112', 'Tiền gửi Ngân hàng'], ['1121', 'Tiền Việt Nam'], ['1122', 'Ngoại tệ'], ['121', 'Chứng khoán kinh doanh'],
+  ['128', 'Đầu tư nắm giữ đến ngày đáo hạn'], ['1281', 'Tiền gửi có kỳ hạn'], ['1288', 'Các khoản đầu tư khác nắm giữ đến ngày đáo hạn'],
+  ['131', 'Phải thu của khách hàng'], ['133', 'Thuế GTGT được khấu trừ'], ['1331', 'Thuế GTGT được khấu trừ của hàng hóa, dịch vụ'], ['1332', 'Thuế GTGT được khấu trừ của TSCĐ'],
+  ['136', 'Phải thu nội bộ'], ['1361', 'Vốn kinh doanh ở đơn vị trực thuộc'], ['1368', 'Phải thu nội bộ khác'], ['138', 'Phải thu khác'], ['1381', 'Tài sản thiếu chờ xử lý'], ['1386', 'Cầm cố, thế chấp, ký quỹ, ký cược'], ['1388', 'Phải thu khác'],
+  ['141', 'Tạm ứng'], ['151', 'Hàng mua đang đi đường'], ['152', 'Nguyên liệu, vật liệu'], ['153', 'Công cụ, dụng cụ'], ['154', 'Chi phí sản xuất, kinh doanh dở dang'], ['155', 'Thành phẩm'], ['156', 'Hàng hóa'], ['157', 'Hàng gửi đi bán'],
+  ['211', 'Tài sản cố định'], ['2111', 'TSCĐ hữu hình'], ['2112', 'TSCĐ thuê tài chính'], ['2113', 'TSCĐ vô hình'], ['214', 'Hao mòn tài sản cố định'], ['2141', 'Hao mòn TSCĐ hữu hình'], ['2142', 'Hao mòn TSCĐ thuê tài chính'], ['2143', 'Hao mòn TSCĐ vô hình'], ['2147', 'Hao mòn bất động sản đầu tư'],
+  ['217', 'Bất động sản đầu tư'], ['228', 'Đầu tư góp vốn vào đơn vị khác'], ['2281', 'Đầu tư vào công ty liên doanh, liên kết'], ['2288', 'Đầu tư khác'],
+  ['229', 'Dự phòng tổn thất tài sản'], ['2291', 'Dự phòng giảm giá chứng khoán kinh doanh'], ['2292', 'Dự phòng tổn thất đầu tư vào đơn vị khác'], ['2293', 'Dự phòng phải thu khó đòi'], ['2294', 'Dự phòng giảm giá hàng tồn kho'],
+  ['241', 'Xây dựng cơ bản dở dang'], ['2411', 'Mua sắm TSCĐ'], ['2412', 'Xây dựng cơ bản'], ['2413', 'Sửa chữa lớn TSCĐ'], ['242', 'Chi phí trả trước'],
+  ['331', 'Phải trả cho người bán'], ['333', 'Thuế và các khoản phải nộp Nhà nước'], ['3331', 'Thuế giá trị gia tăng phải nộp'], ['33311', 'Thuế GTGT đầu ra'], ['33312', 'Thuế GTGT hàng nhập khẩu'],
+  ['3332', 'Thuế tiêu thụ đặc biệt'], ['3333', 'Thuế xuất, nhập khẩu'], ['3334', 'Thuế thu nhập doanh nghiệp'], ['3335', 'Thuế thu nhập cá nhân'], ['3336', 'Thuế tài nguyên'], ['3337', 'Thuế nhà đất, tiền thuê đất'],
+  ['3338', 'Thuế bảo vệ môi trường và các loại thuế khác'], ['33381', 'Thuế bảo vệ môi trường'], ['33382', 'Các loại thuế khác'], ['3339', 'Phí, lệ phí và các khoản phải nộp khác'],
+  ['334', 'Phải trả người lao động'], ['335', 'Chi phí phải trả'], ['336', 'Phải trả nội bộ'], ['3361', 'Phải trả nội bộ về vốn kinh doanh'], ['3368', 'Phải trả nội bộ khác'],
+  ['338', 'Phải trả, phải nộp khác'], ['3381', 'Tài sản thừa chờ giải quyết'], ['3382', 'Kinh phí công đoàn'], ['3383', 'Bảo hiểm xã hội'], ['3384', 'Bảo hiểm y tế'], ['3385', 'Bảo hiểm thất nghiệp'], ['3386', 'Nhận ký quỹ, ký cược'], ['3387', 'Doanh thu chưa thực hiện'], ['3388', 'Phải trả, phải nộp khác'],
+  ['341', 'Vay và nợ thuê tài chính'], ['3411', 'Các khoản đi vay'], ['3412', 'Nợ thuê tài chính'],
+  ['352', 'Dự phòng phải trả'], ['3521', 'Dự phòng bảo hành sản phẩm hàng hóa'], ['3522', 'Dự phòng bảo hành công trình xây dựng'], ['3524', 'Dự phòng phải trả khác'],
+  ['353', 'Quỹ khen thưởng phúc lợi'], ['3531', 'Quỹ khen thưởng'], ['3532', 'Quỹ phúc lợi'], ['3533', 'Quỹ phúc lợi đã hình thành TSCĐ'], ['3534', 'Quỹ thưởng ban quản lý điều hành công ty'],
+  ['356', 'Quỹ phát triển khoa học và công nghệ'], ['3561', 'Quỹ phát triển khoa học và công nghệ'], ['3562', 'Quỹ phát triển khoa học và công nghệ đã hình thành TSCĐ'],
+  ['411', 'Vốn đầu tư của chủ sở hữu'], ['4111', 'Vốn góp của chủ sở hữu'], ['4112', 'Thặng dư vốn cổ phần'], ['4118', 'Vốn khác'], ['413', 'Chênh lệch tỷ giá hối đoái'], ['418', 'Các quỹ thuộc vốn chủ sở hữu'], ['419', 'Cổ phiếu quỹ'],
+  ['421', 'Lợi nhuận sau thuế chưa phân phối'], ['4211', 'Lợi nhuận sau thuế chưa phân phối năm trước'], ['4212', 'Lợi nhuận sau thuế chưa phân phối năm nay'],
+  ['511', 'Doanh thu bán hàng và cung cấp dịch vụ'], ['5111', 'Doanh thu bán hàng hóa'], ['5112', 'Doanh thu bán thành phẩm'], ['5113', 'Doanh thu cung cấp dịch vụ'], ['5118', 'Doanh thu khác'], ['515', 'Doanh thu hoạt động tài chính'],
+  ['611', 'Mua hàng'], ['631', 'Giá thành sản xuất'], ['632', 'Giá vốn hàng bán'], ['635', 'Chi phí tài chính'], ['642', 'Chi phí quản lý kinh doanh'], ['6421', 'Chi phí bán hàng'], ['6422', 'Chi phí quản lý doanh nghiệp'],
+  ['711', 'Thu nhập khác'], ['811', 'Chi phí khác'], ['821', 'Chi phí thuế thu nhập doanh nghiệp'], ['911', 'Xác định kết quả kinh doanh'],
+];
+
+export const ACCT_STD: Record<AcctStd, { label: string; short: string; coa: [string, string][] }> = {
+  TT99: { label: 'Thông tư 99/2025/TT-BTC', short: 'TT 99', coa: COA_TT99 },
+  TT133: { label: 'Thông tư 133/2016/TT-BTC', short: 'TT 133', coa: COA_TT133 },
+};
+
+export const ACCT_EVENTS: { id: AcctEvent; label: string; hint: string }[] = [
+  { id: 'IN_SALE', label: 'Thu tiền khách hàng', hint: 'Phiếu thu theo đơn bán / đơn xưởng' },
+  { id: 'IN_ADV_BACK', label: 'Thu hoàn ứng', hint: 'Nhân viên nộp lại tiền tạm ứng' },
+  { id: 'IN_OTHER', label: 'Thu khác', hint: 'Tài khoản Có theo khoản mục' },
+  { id: 'OUT_COST', label: 'Chi phí', hint: 'Tài khoản Nợ theo khoản mục; có hóa đơn thì tách thuế GTGT đầu vào' },
+  { id: 'OUT_VENDOR', label: 'Trả nhà cung cấp', hint: 'Thanh toán công nợ người bán' },
+  { id: 'OUT_ADVANCE', label: 'Tạm ứng nhân viên', hint: '' },
+  { id: 'OUT_REFUND', label: 'Hoàn tiền khách', hint: 'Trả lại tiền khách trả thừa' },
+  { id: 'TRANSFER', label: 'Chuyển quỹ', hint: 'Giữa tiền mặt và tiền gửi' },
+  { id: 'SALE_REVENUE', label: 'Doanh thu khi xuất kho bán', hint: 'Phần thuế ghi Có TK thuế GTGT đầu ra' },
+  { id: 'SALE_COGS', label: 'Giá vốn khi xuất kho bán', hint: 'Giá vốn tạm tính theo giá vốn hiện tại của mã hàng' },
+  { id: 'SALE_RETURN', label: 'Hàng bán bị trả lại', hint: 'Phần thuế ghi Nợ TK thuế GTGT đầu ra' },
+  { id: 'SALE_RETURN_STOCK', label: 'Nhập lại kho hàng trả', hint: '' },
+];
+
+export const acctName = (c: AcctConfig, code: string) => acctList(c).find((a) => a.code === code)?.name ?? '';
+
+/** Thuế GTGT trong số tiền phiếu chi có hóa đơn */
+export const cashVat = (e: Pick<CashEntry, 'amount' | 'invNo' | 'vatRate'>) => (e.invNo && e.vatRate ? Math.round((e.amount * e.vatRate) / (100 + e.vatRate)) : 0);
 
 export const SALE_STAGE: Record<SaleStage, { label: string; tone: Tone }> = {
   APPROVAL: { label: 'Chờ duyệt', tone: 'orange' }, REJECTED: { label: 'Không duyệt', tone: 'red' }, READY: { label: 'Đã duyệt', tone: 'blue' }, WAIT_WH: { label: 'Chờ xuất kho', tone: 'orange' },
@@ -2376,6 +2466,193 @@ export const downloadText = (name: string, text: string, type = 'text/plain') =>
 
 export const vcard = (c: ContactItem) => ['BEGIN:VCARD', 'VERSION:3.0', `FN:${c.name}`, `ORG:${c.org}`, c.title && `TITLE:${c.title}`, c.phone && `TEL;TYPE=CELL:${c.phone.replace(/\s/g, '')}`, c.email && `EMAIL:${c.email}`, 'END:VCARD'].filter(Boolean).join('\r\n');
 
+/** v37: Tổng quan điều hành 4 tab (Tổng Quan · Kinh doanh · Marketing · Tài chính), thêm tab Xưởng khi có mô hình xưởng */
+// =====================================================================
+//  v52 PAGE BUILDER — dữ liệu khối, tính số, hiển thị theo lưới 12 cột
+// =====================================================================
+export const L_PAGES: { id: LPage; label: string; kind: 'SUMMARY' | 'BUSINESS'; open: boolean; plan: string }[] = [
+  { id: 'home', label: 'Tổng quan', kind: 'SUMMARY', open: true, plan: '' },
+  { id: 'desk', label: 'Bàn làm việc', kind: 'SUMMARY', open: false, plan: 'Bản sau' },
+  { id: 'reports', label: 'Báo cáo', kind: 'SUMMARY', open: false, plan: 'Bản sau' },
+  { id: 'sale-detail', label: 'Chi tiết đơn hàng', kind: 'BUSINESS', open: true, plan: '' },
+  { id: 'customer', label: 'Khách hàng', kind: 'BUSINESS', open: false, plan: 'Bản sau' },
+  { id: 'claim', label: 'Hồ sơ MDF / Claim', kind: 'BUSINESS', open: false, plan: 'Bản sau' },
+];
+
+export const L_TYPES: LTypeDef[] = [
+  { type: 'K-Stat-Simple', label: 'Chỉ số đơn', def: { x: 0, y: 0, w: 3, h: 2 }, desc: 'Số lớn, so với kỳ trước', pages: ['home'], data: true },
+  { type: 'K-Chart-Line', label: 'Biểu đồ đường', def: { x: 0, y: 0, w: 8, h: 4 }, desc: 'Xu hướng theo tháng', pages: ['home'], data: true },
+  { type: 'K-Table-Compact', label: 'Bảng thu gọn', def: { x: 0, y: 0, w: 4, h: 4 }, desc: 'Tối đa 5 cột, có STT, điện thoại dạng thẻ', pages: ['home'], data: true },
+  { type: 'K-Text', label: 'Khối text', def: { x: 0, y: 0, w: 6, h: 2 }, desc: 'Tiêu đề, đoạn văn, danh sách, liên kết', pages: ['home', 'sale-detail'] },
+  { type: 'K-Icons', label: 'Nút biểu tượng', def: { x: 0, y: 0, w: 12, h: 1 }, desc: 'Lùi, tiến, in, tải xuống, tải lên, xổ xuống', pages: ['home', 'sale-detail'] },
+  { type: 'K-Order-Info', label: 'Thông tin đơn hàng', def: { x: 0, y: 0, w: 8, h: 3 }, desc: 'Khách hàng, mã đơn, kho, trường tùy chỉnh', pages: ['sale-detail'], core: true },
+  { type: 'K-Order-Lines', label: 'Hàng hóa & chứng từ', def: { x: 0, y: 0, w: 8, h: 5 }, desc: 'Bảng hàng hóa, chứng từ liên quan', pages: ['sale-detail'], core: true },
+  { type: 'K-Order-Flow', label: 'Quy trình xử lý', def: { x: 8, y: 0, w: 4, h: 3 }, desc: 'Các bước duyệt, xuất kho, thu tiền; khi hủy là Quy trình hủy', pages: ['sale-detail'], core: true },
+  { type: 'K-Order-Pay', label: 'Thanh toán', def: { x: 8, y: 0, w: 4, h: 4 }, desc: 'Tiền hàng, thuế, đã thu, còn lại, yêu cầu hóa đơn', pages: ['sale-detail'], core: true },
+  { type: 'K-Order-Profit', label: 'Lãi trên đơn', def: { x: 8, y: 0, w: 4, h: 3 }, desc: 'Chỉ Giám đốc, quản lý bán hàng, kế toán thấy', pages: ['sale-detail'] },
+  { type: 'K-Order-Debt', label: 'Công nợ khách', def: { x: 8, y: 0, w: 4, h: 2 }, desc: 'Đang nợ, hạn mức, quá hạn', pages: ['sale-detail'] },
+  { type: 'K-Order-Log', label: 'Trao đổi & nhật ký', def: { x: 0, y: 0, w: 8, h: 4 }, desc: 'Trao đổi trên đơn và lịch sử hệ thống', pages: ['sale-detail'] },
+  { type: 'K-Order-Ship', label: 'Giao hàng & ghi chú', def: { x: 8, y: 0, w: 4, h: 2 }, desc: 'Người nhận, ngày giao, địa chỉ, ghi chú', pages: ['sale-detail'] },
+  { type: 'K-Order-Files', label: 'Tệp đính kèm', def: { x: 8, y: 0, w: 4, h: 2 }, desc: 'Tệp tải lên cho đơn (ảnh, PDF)', pages: ['sale-detail'] },
+];
+
+export const lType = (t: LBlockType) => L_TYPES.find((x) => x.type === t) ?? L_TYPES[0];
+
+export const lIsCore = (t: LBlockType) => !!lType(t).core;
+
+export const lHasData = (t: LBlockType) => !!lType(t).data;
+
+/** Khối của thư viện chưa làm (hiện ở mục Bản sau) */
+export const L_LATER = ['Tìm kiếm', 'Thời gian', 'Trạng thái', 'Nhân viên phụ trách', 'Lọc nâng cao', 'Tiến độ mục tiêu', 'So sánh kỳ', 'Phễu chuyển đổi', 'Biểu đồ cột', 'Biểu đồ phễu', 'Biểu đồ tròn', 'Biểu đồ nhiệt', 'Bảng đầy đủ', 'Bảng mở rộng', 'Bảng tổng hợp', 'Công việc', 'Dòng thời gian', 'Bảng tin', 'Thông báo', 'Danh sách thẻ', 'Tạo nhanh', 'Biểu mẫu chi tiết', 'Tải tệp', 'Nhập liệu thông minh', 'Liên hệ nhanh', 'Phê duyệt nhanh', 'Kéo thả trạng thái'];
+
+export const L_DS: Record<LDataset, { label: string; module: Module; perm?: Action; fields: LField[]; dims: { id: string; label: string }[]; filters: { id: string; label: string }[] }> = {
+  sales: { label: 'Đơn bán', module: 'sales', fields: [{ id: 'count', label: 'Số đơn', unit: 'count' }, { id: 'revenue', label: 'Doanh số (trước VAT)', unit: 'money' }, { id: 'grand', label: 'Tổng đơn (gồm VAT)', unit: 'money' }, { id: 'paid', label: 'Doanh thu đã thu', unit: 'money' }, { id: 'owed', label: 'Còn phải thu', unit: 'money' }],
+    dims: [{ id: 'code', label: 'Mã đơn' }, { id: 'customer', label: 'Khách hàng' }, { id: 'by', label: 'Nhân viên' }, { id: 'stage', label: 'Trạng thái' }],
+    filters: [{ id: '', label: 'Tất cả đơn' }, { id: 'approval', label: 'Chờ duyệt' }, { id: 'unpaid', label: 'Còn phải thu' }, { id: 'done', label: 'Hoàn thành' }] },
+  leads: { label: 'Lead', module: 'leads', fields: [{ id: 'count', label: 'Số lead', unit: 'count' }, { id: 'value', label: 'Giá trị ước tính', unit: 'money' }, { id: 'won', label: 'Doanh số chốt', unit: 'money' }],
+    dims: [{ id: 'company', label: 'Công ty' }, { id: 'source', label: 'Nguồn' }, { id: 'status', label: 'Trạng thái' }],
+    filters: [{ id: '', label: 'Tất cả lead' }, { id: 'open', label: 'Đang xử lý' }, { id: 'won', label: 'Đã chốt' }] },
+  customers: { label: 'Khách hàng', module: 'customers', fields: [{ id: 'count', label: 'Số khách hàng', unit: 'count' }],
+    dims: [{ id: 'name', label: 'Khách hàng' }, { id: 'segment', label: 'Phân loại' }], filters: [{ id: '', label: 'Tất cả khách hàng' }] },
+  cash: { label: 'Thu chi', module: 'cashbook', perm: 'cash.manage', fields: [{ id: 'count', label: 'Số phiếu', unit: 'count' }, { id: 'in', label: 'Tiền thu', unit: 'money' }, { id: 'out', label: 'Tiền chi', unit: 'money' }],
+    dims: [{ id: 'code', label: 'Số phiếu' }, { id: 'category', label: 'Khoản mục' }, { id: 'partner', label: 'Đối tượng' }], filters: [{ id: '', label: 'Thu và chi' }, { id: 'in', label: 'Chỉ thu' }, { id: 'out', label: 'Chỉ chi' }] },
+  mdf: { label: 'Chương trình MDF', module: 'claims', fields: [{ id: 'count', label: 'Số chương trình', unit: 'count' }, { id: 'requested', label: 'Kinh phí đề nghị', unit: 'money' }],
+    dims: [{ id: 'title', label: 'Chương trình' }, { id: 'status', label: 'Trạng thái' }], filters: [{ id: '', label: 'Tất cả chương trình' }] },
+};
+
+export const L_PERIOD: Record<LPeriod, string> = { month: 'Tháng này', quarter: 'Quý này', year: 'Năm nay', last30: '30 ngày qua', inherit: 'Theo bộ lọc thời gian chung', all: 'Toàn bộ' };
+
+export const L_ROLES: Role[] = ['BOD', 'DEPT_HEAD', 'SALES_REP', 'MKT_LEAD', 'ACCOUNTANT'];
+
+export const lField = (ds: LDataset, id?: string) => L_DS[ds].fields.find((f) => f.id === id) ?? L_DS[ds].fields[0];
+
+export const lNewBlock = (type: LBlockType, at?: Partial<LPos>, page: LPage = 'home'): LBlock => {
+  const d = lType(type).def;
+  return { id: uid('lb'), type, pos: { lg: { ...d, ...at }, sm: { w: type === 'K-Stat-Simple' ? 6 : 12, order: 0 } }, show: { lg: true, md: true, sm: true }, config: lDefaultCfg(type, page) };
+};
+
+/** Bố cục khởi tạo trang Chi tiết đơn hàng: giống giao diện gốc (cột trái 8, cột phải 4) */
+export const lStarterSale = (): LBlock[] => {
+  const b = (t: LBlockType, x: number, y: number, w: number, h: number) => lNewBlock(t, { x, y, w, h }, 'sale-detail');
+  return lOrderSm([b('K-Order-Info', 0, 0, 8, 3), b('K-Order-Lines', 0, 3, 8, 5), b('K-Order-Log', 0, 8, 8, 4), b('K-Order-Flow', 8, 0, 4, 3), b('K-Order-Pay', 8, 3, 4, 4), b('K-Order-Profit', 8, 7, 4, 3), b('K-Order-Debt', 8, 10, 4, 2)]);
+};
+
+/** Đảm bảo trang nghiệp vụ luôn đủ khối lõi (luôn hiện trên mọi thiết bị) */
+export const lEnsureCore = (page: LPage, bs: LBlock[]): LBlock[] => {
+  if (page !== 'sale-detail') return bs;
+  const miss = L_TYPES.filter((t) => t.core && t.pages.includes(page) && !bs.some((b) => b.type === t.type));
+  const y = Math.max(0, ...bs.map((b) => b.pos.lg.y + b.pos.lg.h));
+  return [...bs.map((b) => (lIsCore(b.type) ? { ...b, show: { lg: true, md: true, sm: true } } : b)), ...miss.map((t, i) => lNewBlock(t.type, { y: y + i * 3 }, page))];
+};
+
+/** Thứ tự trường / cột đang hiện: theo thứ tự đã đặt, trường mới thêm sau, bỏ trường tắt (trường khóa không tắt được) */
+export const lFieldOrder = (all: { id: string; lock?: boolean }[], c?: LBlockCfg): string[] => {
+  const ids = all.map((x) => x.id);
+  const ord = [...(c?.fields ?? []).filter((x) => ids.includes(x)), ...ids.filter((x) => !(c?.fields ?? []).includes(x))];
+  return ord.filter((x) => all.find((y) => y.id === x)?.lock || !(c?.off ?? []).includes(x));
+};
+
+/** Trường gốc của khối Thông tin đơn hàng và cột gốc của bảng Hàng hóa */
+export const SO_INFO_F: { id: string; label: string; lock?: boolean }[] = [{ id: 'customer', label: 'Khách hàng', lock: true }, { id: 'code', label: 'Mã đơn hàng', lock: true }, { id: 'origin', label: 'Nguồn đơn hàng' }, { id: 'by', label: 'Người thực hiện', lock: true }, { id: 'wh', label: 'Kho xuất', lock: true }, { id: 'docRef', label: 'Nguồn chứng từ' }, { id: 'invNo', label: 'Số hóa đơn thuế' }];
+
+export const SO_LINE_F: { id: string; label: string; lock?: boolean }[] = [{ id: 'stt', label: 'STT' }, { id: 'ref', label: 'Mã sản phẩm', lock: true }, { id: 'name', label: 'Tên sản phẩm', lock: true }, { id: 'unit', label: 'ĐVT' }, { id: 'qty', label: 'Số lượng', lock: true }, { id: 'price', label: 'Đơn giá', lock: true }, { id: 'ckPct', label: 'CK%' }, { id: 'ckAmt', label: 'CK (đ)' }, { id: 'vat', label: 'VAT%' }, { id: 'net', label: 'Thành tiền', lock: true }, { id: 'iss', label: 'Đã xuất' }, { id: 'ret', label: 'Trả lại' }, { id: 'rest', label: 'Còn phải xuất' }];
+
+export const L_STAGE: Record<LStage, string> = { APPROVAL: 'Chờ duyệt', ISSUE: 'Chờ xuất kho', PAY: 'Chờ thu tiền', CANCEL: 'Đang hủy', DONE: 'Hoàn thành' };
+
+/** Trạng thái đơn theo nhóm dùng cho điều kiện hiện khối */
+export const lStageOf = (o: SalesOrder, st: SaleStage, cancelling: boolean): LStage => {
+  if (cancelling || st === 'CANCELLED') return 'CANCEL';
+  if (st === 'APPROVAL' || st === 'REJECTED') return 'APPROVAL';
+  if (st === 'DONE') return 'DONE';
+  const all = o.lines.filter((l) => l.kind !== 'FREE').every((l) => saleIssQ(o, l) >= l.qty);
+  return all ? 'PAY' : 'ISSUE';
+};
+
+export const lCondOk = (c: LBlockCfg, stage: LStage | null, role: Role | null) => (!c.stages?.length || !stage || c.stages.includes(stage)) && (!c.roles?.length || !role || c.roles.includes(role));
+
+/** Bố cục khởi tạo khi thiết kế lần đầu */
+export const lStarter = (): LBlock[] => {
+  const s = (x: number, title: string, ds: LDataset, field: string, period: LPeriod = 'month') => ({ ...lNewBlock('K-Stat-Simple', { x, y: 0 }), config: { title, ds, field, agg: field === 'count' ? 'count' as LAgg : 'sum' as LAgg, period, compare: true, open: true } });
+  const a = [s(0, 'Doanh số tháng', 'sales', 'revenue'), s(3, 'Doanh thu đã thu', 'sales', 'paid'), s(6, 'Lead mới', 'leads', 'count'), s(9, 'Còn phải thu', 'sales', 'owed', 'all')];
+  const line = lNewBlock('K-Chart-Line', { x: 0, y: 2 });
+  const top = lNewBlock('K-Table-Compact', { x: 8, y: 2 });
+  const pend = { ...lNewBlock('K-Table-Compact', { x: 0, y: 6, w: 6, h: 4 }), config: { title: 'Đơn chờ duyệt', ds: 'sales' as LDataset, mode: 'rows' as const, filter: 'approval', cols: ['code', 'customer', 'grand'], sort: 'grand', limit: 5, open: true } };
+  return lOrderSm([...a, line, top, pend]);
+};
+
+/** Thứ tự trên điện thoại mặc định theo vị trí trên máy tính */
+export const lOrderSm = (bs: LBlock[]) => [...bs].sort((p, q) => p.pos.lg.y - q.pos.lg.y || p.pos.lg.x - q.pos.lg.x).map((b, i) => ({ ...b, pos: { ...b.pos, sm: { ...b.pos.sm, order: i + 1 } } }));
+
+// ---- bố trí lưới: dồn khối lên trên, không chồng nhau (giống react-grid-layout kiểu dọc)
+export const lHit = (a: LPos, b: LPos) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+// ---- dữ liệu mẫu cho màn thiết kế của 3A (không đọc dữ liệu thật của doanh nghiệp)
+export const L_SAMPLE_CUST = ['Tổng thầu Điện Thành', 'BQL KCN Phú Mỹ 3', 'Đại lý Điện Minh Phát', 'Cơ điện Hòa Bình', 'Sơn Hà M&E', 'Xây lắp Phương Nam', 'Điện lạnh Á Châu'];
+
+export const L_SAMPLE_STAFF = ['Trần Quốc Bảo', 'Lê Thu Hà', 'Phạm Minh Đức'];
+
+export const lAgg = (rows: LRow[], field: string, agg: LAgg) => (field === 'count' || agg === 'count' ? rows.length : agg === 'avg' ? (rows.length ? rows.reduce((s, r) => s + (r.v[field] ?? 0), 0) / rows.length : 0) : rows.reduce((s, r) => s + (r.v[field] ?? 0), 0));
+
+export const lFmt = (unit: 'money' | 'count', v: number) => (unit === 'money' ? compact(v) : fmtN(Math.round(v)));
+
+export const lFilter = (rows: LRow[], f?: string) => (f ? rows.filter((r) => r.f.includes(f)) : rows);
+
+export const lToneCls = (c: LBlockCfg) => (c.tone === 'note' ? '!border-[rgb(var(--accent)/0.4)] !bg-[rgb(var(--accent)/0.07)]' : c.tone === 'warn' ? '!border-[rgb(var(--danger-fg)/0.4)] !bg-[rgb(var(--danger-fg)/0.07)]' : '');
+
+export const L_ICON: Record<LIconAct, { label: string; icon: typeof Printer; pages: LPage[] }> = {
+  back: { label: 'Quay lại danh sách', icon: ArrowLeft, pages: ['sale-detail'] },
+  prev: { label: 'Đơn trước', icon: ChevronLeft, pages: ['sale-detail'] },
+  next: { label: 'Đơn sau', icon: ChevronRight, pages: ['sale-detail'] },
+  print: { label: 'In', icon: Printer, pages: ['home', 'sale-detail'] },
+  download: { label: 'Tải xuống Excel', icon: Download, pages: ['home', 'sale-detail'] },
+  upload: { label: 'Tải lên tệp đính kèm', icon: Upload, pages: ['sale-detail'] },
+  menu: { label: 'Thao tác khác', icon: MoreVertical, pages: ['sale-detail'] },
+};
+
+/** Thiết bị theo bề rộng vùng hiển thị */
+export const lDeviceOf = (w: number): LDevice => (w >= 1000 ? 'lg' : w >= 600 ? 'md' : 'sm');
+
+export const L_ROW = 56;
+
+export const L_GAP = 12;
+
+/** Vai trò mặc định có thấy Lãi trên đơn (xem trước của 3A) */
+export const lRoleProfit = (r: Role) => r === 'BOD' || ['sale.manage', 'cash.manage', 'receipt.confirm'].some((a) => (INITIAL_PERMS.actions[a as Action] ?? []).includes(r));
+
+/** Giá trị mẫu của trường tùy chỉnh (màn thiết kế) */
+export const cfSample = (d: CfDef): string => (d.type === 'check' ? 'Có' : d.type === 'select' ? d.options?.[0] ?? '—' : d.type === 'user' ? 'Phạm Minh Đức' : d.type === 'date' ? fmtDate(todayISO()) : d.type === 'money' ? fmtN(1500000) : d.type === 'number' ? '12' : 'Mẫu');
+
+export const L_SO_LINES = [{ ref: '3M-SCOTCH-23', name: 'Băng keo cách điện cao áp Scotch 23', unit: 'Cuộn', qty: 20, price: 285000, ck: 5, vat: 8 }, { ref: '3M-1600', name: 'Băng keo điện vinyl 3M 1600', unit: 'Cuộn', qty: 100, price: 22000, ck: 0, vat: 8 }];
+
+/** Khối mẫu có hiện với vai trò / trạng thái đang xem trước không */
+export const lSaleSampleShows = (b: LBlock, stage: LStage, role: Role) => {
+  if (stage === 'CANCEL' && (b.type === 'K-Order-Log' || b.type === 'K-Order-Profit' || b.type === 'K-Order-Debt')) return false;
+  if (b.type === 'K-Order-Profit' && !lRoleProfit(role)) return false;
+  return lCondOk(b.config, stage, role);
+};
+
+/** Quyền xem khối theo vai trò mặc định (xem trước của 3A) */
+export const lRoleSees = (role: Role, ds: LDataset) => { const d = L_DS[ds]; return !!INITIAL_PERMS.modules[role]?.[d.module] && (!d.perm || (INITIAL_PERMS.actions[d.perm] ?? []).includes(role)); };
+
+// =====================================================================
+//  v53 TRƯỜNG TÙY CHỈNH (3A định nghĩa, doanh nghiệp nhập giá trị)
+// =====================================================================
+export const CF_TYPE: Record<CfType, string> = { text: 'Chữ', number: 'Số', money: 'Tiền', date: 'Ngày', select: 'Danh sách chọn', user: 'Người dùng', check: 'Tích chọn' };
+
+/** Trường áp dụng cho một doanh nghiệp: toàn hệ thống, mô hình của doanh nghiệp, hoặc được chọn riêng */
+export const cfApplies = (d: CfDef, org: Org) => d.levels.sys || (org.profile === 'MANUFACTURING' ? d.levels.mfg : d.levels.tr) || d.levels.tenants.includes(org.id);
+
+export const cfDefsFor = (all: CfDef[], org: Org) => all.filter((d) => d.entity === 'sale' && cfApplies(d, org)).sort((a, b) => a.order - b.order);
+
+export const cfEmpty = (v: CfVal | undefined) => v === undefined || v === '' || (typeof v === 'number' && Number.isNaN(v));
+
+/** Trường bắt buộc còn trống: khi lưu đơn chỉ xét "Khi lưu đơn"; khi duyệt xét cả hai. Tích chọn bắt buộc = phải tích */
+export const cfMissing = (defs: CfDef[], vals: Record<string, CfVal> | undefined, when: 'SAVE' | 'APPROVE') => defs.filter((d) => d.status === 'ACTIVE' && d.scope === 'HEAD'
+  && (d.required === 'SAVE' || (when === 'APPROVE' && d.required === 'APPROVE')) && (d.type === 'check' ? vals?.[d.key] !== true : cfEmpty(vals?.[d.key])));
+
+/** Gán / xóa một giá trị trong bộ giá trị trường */
+export const cfSet = (vals: Record<string, CfVal> | undefined, key: string, v: CfVal | undefined): Record<string, CfVal> => { const n = { ...(vals ?? {}) }; if (v === undefined) delete n[key]; else n[key] = v; return n; };
+
 export const KPI_CFG_DEFAULT: KpiCfg = { winRatePct: 30, cycleDays: 30, coverage: 3, cplMax: 500_000 };
 
 export const kpiId = (scope: KpiTarget['scope'], refId: string, month: string) => `${scope}:${refId}:${month}`;
@@ -2765,9 +3042,6 @@ export const cashEff = (e: Pick<CashEntry, 'kind' | 'account' | 'toAccount' | 'a
   ? (e.account === a ? -e.amount : 0) + ((e.toAccount ?? 'BANK') === a ? e.amount : 0)
   : e.account === a ? (e.kind === 'IN' ? e.amount : -e.amount) : 0);
 
-/** Chuyển quỹ đã có ô diễn giải trong khối bên trái */
-export const noteFor = (k: CashEntry['kind']) => k !== 'TRANSFER';
-
 // =====================================================================
 //  TỔNG QUAN, KHÁCH HÀNG, BÁO CÁO RIÊNG CHO MÔ HÌNH XƯỞNG
 //  Doanh số = tiền Kế toán đã xác nhận; công nợ = giá trị HĐ - đã xác nhận
@@ -2914,11 +3188,14 @@ export const AUDIT_LABEL: Record<string, string> = {
   SECURITY_POLICY: 'Đổi chính sách bảo mật', MODULES_PROFILE: 'Đổi gói phân hệ',
 };
 
+export const ACCT_TOKEN: Record<string, string> = { '@FUND': 'Quỹ của phiếu', '@FUND_TO': 'Quỹ nhận', '@CAT': 'Theo khoản mục' };
+
 export const CONSOLE_TABS: { id: ConsoleTab; label: string; icon: typeof Wallet; desc: string }[] = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard, desc: 'Sức khỏe nền tảng: doanh nghiệp, người dùng, bản quyền, hợp đồng, cảnh báo' },
   { id: 'tenants', label: 'Doanh nghiệp', icon: Building2, desc: 'Gói bản quyền, hợp đồng, trạng thái, truy cập hỗ trợ' },
   { id: 'modules', label: 'Cấp phép module', icon: SlidersHorizontal, desc: 'Bật / tắt module theo hợp đồng từng doanh nghiệp' },
   { id: 'users', label: 'Người dùng & quyền', icon: Users, desc: 'Tài khoản, vai trò, phân quyền và chính sách bảo mật của từng doanh nghiệp' },
+  { id: 'design', label: 'Thiết kế giao diện', icon: LayoutTemplate, desc: 'Bố cục trang do 3A thiết kế bằng khối, áp dụng xuống doanh nghiệp' },
   { id: 'data', label: 'Dữ liệu & nâng cấp', icon: Database, desc: 'Khóa lưu, phiên bản dữ liệu, sao lưu, nâng cấp, snapshot' },
   { id: 'admins', label: 'Quản trị nền tảng', icon: ShieldCheck, desc: 'Tài khoản @3agroup.vn và nhật ký nền tảng' },
 ];
@@ -2931,6 +3208,21 @@ export const MODULE_GROUP: { title: string; list: Module[] }[] = [
 ];
 
 export const daysTo = (iso10: string) => Math.ceil((Date.parse(`${iso10}T23:59:59`) - Date.now()) / 864e5);
+
+// =====================================================================
+//  v52 3A PLATFORM › THIẾT KẾ GIAO DIỆN
+// =====================================================================
+
+export const lAssignLabel = (a: LayoutAssign) => (a.level === 'SYSTEM' ? 'Toàn hệ thống' : a.level === 'PROFILE' ? `Mô hình ${a.profile === 'MFG' ? 'Xưởng' : 'Thương mại'}` : `Riêng ${orgOf(a.tenantId ?? '').shortName}`);
+
+export const CF_FILTERABLE: CfType[] = ['text', 'select', 'check', 'user'];
+
+export const cfSlug = (s: string) => fold(s).replace(/[^a-z0-9]+/g, '_').replace(/^[_0-9]+|_+$/g, '').slice(0, 32);
+
+export const verLabel = (all: LayoutVer[], id: string) => { const v = all.find((x) => x.id === id); return v ? `v${v.version}` : '—'; };
+
+/** Kiểu khối đang kéo từ thư viện (dataTransfer không đọc được khi dragover) */
+export const lDrag: { type: LBlockType | null } = { type: null };
 
 // ---------------- Phòng ban & Nhân sự ----------------
 
@@ -3630,7 +3922,7 @@ export const KEYED_COLLS: Record<string, string> = {
   genDocs: 'id', comments: 'id', contentVersions: 'id', mktImages: 'id', channels: 'id', posts: 'id', warehouses: 'id', stockVouchers: 'id', zaloConvs: 'id', zaloMsgs: 'id', campaigns: 'id', contents: 'id', banners: 'id', audiences: 'id', automations: 'id', autoRuns: 'id', kb: 'id', mktTasks: 'id', briefs: 'id', draftProducts: 'id', socialPosts: 'id', kpiTargets: 'id', getflyOrders: 'orderCode', notices: 'id', docs: 'id', approvalLogs: 'id', auditLogs: 'id', workOrders: 'id', installJobs: 'id', jobs: 'id',
   receipts: 'id', stockItems: 'id', stockMoves: 'id', cashEntries: 'id', priceItems: 'id', docTemplates: 'id', skus: 'sku', mktItems: 'id',
   // nền tảng 3A
-  tenants: 'id', logs: 'id',
+  tenants: 'id', logs: 'id', layouts: 'id', layoutAssigns: 'id', customFields: 'id',
 };
 
 export const WHOLE = '$';

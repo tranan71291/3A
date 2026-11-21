@@ -1,16 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Copy, Database, Download, HardDrive, History, KeyRound, Lock, Pencil, Plus, ShieldCheck, Sparkles, Trash2, Upload } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Check as CheckIcon, Copy, Database, Download, HardDrive, History, KeyRound, Lock, Pencil, Plus, ShieldCheck, Sparkles, Trash2, Upload } from 'lucide-react';
 import { Pagination, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, RuleRow, SetBlock, SideCard, StatCard, Table, useSticky } from '../../components/ui';
-import { AGING, AUDIT_LABEL, bizMode, btnGhost, btnPrimary, btnSm, C, CLOUD_ON, DATA_VERSION, dataKey, fmtN, inputBase, inputCls, iso, kpiGrid, nextCode, orgOf, ORGS, rowCls, SESSION_KEY, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd, whQty } from '../../lib/core';
+import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, RuleRow, SetBlock, SideCard, StatCard, Table, Tabs, useSticky } from '../../components/ui';
+import { ACCT_EVENTS, ACCT_STD, ACCT_TOKEN, acctName, AGING, AUDIT_LABEL, bizMode, btnGhost, btnPrimary, btnSm, C, CASH_IN_CATS, CASH_OUT_CATS, CLOUD_ON, DATA_VERSION, dataKey, fmtDate, fmtN, inputBase, inputCls, iso, kpiGrid, nextCode, orgOf, ORGS, rangeBounds, rowCls, SESSION_KEY, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd, whQty } from '../../lib/core';
+import { downloadCsv } from '../../lib/csv';
+import { acctDefaults, acctList, cashJournal, saleJournal } from '../../lib/getfly';
 import { decryptBackup, encryptBackup } from '../../lib/security';
 import { takeSnapshot } from '../../lib/storage';
-import type { AgingScheme, AnyRec, AuditLevel, CheckItem, ConfirmState, EncryptedBackup, SettingsTab, WarehouseInfo } from '../../lib/types';
+import type { Acct, AcctConfig, AcctEvent, AcctStd, AgingScheme, AnyRec, AuditLevel, CheckItem, ConfirmState, EncryptedBackup, JLine, SettingsTab, WarehouseInfo } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { useAi } from '../ai/ai-core';
+import { SearchBox } from '../alux/orders';
 import { PricingSettings } from '../platform/console';
 import { CheckList } from '../sales/quote';
 import { CompanySettings, SaveBar, SettingsOverview } from './company';
@@ -331,6 +334,7 @@ export function SettingsModule() {
     { id: 'perms', label: 'Phân quyền', show: true, group: 'Tổ chức' },
     { id: 'workflow', label: 'Quy trình & phê duyệt', show: true, group: 'Tổ chức' },
     { id: 'accounting', label: 'Kế toán & công nợ', show: true, group: 'Nghiệp vụ' },
+    { id: 'coa', label: 'Hệ thống tài khoản', show: true, group: 'Nghiệp vụ' },
     { id: 'pricing', label: 'Bảng đơn giá & thanh toán', show: mode !== 'TRADING', group: 'Nghiệp vụ' },
     { id: 'warehouses', label: 'Kho hàng', show: mode !== 'MFG', group: 'Nghiệp vụ' },
     { id: 'segments', label: mode === 'MFG' ? 'Loại & nguồn khách' : 'Phân loại khách', show: true, group: 'Nghiệp vụ' },
@@ -375,6 +379,7 @@ export function SettingsModule() {
       {cur === 'org' && <OrgSettings />}
       {cur === 'pricing' && <PricingSettings />}
       {cur === 'accounting' && <AccountingSettings />}
+      {cur === 'coa' && <CoaSettings />}
 
       {cur === 'warehouses' && <WarehouseSettings />}
       {cur === 'fund' && <FundSettings />}
@@ -393,6 +398,239 @@ export function SettingsModule() {
 }
 
 // ---------------- Kế toán & công nợ ----------------
+
+/** v51.3: cấu hình kế toán đang dùng; ai được sửa (Giám đốc / quyền Cài đặt, Kế toán) */
+export function useAcct() {
+  const { mfgConfig, setMfgConfig, canDo, audit } = useApp();
+  const cfg = mfgConfig.acct ?? null;
+  const can = canDo('settings.edit') || canDo('cash.manage');
+  const save = (next: AcctConfig, what: string) => { setMfgConfig((c) => ({ ...c, acct: next })); audit('ACCT_CONFIG', what, 'WARN'); };
+  return { cfg, can, save };
+}
+
+/** Sổ nhật ký: định khoản phiếu quỹ + đơn bán (theo phiếu kho đã duyệt) */
+export function useJournal(cfg: AcctConfig | null) {
+  const { cashEntries, salesOrders, stockVouchers, skus } = useApp();
+  return useMemo(() => {
+    if (!cfg) return { lines: [] as JLine[], missing: [] as string[] };
+    const miss = new Set<string>();
+    const cash = cashEntries.flatMap((e) => { const j = cashJournal(e, cfg); if (j.missing) miss.add(j.missing); return j.lines; });
+    const sale = salesOrders.flatMap((o) => saleJournal(o, stockVouchers, skus, cfg));
+    return { lines: [...cash, ...sale].filter((l) => l.amount > 0).sort((a, b) => a.date.localeCompare(b.date) || a.ref.localeCompare(b.ref)), missing: Array.from(miss) };
+  }, [cfg, cashEntries, salesOrders, stockVouchers, skus]);
+}
+
+export function AcctSelect({ cfg, value, onChange, tokens = [], disabled, label }: { cfg: AcctConfig; value: string; onChange: (v: string) => void; tokens?: string[]; disabled?: boolean; label: string }) {
+  const list = acctList(cfg);
+  return (
+    <select className={cn(inputBase, 'w-full py-1.5 text-[13px]')} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} aria-label={label}>
+      {tokens.map((t) => <option key={t} value={t}>{ACCT_TOKEN[t]}</option>)}
+      {!list.some((a) => a.code === value) && !tokens.includes(value) && <option value={value}>{value} · không có trong danh mục</option>}
+      {list.map((a) => <option key={a.code} value={a.code}>{a.code} · {a.name}</option>)}
+    </select>
+  );
+}
+
+/** Khung Hạch toán (Nợ / Có) dùng ở phiếu thu, phiếu chi, chuyển quỹ */
+export function JournalBox({ lines, cfg }: { lines: JLine[]; cfg: AcctConfig | null }) {
+  const { go } = useApp();
+  if (!cfg) return (
+    <div><p className="mb-1 text-[12px] text-[rgb(var(--muted))]">Hạch toán</p>
+      <button type="button" className="w-full rounded-lg border border-dashed border-[rgb(var(--line))] px-3 py-2.5 text-left text-[12.5px] text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]" onClick={() => go('settings', 'coa')}>Chưa chọn chế độ kế toán. Chọn TT 99 hoặc TT 133 ở Cài đặt › Hệ thống tài khoản</button>
+    </div>
+  );
+  const rows = lines.filter((l) => l.amount > 0).flatMap((l) => [{ k: 'Nợ', a: l.dr, v: l.amount, id: `${l.id}d` }, { k: 'Có', a: l.cr, v: l.amount, id: `${l.id}c` }]);
+  const merged: { k: string; a: string; v: number; id: string }[] = [];
+  rows.forEach((r) => { const m = merged.find((x) => x.k === r.k && x.a === r.a); if (m) m.v += r.v; else merged.push({ ...r }); });
+  merged.sort((x, y) => (x.k === y.k ? 0 : x.k === 'Nợ' ? -1 : 1));
+  return (
+    <div>
+      <p className="mb-1 flex items-center text-[12px] text-[rgb(var(--muted))]">Hạch toán<span className="ml-auto">{ACCT_STD[cfg.std].short}</span></p>
+      {merged.length ? (
+        <div className="rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))]">
+          {merged.map((r) => (
+            <div key={r.id} className="grid grid-cols-[32px_auto_1fr] items-center gap-2 border-t border-[rgb(var(--line)/0.6)] px-3 py-2 text-[13px] first:border-t-0" title={acctName(cfg, r.a)}>
+              <span className="text-[rgb(var(--muted))]">{r.k}</span><Code>{r.a}</Code><span className="text-right tabular-nums">{fmtN(r.v)}</span>
+            </div>
+          ))}
+        </div>
+      ) : <p className="text-[12.5px] text-[rgb(var(--muted))]">Nhập số tiền để xem định khoản</p>}
+    </div>
+  );
+}
+
+export function CoaSettings() {
+  const { me, range, notify } = useApp();
+  const { cfg, can, save } = useAcct();
+  const { lines, missing } = useJournal(cfg);
+  const year = new Date().getFullYear();
+  const [pick, setPick] = useState<AcctStd>('TT99');
+  const [tab, setTab] = useSticky<'coa' | 'rules' | 'cats' | 'journal' | 'tb'>('Coa.tab', 'coa');
+  const [q, setQ] = useState('');
+  const [add, setAdd] = useState<{ parent: string; code: string; name: string } | null>(null);
+  const [redo, setRedo] = useState(false);
+  const { start, end } = rangeBounds(range);
+  const fromISO = iso(new Date(start)), toISO = iso(new Date(end));
+  if (!cfg || redo) {
+    const locked = !!cfg && year <= cfg.year;
+    return (
+      <Panel title="Chế độ kế toán">
+        <p className="text-[13.5px] text-[rgb(var(--fg2))]">Chọn bộ tài khoản cho doanh nghiệp. Phiếu thu, phiếu chi, đơn bán sẽ tự định khoản Nợ / Có theo bộ này. Lựa chọn khóa trong suốt năm tài chính {year} (01/01 – 31/12).</p>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          {(['TT99', 'TT133'] as AcctStd[]).map((s) => (
+            <button key={s} type="button" disabled={!can || locked} onClick={() => setPick(s)} className={cn('rounded-xl border p-4 text-left disabled:opacity-50', pick === s ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.06)]' : 'border-[rgb(var(--line))] hover:border-[rgb(var(--ink)/0.25)]')}>
+              <p className="font-medium">{ACCT_STD[s].label}</p>
+              <p className="mt-1 text-[12.5px] text-[rgb(var(--muted))]">{s === 'TT99' ? 'Chế độ kế toán doanh nghiệp, thay TT 200/2014, áp dụng từ 01/01/2026' : 'Chế độ kế toán doanh nghiệp nhỏ và vừa'} · {ACCT_STD[s].coa.filter(([c]) => c.length === 3).length} tài khoản cấp 1</p>
+            </button>
+          ))}
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {cfg && <button className={btnGhost} onClick={() => setRedo(false)}>Thôi</button>}
+          <button className={btnPrimary} disabled={!can || locked} onClick={() => { save({ ...acctDefaults(pick, year, me.id), custom: cfg?.std === pick ? cfg.custom : [] }, `Chọn chế độ kế toán ${ACCT_STD[pick].label}, năm tài chính ${year}`); setRedo(false); notify(`Đã áp dụng ${ACCT_STD[pick].short} cho năm ${year}`, 'teal'); }}><CheckIcon className="h-4 w-4" aria-hidden />Áp dụng cho năm {year}</button>
+          {locked && <span className="text-[12.5px] text-[rgb(var(--muted))]">Đang khóa đến hết năm {cfg?.year}; đổi được từ 01/01/{(cfg?.year ?? year) + 1}</span>}
+          {!can && <span className="text-[12.5px] text-[rgb(var(--muted))]">Chỉ Giám đốc / Kế toán chọn được</span>}
+        </div>
+      </Panel>
+    );
+  }
+  const list = acctList(cfg);
+  const depth = (a: Acct) => { let d = 0; let p = a.parent; while (p) { d++; p = list.find((x) => x.code === p)?.parent; } return d; };
+  const used = new Set<string>([...Object.values(cfg.rules).flatMap((r) => [r.dr, r.cr]), ...Object.values(cfg.cats), cfg.funds.CASH, cfg.funds.BANK, cfg.vatIn, cfg.vatOut, ...lines.flatMap((l) => [l.dr, l.cr])]);
+  const t = q.trim().toLowerCase();
+  const shown = list.filter((a) => !t || `${a.code} ${a.name}`.toLowerCase().includes(t));
+  const setRule = (ev: AcctEvent, side: 'dr' | 'cr', v: string) => save({ ...cfg, rules: { ...cfg.rules, [ev]: { ...cfg.rules[ev], [side]: v } } }, `Quy tắc ${ACCT_EVENTS.find((x) => x.id === ev)?.label}: ${side === 'dr' ? 'Nợ' : 'Có'} ${v}`);
+  const addAcct = () => {
+    if (!add) return;
+    const code = add.code.trim(), name = add.name.trim();
+    if (!add.parent || !code.startsWith(add.parent) || code.length <= add.parent.length) return notify(`Số hiệu phải bắt đầu bằng ${add.parent || 'tài khoản cha'} và dài hơn`, 'red');
+    if (!/^[0-9A-Za-z]+$/.test(code)) return notify('Số hiệu chỉ gồm chữ số / chữ cái, không dấu cách', 'red');
+    if (list.some((a) => a.code === code)) return notify(`Đã có tài khoản ${code}`, 'red');
+    if (name.length < 2) return notify('Nhập tên tài khoản', 'red');
+    save({ ...cfg, custom: [...cfg.custom, { code, name, parent: add.parent, custom: true }] }, `Thêm tài khoản chi tiết ${code} ${name} (thuộc ${add.parent})`);
+    setAdd(null);
+  };
+  const cats = Array.from(new Set([...CASH_IN_CATS, ...CASH_OUT_CATS, ...Object.keys(cfg.cats), ...missing])).sort();
+  const per = lines.filter((l) => l.date >= fromISO && l.date <= toISO);
+  const tbCodes = Array.from(new Set(lines.flatMap((l) => [l.dr, l.cr]))).sort();
+  const tb = tbCodes.map((c) => {
+    const pn = per.filter((l) => l.dr === c).reduce((s, l) => s + l.amount, 0), pc = per.filter((l) => l.cr === c).reduce((s, l) => s + l.amount, 0);
+    const upto = lines.filter((l) => l.date <= toISO);
+    const bal = upto.filter((l) => l.dr === c).reduce((s, l) => s + l.amount, 0) - upto.filter((l) => l.cr === c).reduce((s, l) => s + l.amount, 0);
+    return { c, pn, pc, bal };
+  }).filter((r) => r.pn || r.pc || r.bal);
+  const sum = (f: (r: (typeof tb)[number]) => number) => tb.reduce((s, r) => s + f(r), 0);
+  const tdN = 'px-3 py-2 text-right tabular-nums';
+  return (
+    <>
+      <Panel>
+        <div className="flex flex-wrap items-center gap-3">
+          <div><p className="text-[12px] text-[rgb(var(--muted))]">Chế độ kế toán</p><p className="font-medium">{ACCT_STD[cfg.std].label}</p></div>
+          <div className="border-l border-[rgb(var(--line))] pl-3"><p className="text-[12px] text-[rgb(var(--muted))]">Năm tài chính</p><p className="font-medium tabular-nums">{cfg.year}</p></div>
+          <div className="border-l border-[rgb(var(--line))] pl-3"><p className="text-[12px] text-[rgb(var(--muted))]">Tài khoản</p><p className="font-medium tabular-nums">{list.length} <span className="text-[12.5px] font-normal text-[rgb(var(--muted))]">· {cfg.custom.length} chi tiết của DN</span></p></div>
+          <span className="ml-auto inline-flex items-center gap-1.5 text-[12.5px] text-[rgb(var(--muted))]"><Lock className="h-3.5 w-3.5" aria-hidden />Khóa đến 31/12/{cfg.year}</span>
+          {year > cfg.year && can && <button className={btnGhost} onClick={() => setRedo(true)}>Chọn lại cho năm {year}</button>}
+        </div>
+        {missing.length > 0 && <p className="mt-3 rounded-lg bg-[rgb(var(--accent)/0.08)] px-3 py-2 text-[13px]">Khoản mục chưa gán tài khoản (đang tạm ghi 711 / 811): {missing.join(', ')}. Gán ở tab Khoản mục thu chi.</p>}
+      </Panel>
+      <Tabs tabs={[{ id: 'coa', label: 'Danh mục tài khoản' }, { id: 'rules', label: 'Quy tắc định khoản' }, { id: 'cats', label: 'Khoản mục thu chi' }, { id: 'journal', label: 'Sổ nhật ký' }, { id: 'tb', label: 'Cân đối số phát sinh' }]} value={tab} onChange={setTab} />
+      {tab === 'coa' && (
+        <Panel>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <SearchBox value={q} onChange={setQ} placeholder="Tìm số hiệu, tên tài khoản" />
+            {can && <button className={cn(btnPrimary, 'ml-auto')} onClick={() => setAdd({ parent: '', code: '', name: '' })}><Plus className="h-4 w-4" aria-hidden />Thêm tài khoản chi tiết</button>}
+          </div>
+          {add && (
+            <div className="mb-3 grid grid-cols-1 items-end gap-2 rounded-xl border border-[rgb(var(--line))] p-3 md:grid-cols-[1fr_160px_1fr_auto]">
+              <Field label="Thuộc tài khoản"><AcctSelect cfg={cfg} label="Tài khoản cha" value={add.parent} onChange={(v) => setAdd({ ...add, parent: v, code: add.code.startsWith(v) ? add.code : v })} /></Field>
+              <Field label="Số hiệu"><input className={inputCls} value={add.code} onChange={(e) => setAdd({ ...add, code: e.target.value.trim() })} placeholder={add.parent ? `${add.parent}1` : ''} /></Field>
+              <Field label="Tên tài khoản"><input className={inputCls} value={add.name} onChange={(e) => setAdd({ ...add, name: e.target.value })} placeholder="VD: Tiền gửi Vietcombank" /></Field>
+              <div className="flex gap-2"><button className={btnGhost} onClick={() => setAdd(null)}>Thôi</button><button className={btnPrimary} onClick={addAcct}>Thêm</button></div>
+            </div>
+          )}
+          <div className="max-h-[560px] overflow-y-auto rounded-lg border border-[rgb(var(--line))]">
+            {shown.map((a) => (
+              <div key={a.code} className="flex items-center gap-3 border-t border-[rgb(var(--line)/0.6)] px-3 py-1.5 text-[13.5px] first:border-t-0" style={{ paddingLeft: 12 + depth(a) * 20 }}>
+                <Code>{a.code}</Code><span className={cn(depth(a) === 0 && 'font-medium')}>{a.name}</span>
+                {a.custom && <span className="rounded-md border border-[rgb(var(--accent)/0.4)] px-1.5 text-[11.5px] text-[rgb(var(--accent))]">Chi tiết DN</span>}
+                {used.has(a.code) && <span className="text-[11.5px] text-[rgb(var(--muted))]">đang dùng</span>}
+                {a.custom && can && !used.has(a.code) && !list.some((x) => x.parent === a.code) && <button className="ml-auto text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => save({ ...cfg, custom: cfg.custom.filter((x) => x.code !== a.code) }, `Xóa tài khoản chi tiết ${a.code}`)} aria-label={`Xóa ${a.code}`}><Trash2 className="h-4 w-4" aria-hidden /></button>}
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[12.5px] text-[rgb(var(--muted))]">Tài khoản của thông tư không sửa, xóa được. Tài khoản chi tiết cộng dồn lên tài khoản cha khi lập báo cáo.</p>
+        </Panel>
+      )}
+      {tab === 'rules' && (
+        <Panel>
+          <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+            <Field label="Quỹ tiền mặt"><AcctSelect cfg={cfg} label="Tài khoản quỹ tiền mặt" disabled={!can} value={cfg.funds.CASH} onChange={(v) => save({ ...cfg, funds: { ...cfg.funds, CASH: v } }, `TK quỹ tiền mặt: ${v}`)} /></Field>
+            <Field label="Tiền gửi ngân hàng"><AcctSelect cfg={cfg} label="Tài khoản tiền gửi" disabled={!can} value={cfg.funds.BANK} onChange={(v) => save({ ...cfg, funds: { ...cfg.funds, BANK: v } }, `TK tiền gửi: ${v}`)} /></Field>
+            <Field label="Thuế GTGT đầu vào"><AcctSelect cfg={cfg} label="TK thuế GTGT đầu vào" disabled={!can} value={cfg.vatIn} onChange={(v) => save({ ...cfg, vatIn: v }, `TK thuế GTGT đầu vào: ${v}`)} /></Field>
+            <Field label="Thuế GTGT đầu ra"><AcctSelect cfg={cfg} label="TK thuế GTGT đầu ra" disabled={!can} value={cfg.vatOut} onChange={(v) => save({ ...cfg, vatOut: v }, `TK thuế GTGT đầu ra: ${v}`)} /></Field>
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-[rgb(var(--line))]">
+            <table className="w-full min-w-[760px] text-[13.5px]">
+              <thead><tr className="bg-[rgb(var(--ink)/0.03)] text-left text-[12px] text-[rgb(var(--muted))]"><th className="px-3 py-2 font-normal">Sự kiện kinh tế</th><th className="w-64 px-3 py-2 font-normal">Nợ</th><th className="w-64 px-3 py-2 font-normal">Có</th></tr></thead>
+              <tbody>{ACCT_EVENTS.map((ev) => (
+                <tr key={ev.id} className="border-t border-[rgb(var(--line)/0.6)]">
+                  <td className="px-3 py-2"><p className="font-medium">{ev.label}</p>{ev.hint && <p className="text-[12px] text-[rgb(var(--muted))]">{ev.hint}</p>}</td>
+                  <td className="px-3 py-2"><AcctSelect cfg={cfg} label={`${ev.label}: Nợ`} disabled={!can} tokens={['@FUND', '@FUND_TO', '@CAT']} value={cfg.rules[ev.id].dr} onChange={(v) => setRule(ev.id, 'dr', v)} /></td>
+                  <td className="px-3 py-2"><AcctSelect cfg={cfg} label={`${ev.label}: Có`} disabled={!can} tokens={['@FUND', '@FUND_TO', '@CAT']} value={cfg.rules[ev.id].cr} onChange={(v) => setRule(ev.id, 'cr', v)} /></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-[12.5px] text-[rgb(var(--muted))]">Phiếu chi gắn đơn hàng vẫn ghi vào tài khoản chi phí của khoản mục (VD chi phí bán hàng), kèm mã đơn để theo dõi lãi theo đơn. Đổi quy tắc áp dụng cho cả phiếu đã lập khi xem sổ.</p>
+        </Panel>
+      )}
+      {tab === 'cats' && (
+        <Panel>
+          <div className="overflow-x-auto rounded-lg border border-[rgb(var(--line))]">
+            <table className="w-full min-w-[600px] text-[13.5px]">
+              <thead><tr className="bg-[rgb(var(--ink)/0.03)] text-left text-[12px] text-[rgb(var(--muted))]"><th className="px-3 py-2 font-normal">Khoản mục thu chi</th><th className="w-80 px-3 py-2 font-normal">Tài khoản đối ứng</th></tr></thead>
+              <tbody>{cats.map((c) => (
+                <tr key={c} className="border-t border-[rgb(var(--line)/0.6)]">
+                  <td className="px-3 py-2">{c}{!cfg.cats[c] && <span className="ml-2 text-[12px] text-[rgb(var(--accent))]">chưa gán</span>}</td>
+                  <td className="px-3 py-2"><AcctSelect cfg={cfg} label={`Tài khoản của ${c}`} disabled={!can} value={cfg.cats[c] ?? ''} onChange={(v) => save({ ...cfg, cats: { ...cfg.cats, [c]: v } }, `Khoản mục ${c} → ${v}`)} /></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
+      {tab === 'journal' && (
+        <Panel title={`Sổ nhật ký ${fmtDate(fromISO)} – ${fmtDate(toISO)}`}>
+          <div className="mb-2 flex"><button className={cn(btnGhost, btnSm, 'ml-auto')} onClick={() => downloadCsv(`so-nhat-ky-${fromISO}-${toISO}.csv`, [['Ngày', 'Chứng từ', 'Diễn giải', 'Nợ', 'Có', 'Số tiền'], ...per.map((l) => [l.date, l.ref, l.desc, l.dr, l.cr, l.amount])])}><Download className="h-4 w-4" aria-hidden />CSV</button></div>
+          <div className="overflow-x-auto rounded-lg border border-[rgb(var(--line))]">
+            <table className="w-full min-w-[760px] text-[13.5px]">
+              <thead><tr className="bg-[rgb(var(--ink)/0.03)] text-left text-[12px] text-[rgb(var(--muted))]"><th className="px-3 py-2 font-normal">Ngày</th><th className="px-3 py-2 font-normal">Chứng từ</th><th className="px-3 py-2 font-normal">Diễn giải</th><th className="px-3 py-2 font-normal">Nợ</th><th className="px-3 py-2 font-normal">Có</th><th className="px-3 py-2 text-right font-normal">Số tiền</th></tr></thead>
+              <tbody>{per.slice(0, 500).map((l) => (
+                <tr key={l.id} className="border-t border-[rgb(var(--line)/0.6)]"><td className="px-3 py-2 tabular-nums text-[rgb(var(--fg2))]">{fmtDate(l.date)}</td><td className="px-3 py-2"><Code>{l.ref}</Code></td><td className="max-w-[320px] truncate px-3 py-2" title={l.desc}>{l.desc}</td><td className="px-3 py-2"><Code>{l.dr}</Code></td><td className="px-3 py-2"><Code>{l.cr}</Code></td><td className={tdN}>{fmtN(l.amount)}</td></tr>
+              ))}</tbody>
+            </table>
+          </div>
+          {!per.length && <EmptyState text="Không có bút toán trong kỳ." art="ledger" />}
+        </Panel>
+      )}
+      {tab === 'tb' && (
+        <Panel title={`Bảng cân đối số phát sinh ${fmtDate(fromISO)} – ${fmtDate(toISO)}`}>
+          <div className="overflow-x-auto rounded-lg border border-[rgb(var(--line))]">
+            <table className="w-full min-w-[760px] text-[13.5px]">
+              <thead><tr className="bg-[rgb(var(--ink)/0.03)] text-left text-[12px] text-[rgb(var(--muted))]"><th className="px-3 py-2 font-normal">Tài khoản</th><th className="px-3 py-2 text-right font-normal">Phát sinh Nợ</th><th className="px-3 py-2 text-right font-normal">Phát sinh Có</th><th className="px-3 py-2 text-right font-normal">Dư Nợ cuối kỳ</th><th className="px-3 py-2 text-right font-normal">Dư Có cuối kỳ</th></tr></thead>
+              <tbody>
+                {tb.map((r) => (
+                  <tr key={r.c} className="border-t border-[rgb(var(--line)/0.6)]"><td className="px-3 py-2"><Code>{r.c}</Code> <span className="text-[rgb(var(--fg2))]">{acctName(cfg, r.c)}</span></td><td className={tdN}>{fmtN(r.pn)}</td><td className={tdN}>{fmtN(r.pc)}</td><td className={tdN}>{r.bal > 0 ? fmtN(r.bal) : ''}</td><td className={tdN}>{r.bal < 0 ? fmtN(-r.bal) : ''}</td></tr>
+                ))}
+                <tr className="border-t border-[rgb(var(--line))] font-medium"><td className="px-3 py-2">Cộng</td><td className={tdN}>{fmtN(sum((r) => r.pn))}</td><td className={tdN}>{fmtN(sum((r) => r.pc))}</td><td className={tdN}>{fmtN(sum((r) => Math.max(0, r.bal)))}</td><td className={tdN}>{fmtN(sum((r) => Math.max(0, -r.bal)))}</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-[12.5px] text-[rgb(var(--muted))]">Lập từ bút toán phiếu thu chi và đơn bán (doanh thu, thuế, giá vốn tạm tính khi kho duyệt). Chưa gồm số dư đầu kỳ, mua hàng, lương, khấu hao; Báo cáo tình hình tài chính và Kết quả kinh doanh theo mẫu của từng thông tư làm ở bản sau.</p>
+        </Panel>
+      )}
+    </>
+  );
+}
 
 export function AccountingSettings() {
   const { mfgConfig, setMfgConfig, canDo, company, audit, notify, quotes, genDocs, cashEntries } = useApp();
