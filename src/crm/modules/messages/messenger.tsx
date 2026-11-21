@@ -1,7 +1,7 @@
 'use client';
 
-import { Fragment, type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Bell, Bot, ChevronDown, Clock, Download, ExternalLink, FileText, FolderKanban, Hash, Inbox, Info, MessageSquare, Paperclip, Pin, Plus, Reply, Search, SmilePlus, Sparkles, Star, Target, TrendingUp, Upload, Users, Users2, X } from 'lucide-react';
+import { Fragment, type CSSProperties, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Bell, Bot, ChevronDown, Clock, Download, ExternalLink, FileText, FolderKanban, Hash, Inbox, Info, MessageSquare, Paperclip, Pin, Plus, Reply, Search, SmilePlus, Sparkles, Star, StickyNote, Target, TrendingUp, Upload, Users, Users2, X } from 'lucide-react';
 import { CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { PAvatar } from '../../app/header';
 import { MentionComposer, MentionText, useDeepLinks } from '../../components/comments';
@@ -9,12 +9,12 @@ import { Avatar, MobileRow } from '../../components/controls';
 import { claimDate } from '../../components/filters';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, monthly, Panel, ProgressBar, StatCard, Table, Tabs, useSticky } from '../../components/ui';
 import { auditClaim, claimState, scoreLead } from '../../lib/business';
-import { bizMode, blockersOf, boqTotal, btnGhost, btnPrimary, btnSm, C, cfDefsFor, cfEmpty, cfSample, chatFileMax, claimYear, CLOUD_ON, compact, deptIcon, dmId, downloadBlob, fmtDate, fmtN, fmtSize, fold, GRAD, inputBase, inputCls, isAcceptLate, isMktCustomer, iso, isQuoteOverdue, isTextFile, jobCustName, kpiGrid, L_DS, L_GAP, L_ICON, L_PERIOD, L_ROW, L_SAMPLE_CUST, L_SAMPLE_STAFF, L_SO_LINES, lAgg, lCondOk, lDeviceOf, LEAD_STATUS, leadAt, lEnsureCore, lField, lFieldOrder, lFilter, lFmt, lHasData, lHit, lIsCore, lToneCls, lType, MODULE_LABEL, MQL_THRESHOLD, OPEN_STATUSES, pct, PRESENCE_META, presenceOf, progName, PROGRAM_COLOR, PROGRAM_LABEL, PROGRAM_STATUS, QUICK_REACTIONS, REGION_LABEL, ROLE_LABEL, rowCls, SALE_STAGE, saleOwed, salePaid, SO_INFO_F, SO_LINE_F, SOURCE_LABEL, tdCls, tdFirst, tdLast, threadKey, tierInfo, tipStyle, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { bizMode, blockersOf, boqTotal, btnGhost, btnPrimary, btnSm, C, cfDefsFor, cfEmpty, cfSample, chatFileMax, claimYear, CLOUD_ON, compact, deptIcon, dmId, downloadBlob, fmtDate, fmtN, fmtSize, fold, GRAD, inputBase, inputCls, isAcceptLate, isMktCustomer, iso, isQuoteOverdue, isTextFile, jobCustName, kpiGrid, L_ACT, L_DS, L_GAP, L_ICONSET, L_PER, L_PER_LOW, L_PERIOD, L_ROW, L_SAMPLE_CUST, L_SAMPLE_STAFF, L_SO_LINES, lAgg, lCondOk, lDeviceOf, LEAD_STATUS, leadAt, lEnsureCore, lField, lFieldOrder, lFill, lFilter, lFmt, lFramed, lHasData, lHit, lIsCore, lKind, lMigrate, LPageC, lPeriodLabel, lTabList, lToneCls, lType, MODULE_LABEL, MQL_THRESHOLD, OPEN_STATUSES, pct, PRESENCE_META, presenceOf, progName, PROGRAM_COLOR, PROGRAM_LABEL, PROGRAM_STATUS, QUICK_REACTIONS, REGION_LABEL, ROLE_LABEL, rowCls, SALE_STAGE, saleOwed, salePaid, SO_INFO_F, SO_LINE_F, SO_LIST_COLS, SO_LIST_TABS, SOURCE_LABEL, tdCls, tdFirst, tdLast, threadKey, tierInfo, tipStyle, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { xlsxBlob } from '../../lib/csv';
 import { saleStage, saleTotals } from '../../lib/getfly';
-import type { AppCtx, CfDef, CfVal, ChatChannel, ChatFile, Claim, CommentEntity, DateRange, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LDataset, LDevice, LeadStatus, LIconAct, LPage, LPeriod, LPos, LRow, LStage, Module, ProgramType, Role, RowComment, StockVoucher, Thread, User, XlsxSheet } from '../../lib/types';
+import type { AppCtx, CfDef, CfVal, ChatChannel, ChatFile, Claim, CommentEntity, DashPeriod, DashScope, DateRange, DeptCode, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, LeadStatus, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, Module, ProgramType, Role, RowComment, StockVoucher, Thread, User, XlsxSheet } from '../../lib/types';
 import { cn } from '../../lib/utils';
-import { ExecDashboard } from '../dashboard/exec-dashboard';
+import { dashRange, ExecDashboard, KpiTargetSheet, useDashData } from '../dashboard/exec-dashboard';
 import { CommandCenter } from '../dashboard/widget-board';
 import { MarginBadge, MdfMarginPanel } from '../mdf/surplus';
 import { TradingReports } from '../reports/reports';
@@ -505,8 +505,17 @@ export function lDefaultCfg(type: LBlockType, page: LPage = 'home'): LBlockCfg {
   if (type === 'K-Stat-Simple') return { title: 'Doanh số tháng', ds: 'sales', field: 'revenue', agg: 'sum', period: 'month', compare: true, open: true };
   if (type === 'K-Chart-Line') return { title: 'Doanh số và doanh thu 12 tháng', ds: 'sales', series: ['revenue', 'paid'], months: 12, open: true };
   if (type === 'K-Table-Compact') return { title: 'Top 5 khách hàng', ds: 'sales', mode: 'group', group: 'customer', field: 'revenue', limit: 5, open: true };
-  if (type === 'K-Text') return { title: 'Lưu ý', ds: 'sales', tone: 'note', text: page === 'sale-detail' ? '**Trước khi yêu cầu xuất kho**\n- Đơn giao nhà xe: ghi rõ tên nhà xe và số điện thoại ở Ghi chú\n- Đơn trên 50 triệu: gửi kèm PO hoặc hợp đồng' : '## Thông báo\nNội dung ngắn cho cả công ty' };
-  if (type === 'K-Icons') return { title: 'Nút biểu tượng', ds: 'sales', hideTitle: true, align: 'right', icons: page === 'sale-detail' ? ['back', 'prev', 'next', 'print', 'download', 'upload', 'menu'] : ['print', 'download'] };
+  if (type === 'K-Text') return page === 'home' ? { title: 'Tiêu đề kỳ', ds: 'sales', kind: 'title', text: '{kỳ}', sub: 'Cập nhật {giờ cập nhật} · kỳ vọng {kỳ vọng %} · còn {số ngày còn lại} ngày' }
+    : { title: 'Lưu ý', ds: 'sales', kind: 'note', text: page === 'sale-detail' ? '**Trước khi yêu cầu xuất kho**\n- Đơn giao nhà xe: ghi rõ tên nhà xe và số điện thoại ở Ghi chú\n- Đơn trên 50 triệu: gửi kèm PO hoặc hợp đồng' : 'Đơn **duyệt trước ngày 28** được tính vào doanh số tháng' };
+  if (type === 'K-Button') {
+    const bt = (act: LBtnAct, label: string, style: LBtn['style'], icon = L_ACT[act].icon): LBtn => ({ id: uid('bt'), icon, label, style, act });
+    return { title: 'Nút trang', ds: 'sales', align: 'right', buttons: page === 'home' ? [bt('targets', 'Chỉ tiêu', 'ghost'), bt('print', 'PDF', 'ghost')]
+      : page === 'sale-list' ? [bt('new', 'Lên đơn bán', 'primary')]
+      : (['back', 'prev', 'next', 'print', 'download', 'upload', 'menu'] as LBtnAct[]).map((a) => bt(a, '', 'icon')) };
+  }
+  if (type === 'K-Filter') return { title: 'Bộ lọc chung', ds: 'sales', periods: ['WEEK', 'MONTH', 'QUARTER', 'YEAR'], showCompare: true, showDept: true, align: 'right' };
+  if (type === 'K-Tabs') return { title: 'Tab trang', ds: 'sales', tabs: [{ id: uid('tb'), label: 'Tổng quan' }, { id: uid('tb'), label: 'Kinh doanh' }] };
+  if (type === 'K-Divider') return { title: 'Đường kẻ', ds: 'sales', hideTitle: true };
   return { title: lType(type).label, ds: 'sales' };
 }
 
@@ -532,13 +541,14 @@ export function lSettle(bs: LBlock[], movedId?: string): LBlock[] {
 
 // ---- dữ liệu thật của doanh nghiệp (đã lọc theo phạm vi xem của người dùng)
 export function lRowsReal(ds: LDataset, a: AppCtx, stockVouchers: StockVoucher[]): LRow[] {
+  const cd = new Map<string, string>(a.customers.map((c) => [c.id, String(c.dept)]));
   if (ds === 'sales') return a.mySales.filter((o) => o.status !== 'CANCELLED').map((o) => {
     const st = saleStage(o, stockVouchers);
     const owed = Math.max(0, saleOwed(o) - salePaid(o, true));
-    return { date: o.date, v: { revenue: saleTotals(o).net, grand: saleTotals(o).grand, paid: salePaid(o), owed }, d: { code: o.code, customer: o.customer, by: a.userName(o.by ?? ''), stage: SALE_STAGE[st].label }, f: [st === 'APPROVAL' ? 'approval' : '', owed > 0 ? 'unpaid' : '', o.status === 'DONE' ? 'done' : ''] };
+    return { date: o.date, dp: o.customerId ? cd.get(o.customerId) : undefined, v: { revenue: saleTotals(o).net, grand: saleTotals(o).grand, paid: salePaid(o), owed }, d: { code: o.code, customer: o.customer, by: a.userName(o.by ?? ''), stage: SALE_STAGE[st].label }, f: [st === 'APPROVAL' ? 'approval' : '', owed > 0 ? 'unpaid' : '', o.status === 'DONE' ? 'done' : ''] };
   });
-  if (ds === 'leads') return a.myLeads.map((l) => ({ date: iso(new Date(Date.now() - (l.receivedDaysAgo ?? 0) * 864e5)), v: { value: l.boqValue ?? 0, won: l.wonAmount ?? 0 }, d: { company: l.company, source: String(l.source), status: String(l.status) }, f: [l.wonAt ? 'won' : l.lostReason ? '' : 'open'] }));
-  if (ds === 'customers') return a.myCustomers.map((c) => ({ date: (c.createdAt ?? '').slice(0, 10), v: {}, d: { name: c.name, segment: String(c.segment) }, f: [] }));
+  if (ds === 'leads') return a.myLeads.map((l) => ({ date: iso(new Date(Date.now() - (l.receivedDaysAgo ?? 0) * 864e5)), dp: l.dept, v: { value: l.boqValue ?? 0, won: l.wonAmount ?? 0 }, d: { company: l.company, source: String(l.source), status: String(l.status) }, f: [l.wonAt ? 'won' : l.lostReason ? '' : 'open'] }));
+  if (ds === 'customers') return a.myCustomers.map((c) => ({ date: (c.createdAt ?? '').slice(0, 10), dp: String(c.dept), v: {}, d: { name: c.name, segment: String(c.segment) }, f: [] }));
   if (ds === 'cash') return a.cashEntries.filter((e) => e.kind !== 'TRANSFER').map((e) => ({ date: e.date, v: { in: e.kind === 'IN' ? e.amount : 0, out: e.kind === 'OUT' ? e.amount : 0 }, d: { code: e.code, category: e.category, partner: e.partner ?? '' }, f: [e.kind === 'IN' ? 'in' : 'out'] }));
   return a.programs.map((p) => ({ date: (p.start ?? '').slice(0, 10), v: { requested: p.requested ?? 0 }, d: { title: p.title, status: String(p.status) }, f: [] }));
 }
@@ -576,6 +586,7 @@ export function lBounds(p: LPeriod, range?: DateRange): { from: string; to: stri
 }
 
 export function LStat({ c, rows, range }: { c: LBlockCfg; rows: LRow[]; range?: DateRange }) {
+  const ctxPer = useContext(LPageC)?.period;
   const fl = lField(c.ds, c.field);
   const agg: LAgg = fl.id === 'count' ? 'count' : c.agg ?? 'sum';
   const unit = agg === 'count' ? 'count' : fl.unit;
@@ -589,7 +600,7 @@ export function LStat({ c, rows, range }: { c: LBlockCfg; rows: LRow[]; range?: 
     <div className="flex h-full flex-col justify-center">
       <p className="text-[24px] font-medium leading-tight tabular-nums">{lFmt(unit, cur)}</p>
       {pct !== null ? <p className="text-[12px]"><span className={pct >= 0 ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]'}>{pct >= 0 ? '+' : '−'}{Math.abs(pct)}%</span> <span className="text-[rgb(var(--muted))]">so với {cmp}</span></p>
-        : <p className="text-[12px] text-[rgb(var(--muted))]">{b ? L_PERIOD[c.period ?? 'month'] : 'Toàn bộ'}</p>}
+        : <p className="text-[12px] text-[rgb(var(--muted))]">{b ? (c.period === 'inherit' ? lPeriodLabel(ctxPer ?? 'MONTH') : L_PERIOD[c.period ?? 'month']) : 'Toàn bộ'}</p>}
     </div>
   );
 }
@@ -637,11 +648,31 @@ export function lInline(s: string, k: string): ReactNode[] {
   return out;
 }
 
+/** Biến tự điền theo trang (giá trị theo kỳ đang chọn, doanh nghiệp, người xem) */
+export function lVars(p: DashPeriod, org: string, viewer: string, extra: Record<string, string> = {}): Record<string, string> {
+  const now = Date.now(); const r = dashRange(p, now);
+  return { 'kỳ': lPeriodLabel(p), 'kỳ trước': r.prevTag, 'giờ cập nhật': new Date(now).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }), 'kỳ vọng %': `${Math.round(r.elapsed * 100)}%`, 'số ngày còn lại': String(r.daysLeft), 'ngày': fmtDate(todayISO()), 'tên doanh nghiệp': org, 'người xem': viewer, ...extra };
+}
+
+/** Ngữ cảnh của màn thiết kế / xem trước (dữ liệu mẫu, nút không chạy) */
+export function lDesignCtx(page: LPage, tab: string, setTab: (t: string) => void, period: DashPeriod, setPeriod: (p: DashPeriod) => void): LPageCtx {
+  return { live: false, page, period, setPeriod, dept: 'ALL', setDept: () => {}, tab, setTab, vars: lVars(period, 'VASSH', 'Trần Quốc Bảo', { 'mã đơn': 'DH201126-02', 'khách hàng': 'NPP Hoàng Phát', 'trạng thái đơn': 'Chờ xuất kho' }), act: () => {}, can: () => true, openTargets: () => {} };
+}
+
 export function LText({ c }: { c: LBlockCfg }) {
+  const ctx = useContext(LPageC);
+  const v = ctx?.vars;
+  const k = lKind(c);
+  const sz = c.size ?? 'md';
+  const main = k === 'title' ? cn('font-medium', sz === 'lg' ? 'text-[26px] leading-8' : sz === 'sm' ? 'text-[18px] leading-6' : 'text-[22px] leading-7')
+    : k === 'heading' ? cn('font-medium', sz === 'lg' ? 'text-[17px]' : sz === 'sm' ? 'text-[13.5px]' : 'text-[15px]')
+    : k === 'label' ? 'text-[12px] font-medium text-[rgb(var(--muted))]'
+    : k === 'quote' ? 'border-l-2 border-[rgb(var(--line))] pl-3 text-[13px] leading-relaxed text-[rgb(var(--fg2))]'
+    : cn('leading-relaxed', sz === 'lg' ? 'text-[14.5px]' : sz === 'sm' ? 'text-[12.5px]' : 'text-[13px]', k === 'info' && 'text-[rgb(var(--fg2))]');
   const out: ReactNode[] = [];
   let ul: string[] = [];
-  const flush = () => { if (ul.length) { const n = out.length; out.push(<ul key={`u${n}`} className="list-disc space-y-0.5 pl-5">{ul.map((x, i) => <li key={i}>{lInline(x, `l${n}-${i}`)}</li>)}</ul>); ul = []; } };
-  (c.text ?? '').split('\n').forEach((ln, i) => {
+  const flush = () => { if (ul.length) { const n = out.length; out.push(<ul key={`u${n}`} className="list-disc space-y-0.5 pl-5 text-left">{ul.map((x, i) => <li key={i}>{lInline(x, `l${n}-${i}`)}</li>)}</ul>); ul = []; } };
+  lFill(c.text ?? '', v).split('\n').forEach((ln, i) => {
     const t = ln.trimEnd();
     if (/^\s*[-•]\s+/.test(t)) { ul.push(t.replace(/^\s*[-•]\s+/, '')); return; }
     flush();
@@ -649,24 +680,139 @@ export function LText({ c }: { c: LBlockCfg }) {
     out.push(t.startsWith('## ') ? <p key={i} className="text-[14px] font-medium">{lInline(t.slice(3), `h${i}`)}</p> : <p key={i}>{lInline(t, `p${i}`)}</p>);
   });
   flush();
-  return <div className="space-y-1.5 text-[13px] leading-relaxed">{out.length ? out : <p className="text-[rgb(var(--muted))]">Chưa có nội dung</p>}</div>;
+  const I = k === 'info' ? Info : k === 'note' ? StickyNote : k === 'warn' ? AlertTriangle : null;
+  return (
+    <div className={cn('min-w-0', c.align === 'center' ? 'text-center' : c.align === 'right' ? 'text-right' : '')}>
+      <div className={cn(I && 'flex gap-2')}>
+        {I && <I className={cn('mt-0.5 h-4 w-4 shrink-0', k === 'note' ? 'text-[rgb(var(--accent))]' : k === 'warn' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]')} aria-hidden />}
+        <div className={cn('min-w-0 flex-1 space-y-1.5', main)}>{out.length ? out : <p className="text-[13px] text-[rgb(var(--muted))]">Chưa có nội dung</p>}</div>
+      </div>
+      {c.sub && <p className="mt-0.5 text-[12.5px] text-[rgb(var(--muted))]">{lInline(lFill(c.sub, v), 'sub')}</p>}
+    </div>
+  );
 }
 
-/** Khối nút biểu tượng; menu = nội dung danh sách xổ xuống (do trang cung cấp) */
-export function LIcons({ c, onIcon, off, menu }: { c: LBlockCfg; onIcon?: (a: LIconAct) => void; off?: Partial<Record<LIconAct, boolean>>; menu?: ReactNode }) {
+/** Khối text đặt trên trang: có khung thì thành thẻ (tiêu đề khối nếu không ẩn), không khung thì chữ nằm thẳng trên nền trang */
+export function LTextBlock({ c, style, cls }: { c: LBlockCfg; style?: CSSProperties; cls?: string }) {
+  const f = lFramed(c);
+  return (
+    <section style={style} className={cn('min-w-0', f ? cn('glass-card rounded-xl px-4 py-3', lToneCls(c)) : 'flex flex-col justify-center', cls)}>
+      {f && !c.hideTitle && <h3 className="mb-1.5 text-[14px] font-medium">{c.title}</h3>}
+      <LText c={c} />
+    </section>
+  );
+}
+
+/** Hành động chung (không phụ thuộc trang) */
+export function lActCommonRun(b: LBtn, go: (m: Module) => void) {
+  if (b.act === 'back') window.history.back();
+  else if (b.act === 'go' && b.arg && Object.prototype.hasOwnProperty.call(MODULE_LABEL, b.arg)) go(b.arg as Module);
+  else if (b.act === 'link' && /^https?:\/\//.test(b.arg ?? '')) window.open(b.arg, '_blank', 'noopener,noreferrer');
+  else if (b.act === 'print') window.print();
+}
+
+/** Khối Nút / Icon */
+export function LButtons({ c }: { c: LBlockCfg }) {
+  const ctx = useContext(LPageC);
   const [open, setOpen] = useState(false);
   const ref = useOutside(open, () => setOpen(false));
   const ico = 'grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.04)] disabled:opacity-40';
+  const list = (c.buttons ?? []).filter((b) => L_ACT[b.act] && (!ctx || ctx.can(b)));
   return (
-    <div className={cn('flex h-full flex-wrap items-center gap-1.5', c.align === 'left' ? 'justify-start' : 'justify-end')}>
-      {(c.icons ?? []).map((a) => { const I = L_ICON[a].icon; return a === 'menu' ? (
-        <div key={a} className="relative" ref={ref}>
-          <button className={ico} disabled={!menu} onClick={() => setOpen(!open)} aria-label={L_ICON[a].label} title={L_ICON[a].label} aria-expanded={open}><I className="h-4 w-4" aria-hidden /></button>
-          {open && menu && <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 text-[13.5px] shadow-xl" onClick={() => setOpen(false)}>{menu}</div>}
-        </div>
-      ) : <button key={a} className={ico} disabled={!onIcon || !!off?.[a]} onClick={() => onIcon?.(a)} aria-label={L_ICON[a].label} title={L_ICON[a].label}><I className="h-4 w-4" aria-hidden /></button>; })}
+    <div className={cn('flex h-full flex-wrap items-center gap-1.5', c.align === 'left' ? 'justify-start' : c.align === 'center' ? 'justify-center' : 'justify-end')}>
+      {list.map((b) => {
+        const I = L_ICONSET[b.icon] ?? L_ICONSET[L_ACT[b.act].icon] ?? Info;
+        const name = b.label || L_ACT[b.act].label;
+        const cls = b.style === 'primary' ? cn(btnPrimary, 'h-9') : b.style === 'ghost' ? cn(btnGhost, 'h-9') : b.style === 'text' ? 'inline-flex h-9 items-center rounded-lg px-2.5 text-[13.5px] text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)] hover:text-[rgb(var(--fg))] disabled:opacity-40' : ico;
+        const inner = b.style === 'text' ? <>{b.label || L_ACT[b.act].label}</> : <><I className="h-4 w-4" aria-hidden />{b.style !== 'icon' && b.label}</>;
+        return b.act === 'menu' ? (
+          <div key={b.id} className="relative" ref={ref}>
+            <button className={cls} disabled={!ctx?.menu} onClick={() => setOpen(!open)} aria-label={name} title={name} aria-expanded={open}>{inner}</button>
+            {open && ctx?.menu && <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 text-left text-[13.5px] shadow-xl" onClick={() => setOpen(false)}>{ctx.menu}</div>}
+          </div>
+        ) : <button key={b.id} className={cls} disabled={!!ctx?.off?.(b)} onClick={() => ctx?.act(b)} aria-label={name} title={name}>{inner}</button>;
+      })}
     </div>
   );
+}
+
+/** Khối Bộ lọc chung: kỳ, so với kỳ trước, phòng ban (quyền xem phòng như trang Tổng quan gốc) */
+export function LFilter({ c }: { c: LBlockCfg }) {
+  const ctx = useContext(LPageC);
+  const { departments, role, me } = useApp();
+  const per = ctx?.period ?? 'MONTH';
+  const r = dashRange(per, Date.now());
+  const opts = c.periods?.length ? c.periods : (['WEEK', 'MONTH', 'QUARTER', 'YEAR'] as DashPeriod[]);
+  const live = !!ctx?.live;
+  const lockDept = live && role !== 'BOD' && role !== 'ACCOUNTANT' && role !== 'MKT_LEAD';
+  return (
+    <div className={cn('flex w-full flex-wrap items-center gap-2', c.align === 'left' ? 'justify-start' : c.align === 'center' ? 'justify-center' : 'justify-end')}>
+      <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Kỳ báo cáo">
+        {opts.map((o) => <button key={o} role="radio" aria-checked={per === o} onClick={() => ctx?.setPeriod(o)} className={cn('rounded-md px-2.5 py-1 text-[13px]', per === o ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')}>{L_PER[o]}</button>)}
+      </div>
+      {c.showCompare !== false && <span className="rounded-lg border border-[rgb(var(--line))] px-2.5 py-1 text-[13px] text-[rgb(var(--fg2))]">So với {r.prevTag}</span>}
+      {c.showDept !== false && (live && role === 'SALES_REP' ? <span className="rounded-md border border-[rgb(var(--line))] px-2.5 py-1.5 text-sm">Của tôi</span> : (
+        <select aria-label="Phòng ban" disabled={lockDept} className={cn(inputCls, 'h-8 w-auto py-0 text-[13px]')} value={ctx?.dept ?? 'ALL'} onChange={(e) => ctx?.setDept(e.target.value as DeptCode | 'ALL')}>
+          {!lockDept && <option value="ALL">Mọi phòng</option>}
+          {departments.filter((d) => d.active && (!lockDept || d.code === me?.dept)).map((d) => <option key={d.code} value={d.code}>{d.short || d.name}</option>)}
+        </select>
+      ))}
+    </div>
+  );
+}
+
+/** Khối Tab: thanh tab, chỉ hiện tab có khối người xem thấy */
+export function LTabsBar({ tabs, cur, onChange }: { tabs: { id: string; label: string }[]; cur: string; onChange: (t: string) => void }) {
+  return (
+    <div className="flex h-full items-end gap-6 overflow-x-auto border-b border-[rgb(var(--line))]" role="tablist">
+      {tabs.map((t) => <button key={t.id} role="tab" aria-selected={cur === t.id} onClick={() => onChange(t.id)} className={cn('-mb-px whitespace-nowrap border-b-2 pb-2 text-[14px]', cur === t.id ? 'border-[rgb(var(--fg))] font-medium text-[rgb(var(--fg))]' : 'border-transparent text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>{t.label}</button>)}
+    </div>
+  );
+}
+
+export function LTargetView({ revenue, target, elapsed, canEdit, onOpen, per }: { revenue: number; target: number; elapsed: number; canEdit: boolean; onOpen: () => void; per: DashPeriod }) {
+  if (!target) return (
+    <p className="flex flex-wrap items-center gap-2 text-sm text-[rgb(var(--fg2))]"><Target className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />Chưa có chỉ tiêu {L_PER_LOW[per]}, các số đang so với kỳ trước
+      <button className="font-medium text-[rgb(var(--accent-fg))] hover:underline" onClick={onOpen}>{canEdit ? 'Nhập chỉ tiêu' : 'Xem chỉ tiêu'}</button></p>
+  );
+  const pct = (revenue / target) * 100;
+  return (
+    <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px]">
+      <span className="flex items-center gap-2"><Target className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />Doanh thu <b className="font-medium tabular-nums">{compact(revenue)}</b> / chỉ tiêu <span className="tabular-nums">{compact(target)}</span></span>
+      <div className="relative h-1.5 min-w-[160px] flex-1 rounded-full bg-[rgb(var(--ink)/0.08)]" role="img" aria-label={`Đạt ${Math.round(pct)}%, kỳ vọng ${Math.round(elapsed * 100)}%`}><div className="h-full rounded-full bg-[rgb(var(--fg))]" style={{ width: `${Math.min(100, pct)}%` }} /><i className="absolute -top-1 h-3.5 w-px bg-[rgb(var(--accent))]" style={{ left: `${Math.min(100, elapsed * 100)}%` }} /></div>
+      <span className="tabular-nums text-[rgb(var(--fg2))]">đạt {Math.round(pct)}% · kỳ vọng {Math.round(elapsed * 100)}%</span>
+      <button className="text-[rgb(var(--accent-fg))] hover:underline" onClick={onOpen}>Chỉ tiêu</button>
+    </div>
+  );
+}
+
+export function LTargetLive({ ctx }: { ctx: LPageCtx }) {
+  const { role, me } = useApp();
+  const lock = role !== 'BOD' && role !== 'ACCOUNTANT' && role !== 'MKT_LEAD';
+  const scope: DashScope = role === 'SALES_REP' ? { dept: 'ALL', userId: me.id } : { dept: lock ? me.dept ?? 'ALL' : ctx.dept };
+  const d = useDashData(ctx.period, scope);
+  return <LTargetView revenue={d.revenue} target={d.target} elapsed={d.r.elapsed} canEdit={role === 'BOD' || role === 'DEPT_HEAD'} onOpen={ctx.openTargets} per={ctx.period} />;
+}
+
+/** Khối Tiến độ mục tiêu: dùng chỉ tiêu tháng sẵn có (Nhập chỉ tiêu), cùng cách tính với Tổng quan gốc */
+export function LTarget() {
+  const ctx = useContext(LPageC);
+  if (ctx?.live) return <LTargetLive ctx={ctx} />;
+  const per = ctx?.period ?? 'MONTH';
+  return <LTargetView revenue={0} target={0} elapsed={dashRange(per, Date.now()).elapsed} canEdit onOpen={() => {}} per={per} />;
+}
+
+export function LDivider({ c }: { c: LBlockCfg }) {
+  return <div className="flex h-full items-center gap-3">{!c.hideTitle && c.title && <span className="whitespace-nowrap text-[12.5px] font-medium text-[rgb(var(--muted))]">{c.title}</span>}<hr className="flex-1 border-[rgb(var(--line))]" /></div>;
+}
+
+/** Khối hiển thị dùng chung trên trang nghiệp vụ */
+export function lCommonNode(b: LBlock): ReactNode {
+  if (b.type === 'K-Text') return <LTextBlock c={b.config} />;
+  if (b.type === 'K-Button' || b.type === 'K-Icons') return <LButtons c={b.config} />;
+  if (b.type === 'K-Divider') return <LDivider c={b.config} />;
+  if (b.type === 'K-Spacer') return <div style={{ height: Math.max(1, b.pos.lg.h) * 20 }} aria-hidden />;
+  return null;
 }
 
 export function LTable({ c, rows, narrow }: { c: LBlockCfg; rows: LRow[]; narrow?: boolean }) {
@@ -713,41 +859,60 @@ export function LTable({ c, rows, narrow }: { c: LBlockCfg; rows: LRow[]; narrow
   );
 }
 
-export function LBlockBody({ b, rows, range, narrow, onIcon }: { b: LBlock; rows: LRow[]; range?: DateRange; narrow?: boolean; onIcon?: (a: LIconAct) => void }) {
+export function LBlockBody({ b, rows, range, narrow }: { b: LBlock; rows: LRow[]; range?: DateRange; narrow?: boolean }) {
   if (b.type === 'K-Stat-Simple') return <LStat c={b.config} rows={rows} range={range} />;
   if (b.type === 'K-Chart-Line') return <LLine c={b.config} rows={rows} />;
   if (b.type === 'K-Text') return <LText c={b.config} />;
-  if (b.type === 'K-Icons') return <LIcons c={b.config} onIcon={onIcon} />;
+  if (b.type === 'K-Icons' || b.type === 'K-Button') return <LButtons c={b.config} />;
+  if (b.type === 'K-Filter') return <LFilter c={b.config} />;
+  if (b.type === 'K-Tabs') return <LTabsBar tabs={b.config.tabs ?? []} cur={b.config.tabs?.[0]?.id ?? ''} onChange={() => {}} />;
+  if (b.type === 'K-Target') return <LTarget />;
+  if (b.type === 'K-Divider') return <LDivider c={b.config} />;
+  if (b.type === 'K-Spacer') return <div className="h-full rounded-md border border-dashed border-[rgb(var(--line))]" aria-hidden />;
   return <LTable c={b.config} rows={rows} narrow={narrow} />;
 }
 
 /** Bộ hiển thị bố cục (doanh nghiệp xem, 3A xem trước): máy tính theo vị trí 12 cột; máy tính bảng 6 cột; điện thoại theo độ rộng khối 1/1, 1/2, 1/3, 1/4 */
-export function LayoutView({ blocks, rowsOf, device, range, onOpen, role, onIcon }: { blocks: LBlock[]; rowsOf: (ds: LDataset) => LRow[] | null; device?: LDevice; range?: DateRange; onOpen?: (m: Module) => void; role?: Role; onIcon?: (a: LIconAct) => void }) {
+export function LayoutView({ blocks, rowsOf, device, range, onOpen, role }: { blocks: LBlock[]; rowsOf: (ds: LDataset) => LRow[] | null; device?: LDevice; range?: DateRange; onOpen?: (m: Module) => void; role?: Role }) {
+  const ctx = useContext(LPageC);
   const ref = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(1200);
   useEffect(() => { const el = ref.current; if (!el || device) return; const ro = new ResizeObserver(() => setW(el.clientWidth)); ro.observe(el); setW(el.clientWidth); return () => ro.disconnect(); }, [device]);
   const dev = device ?? lDeviceOf(w);
-  const vis = blocks.filter((b) => b.show[dev] && (!lHasData(b.type) || rowsOf(b.config.ds) !== null) && lCondOk(b.config, null, role ?? null));
+  const perm = blocks.filter((b) => b.show[dev] && (!lHasData(b.type) || rowsOf(b.config.ds) !== null) && lCondOk(b.config, null, role ?? null));
+  // Tab: chỉ hiện tab có ít nhất một khối người xem thấy; khối không thuộc tab nào hiện ở mọi tab
+  const tabIds = lTabList(blocks).map((t) => t.id);
+  const tabList = lTabList(blocks).filter((t) => perm.some((b) => b.config.tab === t.id));
+  const cur = tabList.find((t) => t.id === ctx?.tab)?.id ?? tabList[0]?.id ?? '';
+  const vis = perm.filter((b) => !tabIds.length || !b.config.tab || !tabIds.includes(b.config.tab) || b.config.tab === cur);
   const lg = dev === 'lg' ? lSettle(vis) : vis;
   const ordered = dev === 'sm' ? [...vis].sort((a, b) => (a.pos.sm.order || 99) - (b.pos.sm.order || 99)) : [...lg].sort((a, b) => a.pos.lg.y - b.pos.lg.y || a.pos.lg.x - b.pos.lg.x);
   const style = (b: LBlock): CSSProperties => {
     const p = b.pos.lg;
     if (dev === 'lg') return { gridColumn: `${p.x + 1} / span ${p.w}`, gridRow: `${p.y + 1} / span ${p.h}` };
     if (dev === 'md') return { gridColumn: `span ${Math.min(6, Math.max(2, p.w))}`, gridRow: `span ${p.h}` };
-    return { gridColumn: `span ${b.pos.sm.w || 12}`, gridRow: `span ${b.type === 'K-Stat-Simple' ? 2 : Math.min(p.h, 5)}` };
+    const one = ['K-Tabs', 'K-Filter', 'K-Button', 'K-Icons', 'K-Divider', 'K-Spacer', 'K-Target'].includes(b.type);
+    return { gridColumn: `span ${b.pos.sm.w || 12}`, gridRow: `span ${b.type === 'K-Stat-Simple' ? 2 : one ? Math.min(p.h, 2) : Math.min(p.h, 5)}` };
   };
   return (
     <div ref={ref} className="grid" style={{ gridTemplateColumns: `repeat(${dev === 'md' ? 6 : 12}, minmax(0, 1fr))`, gridAutoRows: `${L_ROW}px`, gap: L_GAP, gridAutoFlow: dev === 'md' ? 'row dense' : 'row' }}>
       {ordered.map((b) => {
-        const rows = lHasData(b.type) ? rowsOf(b.config.ds) ?? [] : [];
+        const st = style(b);
+        if (b.type === 'K-Tabs') return <div key={b.id} style={st} className="min-w-0"><LTabsBar tabs={tabList} cur={cur} onChange={(t) => ctx?.setTab(t)} /></div>;
+        if (b.type === 'K-Icons' || b.type === 'K-Button') return <div key={b.id} style={st} className="min-w-0"><LButtons c={b.config} /></div>;
+        if (b.type === 'K-Filter') return <div key={b.id} style={st} className="flex min-w-0 items-center"><LFilter c={b.config} /></div>;
+        if (b.type === 'K-Target') return <div key={b.id} style={st} className="flex min-w-0 items-center"><LTarget /></div>;
+        if (b.type === 'K-Divider') return <div key={b.id} style={st} className="min-w-0"><LDivider c={b.config} /></div>;
+        if (b.type === 'K-Spacer') return <div key={b.id} style={st} aria-hidden />;
+        if (b.type === 'K-Text') return <LTextBlock key={b.id} c={b.config} style={st} cls="overflow-y-auto" />;
+        const rows = rowsOf(b.config.ds) ?? [];
         const ds = L_DS[b.config.ds];
-        if (b.type === 'K-Icons') return <div key={b.id} style={style(b)} className="min-w-0"><LIcons c={b.config} onIcon={onIcon} /></div>;
         return (
-          <section key={b.id} style={style(b)} className={cn('glass-card flex min-w-0 flex-col overflow-hidden rounded-xl', b.type === 'K-Text' && lToneCls(b.config))}>
-            {!(b.type === 'K-Text' && b.config.hideTitle) && <div className="flex items-center gap-2 px-4 pt-3"><h3 className="min-w-0 truncate text-[13px] font-medium">{b.config.title}</h3>
-              {lHasData(b.type) && b.config.open !== false && onOpen && <button className="ml-auto shrink-0 text-[12px] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => onOpen(ds.module)} aria-label={`Mở ${MODULE_LABEL[ds.module]}`}><ArrowRight className="h-3.5 w-3.5" aria-hidden /></button>}
-            </div>}
-            <div className={cn('min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-1', b.type === 'K-Text' && b.config.hideTitle && 'pt-3')}><LBlockBody b={b} rows={rows} range={range} narrow={dev === 'sm'} onIcon={onIcon} /></div>
+          <section key={b.id} style={st} className="glass-card flex min-w-0 flex-col overflow-hidden rounded-xl">
+            <div className="flex items-center gap-2 px-4 pt-3"><h3 className="min-w-0 truncate text-[13px] font-medium">{b.config.title}</h3>
+              {b.config.open !== false && onOpen && <button className="ml-auto shrink-0 text-[12px] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => onOpen(ds.module)} aria-label={`Mở ${MODULE_LABEL[ds.module]}`}><ArrowRight className="h-3.5 w-3.5" aria-hidden /></button>}
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-1"><LBlockBody b={b} rows={rows} range={range} narrow={dev === 'sm'} /></div>
           </section>
         );
       })}
@@ -829,7 +994,25 @@ export function lSaleSample({ b, stage, cf, narrow }: { b: LBlock; stage: LStage
   if (b.type === 'K-Order-Ship') return <div>{kv('Giao nhận', 'Gửi xe / chành')}{kv('Người nhận', 'Anh Phát · 0903 112 245')}{kv('Ngày giao', fmtDate(todayISO()))}{kv('Địa chỉ', 'Lô C5, KCN Tân Bình')}</div>;
   if (b.type === 'K-Order-Files') return <div className="space-y-1 text-[12.5px]"><p className="flex items-center gap-2"><Paperclip className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden />PO-HP-1125.pdf <span className="text-[rgb(var(--muted))]">180 KB</span></p><p className="flex items-center gap-2"><Paperclip className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden />anh-giao-hang.jpg <span className="text-[rgb(var(--muted))]">240 KB</span></p></div>;
   if (b.type === 'K-Text') return <LText c={c} />;
-  if (b.type === 'K-Icons') return <LIcons c={c} />;
+  if (b.type === 'K-Icons' || b.type === 'K-Button') return <LButtons c={c} />;
+  if (b.type === 'K-Divider') return <LDivider c={c} />;
+  if (b.type === 'K-Spacer') return <div className="h-5" aria-hidden />;
+  if (b.type === 'K-SaleList') {
+    const tabs = lFieldOrder(SO_LIST_TABS, c);
+    const def = c.cols?.length ? SO_LIST_COLS.filter((x) => x.lock || c.cols!.includes(x.id)) : SO_LIST_COLS.filter((x) => x.lock || x.def);
+    const cfc = cf.filter((d) => d.scope === 'HEAD' && d.where.list && c.cols?.includes(`cf:${d.key}`));
+    const head = [...def.filter((x) => x.id !== 'seller').map((x) => x.label), ...cfc.map((d) => d.label)];
+    const rows = [['20/11/2026', 'DH201126-04', 'Xưởng Nhôm kính Phú Quý', 'Chờ duyệt'], ['20/11/2026', 'DH201126-03', 'Cửa hàng Vật tư điện Phúc An', 'Chờ xuất kho'], ['20/11/2026', 'DH201126-02', 'NPP Hoàng Phát', 'Chờ xuất kho'], ['19/11/2026', 'DH191126-07', 'Tổng thầu Điện Thành', 'Hoàn thành']];
+    const val = (h: string, r: string[], i: number) => (h === 'Ngày' ? r[0] : h === 'Mã đơn' ? <Code>{r[1]}</Code> : h === 'Khách hàng' ? r[2] : h === 'Trạng thái' ? r[3] : ['Doanh số', 'Tổng đơn', 'Doanh thu', 'Còn lại', 'VAT', 'Chiết khấu', 'Hàng trả lại', 'Chờ kế toán thu'].includes(h) ? fmtN([2160000, 8100000, 1425000, 3390000][i] * (h === 'VAT' ? 0.08 : h === 'Doanh thu' ? 0 : 1)) : cfc.some((d) => d.label === h) ? cfSample(cfc.find((d) => d.label === h)!) : '—');
+    return (
+      <div className="overflow-hidden text-[12px]">
+        <div className="mb-2 flex items-center gap-2"><span className="text-[15px] font-medium">Quản lý đơn hàng</span><span className="ml-2 h-7 flex-1 rounded-md border border-[rgb(var(--line))] px-2 leading-7 text-[rgb(var(--muted))]">Tìm mã đơn, khách hàng</span><span className="rounded-md border border-[rgb(var(--line))] px-2 leading-7">Tháng này</span></div>
+        <div className="flex gap-4 border-b border-[rgb(var(--line))] pb-1.5">{tabs.map((id, i) => <span key={id} className={i === 0 ? 'font-medium' : 'text-[rgb(var(--muted))]'}>{SO_LIST_TABS.find((x) => x.id === id)?.label}</span>)}</div>
+        <table className="w-full"><thead><tr className="text-[rgb(var(--muted))]">{head.map((h) => <th key={h} className="whitespace-nowrap px-1.5 py-1 text-left font-normal">{h}</th>)}</tr></thead>
+          <tbody>{rows.map((r, i) => <tr key={r[1]} className="border-t border-[rgb(var(--line)/0.6)]">{head.map((h) => <td key={h} className="max-w-[160px] truncate whitespace-nowrap px-1.5 py-1.5">{val(h, r, i)}</td>)}</tr>)}</tbody></table>
+      </div>
+    );
+  }
   return null;
 }
 
@@ -841,21 +1024,41 @@ export function useTenantLayout(page: LPage): LayoutVer | null {
   const pick = (lv: LayoutAssign['level'], r: Role | null) => as.find((x) => x.level === lv && (x.role ?? null) === r && (lv !== 'PROFILE' || x.profile === prof) && (lv !== 'TENANT' || x.tenantId === org.id));
   const a = pick('TENANT', role) ?? pick('TENANT', null) ?? pick('PROFILE', role) ?? pick('PROFILE', null) ?? pick('SYSTEM', role) ?? pick('SYSTEM', null);
   const v = a ? platform.layouts.find((x) => x.id === a.verId) : undefined;
-  return v && v.blocks.length ? { ...v, blocks: lEnsureCore(page, v.blocks) } : null;
+  return v && v.blocks.length ? { ...v, blocks: lEnsureCore(page, lMigrate(page, v.blocks)) } : null;
 }
 
 export function TenantLayoutPage({ ver }: { ver: LayoutVer }) {
   const app = useApp();
-  const { stockVouchers, canSee, canDo, go, range } = app;
+  const { stockVouchers, canSee, canDo, go, range, role, me, org } = app;
+  const [period, setPeriod] = useSticky<DashPeriod>('L.home.period', 'MONTH');
+  const [deptPick, setDeptPick] = useSticky<DeptCode | 'ALL'>('L.home.dept', 'ALL');
+  const [tab, setTab] = useSticky<string>('L.home.tab', '');
+  const [sheet, setSheet] = useState(false);
+  const lockDept = role !== 'BOD' && role !== 'ACCOUNTANT' && role !== 'MKT_LEAD';
+  const dept: DeptCode | 'ALL' = role === 'SALES_REP' ? 'ALL' : lockDept ? me.dept ?? 'ALL' : deptPick;
+  // Có Bộ lọc chung: khối đặt kỳ "Theo Bộ lọc chung" và lọc phòng theo bộ lọc; không có thì theo ô kỳ ở thanh trên cùng
+  const hasF = ver.blocks.some((b) => b.type === 'K-Filter');
+  const rr = dashRange(period, Date.now());
+  const pr: DateRange | undefined = hasF ? { from: iso(new Date(rr.from)), to: iso(new Date(rr.to - 864e5)) } : range;
   const cache = useMemo(() => new Map<LDataset, LRow[]>(), [app.mySales, app.myLeads, app.myCustomers, app.cashEntries, app.programs, stockVouchers]); // eslint-disable-line react-hooks/exhaustive-deps
   const rowsOf = (ds: LDataset) => {
     const d = L_DS[ds];
     if (!canSee(d.module) || (d.perm && !canDo(d.perm))) return null;
     if (!cache.has(ds)) cache.set(ds, lRowsReal(ds, app, stockVouchers));
-    return cache.get(ds) ?? [];
+    const base = cache.get(ds) ?? [];
+    return hasF && dept !== 'ALL' && (ds === 'sales' || ds === 'leads' || ds === 'customers') ? base.filter((x) => x.dp === dept) : base;
   };
-  const onIcon = (a: LIconAct) => { if (a === 'print') window.print(); if (a === 'download') lExport(ver.blocks, rowsOf, range, `TongQuan_${todayISO()}.xlsx`); };
-  return <LayoutView blocks={ver.blocks} rowsOf={rowsOf} range={range} onOpen={(m) => go(m)} role={app.role} onIcon={onIcon} />;
+  const ctx: LPageCtx = {
+    live: true, page: 'home', period, setPeriod, dept, setDept: setDeptPick, tab, setTab, vars: lVars(period, org.shortName || org.name, me?.name ?? ''), openTargets: () => setSheet(true),
+    act: (b) => { if (b.act === 'excel') lExport(ver.blocks, rowsOf, pr, `TongQuan_${todayISO()}.xlsx`); else if (b.act === 'targets') setSheet(true); else lActCommonRun(b, (m) => go(m)); },
+    can: () => true,
+  };
+  return (
+    <LPageC.Provider value={ctx}>
+      <LayoutView blocks={ver.blocks} rowsOf={rowsOf} range={pr} onOpen={(m) => go(m)} role={role} />
+      {sheet && <KpiTargetSheet onClose={() => setSheet(false)} />}
+    </LPageC.Provider>
+  );
 }
 
 /** Tải số liệu các khối của trang tổng hợp ra Excel: 1 sheet chỉ số + mỗi bảng / biểu đồ 1 sheet */

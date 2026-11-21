@@ -5,15 +5,15 @@ import { AlertTriangle, Banknote, Building2, CalendarDays, Check as CheckIcon, C
 import { removeWithUndo } from '../../app/context';
 import { RowMenu } from '../../components/controls';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, useSticky } from '../../components/ui';
-import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, CF_FILTERABLE, cfDefsFor, cfEmpty, cfMissing, cfSet, compact, DECISION_LABEL, digits, downloadBlob, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, lCondOk, lFieldOrder, lIsCore, lStageOf, lStarterSale, lToneCls, MAIN_WH, nextCode, overdueDays, PRICE_TIER, readAsDataUrl, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleCashOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, SO_INFO_F, SO_LINE_F, soGrid, soIco, soTd, soTh, soTime, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
+import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, CF_FILTERABLE, cfDefsFor, cfEmpty, cfMissing, cfSet, compact, DECISION_LABEL, digits, downloadBlob, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, lCondOk, lFieldOrder, lIsCore, LPageC, lStageOf, lStarterSale, MAIN_WH, nextCode, overdueDays, PRICE_TIER, readAsDataUrl, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleCashOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, SO_INFO_F, SO_LINE_F, SO_LIST_TABS, soGrid, soIco, soTd, soTh, soTime, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
 import { downloadCsv, xlsxBlob } from '../../lib/csv';
 import { saleCostEst, saleDirectCost, saleHeld, saleNetRevenue, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
-import type { ApprovalDecision, CfVal, CompanyInfo, Customer, LBlock, LBlockType, LDevice, LIconAct, PriceTier, SaleDelivery, SaleFile, SaleFilter, SaleInvBuyer, SaleInvItem, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
+import type { ApprovalDecision, CfVal, CompanyInfo, Customer, LBlock, LBlockCfg, LBlockType, LDevice, LIconAct, LPageCtx, PriceTier, SaleDelivery, SaleFile, SaleFilter, SaleInvBuyer, SaleInvItem, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
 import { cn, wfApprovers, wfPath } from '../../lib/utils';
 import { compressImage, stockOf } from '../../lib/workshop';
 import { SearchBox } from '../alux/orders';
 import { useArItems } from '../finance/ar-aging';
-import { CfInput, cfText, LBusinessView, LIcons, LText, useMinW, useSaleCf, useTenantLayout } from '../messages/messenger';
+import { CfInput, cfText, lActCommonRun, LBusinessView, lCommonNode, lVars, useMinW, useSaleCf, useTenantLayout } from '../messages/messenger';
 import { docShell, moneyToWordsVN, printHtml } from './templates';
 import { useApprovalQueue } from '../tasks/tasks';
 
@@ -244,10 +244,32 @@ export function SalesModule() {
     : <SalePayPage o={open} onBack={() => setSub(null)} />;
   if (open) return <SaleDetail key={`${open.id}${cancelId === open.id ? '-c' : ''}`} o={open} onBack={() => { setCancelId(null); setOpenSale(null); }} onApprove={() => setSub({ kind: 'approve', id: open.id })} onPay={() => setSub({ kind: 'pay', id: open.id })} onEdit={() => setEditId(open.id)} startCancel={cancelId === open.id} />;
   if (mode === 'new') return <SaleForm onDone={(id) => { setMode('list'); if (id) setOpenSale(id); }} />;
-  return <SaleList onNew={canDo('sale.create') ? () => setMode('new') : undefined} onEdit={(id) => setEditId(id)} onCancel={(id) => { setCancelId(id); setOpenSale(id); }} />;
+  return <SaleListPage onNew={canDo('sale.create') ? () => setMode('new') : undefined} onEdit={(id) => setEditId(id)} onCancel={(id) => { setCancelId(id); setOpenSale(id); }} />;
 }
 
-export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEdit: (id: string) => void; onCancel: (id: string) => void }) {
+/** v54: trang Quản lý đơn hàng theo bố cục 3A phát hành (chưa phát hành: giao diện gốc) */
+export function SaleListPage(props: { onNew?: () => void; onEdit: (id: string) => void; onCancel: (id: string) => void }) {
+  const lay = useTenantLayout('sale-list');
+  const wide = useMinW(1280);
+  const phone = !useMinW(640);
+  const { role, go, org, me } = useApp();
+  if (!lay) return <SaleList {...props} />;
+  const dev: LDevice = wide ? 'lg' : phone ? 'sm' : 'md';
+  const ctx: LPageCtx = {
+    live: true, page: 'sale-list', period: 'MONTH', setPeriod: () => {}, dept: 'ALL', setDept: () => {}, tab: '', setTab: () => {}, openTargets: () => {},
+    vars: lVars('MONTH', org.shortName || org.name, me?.name ?? ''),
+    act: (b) => { if (b.act === 'new') props.onNew?.(); else lActCommonRun(b, (m) => go(m)); },
+    can: (b) => b.act !== 'new' || !!props.onNew,
+  };
+  const node = (b: LBlock): ReactNode => {
+    if (!lIsCore(b.type) && !lCondOk(b.config, null, role)) return null;
+    if (b.type === 'K-SaleList') return <SaleList {...props} cfg={b.config} />;
+    return lCommonNode(b);
+  };
+  return <LPageC.Provider value={ctx}><LBusinessView blocks={lay.blocks} node={node} narrow={!wide} dev={dev} /></LPageC.Provider>;
+}
+
+export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void; onEdit: (id: string) => void; onCancel: (id: string) => void; cfg?: LBlockCfg }) {
   const R = useSaleRights();
   const { mySales: salesOrders, setOpenSale, users, quotes, warehouses, stockVouchers, customers } = useApp();
   const [tab0, setTab] = useSticky<SaleTab>('Sales.tab50', 'ALL');
@@ -275,7 +297,7 @@ export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEd
   const popRef = useOutside(pop === 'per' || pop === 'filter' || pop === 'cols', close);
   const sizeRef = useOutside(pop === 'size', close);
   const tabIds: SaleTab[] = ['ALL', 'APPROVAL', 'APPROVED', 'WAIT', 'UNPAID', 'PAID', 'DONE', 'CANCELLED'];
-  const tab: SaleTab = tabIds.includes(tab0) ? tab0 : 'ALL';
+  const tab: SaleTab = tabIds.includes(tab0) && !(cfg?.off ?? []).includes(tab0) ? tab0 : 'ALL';
   const today = todayISO();
   const mon = Number(today.slice(5, 7));
   const from = per === 'C' ? range.from : per === 'D' ? today : per === 'W' ? addDaysISO(today, -((new Date().getDay() + 6) % 7)) : per === 'M' ? `${today.slice(0, 8)}01` : per === 'Q' ? `${today.slice(0, 5)}${String(Math.floor((mon - 1) / 3) * 3 + 1).padStart(2, '0')}-01` : per === 'Y' ? `${today.slice(0, 5)}01-01` : '';
@@ -355,7 +377,8 @@ export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEd
     { id: 'inv', label: 'Hóa đơn thuế', group: 'Tiến độ', def: true, cell: (o) => { const s = invOf(o); return s === 'NO' ? <span className="text-[rgb(var(--muted))]">Không lấy</span> : s === 'DONE' ? <span className="flex gap-1">{(o.invReqs ?? []).filter((r) => r.status === 'DONE').map((r) => <Code key={r.id}>{r.no}</Code>)}</span> : s === 'WAIT' ? <Chip tone="orange">Chờ xuất</Chip> : '—'; } },
     ...cfL.map((d): Col => ({ id: `cf:${d.key}`, label: d.label, group: 'Trường tùy chỉnh', right: d.type === 'money' || d.type === 'number', cell: (o) => { const t = cfText(d, o.cf?.[d.key], nm); return t ? <span className={cn('block max-w-[200px] truncate', (d.type === 'money' || d.type === 'number') && 'tabular-nums')} title={t}>{t}</span> : '—'; } })),
   ];
-  const DEF = COLS.filter((c) => c.def || c.lock).map((c) => c.id);
+  // v54: 3A đặt bộ cột mặc định cho doanh nghiệp (khối Danh sách đơn hàng); người dùng vẫn tự lưu cột riêng
+  const DEF = cfg?.cols?.length ? [...COLS.filter((c) => c.lock).map((c) => c.id), ...cfg.cols.filter((id) => COLS.some((c) => c.id === id && !c.lock))] : COLS.filter((c) => c.def || c.lock).map((c) => c.id);
   const on = cols.length ? cols : DEF;
   const ORDER = ['date', 'code', 'cust', 'status', 'origin', 'by', 'wh', 'issue', 'deliver', 'gross', 'disc', 'vat', 'grand', 'paid', 'wait', 'left', 'ret', 'dueAt', 'note', 'inv', ...cfL.map((d) => `cf:${d.key}`)];
   const vis = ORDER.map((id) => COLS.find((c) => c.id === id)!).filter((c) => c.lock || on.includes(c.id));
@@ -474,7 +497,7 @@ export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEd
       <section className="glass-card overflow-hidden rounded-xl">
         <div className="flex flex-wrap items-center gap-x-6 border-b border-[rgb(var(--line))] px-5">
           <div className="-mb-px flex min-w-0 flex-1 gap-6 overflow-x-auto" role="tablist">
-            {tabs.map((t) => { const n = base.filter((o) => inTab(o, t.id)).length; return (
+            {(cfg ? lFieldOrder(SO_LIST_TABS, cfg).map((id) => tabs.find((t) => t.id === id)).filter((t): t is { id: SaleTab; label: string } => !!t) : tabs).map((t) => { const n = base.filter((o) => inTab(o, t.id)).length; return (
               <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={cn('flex h-12 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 text-[14px]', tab === t.id ? 'border-[rgb(var(--fg))] font-medium text-[rgb(var(--fg))]' : 'border-transparent text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>{t.label}<span className="text-[12px] tabular-nums text-[rgb(var(--muted))]">{n}</span></button>
             ); })}
           </div>
@@ -1367,7 +1390,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const [view, setView] = useState<string | null>(null);
   type Info = { origin: string; docRef: string; by: string; receiver: string; phone: string; address: string; deliverAt: string; note: string; invoice: boolean; cf: Record<string, CfVal>; lcf: Record<string, Record<string, CfVal>> };
   const [info, setInfo] = useState<Info | null>(null);
-  const { notify, mySales, setOpenSale } = useApp();
+  const { notify, mySales, setOpenSale, org } = useApp();
   const cfd = useSaleCf();
   const cfHeadForm = cfd.head.filter((d) => d.status === 'ACTIVE' && d.where.form);
   const cfLineForm = cfd.line.filter((d) => d.status === 'ACTIVE' && d.where.form);
@@ -1419,7 +1442,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const blkOf = (t: LBlockType) => blocks.find((b) => b.type === t);
   const lstage = lStageOf(o, stage, cancel !== null);
   const myRole = me?.role ?? null;
-  const iconOn = (a: LIconAct) => blocks.some((b) => b.type === 'K-Icons' && b.show[dev] && lCondOk(b.config, lstage, myRole) && (b.config.icons ?? []).includes(a));
+  const iconOn = (a: LIconAct) => blocks.some((b) => (b.type === 'K-Icons' || b.type === 'K-Button') && b.show[dev] && lCondOk(b.config, lstage, myRole) && (b.type === 'K-Icons' ? b.config.icons ?? [] : (b.config.buttons ?? []).map((x) => x.act)).includes(a));
   const cfHeadInfo = cfd.head.filter((d) => d.where.info && (d.status === 'ACTIVE' || !cfEmpty(o.cf?.[d.key])));
   const cfLineCols = cfd.line.filter((d) => d.where.info && (d.status === 'ACTIVE' || o.lines.some((l) => !cfEmpty(l.cf?.[d.key]))));
   const needAp = stage === 'APPROVAL' ? cfMissing(cfd.head, o.cf, 'APPROVE') : [];
@@ -1763,12 +1786,18 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
             case 'K-Order-Log': return cancel === null ? logCard : null;
             case 'K-Order-Ship': return shipNode;
             case 'K-Order-Files': return filesCard;
-            case 'K-Text': return <section className={cn('glass-card rounded-xl px-5 py-4', lToneCls(b.config))}>{!b.config.hideTitle && <h3 className="mb-2 text-[15px] font-medium">{b.config.title}</h3>}<LText c={b.config} /></section>;
-            case 'K-Icons': return <LIcons c={b.config} onIcon={onIcon} off={{ prev: !prevO, next: !nextO, upload: !canUp || upBusy }} menu={moreItems} />;
-            default: return null;
+            default: return lCommonNode(b);
           }
         };
-        return <LBusinessView blocks={blocks} node={node} narrow={!wide} dev={dev} />;
+        const sctx: LPageCtx = {
+          live: true, page: 'sale-detail', period: 'MONTH', setPeriod: () => {}, dept: 'ALL', setDept: () => {}, tab: '', setTab: () => {}, openTargets: () => {},
+          vars: lVars('MONTH', org.shortName || org.name, me?.name ?? '', { 'mã đơn': o.code, 'khách hàng': o.customer, 'trạng thái đơn': SALE_STAGE[stage].label }),
+          act: (x) => { if (['back', 'prev', 'next', 'print', 'download', 'upload'].includes(x.act)) onIcon(x.act as LIconAct); else lActCommonRun(x, (m) => go(m)); },
+          can: (x) => x.act !== 'upload' || canUp,
+          off: (x) => (x.act === 'prev' && !prevO) || (x.act === 'next' && !nextO) || (x.act === 'upload' && upBusy),
+          menu: moreItems,
+        };
+        return <LPageC.Provider value={sctx}><LBusinessView blocks={blocks} node={node} narrow={!wide} dev={dev} /></LPageC.Provider>;
       })()}
     </div>
   );
