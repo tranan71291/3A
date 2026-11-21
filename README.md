@@ -1,4 +1,21 @@
-# 3A CRM v53 (Page Builder bản 2: trang Chi tiết đơn hàng theo khối, khối text, nút biểu tượng, trường tùy chỉnh đơn bán — dựa trên v52)
+# 3A CRM v54 (Page Builder bản 3: thư viện khối dùng chung, mở trang Quản lý đơn hàng — dựa trên v53)
+
+## Cập nhật v54 (21/11)
+
+- **Thư viện khối 3 tầng** (3A Platform › Thiết kế giao diện): *Khối hiển thị* dùng mọi trang (Khối text, Nút / Icon, Đường kẻ, Khoảng trống); *Khối dữ liệu* (Chỉ số, Biểu đồ, Bảng, Bộ lọc chung, Tab, Tiến độ mục tiêu); *Khối nghiệp vụ* riêng từng trang.
+- **Khối text 8 kiểu**: Tiêu đề trang, Tiêu đề mục, Đoạn văn, Nhãn nhỏ, Ghi chú, Lưu ý, Cảnh báo, Trích dẫn; dòng phụ, căn trái / giữa / phải, cỡ chữ, khung. **Biến tự điền**: {kỳ}, {kỳ trước}, {giờ cập nhật}, {kỳ vọng %}, {số ngày còn lại}, {ngày}, {tên doanh nghiệp}, {người xem}; trang đơn thêm {mã đơn}, {khách hàng}, {trạng thái đơn}.
+- **Nút / Icon**: mỗi nút tự chọn icon (~30), nhãn, kiểu (Chỉ icon / Viền / Chỉ chữ cho nút phụ / Nút chính), hành động. Chọn *Mở trang trong CRM* thì chọn trang đích; *Liên kết ngoài* thì nhập URL (chỉ https). Nút người xem không có quyền tự ẩn.
+- **Bộ lọc chung** (Tổng quan): kỳ Tuần / Tháng / Quý / Năm, so với kỳ trước, phòng ban (theo quyền xem). Các khối Chỉ số, Biểu đồ, Bảng, Tiến độ đi theo bộ lọc.
+- **Tab**: mỗi tab một nhóm khối; tab mà người xem không có quyền với mọi khối bên trong thì tự ẩn. Đổi tab **giữ nguyên kỳ và phòng ban** đã chọn.
+- **Tiến độ mục tiêu**: doanh thu so với chỉ tiêu, vạch kỳ vọng; chưa có chỉ tiêu thì hiện lời nhắc và nút Nhập chỉ tiêu.
+- **Trang Quản lý đơn hàng** mở cho thiết kế: khối lõi Danh sách đơn (3A đặt thứ tự / ẩn tab trạng thái và bộ cột mặc định cho doanh nghiệp; mỗi người vẫn tự đổi cột riêng) + khối hiển thị phía trên / dưới.
+- **Tự chuyển bố cục v53**: Khối text kiểu cũ và Nút biểu tượng (K-Icons) đã phát hành tự đổi sang dạng mới khi mở, giữ nguyên vị trí và nút.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict). Chạy thử: bố cục trang đơn v53 đã phát hành tự chuyển sang nút mới; 3A thiết kế Tổng quan 3 tab (Tổng quan / Kinh doanh / Tài chính) với tiêu đề có biến, bộ lọc chung, nút Chỉ tiêu / PDF / Đơn hàng (Chỉ chữ, mở trang Bán hàng), xem trước Sales trên điện thoại rồi phát hành; thiết kế Quản lý đơn hàng (thêm khối text, ẩn tab Đã thanh toán / Đã hủy, bỏ cột Ghi chú, thêm cột Người tạo) rồi phát hành. Giám đốc chọn Quý, đổi tab vẫn giữ Quý; mở Nhập chỉ tiêu từ khối. Sales chỉ thấy tab Tổng quan và Kinh doanh. Ảnh ở thư mục `anh-v54`.
+
+> Không đổi bảng, SQL, không thêm thư viện. Bố cục vẫn lưu trong kho dữ liệu nền tảng `_platform` như v53. Khối Ảnh / Logo để bản 4 (cùng kho tệp Supabase Storage).
+
+## (v53) 3A CRM v53 (Page Builder bản 2: trang Chi tiết đơn hàng theo khối, khối text, nút biểu tượng, trường tùy chỉnh đơn bán — dựa trên v52)
 
 ## Cập nhật v53 (20/11)
 

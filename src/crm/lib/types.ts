@@ -280,10 +280,19 @@ export type DateRange = { from: string; to: string };
 
 // ---------------- v52: Thiết kế giao diện (Page Builder) ----------------
 /** Trang dựng được bằng khối. Bản 1: Tổng quan */
-export type LPage = 'home' | 'desk' | 'reports' | 'sale-detail' | 'customer' | 'claim';
+export type LPage = 'home' | 'desk' | 'reports' | 'sale-detail' | 'sale-list' | 'customer' | 'claim';
 
 export type LBlockType = 'K-Stat-Simple' | 'K-Chart-Line' | 'K-Table-Compact' | 'K-Text' | 'K-Icons'
-  | 'K-Order-Info' | 'K-Order-Lines' | 'K-Order-Flow' | 'K-Order-Pay' | 'K-Order-Profit' | 'K-Order-Debt' | 'K-Order-Log' | 'K-Order-Ship' | 'K-Order-Files';
+  | 'K-Order-Info' | 'K-Order-Lines' | 'K-Order-Flow' | 'K-Order-Pay' | 'K-Order-Profit' | 'K-Order-Debt' | 'K-Order-Log' | 'K-Order-Ship' | 'K-Order-Files'
+  | 'K-Button' | 'K-Filter' | 'K-Tabs' | 'K-Target' | 'K-Divider' | 'K-Spacer' | 'K-SaleList';
+
+/** v54: kiểu khối text */
+export type LTextKind = 'title' | 'heading' | 'para' | 'label' | 'info' | 'note' | 'warn' | 'quote';
+
+/** v54: hành động của nút: chung (mọi trang) + riêng từng trang */
+export type LBtnAct = LIconAct | 'go' | 'link' | 'targets' | 'excel' | 'new';
+
+export type LBtn = { id: string; icon: string; label: string; style: 'icon' | 'ghost' | 'primary' | 'text'; act: LBtnAct; arg?: string };
 
 /** v53: nút của khối Nút biểu tượng */
 export type LIconAct = 'back' | 'prev' | 'next' | 'print' | 'download' | 'upload' | 'menu';
@@ -314,7 +323,15 @@ export type LBlockCfg = {
   /** v53 Khối text: nội dung gọn (**đậm**, *nghiêng*, dòng "- " là danh sách, "## " là tiêu đề nhỏ, [chữ](https://…)), kiểu khung, ẩn tiêu đề */
   text?: string; tone?: 'plain' | 'note' | 'warn'; hideTitle?: boolean;
   /** v53 Nút biểu tượng: các nút theo thứ tự, căn trái / phải */
-  icons?: LIconAct[]; align?: 'left' | 'right';
+  icons?: LIconAct[]; align?: 'left' | 'center' | 'right';
+  /** v54 Khối text: kiểu, dòng phụ, cỡ chữ, có khung */
+  kind?: LTextKind; sub?: string; size?: 'sm' | 'md' | 'lg'; frame?: boolean;
+  /** v54 Nút / Icon */
+  buttons?: LBtn[];
+  /** v54 Tab: danh sách tab; khối thuộc tab nào (không đặt = hiện ở mọi tab) */
+  tabs?: { id: string; label: string }[]; tab?: string;
+  /** v54 Bộ lọc chung: các kỳ cho chọn, hiện so kỳ trước, hiện lọc phòng */
+  periods?: DashPeriod[]; showCompare?: boolean; showDept?: boolean;
   /** v53 trang nghiệp vụ: thứ tự trường / cột (fields), trường / cột đang tắt (off), số cột trường của khối Thông tin */
   fields?: string[]; off?: string[]; gridCols?: 2 | 3 | 4;
   /** v53: chỉ hiện khi đơn ở các trạng thái / với các vai trò (rỗng = luôn hiện) */
@@ -329,7 +346,7 @@ export type LayoutVer = { id: string; schema: 1; page: LPage; version: number; s
 /** Áp dụng một phiên bản cho một cấp: toàn hệ thống / mô hình doanh nghiệp / riêng một doanh nghiệp */
 export type LayoutAssign = { id: string; page: LPage; level: 'SYSTEM' | 'PROFILE' | 'TENANT'; profile: 'TRADING' | 'MFG' | null; tenantId: string | null; role: Role | null; verId: string; at: number; by: string };
 
-export type LRow = { date: string; v: Record<string, number>; d: Record<string, string>; f: string[] };
+export type LRow = { date: string; v: Record<string, number>; d: Record<string, string>; f: string[]; /** v54: phòng ban (lọc theo Bộ lọc chung) */ dp?: string };
 
 // ---------------- v53: Trường tùy chỉnh ----------------
 export type CfType = 'text' | 'number' | 'money' | 'date' | 'select' | 'user' | 'check';
@@ -1952,9 +1969,15 @@ export type ContactPrefs = { fav: string[]; recent: string[]; labels: { id: stri
 
 export type ContactItem = { key: string; kind: 'staff' | 'customer'; name: string; title: string; org: string; phone?: string; email?: string; extra?: string; user?: User; customer?: Customer; group: string };
 
-export type LTypeDef = { type: LBlockType; label: string; def: LPos; desc: string; pages: LPage[]; core?: boolean; data?: boolean };
+export type LTypeDef = { type: LBlockType; label: string; def: LPos; desc: string; pages: LPage[]; tier: 'show' | 'data' | 'biz'; core?: boolean; data?: boolean };
 
 export type LField = { id: string; label: string; unit: 'money' | 'count' };
+
+/** Ngữ cảnh chung của một trang dựng bằng khối: kỳ / phòng của Bộ lọc chung, tab đang mở, biến tự điền, hành động của nút */
+export type LPageCtx = {
+  live: boolean; page: LPage; period: DashPeriod; setPeriod: (p: DashPeriod) => void; dept: DeptCode | 'ALL'; setDept: (d: DeptCode | 'ALL') => void;
+  tab: string; setTab: (t: string) => void; vars: Record<string, string>; act: (b: LBtn) => void; can: (b: LBtn) => boolean; off?: (b: LBtn) => boolean; menu?: ReactNode; openTargets: () => void;
+};
 
 // =====================================================================
 //  TỔNG QUAN ĐIỀU HÀNH v37 — 4 tab Tổng Quan · Kinh doanh · Marketing · Tài chính, KPI so chỉ tiêu
