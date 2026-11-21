@@ -1,21 +1,24 @@
 'use client';
 
-import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Bell, Bot, ChevronDown, Clock, Download, ExternalLink, FileText, FolderKanban, Hash, Inbox, Info, MessageSquare, Paperclip, Pin, Plus, Reply, Search, SmilePlus, Sparkles, Star, Target, TrendingUp, Upload, Users, Users2, X } from 'lucide-react';
+import { Fragment, type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, Bell, Bot, ChevronDown, Clock, Download, ExternalLink, FileText, FolderKanban, Hash, Inbox, Info, MessageSquare, Paperclip, Pin, Plus, Reply, Search, SmilePlus, Sparkles, Star, Target, TrendingUp, Upload, Users, Users2, X } from 'lucide-react';
 import { CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { PAvatar } from '../../app/header';
 import { MentionComposer, MentionText, useDeepLinks } from '../../components/comments';
 import { Avatar, MobileRow } from '../../components/controls';
 import { claimDate } from '../../components/filters';
-import { Chip, EmptyState, Field, FilePicker, Modal, monthly, Panel, ProgressBar, StatCard, Table, Tabs, useSticky } from '../../components/ui';
+import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, monthly, Panel, ProgressBar, StatCard, Table, Tabs, useSticky } from '../../components/ui';
 import { auditClaim, claimState, scoreLead } from '../../lib/business';
-import { bizMode, blockersOf, boqTotal, btnGhost, btnPrimary, btnSm, C, chatFileMax, claimYear, CLOUD_ON, compact, deptIcon, dmId, fmtSize, fold, GRAD, inputBase, inputCls, isAcceptLate, isMktCustomer, isQuoteOverdue, isTextFile, jobCustName, kpiGrid, LEAD_STATUS, leadAt, MQL_THRESHOLD, OPEN_STATUSES, pct, PRESENCE_META, presenceOf, progName, PROGRAM_COLOR, PROGRAM_LABEL, PROGRAM_STATUS, QUICK_REACTIONS, REGION_LABEL, ROLE_LABEL, rowCls, SOURCE_LABEL, tdCls, tdFirst, tdLast, threadKey, tierInfo, uid, useApp, vnd } from '../../lib/core';
-import type { ChatChannel, ChatFile, Claim, CommentEntity, LeadStatus, ProgramType, RowComment, Thread, User } from '../../lib/types';
+import { bizMode, blockersOf, boqTotal, btnGhost, btnPrimary, btnSm, C, cfDefsFor, cfEmpty, cfSample, chatFileMax, claimYear, CLOUD_ON, compact, deptIcon, dmId, downloadBlob, fmtDate, fmtN, fmtSize, fold, GRAD, inputBase, inputCls, isAcceptLate, isMktCustomer, iso, isQuoteOverdue, isTextFile, jobCustName, kpiGrid, L_DS, L_GAP, L_ICON, L_PERIOD, L_ROW, L_SAMPLE_CUST, L_SAMPLE_STAFF, L_SO_LINES, lAgg, lCondOk, lDeviceOf, LEAD_STATUS, leadAt, lEnsureCore, lField, lFieldOrder, lFilter, lFmt, lHasData, lHit, lIsCore, lToneCls, lType, MODULE_LABEL, MQL_THRESHOLD, OPEN_STATUSES, pct, PRESENCE_META, presenceOf, progName, PROGRAM_COLOR, PROGRAM_LABEL, PROGRAM_STATUS, QUICK_REACTIONS, REGION_LABEL, ROLE_LABEL, rowCls, SALE_STAGE, saleOwed, salePaid, SO_INFO_F, SO_LINE_F, SOURCE_LABEL, tdCls, tdFirst, tdLast, threadKey, tierInfo, tipStyle, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { xlsxBlob } from '../../lib/csv';
+import { saleStage, saleTotals } from '../../lib/getfly';
+import type { AppCtx, CfDef, CfVal, ChatChannel, ChatFile, Claim, CommentEntity, DateRange, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LDataset, LDevice, LeadStatus, LIconAct, LPage, LPeriod, LPos, LRow, LStage, Module, ProgramType, Role, RowComment, StockVoucher, Thread, User, XlsxSheet } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { ExecDashboard } from '../dashboard/exec-dashboard';
 import { CommandCenter } from '../dashboard/widget-board';
 import { MarginBadge, MdfMarginPanel } from '../mdf/surplus';
 import { TradingReports } from '../reports/reports';
+import { useOutside } from '../sales/orders';
 
 /** Xem trước file ngay trong chat: ảnh, PDF, văn bản; định dạng khác thì tải xuống */
 export function FilePreview({ f, onClose }: { f: ChatFile; onClose: () => void }) {
@@ -498,9 +501,425 @@ export function MessengerInner({ me }: { me: User }) {
   );
 }
 
-/** v37: Tổng quan điều hành 4 tab (Tổng Quan · Kinh doanh · Marketing · Tài chính), thêm tab Xưởng khi có mô hình xưởng */
+export function lDefaultCfg(type: LBlockType, page: LPage = 'home'): LBlockCfg {
+  if (type === 'K-Stat-Simple') return { title: 'Doanh số tháng', ds: 'sales', field: 'revenue', agg: 'sum', period: 'month', compare: true, open: true };
+  if (type === 'K-Chart-Line') return { title: 'Doanh số và doanh thu 12 tháng', ds: 'sales', series: ['revenue', 'paid'], months: 12, open: true };
+  if (type === 'K-Table-Compact') return { title: 'Top 5 khách hàng', ds: 'sales', mode: 'group', group: 'customer', field: 'revenue', limit: 5, open: true };
+  if (type === 'K-Text') return { title: 'Lưu ý', ds: 'sales', tone: 'note', text: page === 'sale-detail' ? '**Trước khi yêu cầu xuất kho**\n- Đơn giao nhà xe: ghi rõ tên nhà xe và số điện thoại ở Ghi chú\n- Đơn trên 50 triệu: gửi kèm PO hoặc hợp đồng' : '## Thông báo\nNội dung ngắn cho cả công ty' };
+  if (type === 'K-Icons') return { title: 'Nút biểu tượng', ds: 'sales', hideTitle: true, align: 'right', icons: page === 'sale-detail' ? ['back', 'prev', 'next', 'print', 'download', 'upload', 'menu'] : ['print', 'download'] };
+  return { title: lType(type).label, ds: 'sales' };
+}
+
+export function lSettle(bs: LBlock[], movedId?: string): LBlock[] {
+  const clamp = (p: LPos): LPos => { const w = Math.max(1, Math.min(12, p.w)); return { x: Math.max(0, Math.min(12 - w, p.x)), y: Math.max(0, p.y), w, h: Math.max(1, Math.min(12, p.h)) }; };
+  const items = bs.map((b) => ({ ...b, pos: { ...b.pos, lg: clamp(b.pos.lg) } }));
+  const moved = items.find((b) => b.id === movedId);
+  const placed: LBlock[] = moved ? [moved] : [];
+  items.filter((b) => b !== moved).sort((p, q) => p.pos.lg.y - q.pos.lg.y || p.pos.lg.x - q.pos.lg.x).forEach((b) => {
+    let y = b.pos.lg.y;
+    while (placed.some((o) => lHit({ ...b.pos.lg, y }, o.pos.lg))) y++;
+    placed.push({ ...b, pos: { ...b.pos, lg: { ...b.pos.lg, y } } });
+  });
+  // dồn lên
+  const out: LBlock[] = [];
+  [...placed].sort((p, q) => p.pos.lg.y - q.pos.lg.y || p.pos.lg.x - q.pos.lg.x).forEach((b) => {
+    let y = 0;
+    while (out.some((o) => lHit({ ...b.pos.lg, y }, o.pos.lg))) y++;
+    out.push({ ...b, pos: { ...b.pos, lg: { ...b.pos.lg, y } } });
+  });
+  return bs.map((b) => out.find((o) => o.id === b.id)!);
+}
+
+// ---- dữ liệu thật của doanh nghiệp (đã lọc theo phạm vi xem của người dùng)
+export function lRowsReal(ds: LDataset, a: AppCtx, stockVouchers: StockVoucher[]): LRow[] {
+  if (ds === 'sales') return a.mySales.filter((o) => o.status !== 'CANCELLED').map((o) => {
+    const st = saleStage(o, stockVouchers);
+    const owed = Math.max(0, saleOwed(o) - salePaid(o, true));
+    return { date: o.date, v: { revenue: saleTotals(o).net, grand: saleTotals(o).grand, paid: salePaid(o), owed }, d: { code: o.code, customer: o.customer, by: a.userName(o.by ?? ''), stage: SALE_STAGE[st].label }, f: [st === 'APPROVAL' ? 'approval' : '', owed > 0 ? 'unpaid' : '', o.status === 'DONE' ? 'done' : ''] };
+  });
+  if (ds === 'leads') return a.myLeads.map((l) => ({ date: iso(new Date(Date.now() - (l.receivedDaysAgo ?? 0) * 864e5)), v: { value: l.boqValue ?? 0, won: l.wonAmount ?? 0 }, d: { company: l.company, source: String(l.source), status: String(l.status) }, f: [l.wonAt ? 'won' : l.lostReason ? '' : 'open'] }));
+  if (ds === 'customers') return a.myCustomers.map((c) => ({ date: (c.createdAt ?? '').slice(0, 10), v: {}, d: { name: c.name, segment: String(c.segment) }, f: [] }));
+  if (ds === 'cash') return a.cashEntries.filter((e) => e.kind !== 'TRANSFER').map((e) => ({ date: e.date, v: { in: e.kind === 'IN' ? e.amount : 0, out: e.kind === 'OUT' ? e.amount : 0 }, d: { code: e.code, category: e.category, partner: e.partner ?? '' }, f: [e.kind === 'IN' ? 'in' : 'out'] }));
+  return a.programs.map((p) => ({ date: (p.start ?? '').slice(0, 10), v: { requested: p.requested ?? 0 }, d: { title: p.title, status: String(p.status) }, f: [] }));
+}
+
+export function lRowsSample(ds: LDataset): LRow[] {
+  let s = 7 + ds.length * 13;
+  const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  const today = new Date();
+  const day = (back: number) => iso(new Date(today.getTime() - back * 864e5));
+  const out: LRow[] = [];
+  for (let i = 0; i < 140; i++) {
+    const back = Math.floor(rnd() * 360);
+    const grow = 1 + (360 - back) / 360;
+    if (ds === 'sales') { const rev = Math.round((8 + rnd() * 60) * grow) * 1e6; const paid = rnd() > 0.35 ? Math.round(rev * 1.08) : 0; const st = i % 9 === 0 ? 'approval' : rnd() > 0.5 ? 'done' : ''; out.push({ date: day(back), v: { revenue: rev, grand: Math.round(rev * 1.08), paid, owed: Math.round(rev * 1.08) - paid }, d: { code: `DH${String(100 + i)}`, customer: L_SAMPLE_CUST[Math.floor(rnd() * L_SAMPLE_CUST.length)], by: L_SAMPLE_STAFF[i % 3], stage: st === 'approval' ? 'Chờ duyệt' : st === 'done' ? 'Hoàn thành' : 'Chờ xuất kho' }, f: [st, paid ? '' : 'unpaid'] }); }
+    else if (ds === 'leads') out.push({ date: day(back), v: { value: Math.round(20 + rnd() * 400) * 1e6, won: rnd() > 0.7 ? Math.round(20 + rnd() * 200) * 1e6 : 0 }, d: { company: L_SAMPLE_CUST[i % L_SAMPLE_CUST.length], source: ['Website', 'Zalo', 'Hội thảo'][i % 3], status: 'Đang xử lý' }, f: [i % 4 === 0 ? 'won' : 'open'] });
+    else if (ds === 'customers') out.push({ date: day(back), v: {}, d: { name: `${L_SAMPLE_CUST[i % L_SAMPLE_CUST.length]} ${i}`, segment: ['Dự án', 'Thương mại', 'Đại lý'][i % 3] }, f: [] });
+    else if (ds === 'cash') { const inn = rnd() > 0.45; const amt = Math.round(1 + rnd() * 40) * 1e6; out.push({ date: day(back), v: { in: inn ? amt : 0, out: inn ? 0 : amt }, d: { code: `${inn ? 'PTQ' : 'PCQ'}-${i}`, category: inn ? 'Thu tiền bán hàng' : 'Vận chuyển', partner: L_SAMPLE_CUST[i % L_SAMPLE_CUST.length] }, f: [inn ? 'in' : 'out'] }); }
+    else if (i < 24) out.push({ date: day(back), v: { requested: Math.round(20 + rnd() * 180) * 1e6 }, d: { title: `Hội thảo 3M ${i + 1}`, status: 'Đã duyệt' }, f: [] });
+  }
+  return out;
+}
+
+/** Khoảng ngày của kỳ và kỳ liền trước */
+export function lBounds(p: LPeriod, range?: DateRange): { from: string; to: string; pf: string; pt: string } | null {
+  const t = new Date(); const y = t.getFullYear(), m = t.getMonth();
+  const d = (x: Date) => iso(x);
+  if (p === 'all') return null;
+  if (p === 'month') return { from: d(new Date(y, m, 1)), to: d(new Date(y, m + 1, 0)), pf: d(new Date(y, m - 1, 1)), pt: d(new Date(y, m, 0)) };
+  if (p === 'quarter') { const q = Math.floor(m / 3) * 3; return { from: d(new Date(y, q, 1)), to: d(new Date(y, q + 3, 0)), pf: d(new Date(y, q - 3, 1)), pt: d(new Date(y, q, 0)) }; }
+  if (p === 'year') return { from: `${y}-01-01`, to: `${y}-12-31`, pf: `${y - 1}-01-01`, pt: `${y - 1}-12-31` };
+  if (p === 'last30') return { from: d(new Date(t.getTime() - 29 * 864e5)), to: d(t), pf: d(new Date(t.getTime() - 59 * 864e5)), pt: d(new Date(t.getTime() - 30 * 864e5)) };
+  const r = range ?? { from: d(new Date(y, m, 1)), to: d(t) };
+  const len = Math.max(1, Math.round((new Date(r.to).getTime() - new Date(r.from).getTime()) / 864e5) + 1);
+  return { from: r.from, to: r.to, pf: d(new Date(new Date(r.from).getTime() - len * 864e5)), pt: d(new Date(new Date(r.from).getTime() - 864e5)) };
+}
+
+export function LStat({ c, rows, range }: { c: LBlockCfg; rows: LRow[]; range?: DateRange }) {
+  const fl = lField(c.ds, c.field);
+  const agg: LAgg = fl.id === 'count' ? 'count' : c.agg ?? 'sum';
+  const unit = agg === 'count' ? 'count' : fl.unit;
+  const base = lFilter(rows, c.filter);
+  const b = lBounds(c.period ?? 'month', range);
+  const cur = lAgg(b ? base.filter((r) => r.date >= b.from && r.date <= b.to) : base, fl.id, agg);
+  const prev = b ? lAgg(base.filter((r) => r.date >= b.pf && r.date <= b.pt), fl.id, agg) : 0;
+  const pct = b && c.compare && prev ? Math.round(((cur - prev) / Math.abs(prev)) * 100) : null;
+  const cmp = c.period === 'quarter' ? 'quý trước' : c.period === 'year' ? 'năm trước' : c.period === 'last30' ? '30 ngày trước đó' : c.period === 'inherit' ? 'kỳ trước' : 'tháng trước';
+  return (
+    <div className="flex h-full flex-col justify-center">
+      <p className="text-[24px] font-medium leading-tight tabular-nums">{lFmt(unit, cur)}</p>
+      {pct !== null ? <p className="text-[12px]"><span className={pct >= 0 ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]'}>{pct >= 0 ? '+' : '−'}{Math.abs(pct)}%</span> <span className="text-[rgb(var(--muted))]">so với {cmp}</span></p>
+        : <p className="text-[12px] text-[rgb(var(--muted))]">{b ? L_PERIOD[c.period ?? 'month'] : 'Toàn bộ'}</p>}
+    </div>
+  );
+}
+
+export function LLine({ c, rows }: { c: LBlockCfg; rows: LRow[] }) {
+  const n = c.months ?? 12;
+  const t = new Date();
+  const base = lFilter(rows, c.filter);
+  const ser = (c.series ?? ['revenue']).filter(Boolean).slice(0, 2);
+  const data = Array.from({ length: n }, (_, i) => { const d = new Date(t.getFullYear(), t.getMonth() - (n - 1 - i), 1); const k = iso(d).slice(0, 7); const rs = base.filter((r) => r.date.slice(0, 7) === k);
+    return { name: `T${d.getMonth() + 1}`, ...Object.fromEntries(ser.map((f) => [lField(c.ds, f).label, lAgg(rs, f, f === 'count' ? 'count' : 'sum')])) }; });
+  const colors = [C.orange, C.muted];
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex gap-3 text-[12px] text-[rgb(var(--muted))]">{ser.map((f, i) => <span key={f} className="inline-flex items-center gap-1.5"><i className="inline-block h-0.5 w-3" style={{ background: colors[i] }} />{lField(c.ds, f).label}</span>)}</div>
+      <div className="min-h-0 flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+            <CartesianGrid stroke={C.line} vertical={false} />
+            <XAxis dataKey="name" stroke={C.muted} fontSize={11} />
+            <YAxis stroke={C.muted} fontSize={11} width={56} tickFormatter={(v) => compact(Number(v))} />
+            <Tooltip {...tipStyle} formatter={(v) => compact(Number(v))} />
+            {ser.map((f, i) => <Line key={f} type="monotone" dataKey={lField(c.ds, f).label} stroke={colors[i]} strokeWidth={2} dot={false} />)}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+/** Định dạng gọn của khối text (không dùng HTML): **đậm**, *nghiêng*, [chữ](https://…) */
+export function lInline(s: string, k: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  const re = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|\[[^\]]+\]\((https?:\/\/[^\s)]+)\))/g;
+  let last = 0; let i = 0; let m: RegExpExecArray | null;
+  while ((m = re.exec(s))) {
+    if (m.index > last) out.push(s.slice(last, m.index));
+    const t = m[0];
+    if (t.startsWith('**')) out.push(<strong key={`${k}b${i++}`} className="font-semibold">{t.slice(2, -2)}</strong>);
+    else if (t.startsWith('[')) out.push(<a key={`${k}a${i++}`} href={m[2]} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[rgb(var(--accent))]">{t.slice(1, t.indexOf(']('))}</a>);
+    else out.push(<em key={`${k}i${i++}`}>{t.slice(1, -1)}</em>);
+    last = m.index + t.length;
+  }
+  if (last < s.length) out.push(s.slice(last));
+  return out;
+}
+
+export function LText({ c }: { c: LBlockCfg }) {
+  const out: ReactNode[] = [];
+  let ul: string[] = [];
+  const flush = () => { if (ul.length) { const n = out.length; out.push(<ul key={`u${n}`} className="list-disc space-y-0.5 pl-5">{ul.map((x, i) => <li key={i}>{lInline(x, `l${n}-${i}`)}</li>)}</ul>); ul = []; } };
+  (c.text ?? '').split('\n').forEach((ln, i) => {
+    const t = ln.trimEnd();
+    if (/^\s*[-•]\s+/.test(t)) { ul.push(t.replace(/^\s*[-•]\s+/, '')); return; }
+    flush();
+    if (!t.trim()) return;
+    out.push(t.startsWith('## ') ? <p key={i} className="text-[14px] font-medium">{lInline(t.slice(3), `h${i}`)}</p> : <p key={i}>{lInline(t, `p${i}`)}</p>);
+  });
+  flush();
+  return <div className="space-y-1.5 text-[13px] leading-relaxed">{out.length ? out : <p className="text-[rgb(var(--muted))]">Chưa có nội dung</p>}</div>;
+}
+
+/** Khối nút biểu tượng; menu = nội dung danh sách xổ xuống (do trang cung cấp) */
+export function LIcons({ c, onIcon, off, menu }: { c: LBlockCfg; onIcon?: (a: LIconAct) => void; off?: Partial<Record<LIconAct, boolean>>; menu?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const ref = useOutside(open, () => setOpen(false));
+  const ico = 'grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.04)] disabled:opacity-40';
+  return (
+    <div className={cn('flex h-full flex-wrap items-center gap-1.5', c.align === 'left' ? 'justify-start' : 'justify-end')}>
+      {(c.icons ?? []).map((a) => { const I = L_ICON[a].icon; return a === 'menu' ? (
+        <div key={a} className="relative" ref={ref}>
+          <button className={ico} disabled={!menu} onClick={() => setOpen(!open)} aria-label={L_ICON[a].label} title={L_ICON[a].label} aria-expanded={open}><I className="h-4 w-4" aria-hidden /></button>
+          {open && menu && <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 text-[13.5px] shadow-xl" onClick={() => setOpen(false)}>{menu}</div>}
+        </div>
+      ) : <button key={a} className={ico} disabled={!onIcon || !!off?.[a]} onClick={() => onIcon?.(a)} aria-label={L_ICON[a].label} title={L_ICON[a].label}><I className="h-4 w-4" aria-hidden /></button>; })}
+    </div>
+  );
+}
+
+export function LTable({ c, rows, narrow }: { c: LBlockCfg; rows: LRow[]; narrow?: boolean }) {
+  const ds = L_DS[c.ds];
+  const base = lFilter(rows, c.filter);
+  const lim = c.limit ?? 5;
+  if ((c.mode ?? 'rows') === 'group') {
+    const g = c.group ?? ds.dims[0].id;
+    const fl = lField(c.ds, c.field);
+    const m = new Map<string, LRow[]>();
+    base.forEach((r) => { const k = r.d[g] || '—'; m.set(k, [...(m.get(k) ?? []), r]); });
+    if (!base.length) return <p className="py-6 text-center text-[12.5px] text-[rgb(var(--muted))]">Chưa có dữ liệu</p>;
+    const list = Array.from(m.entries()).map(([k, rs]) => ({ k, v: lAgg(rs, fl.id, fl.id === 'count' ? 'count' : 'sum') })).sort((a, b) => b.v - a.v).slice(0, lim);
+    return (
+      <table className="w-full text-[12.5px]"><thead><tr className="text-[rgb(var(--muted))]">{c.stt && <th className="w-7 py-1 text-left font-normal">#</th>}<th className="py-1 text-left font-normal">{ds.dims.find((x) => x.id === g)?.label}</th><th className="py-1 text-right font-normal">{fl.label}</th></tr></thead>
+        <tbody>{list.map((r, i) => <tr key={r.k} className="border-t border-[rgb(var(--line)/0.6)]">{c.stt && <td className="py-1.5 tabular-nums text-[rgb(var(--muted))]">{i + 1}</td>}<td className="max-w-0 truncate py-1.5 pr-2">{r.k}</td><td className="py-1.5 text-right tabular-nums">{lFmt(fl.unit, r.v)}</td></tr>)}</tbody></table>
+    );
+  }
+  if (!base.length) return <p className="py-6 text-center text-[12.5px] text-[rgb(var(--muted))]">Chưa có dữ liệu</p>;
+  const cols = (c.cols?.length ? c.cols : [ds.dims[0].id, ds.fields[1]?.id ?? 'count']).slice(0, 5);
+  const isNum = (id: string) => ds.fields.some((f) => f.id === id);
+  const sorted = [...base].sort((a, b) => (c.sort ? (b.v[c.sort] ?? 0) - (a.v[c.sort] ?? 0) : b.date.localeCompare(a.date))).slice(0, lim);
+  const lab = (id: string) => ds.dims.find((x) => x.id === id)?.label ?? ds.fields.find((x) => x.id === id)?.label ?? id;
+  if (narrow && c.smView !== 'table') {
+    const dims = cols.filter((x) => !isNum(x)), nums = cols.filter(isNum);
+    const big = nums[nums.length - 1];
+    const sub = [...dims.slice(2), ...nums.slice(0, -1)];
+    return (
+      <ul className="text-[12.5px]">{sorted.map((r, i) => (
+        <li key={i} className="flex gap-3 border-t border-[rgb(var(--line)/0.6)] py-2 first:border-t-0">
+          {c.stt && <span className="w-5 shrink-0 tabular-nums text-[rgb(var(--muted))]">{i + 1}</span>}
+          <div className="min-w-0 flex-1">
+            <p className="truncate">{dims.slice(0, 2).map((x, j) => (x === 'code' ? <Fragment key={x}><Code>{r.d[x]}</Code> </Fragment> : <span key={x} className={j ? '' : 'font-medium'}>{r.d[x]}</span>))}</p>
+            {sub.length > 0 && <p className="truncate text-[11.5px] text-[rgb(var(--muted))]">{sub.map((x) => (isNum(x) ? `${lab(x)} ${lFmt(lField(c.ds, x).unit, r.v[x] ?? 0)}` : r.d[x])).join(' · ')}</p>}
+          </div>
+          {big && <div className="shrink-0 text-right"><p className="tabular-nums">{lFmt(lField(c.ds, big).unit, r.v[big] ?? 0)}</p><p className="text-[11px] text-[rgb(var(--muted))]">{lab(big)}</p></div>}
+        </li>
+      ))}</ul>
+    );
+  }
+  return (
+    <table className="w-full text-[12.5px]"><thead><tr className="text-[rgb(var(--muted))]">{c.stt && <th className="w-7 py-1 text-left font-normal">#</th>}{cols.map((x) => <th key={x} className={cn('py-1 font-normal', isNum(x) ? 'text-right' : 'text-left')}>{lab(x)}</th>)}</tr></thead>
+      <tbody>{sorted.map((r, i) => <tr key={i} className="border-t border-[rgb(var(--line)/0.6)]">{c.stt && <td className="py-1.5 tabular-nums text-[rgb(var(--muted))]">{i + 1}</td>}{cols.map((x) => <td key={x} className={cn('max-w-0 truncate py-1.5 pr-2', isNum(x) && 'text-right tabular-nums')}>{isNum(x) ? lFmt(lField(c.ds, x).unit, r.v[x] ?? 0) : x === 'code' ? <Code>{r.d[x]}</Code> : r.d[x]}</td>)}</tr>)}</tbody></table>
+  );
+}
+
+export function LBlockBody({ b, rows, range, narrow, onIcon }: { b: LBlock; rows: LRow[]; range?: DateRange; narrow?: boolean; onIcon?: (a: LIconAct) => void }) {
+  if (b.type === 'K-Stat-Simple') return <LStat c={b.config} rows={rows} range={range} />;
+  if (b.type === 'K-Chart-Line') return <LLine c={b.config} rows={rows} />;
+  if (b.type === 'K-Text') return <LText c={b.config} />;
+  if (b.type === 'K-Icons') return <LIcons c={b.config} onIcon={onIcon} />;
+  return <LTable c={b.config} rows={rows} narrow={narrow} />;
+}
+
+/** Bộ hiển thị bố cục (doanh nghiệp xem, 3A xem trước): máy tính theo vị trí 12 cột; máy tính bảng 6 cột; điện thoại theo độ rộng khối 1/1, 1/2, 1/3, 1/4 */
+export function LayoutView({ blocks, rowsOf, device, range, onOpen, role, onIcon }: { blocks: LBlock[]; rowsOf: (ds: LDataset) => LRow[] | null; device?: LDevice; range?: DateRange; onOpen?: (m: Module) => void; role?: Role; onIcon?: (a: LIconAct) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(1200);
+  useEffect(() => { const el = ref.current; if (!el || device) return; const ro = new ResizeObserver(() => setW(el.clientWidth)); ro.observe(el); setW(el.clientWidth); return () => ro.disconnect(); }, [device]);
+  const dev = device ?? lDeviceOf(w);
+  const vis = blocks.filter((b) => b.show[dev] && (!lHasData(b.type) || rowsOf(b.config.ds) !== null) && lCondOk(b.config, null, role ?? null));
+  const lg = dev === 'lg' ? lSettle(vis) : vis;
+  const ordered = dev === 'sm' ? [...vis].sort((a, b) => (a.pos.sm.order || 99) - (b.pos.sm.order || 99)) : [...lg].sort((a, b) => a.pos.lg.y - b.pos.lg.y || a.pos.lg.x - b.pos.lg.x);
+  const style = (b: LBlock): CSSProperties => {
+    const p = b.pos.lg;
+    if (dev === 'lg') return { gridColumn: `${p.x + 1} / span ${p.w}`, gridRow: `${p.y + 1} / span ${p.h}` };
+    if (dev === 'md') return { gridColumn: `span ${Math.min(6, Math.max(2, p.w))}`, gridRow: `span ${p.h}` };
+    return { gridColumn: `span ${b.pos.sm.w || 12}`, gridRow: `span ${b.type === 'K-Stat-Simple' ? 2 : Math.min(p.h, 5)}` };
+  };
+  return (
+    <div ref={ref} className="grid" style={{ gridTemplateColumns: `repeat(${dev === 'md' ? 6 : 12}, minmax(0, 1fr))`, gridAutoRows: `${L_ROW}px`, gap: L_GAP, gridAutoFlow: dev === 'md' ? 'row dense' : 'row' }}>
+      {ordered.map((b) => {
+        const rows = lHasData(b.type) ? rowsOf(b.config.ds) ?? [] : [];
+        const ds = L_DS[b.config.ds];
+        if (b.type === 'K-Icons') return <div key={b.id} style={style(b)} className="min-w-0"><LIcons c={b.config} onIcon={onIcon} /></div>;
+        return (
+          <section key={b.id} style={style(b)} className={cn('glass-card flex min-w-0 flex-col overflow-hidden rounded-xl', b.type === 'K-Text' && lToneCls(b.config))}>
+            {!(b.type === 'K-Text' && b.config.hideTitle) && <div className="flex items-center gap-2 px-4 pt-3"><h3 className="min-w-0 truncate text-[13px] font-medium">{b.config.title}</h3>
+              {lHasData(b.type) && b.config.open !== false && onOpen && <button className="ml-auto shrink-0 text-[12px] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => onOpen(ds.module)} aria-label={`Mở ${MODULE_LABEL[ds.module]}`}><ArrowRight className="h-3.5 w-3.5" aria-hidden /></button>}
+            </div>}
+            <div className={cn('min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-1', b.type === 'K-Text' && b.config.hideTitle && 'pt-3')}><LBlockBody b={b} rows={rows} range={range} narrow={dev === 'sm'} onIcon={onIcon} /></div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Màn hình rộng tối thiểu (theo media query, cập nhật khi đổi cỡ) */
+export function useMinW(px: number) {
+  const q = `(min-width: ${px}px)`;
+  const [ok, setOk] = useState(() => typeof window === 'undefined' || !window.matchMedia ? true : window.matchMedia(q).matches);
+  useEffect(() => { if (typeof window === 'undefined' || !window.matchMedia) return; const m = window.matchMedia(q); const h = () => setOk(m.matches); h(); m.addEventListener('change', h); return () => m.removeEventListener('change', h); }, [q]);
+  return ok;
+}
+
+/** Chia khối thành các dải ngang; trong mỗi dải gom khối cùng vùng cột thành một cột xếp dọc (chiều cao theo nội dung) */
+export function lBands(bs: LBlock[]): { x: number; w: number; items: LBlock[] }[][] {
+  // khối rộng cả 12 cột tách dải; các khối khác trong cùng dải gom theo vùng cột chồng nhau
+  const s = [...bs].sort((a, b) => a.pos.lg.y - b.pos.lg.y || a.pos.lg.x - b.pos.lg.x);
+  const bands: LBlock[][] = [];
+  let cur: LBlock[] = [];
+  s.forEach((b) => { if (b.pos.lg.w >= 12) { if (cur.length) bands.push(cur); bands.push([b]); cur = []; } else cur.push(b); });
+  if (cur.length) bands.push(cur);
+  return bands.map((band) => {
+    let cols: { x: number; w: number; items: LBlock[] }[] = [];
+    [...band].sort((a, b) => a.pos.lg.x - b.pos.lg.x).forEach((b) => {
+      const p = b.pos.lg;
+      const hit = cols.filter((k) => p.x < k.x + k.w && k.x < p.x + p.w);
+      if (!hit.length) { cols.push({ x: p.x, w: p.w, items: [b] }); return; }
+      const x = Math.min(p.x, ...hit.map((k) => k.x)), r = Math.max(p.x + p.w, ...hit.map((k) => k.x + k.w));
+      cols = [...cols.filter((k) => !hit.includes(k)), { x, w: r - x, items: [...hit.flatMap((k) => k.items), b] }];
+    });
+    return cols.sort((a, b) => a.x - b.x).map((k) => ({ ...k, items: k.items.sort((a, b) => a.pos.lg.y - b.pos.lg.y || a.pos.lg.x - b.pos.lg.x) }));
+  });
+}
+
+/** Hiển thị trang nghiệp vụ theo bố cục: máy tính theo dải / cột 12; màn hẹp xếp một cột theo thứ tự điện thoại */
+export function LBusinessView({ blocks, node, narrow, dev }: { blocks: LBlock[]; node: (b: LBlock) => ReactNode; narrow: boolean; dev: LDevice }) {
+  const vis = blocks.filter((b) => lIsCore(b.type) || b.show[dev]).map((b) => ({ b, n: node(b) })).filter((x) => x.n !== null && x.n !== undefined && x.n !== false);
+  if (narrow) return <div className="space-y-4">{[...vis].sort((a, b) => (a.b.pos.sm.order || 99) - (b.b.pos.sm.order || 99)).map((x) => <Fragment key={x.b.id}>{x.n}</Fragment>)}</div>;
+  const nodes = new Map(vis.map((x) => [x.b.id, x.n]));
+  return (
+    <div className="space-y-4">{lBands(vis.map((x) => x.b)).map((band, i) => (
+      <div key={i} className="grid grid-cols-12 gap-4">{band.map((c, j) => <div key={j} className="min-w-0 space-y-4" style={{ gridColumn: `${c.x + 1} / span ${c.w}` }}>{c.items.map((b) => <Fragment key={b.id}>{nodes.get(b.id)}</Fragment>)}</div>)}</div>
+    ))}</div>
+  );
+}
+
+/** Nội dung mẫu của khối trang đơn hàng (đơn DH201126-02, theo trạng thái đơn và vai trò xem trước) */
+export function lSaleSample({ b, stage, cf, narrow }: { b: LBlock; stage: LStage; cf: CfDef[]; narrow?: boolean }): ReactNode {
+  const c = b.config;
+  const kv = (k: string, v: ReactNode, big?: boolean) => <div key={k} className={cn('flex justify-between gap-3 py-0.5', big ? 'text-[14px] font-medium' : 'text-[12.5px]')}><span className="text-[rgb(var(--muted))]">{k}</span><span className="tabular-nums">{v}</span></div>;
+  const net = L_SO_LINES.reduce((s, l) => s + Math.round(l.qty * l.price * (1 - l.ck / 100)), 0), vat = Math.round(net * 0.08), paid = stage === 'DONE' ? net + vat : stage === 'CANCEL' ? 2000000 : 0;
+  if (b.type === 'K-Order-Info') {
+    if (stage === 'CANCEL') return <div className="space-y-1 text-[12.5px]"><p className="text-[rgb(var(--muted))]">Lý do: khách đổi sang mã hàng khác. Cần nhập trả hàng đã xuất và hoàn tiền trước khi hủy</p></div>;
+    const heads = cf.filter((d) => d.scope === 'HEAD' && d.status === 'ACTIVE' && d.where.info);
+    const all = [...SO_INFO_F, ...heads.map((d) => ({ id: `cf:${d.key}`, label: d.label }))];
+    const val: Record<string, ReactNode> = { customer: 'NPP Hoàng Phát', code: <Code>DH201126-02</Code>, origin: 'Tại quầy', by: 'Trần Quốc Bảo', wh: 'Kho Tổng Hà Nội', docRef: 'PO-HP-1125', invNo: '—' };
+    return <div className="grid gap-x-4 gap-y-2.5" style={{ gridTemplateColumns: `repeat(${narrow ? 2 : c.gridCols ?? 4}, minmax(0, 1fr))` }}>{lFieldOrder(all, c).map((id) => { const d = heads.find((x) => `cf:${x.key}` === id); return <div key={id} className="min-w-0"><p className="flex items-center gap-1 text-[11.5px] text-[rgb(var(--muted))]">{all.find((x) => x.id === id)?.label}{d && <i className="inline-block h-1.5 w-1.5 rounded-full bg-[rgb(var(--accent))]" title="Trường tùy chỉnh" />}</p><p className="truncate text-[13px]">{d ? cfSample(d) : val[id]}</p></div>; })}</div>;
+  }
+  if (b.type === 'K-Order-Lines') {
+    const lc = cf.filter((d) => d.scope === 'LINE' && d.status === 'ACTIVE' && d.where.info);
+    const all = [...SO_LINE_F, ...lc.map((d) => ({ id: `cf:${d.key}`, label: d.label }))];
+    const ids = lFieldOrder(all, c);
+    if (narrow && c.smView !== 'table') return <div className="text-[12.5px]"><p className="mb-1 text-[12px]"><span className="font-medium">Hàng hóa 2</span> <span className="text-[rgb(var(--muted))]">· Chứng từ 3</span></p>{L_SO_LINES.map((l, i) => <div key={l.ref} className="flex gap-2 border-t border-[rgb(var(--line)/0.6)] py-1.5">{ids.includes('stt') && <span className="w-4 text-[rgb(var(--muted))]">{i + 1}</span>}<div className="min-w-0 flex-1"><p className="truncate font-medium">{l.name}</p><p className="truncate text-[11.5px] text-[rgb(var(--muted))]"><Code>{l.ref}</Code> {fmtN(l.qty)} {l.unit} × {fmtN(l.price)}{l.ck ? ` · CK ${l.ck}%` : ''}{lc.map((d) => ` · ${d.label} ${cfSample(d)}`).join('')}</p></div><span className="tabular-nums">{fmtN(Math.round(l.qty * l.price * (1 - l.ck / 100)))}</span></div>)}</div>;
+    const cell = (id: string, l: (typeof L_SO_LINES)[number], i: number): ReactNode => { const d = lc.find((x) => `cf:${x.key}` === id); if (d) return cfSample(d); return ({ stt: i + 1, ref: <Code>{l.ref}</Code>, name: l.name, unit: l.unit, qty: fmtN(l.qty), price: fmtN(l.price), ckPct: l.ck, ckAmt: fmtN(Math.round(l.qty * l.price * l.ck / 100)), vat: l.vat, net: fmtN(Math.round(l.qty * l.price * (1 - l.ck / 100))), iss: stage === 'APPROVAL' || stage === 'ISSUE' ? 0 : fmtN(l.qty), ret: '—', rest: stage === 'APPROVAL' || stage === 'ISSUE' ? fmtN(l.qty) : '—' } as Record<string, ReactNode>)[id]; };
+    const right = (id: string) => !['ref', 'name', 'unit', 'stt'].includes(id) && !id.startsWith('cf:');
+    return <div className="overflow-hidden"><p className="mb-1 text-[12px]"><span className="border-b-2 border-[rgb(var(--accent))] pb-0.5 font-medium">Hàng hóa 2</span> <span className="ml-3 text-[rgb(var(--muted))]">Chứng từ 3</span></p><table className="w-full text-[12px]"><thead><tr className="text-[rgb(var(--muted))]">{ids.map((id) => <th key={id} className={cn('whitespace-nowrap px-1.5 py-1 font-normal', right(id) ? 'text-right' : 'text-left')}>{id === 'stt' ? '#' : all.find((x) => x.id === id)?.label}</th>)}</tr></thead><tbody>{L_SO_LINES.map((l, i) => <tr key={l.ref} className="border-t border-[rgb(var(--line)/0.6)]">{ids.map((id) => <td key={id} className={cn('max-w-[220px] truncate whitespace-nowrap px-1.5 py-1.5', right(id) && 'text-right tabular-nums')}>{cell(id, l, i)}</td>)}</tr>)}</tbody></table></div>;
+  }
+  if (b.type === 'K-Order-Flow') {
+    const st = stage === 'CANCEL' ? [['Nhập trả đủ hàng', 'ok'], ['Hoàn tiền cho khách', 'cur'], ['Hủy đơn, giữ chứng từ', '']] : [['Duyệt đơn', stage === 'APPROVAL' ? 'cur' : 'ok'], ['Xuất kho', stage === 'APPROVAL' ? '' : stage === 'ISSUE' ? 'cur' : 'ok'], ['Thu tiền', stage === 'PAY' ? 'cur' : stage === 'DONE' ? 'ok' : ''], ['Hoàn thành', stage === 'DONE' ? 'ok' : '']];
+    return <div>{stage === 'CANCEL' && <p className="mb-1 text-[12px] text-[rgb(var(--muted))]">Quy trình hủy (theo luồng nghiệp vụ)</p>}{narrow && stage !== 'CANCEL' ? <p className="flex flex-wrap items-center gap-1.5 text-[12.5px]">{st.map(([t, s], i) => <Fragment key={t}>{i > 0 && <span className="text-[rgb(var(--muted))]">—</span>}<i className={cn('inline-block h-2.5 w-2.5 rounded-full border-2', s === 'ok' ? 'border-[rgb(var(--fg))] bg-[rgb(var(--fg))]' : s === 'cur' ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent))]' : 'border-[rgb(var(--line))]')} /><span className={s === 'cur' ? 'font-medium' : s ? '' : 'text-[rgb(var(--muted))]'}>{t}</span></Fragment>)}</p>
+      : st.map(([t, s]) => <p key={t} className="flex items-center gap-2 py-1 text-[12.5px]"><i className={cn('inline-block h-3 w-3 rounded-full border-2', s === 'ok' ? 'border-[rgb(var(--fg))] bg-[rgb(var(--fg))]' : s === 'cur' ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent))] ring-2 ring-[rgb(var(--accent)/0.2)]' : 'border-[rgb(var(--line))]')} /><span className={s ? '' : 'text-[rgb(var(--muted))]'}>{t}</span></p>)}</div>;
+  }
+  if (b.type === 'K-Order-Pay') return <div>{kv('Tiền hàng', fmtN(net))}{kv('Thuế GTGT 8%', fmtN(vat))}{kv('Thực tế phải thu', fmtN(net + vat), true)}{kv('Doanh thu (kế toán đã thu)', fmtN(paid))}{kv(stage === 'CANCEL' ? 'Khách trả thừa' : 'Còn lại', fmtN(stage === 'CANCEL' ? paid : net + vat - paid))}</div>;
+  if (b.type === 'K-Order-Profit') { const cogs = Math.round(net * 0.78); return <div>{kv('Doanh thu thuần', fmtN(net))}{kv('Giá vốn tạm tính', `−${fmtN(cogs)}`)}{kv('Lãi gộp chuẩn', fmtN(net - cogs), true)}{kv('Chi phí gắn vào đơn', '−250.000')}{kv('Lãi ước tính', fmtN(net - cogs - 250000), true)}</div>; }
+  if (b.type === 'K-Order-Debt') return <div>{kv('Đang nợ / hạn mức', '124 tr / 500 tr')}<div className="my-1.5 h-1.5 rounded bg-[rgb(var(--ink)/0.06)]"><div className="h-full w-1/4 rounded bg-[rgb(var(--fg))]" /></div>{kv('Quá hạn', '0')}</div>;
+  if (b.type === 'K-Order-Log') return <div className="space-y-2 text-[12.5px]"><p><span className="font-medium">Trần Quốc Bảo</span> <span className="text-[rgb(var(--muted))]">· 21:12</span><br />Khách cần giao trước 9h sáng thứ Hai</p><p className="text-[rgb(var(--fg2))]">Lê Thu Hà duyệt đơn <span className="text-[rgb(var(--muted))]">· 21:30</span></p></div>;
+  if (b.type === 'K-Order-Ship') return <div>{kv('Giao nhận', 'Gửi xe / chành')}{kv('Người nhận', 'Anh Phát · 0903 112 245')}{kv('Ngày giao', fmtDate(todayISO()))}{kv('Địa chỉ', 'Lô C5, KCN Tân Bình')}</div>;
+  if (b.type === 'K-Order-Files') return <div className="space-y-1 text-[12.5px]"><p className="flex items-center gap-2"><Paperclip className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden />PO-HP-1125.pdf <span className="text-[rgb(var(--muted))]">180 KB</span></p><p className="flex items-center gap-2"><Paperclip className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden />anh-giao-hang.jpg <span className="text-[rgb(var(--muted))]">240 KB</span></p></div>;
+  if (b.type === 'K-Text') return <LText c={c} />;
+  if (b.type === 'K-Icons') return <LIcons c={c} />;
+  return null;
+}
+
+/** Bố cục áp dụng cho doanh nghiệp đang mở: riêng doanh nghiệp → mô hình → toàn hệ thống (vai trò cụ thể trước, chung sau) */
+export function useTenantLayout(page: LPage): LayoutVer | null {
+  const { platform, org, role } = useApp();
+  const prof: 'TRADING' | 'MFG' = org.profile === 'MANUFACTURING' ? 'MFG' : 'TRADING';
+  const as = platform.layoutAssigns.filter((x) => x.page === page);
+  const pick = (lv: LayoutAssign['level'], r: Role | null) => as.find((x) => x.level === lv && (x.role ?? null) === r && (lv !== 'PROFILE' || x.profile === prof) && (lv !== 'TENANT' || x.tenantId === org.id));
+  const a = pick('TENANT', role) ?? pick('TENANT', null) ?? pick('PROFILE', role) ?? pick('PROFILE', null) ?? pick('SYSTEM', role) ?? pick('SYSTEM', null);
+  const v = a ? platform.layouts.find((x) => x.id === a.verId) : undefined;
+  return v && v.blocks.length ? { ...v, blocks: lEnsureCore(page, v.blocks) } : null;
+}
+
+export function TenantLayoutPage({ ver }: { ver: LayoutVer }) {
+  const app = useApp();
+  const { stockVouchers, canSee, canDo, go, range } = app;
+  const cache = useMemo(() => new Map<LDataset, LRow[]>(), [app.mySales, app.myLeads, app.myCustomers, app.cashEntries, app.programs, stockVouchers]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rowsOf = (ds: LDataset) => {
+    const d = L_DS[ds];
+    if (!canSee(d.module) || (d.perm && !canDo(d.perm))) return null;
+    if (!cache.has(ds)) cache.set(ds, lRowsReal(ds, app, stockVouchers));
+    return cache.get(ds) ?? [];
+  };
+  const onIcon = (a: LIconAct) => { if (a === 'print') window.print(); if (a === 'download') lExport(ver.blocks, rowsOf, range, `TongQuan_${todayISO()}.xlsx`); };
+  return <LayoutView blocks={ver.blocks} rowsOf={rowsOf} range={range} onOpen={(m) => go(m)} role={app.role} onIcon={onIcon} />;
+}
+
+/** Tải số liệu các khối của trang tổng hợp ra Excel: 1 sheet chỉ số + mỗi bảng / biểu đồ 1 sheet */
+export function lExport(blocks: LBlock[], rowsOf: (ds: LDataset) => LRow[] | null, range: DateRange | undefined, file: string) {
+  const sheets: XlsxSheet[] = [];
+  const name = (t: string) => { let n = (t.replace(/[\\/?*[\]:]/g, ' ').trim() || 'Khoi').slice(0, 28); let k = 2; while (sheets.some((s) => s.name === n)) n = `${n.slice(0, 26)}${k++}`; return n; };
+  const stat: (string | number)[][] = [['Chỉ số', 'Giá trị', 'Kỳ']];
+  [...blocks].sort((a, b) => a.pos.lg.y - b.pos.lg.y || a.pos.lg.x - b.pos.lg.x).forEach((b) => {
+    if (!lHasData(b.type)) return;
+    const rows = rowsOf(b.config.ds); if (!rows) return;
+    const c = b.config; const ds = L_DS[c.ds]; const base = lFilter(rows, c.filter);
+    if (b.type === 'K-Stat-Simple') {
+      const fl = lField(c.ds, c.field); const agg: LAgg = fl.id === 'count' ? 'count' : c.agg ?? 'sum'; const bd = lBounds(c.period ?? 'month', range);
+      stat.push([c.title, Math.round(lAgg(bd ? base.filter((r) => r.date >= bd.from && r.date <= bd.to) : base, fl.id, agg)), bd ? L_PERIOD[c.period ?? 'month'] : 'Toàn bộ']);
+    } else if (b.type === 'K-Chart-Line') {
+      const n = c.months ?? 12; const t = new Date(); const ser = (c.series ?? ['revenue']).filter(Boolean).slice(0, 2);
+      sheets.push({ name: name(c.title), rows: [['Tháng', ...ser.map((f) => lField(c.ds, f).label)], ...Array.from({ length: n }, (_, i) => { const d = new Date(t.getFullYear(), t.getMonth() - (n - 1 - i), 1); const k = iso(d).slice(0, 7); const rs = base.filter((r) => r.date.slice(0, 7) === k); return [k, ...ser.map((f) => Math.round(lAgg(rs, f, f === 'count' ? 'count' : 'sum')))]; })] });
+    } else if ((c.mode ?? 'rows') === 'group') {
+      const g = c.group ?? ds.dims[0].id; const fl = lField(c.ds, c.field); const m = new Map<string, LRow[]>();
+      base.forEach((r) => { const k = r.d[g] || '—'; m.set(k, [...(m.get(k) ?? []), r]); });
+      sheets.push({ name: name(c.title), rows: [[ds.dims.find((x) => x.id === g)?.label ?? g, fl.label], ...Array.from(m.entries()).map(([k, rs]) => [k, Math.round(lAgg(rs, fl.id, fl.id === 'count' ? 'count' : 'sum'))] as (string | number)[]).sort((p, q) => Number(q[1]) - Number(p[1]))] });
+    } else {
+      const cols = (c.cols?.length ? c.cols : [ds.dims[0].id, ds.fields[1]?.id ?? 'count']).slice(0, 5);
+      const isNum = (id: string) => ds.fields.some((f) => f.id === id);
+      const lab = (id: string) => ds.dims.find((x) => x.id === id)?.label ?? ds.fields.find((x) => x.id === id)?.label ?? id;
+      const sorted = [...base].sort((p, q) => (c.sort ? (q.v[c.sort] ?? 0) - (p.v[c.sort] ?? 0) : q.date.localeCompare(p.date)));
+      sheets.push({ name: name(c.title), rows: [['STT', ...cols.map(lab)], ...sorted.map((r, i) => [i + 1, ...cols.map((x) => (isNum(x) ? Math.round(r.v[x] ?? 0) : r.d[x] ?? ''))])] });
+    }
+  });
+  if (stat.length > 1) sheets.unshift({ name: 'Chi so', rows: stat, widths: [32, 18, 22] });
+  if (!sheets.length) sheets.push({ name: 'Trong', rows: [['Không có khối dữ liệu']] });
+  downloadBlob(file, xlsxBlob(sheets));
+}
+
+/** Trường tùy chỉnh của doanh nghiệp đang mở (gồm cả trường đã ngừng dùng để xem lại giá trị cũ) */
+export function useSaleCf() {
+  const { platform, org } = useApp();
+  return useMemo(() => { const all = cfDefsFor(platform.customFields, org); return { all, head: all.filter((d) => d.scope === 'HEAD'), line: all.filter((d) => d.scope === 'LINE') }; }, [platform.customFields, org]);
+}
+
+/** Giá trị hiển thị (chuỗi rỗng = chưa nhập) */
+export function cfText(d: CfDef, v: CfVal | undefined, nameOf: (id: string) => string): string {
+  if (d.type === 'check') return v === true ? 'Có' : v === false ? 'Không' : '';
+  if (cfEmpty(v)) return '';
+  if (d.type === 'money' || d.type === 'number') return Number(v).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+  if (d.type === 'date') return fmtDate(String(v));
+  if (d.type === 'user') return nameOf(String(v)) || '';
+  return String(v);
+}
+
+/** Ô nhập theo kiểu trường */
+export function CfInput({ d, v, set, users }: { d: CfDef; v: CfVal | undefined; set: (v: CfVal | undefined) => void; users: User[] }) {
+  if (d.type === 'check') return <label className="flex h-[38px] items-center gap-2 text-[14px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={v === true} onChange={(e) => set(e.target.checked)} />{d.label}</label>;
+  if (d.type === 'select') return <select className={inputCls} value={String(v ?? '')} onChange={(e) => set(e.target.value || undefined)} aria-label={d.label}><option value="">—</option>{(d.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}{!cfEmpty(v) && !(d.options ?? []).includes(String(v)) && <option value={String(v)}>{String(v)}</option>}</select>;
+  if (d.type === 'user') return <select className={inputCls} value={String(v ?? '')} onChange={(e) => set(e.target.value || undefined)} aria-label={d.label}><option value="">—</option>{users.filter((u) => u.active || u.id === v).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>;
+  if (d.type === 'money') return <MoneyInput value={Number(v ?? 0)} onChange={(n) => set(n || undefined)} />;
+  if (d.type === 'number') return <input className={inputCls} type="number" step="any" value={cfEmpty(v) ? '' : String(v)} onChange={(e) => set(e.target.value === '' ? undefined : Number(e.target.value))} aria-label={d.label} />;
+  if (d.type === 'date') return <input className={inputCls} type="date" value={String(v ?? '')} onChange={(e) => set(e.target.value || undefined)} aria-label={d.label} />;
+  return <input className={inputCls} value={String(v ?? '')} onChange={(e) => set(e.target.value || undefined)} aria-label={d.label} />;
+}
+
 export function OverviewPage() {
-  return <ExecDashboard />;
+  const lay = useTenantLayout('home');
+  return lay ? <TenantLayoutPage ver={lay} /> : <ExecDashboard />;
 }
 
 export function TradingOverview() {

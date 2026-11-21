@@ -7,7 +7,7 @@ import { ChipFilter, FilterBar } from '../../components/filters';
 import { Sla } from '../../components/sla';
 import { Chip, EmptyState, Field, Modal, Panel, Table, Tabs, useSticky, ViewSwitch } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
-import { ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, compact, CONTENT_STATUS, dayStart, DECISION_LABEL, EXPENSE_STATUS, fmtDate, fmtDT, fmtN, groupOf, HS_CLICHES_DEFAULT, HUB_GROUP, HUB_KIND, HUB_SHORT, HUB_SLA, inputBase, inputCls, jobCustName, LEAVE_KIND, needsApproval, openContentReview, platformOfContent, POP_LABEL, progName, PROGRAM_STATUS, rowCls, SALE_PAY, saleGoods, SOURCE_LABEL, stCompanyOf, tdCls, tdFirst, tdLast, todayISO, useApp, vnd, VOUCHER_META, WF_DEFAULTS, wfFormVals, wsPushVersion } from '../../lib/core';
+import { ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, cfDefsFor, cfMissing, compact, CONTENT_STATUS, dayStart, DECISION_LABEL, EXPENSE_STATUS, fmtDate, fmtDT, fmtN, groupOf, HS_CLICHES_DEFAULT, HUB_GROUP, HUB_KIND, HUB_SHORT, HUB_SLA, inputBase, inputCls, jobCustName, LEAVE_KIND, needsApproval, openContentReview, platformOfContent, POP_LABEL, progName, PROGRAM_STATUS, rowCls, SALE_PAY, saleGoods, SOURCE_LABEL, stCompanyOf, tdCls, tdFirst, tdLast, todayISO, useApp, vnd, VOUCHER_META, WF_DEFAULTS, wfFormVals, wsPushVersion } from '../../lib/core';
 import { saleTotals } from '../../lib/getfly';
 import type { Activity, ApprovalDecision, ApprovalKind, DeptCode, DesignStatus, GeneratedDoc, HubGroup, HubItem, Lead, MineItem, MktContent, Module, Receipt, SaleStatus, StockReservation, User, Verification, WfSubject } from '../../lib/types';
 import { cn, wfCan, wfPath } from '../../lib/utils';
@@ -320,7 +320,8 @@ export function useApprovalQueue() {
           key: `so-${o.id}`, kind: 'SALE', refId: o.id, title, sub: `${fmtN(t)} sau VAT, ${SALE_PAY[o.pay]}${o.creditDays ? ` ${o.creditDays} ngày` : ''}${stepSub(f)}`, reason: ap.reasons.join('; '),
           requesterId: ap.requestedBy ?? o.by, deptCode: cust?.dept, requestedAt: f.at, slaMin: f.step?.slaMin ?? HUB_SLA.SALE, amount: t, flagged: flagOf(f), nextStep: 'Cho phép xuất kho',
           ...actsOf(f, 'SALE', title,
-            () => { setA('APPROVED'); done('SALE', o.id, title, ap.requestedBy ?? o.by, 'APPROVED', undefined, t, `Đã duyệt đơn bán ${o.code}, xuất kho được`); },
+            () => { const miss = cfMissing(cfDefsFor(app.platform.customFields, app.org), o.cf, 'APPROVE'); if (miss.length) { notify(`${o.code} thiếu ${miss.map((d) => d.label).join(', ')}: cập nhật thông tin đơn trước khi duyệt`, 'red'); return; }
+              setA('APPROVED'); done('SALE', o.id, title, ap.requestedBy ?? o.by, 'APPROVED', undefined, t, `Đã duyệt đơn bán ${o.code}, xuất kho được`); },
             (n) => { setA('REJECTED', n); done('SALE', o.id, title, ap.requestedBy ?? o.by, 'REJECTED', n, t, `Đã từ chối đơn bán ${o.code}, đơn đã hủy, nhả hàng giữ`); }),
           view: () => { app.go('sales'); app.setOpenSale(o.id); },
         });

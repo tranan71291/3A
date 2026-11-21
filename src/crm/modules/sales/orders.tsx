@@ -1,18 +1,19 @@
 'use client';
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Banknote, Building2, CalendarDays, Check as CheckIcon, ChevronDown, ChevronLeft, ChevronRight, Coins, Columns3, Download, Eye, FileText, Filter, Lock, MoreVertical, PackageMinus, Pencil, Plus, Printer, Receipt as ReceiptIcon, Search, Send, Trash2, Truck, Undo2, Users, Wallet, Warehouse, X, XCircle } from 'lucide-react';
+import { AlertTriangle, Banknote, Building2, CalendarDays, Check as CheckIcon, ChevronDown, ChevronLeft, ChevronRight, Coins, Columns3, Download, Eye, FileText, Filter, Lock, MoreVertical, PackageMinus, Paperclip, Pencil, Plus, Printer, Receipt as ReceiptIcon, Search, Send, Trash2, Truck, Undo2, Upload, Users, Wallet, Warehouse, X, XCircle } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { RowMenu } from '../../components/controls';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, useSticky } from '../../components/ui';
-import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, compact, DECISION_LABEL, digits, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, MAIN_WH, nextCode, overdueDays, PRICE_TIER, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleCashOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, soGrid, soIco, soTd, soTh, soTime, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
-import { downloadCsv } from '../../lib/csv';
-import { saleHeld, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
-import type { ApprovalDecision, CompanyInfo, Customer, PriceTier, SaleDelivery, SaleFilter, SaleInvBuyer, SaleInvItem, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
+import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, CF_FILTERABLE, cfDefsFor, cfEmpty, cfMissing, cfSet, compact, DECISION_LABEL, digits, downloadBlob, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, lCondOk, lFieldOrder, lIsCore, lStageOf, lStarterSale, lToneCls, MAIN_WH, nextCode, overdueDays, PRICE_TIER, readAsDataUrl, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleCashOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, SO_INFO_F, SO_LINE_F, soGrid, soIco, soTd, soTh, soTime, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
+import { downloadCsv, xlsxBlob } from '../../lib/csv';
+import { saleCostEst, saleDirectCost, saleHeld, saleNetRevenue, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
+import type { ApprovalDecision, CfVal, CompanyInfo, Customer, LBlock, LBlockType, LDevice, LIconAct, PriceTier, SaleDelivery, SaleFile, SaleFilter, SaleInvBuyer, SaleInvItem, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
 import { cn, wfApprovers, wfPath } from '../../lib/utils';
-import { stockOf } from '../../lib/workshop';
+import { compressImage, stockOf } from '../../lib/workshop';
 import { SearchBox } from '../alux/orders';
 import { useArItems } from '../finance/ar-aging';
+import { CfInput, cfText, LBusinessView, LIcons, LText, useMinW, useSaleCf, useTenantLayout } from '../messages/messenger';
 import { docShell, moneyToWordsVN, printHtml } from './templates';
 import { useApprovalQueue } from '../tasks/tasks';
 
@@ -178,7 +179,7 @@ export function soSteps(o: SalesOrder, stage: SaleStage, vs: StockVoucher[], use
 
 /** v50: quyền thao tác trên đơn: người lên đơn với đơn của mình; Giám đốc / người có quyền "Bán hàng: sửa, hủy, xóa đơn" với mọi đơn */
 export function useSaleRights() {
-  const { me, canDo, stockVouchers, setStockVouchers, setSalesOrders, setSaleStatus, notify, postCash, users, dispatch, cashEntries } = useApp();
+  const { me, canDo, stockVouchers, setStockVouchers, setSalesOrders, setSaleStatus, notify, postCash, users, dispatch, cashEntries, platform, org } = useApp();
   const mgr = canDo('sale.manage');
   const del = canDo('sale.delete');
   const docs = canDo('sale.docs');
@@ -198,7 +199,7 @@ export function useSaleRights() {
     canDocs: () => docs,
     canSelf: (o: SalesOrder) => !!o.approval?.self && o.approval.status === 'PENDING' && o.status === 'PENDING' && ((own(o) && canDo('sale.approve')) || mgr),
     canVoidPay: () => docs,
-    selfApprove: (o: SalesOrder) => { decide(o, 'APPROVED'); notify(`Đã duyệt ${o.code}. Bấm Yêu cầu xuất kho khi cần giao hàng`, 'teal'); },
+    selfApprove: (o: SalesOrder) => { const miss = cfMissing(cfDefsFor(platform.customFields, org), o.cf, 'APPROVE'); if (miss.length) { notify(`${o.code} thiếu ${miss.map((d) => d.label).join(', ')}: cập nhật thông tin đơn trước khi duyệt`, 'red'); return; } decide(o, 'APPROVED'); notify(`Đã duyệt ${o.code}. Bấm Yêu cầu xuất kho khi cần giao hàng`, 'teal'); },
     selfReject: (o: SalesOrder, note: string) => { decide(o, 'REJECTED', note); setSaleStatus(o.id, 'CANCELLED', `Không duyệt: ${note}`); },
     cancelOrder: (o: SalesOrder, why: string) => {
       const ps = pendOut(o);
@@ -264,6 +265,12 @@ export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEd
   const [colQ, setColQ] = useState('');
   const [perC, setPerC] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  const cfd = useSaleCf();
+  const cfL = cfd.head.filter((d) => d.where.list);
+  const cfFl = cfd.head.filter((d) => d.status === 'ACTIVE' && d.where.filter && CF_FILTERABLE.includes(d.type));
+  const [cff, setCff] = useSticky<Record<string, string>>('Sales.cf53', {});
+  const [draftCf, setDraftCf] = useState<Record<string, string>>(cff);
+  const cfHit = (o: SalesOrder) => cfFl.every((d) => { const want = cff[d.key]; if (!want) return true; const v = o.cf?.[d.key]; if (d.type === 'check') return want === 'Y' ? v === true : v !== true; if (d.type === 'text') return fold(String(v ?? '')).includes(fold(want)); return String(v ?? '') === want; });
   const close = () => setPop('');
   const popRef = useOutside(pop === 'per' || pop === 'filter' || pop === 'cols', close);
   const sizeRef = useOutside(pop === 'size', close);
@@ -311,17 +318,18 @@ export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEd
         && (f.inv === 'ALL' || invOf(o) === f.inv)
         && (!f.rev || (f.revOp === 'GT' ? g > f.rev : g < f.rev)) && (!f.ret || saleReturned(o) > 0) && (!f.overdue || overdueOf(o));
     })
-    .filter((o) => !key || fold(`${o.code} ${o.customer} ${o.phone ?? ''} ${o.lines.map((l) => `${l.ref ?? ''} ${l.name}`).join(' ')}`).includes(key));
+    .filter((o) => !key || fold(`${o.code} ${o.customer} ${o.phone ?? ''} ${o.lines.map((l) => `${l.ref ?? ''} ${l.name}`).join(' ')}`).includes(key))
+    .filter(cfHit);
   const rows = base.filter((o) => inTab(o, tab)).sort((a, b) => b.createdAt - a.createdAt);
   const pages = Math.max(1, Math.ceil(rows.length / size));
   const pg = Math.min(page, pages - 1);
   const view = rows.slice(pg * size, pg * size + size);
-  useEffect(() => { setPage(0); setPicked([]); }, [tab, per, q, f, size, range]);
+  useEffect(() => { setPage(0); setPicked([]); }, [tab, per, q, f, size, range, cff]);
   const tabs: { id: SaleTab; label: string }[] = [{ id: 'ALL', label: 'Tất cả' }, { id: 'APPROVAL', label: 'Chờ duyệt' }, { id: 'APPROVED', label: 'Đã duyệt' }, { id: 'WAIT', label: 'Chờ xuất kho' }, { id: 'UNPAID', label: 'Chưa thanh toán' }, { id: 'PAID', label: 'Đã thanh toán' }, { id: 'DONE', label: 'Hoàn thành' }, { id: 'CANCELLED', label: 'Đã hủy' }];
   const sellers = Array.from(new Set(salesOrders.map((o) => o.by).filter((x): x is string => !!x)));
-  const nF = (Object.keys(SALE_F0) as (keyof SaleFilter)[]).filter((k) => k !== 'revOp' && k !== 'dateBy' && f[k] !== SALE_F0[k]).length;
-  const nDraft = (Object.keys(SALE_F0) as (keyof SaleFilter)[]).filter((k) => k !== 'revOp' && k !== 'dateBy' && draftF[k] !== SALE_F0[k]).length;
-  type Col = { id: string; label: string; group: 'Thông tin' | 'Tiến độ' | 'Tiền'; lock?: boolean; def?: boolean; right?: boolean; sum?: (o: SalesOrder) => number; cell: (o: SalesOrder) => ReactNode };
+  const nF = (Object.keys(SALE_F0) as (keyof SaleFilter)[]).filter((k) => k !== 'revOp' && k !== 'dateBy' && f[k] !== SALE_F0[k]).length + cfFl.filter((d) => cff[d.key]).length;
+  const nDraft = (Object.keys(SALE_F0) as (keyof SaleFilter)[]).filter((k) => k !== 'revOp' && k !== 'dateBy' && draftF[k] !== SALE_F0[k]).length + cfFl.filter((d) => draftCf[d.key]).length;
+  type Col = { id: string; label: string; group: 'Thông tin' | 'Tiến độ' | 'Tiền' | 'Trường tùy chỉnh'; lock?: boolean; def?: boolean; right?: boolean; sum?: (o: SalesOrder) => number; cell: (o: SalesOrder) => ReactNode };
   const money = (n: number, warn?: boolean) => <span className={cn('tabular-nums', warn && 'text-[rgb(var(--accent-fg))]')}>{fmtN(n)}</span>;
   const COLS: Col[] = [
     { id: 'date', label: 'Ngày', group: 'Thông tin', def: true, cell: (o) => <span className="tabular-nums">{fmtDate(o.date)}</span> },
@@ -345,16 +353,17 @@ export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEd
     { id: 'left', label: 'Còn lại', group: 'Tiền', def: true, right: true, sum: (o) => Math.max(0, leftOf(o)), cell: (o) => money(Math.max(0, leftOf(o)), leftOf(o) > 0) },
     { id: 'dueAt', label: 'Hạn thanh toán', group: 'Tiền', cell: (o) => (o.creditDays && o.issuedAt ? <span className={cn('tabular-nums', overdueOf(o) && 'text-[rgb(var(--danger-fg))]')}>{fmtDate(saleDue(o))}</span> : '—') },
     { id: 'inv', label: 'Hóa đơn thuế', group: 'Tiến độ', def: true, cell: (o) => { const s = invOf(o); return s === 'NO' ? <span className="text-[rgb(var(--muted))]">Không lấy</span> : s === 'DONE' ? <span className="flex gap-1">{(o.invReqs ?? []).filter((r) => r.status === 'DONE').map((r) => <Code key={r.id}>{r.no}</Code>)}</span> : s === 'WAIT' ? <Chip tone="orange">Chờ xuất</Chip> : '—'; } },
+    ...cfL.map((d): Col => ({ id: `cf:${d.key}`, label: d.label, group: 'Trường tùy chỉnh', right: d.type === 'money' || d.type === 'number', cell: (o) => { const t = cfText(d, o.cf?.[d.key], nm); return t ? <span className={cn('block max-w-[200px] truncate', (d.type === 'money' || d.type === 'number') && 'tabular-nums')} title={t}>{t}</span> : '—'; } })),
   ];
   const DEF = COLS.filter((c) => c.def || c.lock).map((c) => c.id);
   const on = cols.length ? cols : DEF;
-  const ORDER = ['date', 'code', 'cust', 'status', 'origin', 'by', 'wh', 'issue', 'deliver', 'gross', 'disc', 'vat', 'grand', 'paid', 'wait', 'left', 'ret', 'dueAt', 'note', 'inv'];
+  const ORDER = ['date', 'code', 'cust', 'status', 'origin', 'by', 'wh', 'issue', 'deliver', 'gross', 'disc', 'vat', 'grand', 'paid', 'wait', 'left', 'ret', 'dueAt', 'note', 'inv', ...cfL.map((d) => `cf:${d.key}`)];
   const vis = ORDER.map((id) => COLS.find((c) => c.id === id)!).filter((c) => c.lock || on.includes(c.id));
   const sumOf = (fn: (o: SalesOrder) => number) => rows.filter((o) => o.status !== 'CANCELLED').reduce((s, o) => s + fn(o), 0);
   const firstSum = vis.findIndex((c) => !!c.sum);
   const PER: [SalePer, string][] = [['ALL', 'Tất cả'], ['D', 'Hôm nay'], ['W', 'Tuần này'], ['M', 'Tháng này'], ['Q', 'Quý này'], ['Y', 'Năm nay'], ['C', 'Thời gian khác']];
   const perLabel = per === 'C' ? `${fmtDate(range.from).slice(0, 5)} – ${fmtDate(range.to)}` : PER.find((x) => x[0] === per)?.[1];
-  const exportRows = (list: SalesOrder[]) => [vis.map((c) => c.label), ...list.map((o) => vis.map((c) => { return c.sum ? c.sum(o) : c.id === 'code' ? o.code : c.id === 'date' ? fmtDate(o.date) : c.id === 'cust' ? o.customer : c.id === 'status' ? SALE_STAGE[stage(o)].label : c.id === 'note' ? o.note ?? '' : c.id === 'inv' ? (o.invReqs ?? []).filter((r) => r.status === 'DONE').map((r) => r.no).join(', ') : c.id === 'by' ? nm(o.by) : c.id === 'wh' ? warehouses.find((w) => w.id === o.whId)?.name ?? '' : c.id === 'issue' ? `${unitsOf(o).done}/${unitsOf(o).all}` : c.id === 'origin' ? o.origin ?? '' : c.id === 'deliver' ? fmtDate(o.deliverAt) : c.id === 'dueAt' && o.issuedAt ? fmtDate(saleDue(o)) : ''; }))];
+  const exportRows = (list: SalesOrder[]) => [vis.map((c) => c.label), ...list.map((o) => vis.map((c) => { if (c.id.startsWith('cf:')) { const d = cfL.find((x) => `cf:${x.key}` === c.id); return d ? cfText(d, o.cf?.[d.key], nm) : ''; } return c.sum ? c.sum(o) : c.id === 'code' ? o.code : c.id === 'date' ? fmtDate(o.date) : c.id === 'cust' ? o.customer : c.id === 'status' ? SALE_STAGE[stage(o)].label : c.id === 'note' ? o.note ?? '' : c.id === 'inv' ? (o.invReqs ?? []).filter((r) => r.status === 'DONE').map((r) => r.no).join(', ') : c.id === 'by' ? nm(o.by) : c.id === 'wh' ? warehouses.find((w) => w.id === o.whId)?.name ?? '' : c.id === 'issue' ? `${unitsOf(o).done}/${unitsOf(o).all}` : c.id === 'origin' ? o.origin ?? '' : c.id === 'deliver' ? fmtDate(o.deliverAt) : c.id === 'dueAt' && o.issuedAt ? fmtDate(saleDue(o)) : ''; }))];
   const chosen = rows.filter((o) => picked.includes(o.id));
   const csv = () => downloadCsv(`don-hang-${today}.csv`, exportRows(chosen.length ? chosen : rows));
   const print = () => { const g = exportRows(chosen.length ? chosen : rows); printHtml(docShell('Danh sách đơn hàng', `<h1>Danh sách đơn hàng</h1><table class="items"><thead><tr>${g[0].map((h) => `<th>${esc(String(h))}</th>`).join('')}</tr></thead><tbody>${g.slice(1).map((r) => `<tr>${r.map((c) => `<td>${esc(String(c))}</td>`).join('')}</tr>`).join('')}</tbody></table>`)); };
@@ -387,7 +396,7 @@ export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEd
         </div>
         <div className="flex">
           <div className="relative">
-            <button className={cn(soIco, 'relative rounded-r-none', (pop === 'filter' || nF > 0) && 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))] hover:bg-[rgb(var(--fg))]')} onClick={() => { setDraftF(f); setPop(pop === 'filter' ? '' : 'filter'); }} aria-label="Bộ lọc" title="Bộ lọc" aria-expanded={pop === 'filter'}><Filter className="h-4 w-4" aria-hidden />{nF > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[rgb(var(--accent))] px-1 text-[10px] text-[rgb(var(--on-accent))]">{nF}</span>}</button>
+            <button className={cn(soIco, 'relative rounded-r-none', (pop === 'filter' || nF > 0) && 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))] hover:bg-[rgb(var(--fg))]')} onClick={() => { setDraftF(f); setDraftCf(cff); setPop(pop === 'filter' ? '' : 'filter'); }} aria-label="Bộ lọc" title="Bộ lọc" aria-expanded={pop === 'filter'}><Filter className="h-4 w-4" aria-hidden />{nF > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[rgb(var(--accent))] px-1 text-[10px] text-[rgb(var(--on-accent))]">{nF}</span>}</button>
             {pop === 'filter' && (
               <div className="absolute right-0 top-full z-40 mt-1 w-[620px] max-w-[92vw] rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-5 shadow-xl max-sm:-right-24">
                 <div className="mb-3 flex flex-wrap items-center gap-4 text-[14px]">
@@ -406,15 +415,23 @@ export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEd
                   {sel(draftF.inv, (v) => setDraftF({ ...draftF, inv: v as SaleFilter['inv'] }), [['ALL', 'Tất cả'], ['NONE', 'Chưa xuất'], ['WAIT', 'Chờ kế toán'], ['DONE', 'Đã xuất'], ['NO', 'Không lấy']], 'Hóa đơn thuế')}
                   <Field label="Doanh thu"><div className="flex gap-2"><select className={cn(inputBase, 'w-32')} value={draftF.revOp} onChange={(e) => setDraftF({ ...draftF, revOp: e.target.value as 'GT' | 'LT' })} aria-label="So sánh"><option value="GT">Lớn hơn</option><option value="LT">Nhỏ hơn</option></select><div className="min-w-0 flex-1"><MoneyInput value={draftF.rev} onChange={(v) => setDraftF({ ...draftF, rev: v })} /></div></div></Field>
                 </div>
+                {cfFl.length > 0 && (
+                  <div className="mt-3 grid grid-cols-1 gap-3 border-t border-[rgb(var(--line))] pt-3 sm:grid-cols-2">
+                    <p className="text-[12.5px] text-[rgb(var(--muted))] sm:col-span-2">Trường tùy chỉnh</p>
+                    {cfFl.map((d) => <Field key={d.id} label={d.label}>{d.type === 'text'
+                      ? <input className={inputCls} value={draftCf[d.key] ?? ''} onChange={(e) => setDraftCf({ ...draftCf, [d.key]: e.target.value })} placeholder="Chứa chữ" />
+                      : <select className={inputCls} value={draftCf[d.key] ?? ''} onChange={(e) => setDraftCf({ ...draftCf, [d.key]: e.target.value })}><option value="">Tất cả</option>{d.type === 'check' ? <><option value="Y">Có</option><option value="N">Không</option></> : d.type === 'user' ? users.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>) : (d.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}</select>}</Field>)}
+                  </div>
+                )}
                 <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-[14px]">
                   <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={draftF.ret} onChange={(e) => setDraftF({ ...draftF, ret: e.target.checked })} />Có hàng trả lại</label>
                   <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={draftF.overdue} onChange={(e) => setDraftF({ ...draftF, overdue: e.target.checked })} />Quá hạn thanh toán</label>
                 </div>
                 <div className="mt-4 flex items-center gap-2 border-t border-[rgb(var(--line))] pt-4">
                   <span className="text-[13px] text-[rgb(var(--muted))]">Đang chọn {nDraft} điều kiện</span>
-                  <button className="ml-auto px-3 py-2 text-[14px] hover:underline" onClick={() => { setDraftF(SALE_F0); setF(SALE_F0); }}>Xóa lọc</button>
+                  <button className="ml-auto px-3 py-2 text-[14px] hover:underline" onClick={() => { setDraftF(SALE_F0); setF(SALE_F0); setDraftCf({}); setCff({}); }}>Xóa lọc</button>
                   <button className={btnGhost} onClick={() => setPop('')}>Đóng</button>
-                  <button className={cn(btnBase, 'bg-[rgb(var(--fg))] px-4 py-2 text-[rgb(var(--bg))]')} onClick={() => { setF(draftF); setPop(''); }}><Search className="h-4 w-4" aria-hidden />Tìm kiếm</button>
+                  <button className={cn(btnBase, 'bg-[rgb(var(--fg))] px-4 py-2 text-[rgb(var(--bg))]')} onClick={() => { setF(draftF); setCff(Object.fromEntries(Object.entries(draftCf).filter(([, v]) => v))); setPop(''); }}><Search className="h-4 w-4" aria-hidden />Tìm kiếm</button>
                 </div>
               </div>
             )}
@@ -422,10 +439,10 @@ export function SaleList({ onNew, onEdit, onCancel }: { onNew?: () => void; onEd
           <div className="relative">
             <button className={cn(soIco, '-ml-px rounded-l-none', pop === 'cols' && 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))] hover:bg-[rgb(var(--fg))]')} onClick={() => { setDraftC(on); setColQ(''); setPop(pop === 'cols' ? '' : 'cols'); }} aria-label="Cột hiển thị" title="Cột hiển thị" aria-expanded={pop === 'cols'}><Columns3 className="h-4 w-4" aria-hidden /></button>
             {pop === 'cols' && (
-              <div className="absolute right-0 top-full z-40 mt-1 w-[720px] max-w-[92vw] rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-5 shadow-xl max-sm:-right-12">
+              <div className={cn('absolute right-0 top-full z-40 mt-1 max-w-[92vw] rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-5 shadow-xl max-sm:-right-12', cfL.length ? 'w-[900px]' : 'w-[720px]')}>
                 <div className="mb-3 flex flex-wrap items-center gap-2"><h3 className="text-[16px] font-medium">Cột hiển thị</h3><span className="text-[12.5px] tabular-nums text-[rgb(var(--muted))]">{COLS.filter((c) => c.lock || draftC.includes(c.id)).length} / {COLS.length}</span><div className="ml-auto w-48"><SearchBox value={colQ} onChange={setColQ} placeholder="Tìm cột" /></div></div>
-                <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-3">
-                  {(['Thông tin', 'Tiến độ', 'Tiền'] as const).map((g) => (
+                <div className={cn('grid grid-cols-1 gap-x-6', cfL.length ? 'sm:grid-cols-4' : 'sm:grid-cols-3')}>
+                  {((cfL.length ? ['Thông tin', 'Tiến độ', 'Tiền', 'Trường tùy chỉnh'] : ['Thông tin', 'Tiến độ', 'Tiền']) as Col['group'][]).map((g) => (
                     <div key={g}>
                       <p className="mb-1 text-[12.5px] text-[rgb(var(--muted))]">{g}</p>
                       {COLS.filter((c) => c.group === g && (!colQ || fold(c.label).includes(fold(colQ)))).map((c) => (
@@ -524,6 +541,9 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   const [note, setNote] = useState(edit?.note ?? '');
   const { users, wfDef, openCustomerForm, wfFirstApprovers, dispatch } = useApp();
   const [code, setCode] = useState(edit?.code ?? '');
+  const cfd = useSaleCf();
+  const cfForm = cfd.head.filter((d) => d.status === 'ACTIVE' && d.where.form);
+  const [cfv, setCfv] = useState<Record<string, CfVal>>(edit?.cf ?? {});
   const [origin, setOrigin] = useState(edit ? edit.origin ?? (edit.source === 'QUOTE' ? 'Từ báo giá' : 'Tại quầy') : 'Tại quầy');
   const [docRef, setDocRef] = useState(edit?.docRef ?? '');
   const [receiver, setReceiver] = useState(edit?.receiver ?? '');
@@ -578,12 +598,14 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   if (pay === 'CREDIT' && !cust) errs.push('Khách lẻ không ghi công nợ: chọn khách trong CRM');
   if (delivery !== 'PICKUP' && !address.trim()) errs.push('Nhập địa chỉ giao hàng');
   if (code.trim() && salesOrders.some((x) => x.code === code.trim() && x.id !== edit?.id)) errs.push(`Mã đơn ${code.trim()} đã có`);
+  cfMissing(cfForm, cfv, 'SAVE').forEach((d) => errs.push(`${d.type === 'check' ? 'Cần tích' : 'Nhập'} ${d.label}`));
   const short = stock.filter((x) => x.short > 0);
   const finish = () => {
     if (errs.length) return notify(errs[0], 'red');
     const base = { date: todayISO(), source: 'COUNTER' as const, customerId: cust?.id, customer: name, phone: phone.trim() || undefined, taxCode: cust?.taxCode || undefined, address: address.trim() || undefined,
       lines, pay, creditDays: pay === 'CREDIT' || pay === 'PARTIAL' ? creditDays : 0, payments: [], delivery, whId, deliverAt: delivery === 'PICKUP' ? undefined : deliverAt, invoice, shipFee: shipFee || undefined, note: note.trim() || undefined, status: 'PENDING' as SaleStatus, by: byId || me?.id,
-      origin: origin.trim() || undefined, docRef: docRef.trim() || undefined, receiver: receiver.trim() || undefined, ...(code.trim() ? { code: code.trim() } : {}) };
+      origin: origin.trim() || undefined, docRef: docRef.trim() || undefined, receiver: receiver.trim() || undefined, ...(code.trim() ? { code: code.trim() } : {}),
+      cf: Object.keys(cfv).length ? cfv : undefined };
     const now0 = Date.now();
     const approval: SalesOrder['approval'] = needs ? { status: 'PENDING', reasons, requestedAt: now0, requestedBy: me?.id } : { status: 'PENDING', reasons: ['Người lên đơn tự duyệt'], requestedAt: now0, requestedBy: me?.id, self: true };
     let rec = edit ? saveSale({ ...edit, ...base, source: edit.source, date: edit.date, payments: edit.payments, code: edit.code, approval }) : saveSale({ ...base, approval });
@@ -728,6 +750,12 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
             {delivery !== 'PICKUP' && <input className={cn(inputCls, 'mt-2')} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Địa chỉ giao hàng" aria-label="Địa chỉ giao hàng" />}
             <input className={cn(inputCls, 'mt-2')} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú cho kho / giao vận" aria-label="Ghi chú" />
           </SoCard>
+          {cfForm.length > 0 && (
+            <SoCard title="Thông tin thêm">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{cfForm.map((d) => <Field key={d.id} label={`${d.label}${d.required !== 'NONE' ? ' *' : ''}`}><CfInput d={d} v={cfv[d.key]} set={(v) => setCfv((p) => cfSet(p, d.key, v))} users={users} /></Field>)}</div>
+              {cfForm.some((d) => d.required === 'APPROVE') && <p className="mt-2 text-[12.5px] text-[rgb(var(--muted))]">* {cfForm.filter((d) => d.required === 'APPROVE').map((d) => d.label).join(', ')}: bắt buộc trước khi duyệt đơn</p>}
+            </SoCard>
+          )}
         </div>
         <div className="space-y-4">
           <SoCard title="Quy trình xử lý">
@@ -1312,13 +1340,14 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const paid = salePaid(o);
   const pend = salePaid(o, true) - paid;
   const left = due - salePaid(o, true);
-  const [tab, setTab] = useState<'goods' | 'docs'>('goods');
   const [docF, setDocF] = useState<'ALL' | 'WH' | 'CASH' | 'INV'>('ALL');
   const [logF, setLogF] = useState<'ALL' | 'NOTE' | 'SYS'>('ALL');
   const [msg, setMsg] = useState('');
   const [more, setMore] = useState(false);
   const moreRef = useOutside(more, () => setMore(false));
   const [cancel, setCancel] = useState<string | null>(startCancel ? '' : null);
+  const [tab, setTab] = useState<'goods' | 'docs'>(startCancel ? 'docs' : 'goods');
+  useEffect(() => { if (cancel !== null) setTab('docs'); }, [cancel !== null]); // eslint-disable-line react-hooks/exhaustive-deps
   const [inv, setInv] = useState(false);
   const [dec, setDec] = useState<Record<string, string>>({});
   const q = o.quoteId ? quotes.find((x) => x.id === o.quoteId) : undefined;
@@ -1336,12 +1365,20 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const nm = (id?: string) => users.find((u) => u.id === id)?.name ?? '';
   const { skus } = useApp();
   const [view, setView] = useState<string | null>(null);
-  type Info = { origin: string; docRef: string; by: string; receiver: string; phone: string; address: string; deliverAt: string; note: string; invoice: boolean };
+  type Info = { origin: string; docRef: string; by: string; receiver: string; phone: string; address: string; deliverAt: string; note: string; invoice: boolean; cf: Record<string, CfVal>; lcf: Record<string, Record<string, CfVal>> };
   const [info, setInfo] = useState<Info | null>(null);
-  const startInfo = () => setInfo({ origin: o.origin ?? (o.source === 'QUOTE' ? 'Từ báo giá' : 'Tại quầy'), docRef: o.docRef ?? '', by: o.by ?? '', receiver: o.receiver ?? '', phone: o.phone ?? '', address: o.address ?? '', deliverAt: o.deliverAt ?? '', note: o.note ?? '', invoice: o.invoice });
+  const { notify, mySales, setOpenSale } = useApp();
+  const cfd = useSaleCf();
+  const cfHeadForm = cfd.head.filter((d) => d.status === 'ACTIVE' && d.where.form);
+  const cfLineForm = cfd.line.filter((d) => d.status === 'ACTIVE' && d.where.form);
+  const startInfo = () => setInfo({ origin: o.origin ?? (o.source === 'QUOTE' ? 'Từ báo giá' : 'Tại quầy'), docRef: o.docRef ?? '', by: o.by ?? '', receiver: o.receiver ?? '', phone: o.phone ?? '', address: o.address ?? '', deliverAt: o.deliverAt ?? '', note: o.note ?? '', invoice: o.invoice,
+    cf: o.cf ?? {}, lcf: Object.fromEntries(o.lines.map((l) => [l.id, l.cf ?? {}])) });
   const saveInfo = () => {
     if (!info) return;
+    const miss = cfMissing(cfHeadForm, info.cf, 'SAVE');
+    if (miss.length) return notify(`${miss[0].type === 'check' ? 'Cần tích' : 'Nhập'} ${miss[0].label}`, 'red');
     setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, origin: info.origin.trim() || undefined, docRef: info.docRef.trim() || undefined, by: info.by || x.by, receiver: info.receiver.trim() || undefined, phone: info.phone.trim() || undefined, address: info.address.trim() || undefined, deliverAt: info.deliverAt || undefined, note: info.note.trim() || undefined, invoice: info.invoice,
+      cf: Object.keys(info.cf).length ? info.cf : undefined, lines: x.lines.map((l) => { const v = info.lcf[l.id]; return v ? { ...l, cf: Object.keys(v).length ? v : undefined } : l; }),
       notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: 'Cập nhật thông tin đơn (không đổi hàng hóa, giá)' }] } : x)));
     setInfo(null);
   };
@@ -1357,6 +1394,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
     ...(o.invReqs ?? []).map((r): Doc => ({ key: r.id, g: 'INV', code: r.no ?? 'Yêu cầu HĐ', type: <span className="inline-flex items-center gap-1.5"><ReceiptIcon className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />Hóa đơn thuế</span>, date: iso(new Date(r.doneAt ?? r.at)), amt: r.amount, note: r.why ?? r.note, who: nm(r.doneBy ?? r.by) || undefined, st: <Chip tone={r.status === 'DONE' ? 'teal' : r.status === 'PENDING' ? 'orange' : 'muted'}>{r.status === 'DONE' ? 'Đã xuất' : r.status === 'PENDING' ? 'Chờ kế toán' : 'Trả lại'}</Chip> })),
     ...(o.issueRefs ?? []).filter((r) => r.startsWith('PX-') && !vs.some((v) => v.code === r)).map((r): Doc => ({ key: r, g: 'WH', code: r, type: 'Xuất vật tư', date: o.issuedAt ? iso(new Date(o.issuedAt)) : o.date, st: <Chip tone="teal">Đã xuất</Chip>, open: () => go('inventory') })),
     ...pos.filter((p) => o.poIds?.includes(p.id)).map((p): Doc => ({ key: p.id, g: 'OTHER', code: p.code, type: 'Đặt hàng NCC', date: p.orderDate, note: p.vendor, st: <Chip tone="blue">Dự kiến {fmtDate(p.expectedDate)}</Chip>, open: () => go('supply') })),
+    ...(cancel !== null && salePaid(o) > 0 ? [{ key: 'need-refund', g: 'CASH' as const, code: '—', type: <span className="inline-flex items-center gap-1.5"><Banknote className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />Phiếu chi hoàn tiền</span>, date: todayISO(), amt: salePaid(o), note: 'Hoàn tiền khách để hủy đơn', st: <Chip tone="orange">Cần lập</Chip> }] : []),
     ...(wo ? [{ key: wo.id, g: 'OTHER' as const, code: wo.code, type: 'Lệnh sản xuất', date: wo.startDate, note: wo.title, st: <Chip tone={WO_STAGE[wo.stage].tone}>{WO_STAGE[wo.stage].label}</Chip>, open: () => go('production') }] : []),
   ].sort((a, b) => a.date.localeCompare(b.date));
   const docsV = docs.filter((d) => docF === 'ALL' || d.g === docF);
@@ -1371,32 +1409,97 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   type Feed = { at: number; note?: SaleNote; s?: (typeof sys)[number] };
   const feed: Feed[] = [...(logF !== 'SYS' ? notes.map((n): Feed => ({ at: n.at, note: n })) : []), ...(logF !== 'NOTE' ? sys.map((x): Feed => ({ at: x.at, s: x })) : [])].sort((a, b) => b.at - a.at);
   const send = () => { const tx = msg.trim(); if (!tx) return; setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: tx }] } : x))); setMsg(''); };
+  // ---------------- v53: bố cục do 3A phát hành, trường tùy chỉnh, nút biểu tượng, tệp đính kèm
+  const lay = useTenantLayout('sale-detail');
+  const starter = useMemo(() => lStarterSale(), []);
+  const blocks = lay?.blocks ?? starter;
+  const wide = useMinW(1280);
+  const phone = !useMinW(640);
+  const dev: LDevice = wide ? 'lg' : phone ? 'sm' : 'md';
+  const blkOf = (t: LBlockType) => blocks.find((b) => b.type === t);
+  const lstage = lStageOf(o, stage, cancel !== null);
+  const myRole = me?.role ?? null;
+  const iconOn = (a: LIconAct) => blocks.some((b) => b.type === 'K-Icons' && b.show[dev] && lCondOk(b.config, lstage, myRole) && (b.config.icons ?? []).includes(a));
+  const cfHeadInfo = cfd.head.filter((d) => d.where.info && (d.status === 'ACTIVE' || !cfEmpty(o.cf?.[d.key])));
+  const cfLineCols = cfd.line.filter((d) => d.where.info && (d.status === 'ACTIVE' || o.lines.some((l) => !cfEmpty(l.cf?.[d.key]))));
+  const needAp = stage === 'APPROVAL' ? cfMissing(cfd.head, o.cf, 'APPROVE') : [];
+  const seq = [...mySales].sort((a, b) => b.createdAt - a.createdAt);
+  const at = seq.findIndex((x) => x.id === o.id);
+  const prevO = at > 0 ? seq[at - 1] : undefined;
+  const nextO = at >= 0 ? seq[at + 1] : undefined;
+  const upRef = useRef<HTMLInputElement>(null);
+  const [upBusy, setUpBusy] = useState(false);
+  const canUp = o.status !== 'CANCELLED' && (R.canInfo(o) || R.canDocs());
+  const addFiles = async (list: FileList | null) => {
+    if (!list || !list.length) return;
+    const room = 10 - (o.files ?? []).length;
+    if (room <= 0) { notify('Mỗi đơn tối đa 10 tệp', 'orange'); return; }
+    setUpBusy(true);
+    try {
+      const out: SaleFile[] = [];
+      for (const f of Array.from(list).slice(0, room)) {
+        const img = f.type.startsWith('image/');
+        if (!img && f.size > 2 * 1024 * 1024) { notify(`${f.name} lớn hơn 2 MB, chưa tải lên`, 'orange'); continue; }
+        const url = img ? await compressImage(f, 1600) : await readAsDataUrl(f);
+        out.push({ id: uid('sf'), name: f.name, url, size: img ? Math.round(url.length * 0.75) : f.size, type: f.type || 'application/octet-stream', at: Date.now(), by: me?.id });
+      }
+      if (out.length) {
+        setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, files: [...(x.files ?? []), ...out], notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: `Tải lên ${out.map((f) => f.name).join(', ')}` }] } : x)));
+        notify(`Đã tải lên ${out.length} tệp cho ${o.code}`, 'teal');
+      }
+    } catch { notify('Không đọc được tệp', 'red'); } finally { setUpBusy(false); if (upRef.current) upRef.current.value = ''; }
+  };
+  const delFile = (f: SaleFile) => setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, files: (x.files ?? []).filter((y) => y.id !== f.id), notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: `Bỏ tệp ${f.name}` }] } : x)));
+  const lineCfg = blkOf('K-Order-Lines')?.config;
+  const lineIds = lFieldOrder([...SO_LINE_F, ...cfLineCols.map((d) => ({ id: `cf:${d.key}`, label: d.label }))], lineCfg);
+  const download = () => {
+    const lc = cfLineCols;
+    downloadBlob(`DonHang_${o.code}.xlsx`, xlsxBlob([
+      { name: 'Thong tin', widths: [26, 48], rows: [['Mã đơn', o.code], ['Ngày', fmtDate(o.date)], ['Khách hàng', o.customer], ['Mã số thuế', o.taxCode ?? ''], ['Trạng thái', SALE_STAGE[stage].label], ['Người thực hiện', nm(o.by)], ['Kho xuất', warehouses.find((w) => w.id === o.whId)?.name ?? ''], ['Nguồn chứng từ', o.docRef ?? ''],
+        ...cfHeadInfo.map((d) => [d.label, cfText(d, o.cf?.[d.key], nm)]), ['Tiền hàng', t.net], ['Thuế GTGT', t.vat], ['Tổng đơn', t.grand], ['Đã thu', paid], ['Còn lại', Math.max(0, left)]] },
+      { name: 'Hang hoa', widths: [6, 16, 40, 8, 10, 14, 8, 14, 8, 16, ...lc.map(() => 18)], rows: [['STT', 'Mã sản phẩm', 'Tên sản phẩm', 'ĐVT', 'Số lượng', 'Đơn giá', 'CK%', 'CK (đ)', 'VAT%', 'Thành tiền', ...lc.map((d) => d.label)],
+        ...o.lines.map((l, i) => [i + 1, l.ref ?? '', l.name, l.unit, l.qty, l.price, l.discountPct || 0, ckd(l), l.vat, saleLineNet(l), ...lc.map((d) => cfText(d, l.cf?.[d.key], nm))]),
+        ['', '', `Cộng ${o.lines.length} mặt hàng`, '', o.lines.reduce((s, l) => s + l.qty, 0), '', '', t.discount, '', t.net]] },
+    ]));
+  };
+  const onIcon = (a: LIconAct) => {
+    if (a === 'back') onBack();
+    else if (a === 'prev' && prevO) setOpenSale(prevO.id);
+    else if (a === 'next' && nextO) setOpenSale(nextO.id);
+    else if (a === 'print') printHtml(docShell(`Phiếu bán hàng ${o.code}`, saleHtml(o, company)));
+    else if (a === 'download') download();
+    else if (a === 'upload') upRef.current?.click();
+  };
+  const menuItem = 'block w-full rounded-md px-3 py-2 text-left hover:bg-[rgb(var(--ink)/0.05)] disabled:opacity-40';
+  const moreItems = (
+    <>
+      {q && <button className={menuItem} onClick={() => { setMore(false); openComposer({ quoteId: q.id, view: true, mode: 'QUOTE' }); }}>Mở báo giá {q.code}</button>}
+      <button className={menuItem} disabled={!R.canEdit(o)} onClick={() => { setMore(false); onEdit(); }}>Sửa đơn</button>
+      {o.status === 'SHIPPING' && <button className={menuItem} onClick={() => { setMore(false); setSaleStatus(o.id, 'DONE'); }}>Đã giao xong</button>}
+      <button className={cn(menuItem, 'text-[rgb(var(--danger-fg))]')} disabled={!R.canCancel(o)} onClick={() => { setMore(false); setCancel(''); }}>Hủy đơn</button>
+      <button className={cn(menuItem, 'text-[rgb(var(--danger-fg))]')} disabled={!R.canDelete(o)} title={R.delWhy(o) || undefined} onClick={() => { setMore(false); R.remove(o); onBack(); }}>Xóa đơn{R.canDelete(o) ? '' : <span className="block text-[11.5px]">{R.delWhy(o)}</span>}</button>
+    </>
+  );
   const ini = (id?: string) => (nm(id) || '?').split(' ').slice(-2).map((w) => w[0]).join('').toUpperCase();
   return (
     <div>
       <SoTop crumb="Quản lý đơn hàng" onCrumb={onBack} title={o.code} chips={<><Chip tone={SALE_STAGE[stage].tone}>{SALE_STAGE[stage].label}</Chip>{issuedAny && o.status !== 'CANCELLED' && <span className="inline-flex items-center gap-1 rounded-md border border-[rgb(var(--line))] px-2 py-0.5 text-[12px] text-[rgb(var(--fg2))]"><Lock className="h-3 w-3" aria-hidden />Đã khóa hàng hóa</span>}</>}>
         <div className="flex" ref={moreRef}>
-          <button className={cn(soIco, 'rounded-r-none')} onClick={() => printHtml(docShell(`Phiếu bán hàng ${o.code}`, saleHtml(o, company)))} aria-label="In phiếu bán hàng" title="In phiếu bán hàng"><Printer className="h-4 w-4" aria-hidden /></button>
-          <div className="relative">
-            <button className={cn(soIco, '-ml-px rounded-l-none')} onClick={() => setMore((v) => !v)} aria-label="Thao tác khác" aria-expanded={more}><MoreVertical className="h-4 w-4" aria-hidden /></button>
+          {!iconOn('print') && <button className={cn(soIco, !iconOn('menu') && 'rounded-r-none')} onClick={() => printHtml(docShell(`Phiếu bán hàng ${o.code}`, saleHtml(o, company)))} aria-label="In phiếu bán hàng" title="In phiếu bán hàng"><Printer className="h-4 w-4" aria-hidden /></button>}
+          {!iconOn('menu') && <div className="relative">
+            <button className={cn(soIco, !iconOn('print') && '-ml-px rounded-l-none')} onClick={() => setMore((v) => !v)} aria-label="Thao tác khác" aria-expanded={more}><MoreVertical className="h-4 w-4" aria-hidden /></button>
             {more && (
-              <div className="absolute right-0 top-full z-30 mt-1 w-52 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 text-[13.5px] shadow-xl">
-                {q && <button className="block w-full rounded-md px-3 py-2 text-left hover:bg-[rgb(var(--ink)/0.05)]" onClick={() => { setMore(false); openComposer({ quoteId: q.id, view: true, mode: 'QUOTE' }); }}>Mở báo giá {q.code}</button>}
-                <button className="block w-full rounded-md px-3 py-2 text-left hover:bg-[rgb(var(--ink)/0.05)] disabled:opacity-40" disabled={!R.canEdit(o)} onClick={() => { setMore(false); onEdit(); }}>Sửa đơn</button>
-                {o.status === 'SHIPPING' && <button className="block w-full rounded-md px-3 py-2 text-left hover:bg-[rgb(var(--ink)/0.05)]" onClick={() => { setMore(false); setSaleStatus(o.id, 'DONE'); }}>Đã giao xong</button>}
-                <button className="block w-full rounded-md px-3 py-2 text-left text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--ink)/0.05)] disabled:opacity-40" disabled={!R.canCancel(o)} onClick={() => { setMore(false); setCancel(''); }}>Hủy đơn</button>
-                <button className="block w-full rounded-md px-3 py-2 text-left text-[rgb(var(--danger-fg))] hover:bg-[rgb(var(--ink)/0.05)] disabled:opacity-40" disabled={!R.canDelete(o)} title={R.delWhy(o) || undefined} onClick={() => { setMore(false); R.remove(o); onBack(); }}>Xóa đơn{R.canDelete(o) ? '' : <span className="block text-[11.5px]">{R.delWhy(o)}</span>}</button>
-              </div>
+              <div className="absolute right-0 top-full z-30 mt-1 w-52 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 text-[13.5px] shadow-xl">{moreItems}</div>
             )}
-          </div>
+          </div>}
         </div>
+        <input ref={upRef} type="file" multiple className="hidden" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => { void addFiles(e.target.files); }} aria-label="Chọn tệp đính kèm" />
         {o.status === 'CANCELLED' && left < 0 && <button className={btnPrimary} onClick={onPay}><Coins className="h-4 w-4" aria-hidden />Hoàn tiền khách {fmtN(-left)}</button>}
-        {o.status !== 'CANCELLED' && stage !== 'APPROVAL' && <button className={btnGhost} onClick={onPay}><Coins className="h-4 w-4" aria-hidden />{canCash ? 'Lập phiếu thu' : 'Báo đã nhận tiền'}</button>}
-        {canReq && <button className={btnPrimary} onClick={() => requestSaleIssue(o.id)}><PackageMinus className="h-4 w-4" aria-hidden />Yêu cầu xuất kho</button>}
-        {canInv && <button className={btnGhost} onClick={() => setInv(true)}><ReceiptIcon className="h-4 w-4" aria-hidden />Yêu cầu xuất hóa đơn</button>}
+        {cancel === null && o.status !== 'CANCELLED' && stage !== 'APPROVAL' && <button className={btnGhost} onClick={onPay}><Coins className="h-4 w-4" aria-hidden />{canCash ? 'Lập phiếu thu' : 'Báo đã nhận tiền'}</button>}
+        {cancel === null && canReq && <button className={btnPrimary} onClick={() => requestSaleIssue(o.id)}><PackageMinus className="h-4 w-4" aria-hidden />Yêu cầu xuất kho</button>}
+        {cancel === null && canInv && <button className={btnGhost} onClick={() => setInv(true)}><ReceiptIcon className="h-4 w-4" aria-hidden />Yêu cầu xuất hóa đơn</button>}
         {stage === 'APPROVAL' && <button className={myTurn || R.canSelf(o) ? btnPrimary : btnGhost} onClick={onApprove}><CheckIcon className="h-4 w-4" aria-hidden />{myTurn || R.canSelf(o) ? 'Duyệt đơn' : 'Xem duyệt'}</button>}
       </SoTop>
-      {cancel !== null && <SaleCancelCard o={o} why={cancel} setWhy={setCancel} />}
       {inv && <SaleInvoiceForm o={o} onClose={() => setInv(false)} />}
       {view && (() => {
         const d = docs.find((x) => x.key === view);
@@ -1421,91 +1524,145 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
           </Modal>
         );
       })()}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
-        <div className="min-w-0 space-y-4">
-          {info ? (
-            <SoCard title="Cập nhật thông tin đơn hàng" action={<><button className={btnGhost} onClick={() => setInfo(null)}>Thôi</button><button className={btnPrimary} onClick={saveInfo}><CheckIcon className="h-4 w-4" aria-hidden />Lưu</button></>}>
-              <div className={soGrid}>
-                <Field label="Nguồn đơn hàng"><input className={inputCls} value={info.origin} onChange={(e) => setInfo({ ...info, origin: e.target.value })} /></Field>
-                <Field label="Nguồn chứng từ"><input className={inputCls} value={info.docRef} onChange={(e) => setInfo({ ...info, docRef: e.target.value })} placeholder="PO, hợp đồng" /></Field>
-                <Field label="Người thực hiện"><select className={inputCls} value={info.by} onChange={(e) => setInfo({ ...info, by: e.target.value })}>{users.filter((u) => u.active || u.id === info.by).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
-                <Field label="Hóa đơn thuế"><label className="flex h-[38px] items-center gap-2 text-[14px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={info.invoice} onChange={(e) => setInfo({ ...info, invoice: e.target.checked })} />Khách lấy hóa đơn</label></Field>
-                <Field label="Người nhận"><input className={inputCls} value={info.receiver} onChange={(e) => setInfo({ ...info, receiver: e.target.value })} /></Field>
-                <Field label="Số điện thoại"><input className={inputCls} value={info.phone} onChange={(e) => setInfo({ ...info, phone: e.target.value })} /></Field>
-                <Field label="Ngày giao"><input type="date" className={inputCls} value={info.deliverAt} onChange={(e) => setInfo({ ...info, deliverAt: e.target.value })} /></Field>
-                <Field label="Địa chỉ giao"><input className={inputCls} value={info.address} onChange={(e) => setInfo({ ...info, address: e.target.value })} /></Field>
-                <Field label="Ghi chú" className="sm:col-span-2 xl:col-span-4"><input className={inputCls} value={info.note} onChange={(e) => setInfo({ ...info, note: e.target.value })} /></Field>
-              </div>
-            </SoCard>
-          ) : <SoCard title="Thông tin đơn hàng" action={R.canInfo(o) ? <button className={cn(btnGhost, btnSm)} onClick={startInfo}><Pencil className="h-3.5 w-3.5" aria-hidden />Cập nhật thông tin</button> : undefined}>
+      {(() => {
+        const iconCls = 'h-4 w-4 shrink-0 text-[rgb(var(--muted))]';
+        const infoCfg = blkOf('K-Order-Info')?.config;
+        const infoIds = lFieldOrder([...SO_INFO_F, ...cfHeadInfo.map((d) => ({ id: `cf:${d.key}`, label: d.label }))], infoCfg);
+        const grid = infoCfg?.gridCols === 2 ? 'grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2' : infoCfg?.gridCols === 3 ? 'grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3' : soGrid;
+        const infoItem = (id: string): ReactNode => {
+          if (id === 'customer') return <SoInfo key={id} label="Khách hàng" span={2}><Building2 className={iconCls} aria-hidden /><span className="truncate">{o.customer}</span><span className="truncate text-[12.5px] text-[rgb(var(--muted))]">{[o.taxCode && `MST ${o.taxCode}`, o.phone].filter(Boolean).join(' · ')}</span></SoInfo>;
+          if (id === 'code') return <SoInfo key={id} label="Mã đơn hàng"><Code>{o.code}</Code></SoInfo>;
+          if (id === 'origin') return <SoInfo key={id} label="Nguồn đơn hàng">{q ? <button className="hover:underline" onClick={() => openComposer({ quoteId: q.id, view: true, mode: 'QUOTE' })}>Từ báo giá <Code>{q.code}</Code></button> : o.origin ?? 'Tại quầy'}</SoInfo>;
+          if (id === 'by') return <SoInfo key={id} label="Người thực hiện"><Users className={iconCls} aria-hidden />{nm(o.by) || '—'}</SoInfo>;
+          if (id === 'wh') return <SoInfo key={id} label="Kho xuất"><Warehouse className={iconCls} aria-hidden />{warehouses.find((w) => w.id === o.whId)?.name ?? '—'}</SoInfo>;
+          if (id === 'docRef') return <SoInfo key={id} label="Nguồn chứng từ"><FileText className={iconCls} aria-hidden />{o.docRef || '—'}</SoInfo>;
+          if (id === 'invNo') return <SoInfo key={id} label="Số hóa đơn thuế">{invDone.length ? <>{invDone.map((r) => <Code key={r.id}>{r.no}</Code>)}{due - invDone.reduce((s, r) => s + r.amount, 0) > 0 && <span className="text-[12.5px] text-[rgb(var(--muted))]">còn {compact(due - invDone.reduce((s, r) => s + r.amount, 0))}</span>}</> : o.invoice ? '—' : <span className="text-[rgb(var(--muted))]">Không lấy</span>}</SoInfo>;
+          const d = cfHeadInfo.find((x) => `cf:${x.key}` === id);
+          if (!d) return null;
+          const tx = cfText(d, o.cf?.[d.key], nm);
+          return <SoInfo key={id} label={d.label}>{tx ? <span className="truncate" title={tx}>{tx}</span> : <span className="text-[rgb(var(--muted))]">—</span>}</SoInfo>;
+        };
+        const infoCard = info ? (
+          <SoCard title="Cập nhật thông tin đơn hàng" action={<><button className={btnGhost} onClick={() => setInfo(null)}>Thôi</button><button className={btnPrimary} onClick={saveInfo}><CheckIcon className="h-4 w-4" aria-hidden />Lưu</button></>}>
             <div className={soGrid}>
-              <SoInfo label="Khách hàng" span={2}><Building2 className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden /><span className="truncate">{o.customer}</span><span className="truncate text-[12.5px] text-[rgb(var(--muted))]">{[o.taxCode && `MST ${o.taxCode}`, o.phone].filter(Boolean).join(' · ')}</span></SoInfo>
-              <SoInfo label="Mã đơn hàng"><Code>{o.code}</Code></SoInfo>
-              <SoInfo label="Nguồn đơn hàng">{q ? <button className="hover:underline" onClick={() => openComposer({ quoteId: q.id, view: true, mode: 'QUOTE' })}>Từ báo giá <Code>{q.code}</Code></button> : o.origin ?? 'Tại quầy'}</SoInfo>
-              <SoInfo label="Người thực hiện"><Users className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />{nm(o.by) || '—'}</SoInfo>
-              <SoInfo label="Kho xuất"><Warehouse className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />{warehouses.find((w) => w.id === o.whId)?.name ?? '—'}</SoInfo>
-              <SoInfo label="Nguồn chứng từ"><FileText className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />{o.docRef || '—'}</SoInfo>
-              <SoInfo label="Số hóa đơn thuế">{invDone.length ? <>{invDone.map((r) => <Code key={r.id}>{r.no}</Code>)}{due - invDone.reduce((s, r) => s + r.amount, 0) > 0 && <span className="text-[12.5px] text-[rgb(var(--muted))]">còn {compact(due - invDone.reduce((s, r) => s + r.amount, 0))}</span>}</> : o.invoice ? '—' : <span className="text-[rgb(var(--muted))]">Không lấy</span>}</SoInfo>
+              <Field label="Nguồn đơn hàng"><input className={inputCls} value={info.origin} onChange={(e) => setInfo({ ...info, origin: e.target.value })} /></Field>
+              <Field label="Nguồn chứng từ"><input className={inputCls} value={info.docRef} onChange={(e) => setInfo({ ...info, docRef: e.target.value })} placeholder="PO, hợp đồng" /></Field>
+              <Field label="Người thực hiện"><select className={inputCls} value={info.by} onChange={(e) => setInfo({ ...info, by: e.target.value })}>{users.filter((u) => u.active || u.id === info.by).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
+              <Field label="Hóa đơn thuế"><label className="flex h-[38px] items-center gap-2 text-[14px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={info.invoice} onChange={(e) => setInfo({ ...info, invoice: e.target.checked })} />Khách lấy hóa đơn</label></Field>
+              <Field label="Người nhận"><input className={inputCls} value={info.receiver} onChange={(e) => setInfo({ ...info, receiver: e.target.value })} /></Field>
+              <Field label="Số điện thoại"><input className={inputCls} value={info.phone} onChange={(e) => setInfo({ ...info, phone: e.target.value })} /></Field>
+              <Field label="Ngày giao"><input type="date" className={inputCls} value={info.deliverAt} onChange={(e) => setInfo({ ...info, deliverAt: e.target.value })} /></Field>
+              <Field label="Địa chỉ giao"><input className={inputCls} value={info.address} onChange={(e) => setInfo({ ...info, address: e.target.value })} /></Field>
+              <Field label="Ghi chú" className="sm:col-span-2 xl:col-span-4"><input className={inputCls} value={info.note} onChange={(e) => setInfo({ ...info, note: e.target.value })} /></Field>
             </div>
-          </SoCard>}
-          <section className="glass-card min-w-0 overflow-hidden rounded-xl">
-            <div className="flex flex-wrap items-center gap-3 border-b border-[rgb(var(--line))] px-5">
-              <SoTabs tabs={[{ id: 'goods', label: 'Hàng hóa', count: o.lines.length }, { id: 'docs', label: 'Chứng từ liên quan', count: docs.length }]} value={tab} onChange={setTab} />
-              {tab === 'goods' ? <span className="ml-auto py-2 text-[12.5px] tabular-nums text-[rgb(var(--muted))]">{fmtN(ord)} đặt · {fmtN(iss)} đã xuất{rq ? ` · ${fmtN(rq)} trả lại` : ''} · {fmtN(Math.max(0, ord - iss))} còn phải xuất</span> : (
-                <div className="ml-auto flex overflow-hidden rounded-lg border border-[rgb(var(--ink)/0.12)] py-0 text-[12.5px] divide-x divide-[rgb(var(--ink)/0.08)]">
-                  {([['ALL', 'Tất cả'], ['WH', 'Kho'], ['CASH', 'Thu chi'], ['INV', 'Hóa đơn']] as const).map(([k, tx]) => <button key={k} className={cn('px-3 py-1.5', docF === k ? 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))]' : 'hover:bg-[rgb(var(--ink)/0.04)]')} onClick={() => setDocF(k)}>{tx} {k === 'ALL' ? docs.length : docs.filter((d) => d.g === k).length}</button>)}
+            {cfHeadForm.length > 0 && (
+              <div className="mt-4 border-t border-[rgb(var(--line))] pt-3">
+                <p className="mb-2 text-[13.5px] font-medium">Thông tin thêm</p>
+                <div className={soGrid}>{cfHeadForm.map((d) => <Field key={d.id} label={`${d.label}${d.required !== 'NONE' ? ' *' : ''}`}><CfInput d={d} v={info.cf[d.key]} set={(v) => setInfo({ ...info, cf: cfSet(info.cf, d.key, v) })} users={users} /></Field>)}</div>
+                {cfHeadForm.some((d) => d.required === 'APPROVE') && <p className="mt-2 text-[12.5px] text-[rgb(var(--muted))]">* {cfHeadForm.filter((d) => d.required === 'APPROVE').map((d) => d.label).join(', ')}: bắt buộc trước khi duyệt đơn</p>}
+              </div>
+            )}
+            {cfLineForm.length > 0 && (
+              <div className="mt-4 border-t border-[rgb(var(--line))] pt-3">
+                <p className="mb-2 text-[13.5px] font-medium">Thông tin thêm trên dòng hàng</p>
+                <div className="overflow-x-auto"><table className="w-full text-[13px]"><thead><tr><th className={soTh}>Hàng hóa</th>{cfLineForm.map((d) => <th key={d.id} className={soTh}>{d.label}</th>)}</tr></thead>
+                  <tbody>{o.lines.map((l) => <tr key={l.id} className="border-b border-[rgb(var(--ink)/0.06)]"><td className={cn(soTd, 'max-w-[240px] truncate')} title={l.name}>{l.name}</td>{cfLineForm.map((d) => <td key={d.id} className="min-w-[170px] px-2 py-1.5"><CfInput d={d} v={info.lcf[l.id]?.[d.key]} set={(v) => setInfo({ ...info, lcf: { ...info.lcf, [l.id]: cfSet(info.lcf[l.id], d.key, v) } })} users={users} /></td>)}</tr>)}</tbody></table></div>
+              </div>
+            )}
+          </SoCard>
+        ) : (
+          <SoCard title={infoCfg?.title && infoCfg.title !== 'Thông tin đơn hàng' ? infoCfg.title : 'Thông tin đơn hàng'} action={<span className="flex items-center gap-2">{needAp.length > 0 && <Chip tone="orange">Thiếu {needAp.map((d) => d.label).join(', ')} để duyệt</Chip>}{R.canInfo(o) && <button className={cn(btnGhost, btnSm)} onClick={startInfo}><Pencil className="h-3.5 w-3.5" aria-hidden />Cập nhật thông tin</button>}</span>}>
+            <div className={grid}>{infoIds.map(infoItem)}</div>
+          </SoCard>
+        );
+        type LCol = { h: ReactNode; right?: boolean; td: (l: SaleLine, i: number) => ReactNode; tot?: ReactNode; cls?: string };
+        const LCOL: Record<string, LCol> = {
+          stt: { h: '#', td: (_l, i) => <span className="text-[rgb(var(--muted))]">{i + 1}</span>, cls: 'w-10' },
+          ref: { h: 'Mã sản phẩm', td: (l) => (l.ref ? <Code>{l.ref}</Code> : '—') },
+          name: { h: 'Tên sản phẩm', td: (l) => <span className="block max-w-[260px] truncate font-medium" title={l.name}>{l.name}</span>, tot: <span className="text-[rgb(var(--muted))]">Cộng {o.lines.length} mặt hàng</span> },
+          unit: { h: 'ĐVT', td: (l) => <span className="text-[rgb(var(--muted))]">{l.unit}</span> },
+          qty: { h: 'Số lượng', right: true, td: (l) => fmtN(l.qty), tot: fmtN(o.lines.reduce((s, l) => s + l.qty, 0)) },
+          price: { h: 'Đơn giá', right: true, td: (l) => fmtN(l.price) },
+          ckPct: { h: 'CK%', right: true, td: (l) => l.discountPct || 0 },
+          ckAmt: { h: 'CK (đ)', right: true, td: (l) => fmtN(ckd(l)), tot: fmtN(t.discount) },
+          vat: { h: 'VAT%', right: true, td: (l) => l.vat, tot: fmtN(t.vat) },
+          net: { h: 'Thành tiền', right: true, td: (l) => <span className="font-medium">{fmtN(saleLineNet(l))}</span>, tot: <span className="font-medium">{fmtN(t.net)}</span> },
+          iss: { h: 'Đã xuất', right: true, td: (l) => (l.kind === 'FREE' ? '—' : fmtN(saleIssQ(o, l))), tot: fmtN(iss), cls: 'border-l border-[rgb(var(--line))]' },
+          ret: { h: 'Trả lại', right: true, td: (l) => { const r = saleRetQ(o, l); return r ? fmtN(r) : '—'; }, tot: fmtN(rq) },
+          rest: { h: 'Còn phải xuất', right: true, td: (l) => { const rest = l.kind === 'FREE' ? 0 : Math.max(0, l.qty - saleIssQ(o, l)); return <span className={cn(rest > 0 && o.status !== 'CANCELLED' && 'font-medium text-[rgb(var(--accent-fg))]')}>{rest || '—'}</span>; }, tot: <span className="font-medium text-[rgb(var(--accent-fg))]">{fmtN(Math.max(0, ord - iss))}</span> },
+        };
+        cfLineCols.forEach((d) => { LCOL[`cf:${d.key}`] = { h: d.label, right: d.type === 'money' || d.type === 'number', td: (l) => { const tx = cfText(d, l.cf?.[d.key], nm); return tx ? <span className="block max-w-[200px] truncate" title={tx}>{tx}</span> : '—'; } }; });
+        const ids = lineIds.filter((id) => LCOL[id]);
+        const edge = (i: number) => cn(i === 0 && 'pl-5', i === ids.length - 1 && 'pr-5');
+        const cards = phone && lineCfg?.smView !== 'table';
+        const goodsView = cards ? (
+          <ul className="px-4">
+            {o.lines.map((l, i) => (
+              <li key={l.id} className="flex gap-3 border-b border-[rgb(var(--ink)/0.06)] py-2.5 text-[13.5px]">
+                {ids.includes('stt') && <span className="w-5 shrink-0 tabular-nums text-[rgb(var(--muted))]">{i + 1}</span>}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{l.name}</p>
+                  <p className="truncate text-[12px] text-[rgb(var(--muted))]">{l.ref && <><Code>{l.ref}</Code> </>}{fmtN(l.qty)} {l.unit} × {fmtN(l.price)}{l.discountPct ? ` · CK ${l.discountPct}%` : ''}{cfLineCols.map((d) => { const v = cfText(d, l.cf?.[d.key], nm); return v ? ` · ${d.label} ${v}` : ''; }).join('')}</p>
+                  {stage !== 'APPROVAL' && l.kind !== 'FREE' && <p className="text-[12px] text-[rgb(var(--muted))]">Đã xuất {fmtN(saleIssQ(o, l))} / {fmtN(l.qty)}</p>}
                 </div>
-              )}
-            </div>
-            {tab === 'goods' ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1000px] text-[13.5px]">
-                  <thead><tr className="border-b border-[rgb(var(--line))]"><th className={cn(soTh, 'w-10 pl-5')}>#</th><th className={soTh}>Mã sản phẩm</th><th className={soTh}>Tên sản phẩm</th><th className={soTh}>ĐVT</th><th className={cn(soTh, 'text-right')}>Số lượng</th><th className={cn(soTh, 'text-right')}>Đơn giá</th><th className={cn(soTh, 'text-right')}>CK%</th><th className={cn(soTh, 'text-right')}>CK (đ)</th><th className={cn(soTh, 'text-right')}>VAT%</th><th className={cn(soTh, 'text-right')}>Thành tiền</th><th className={cn(soTh, 'border-l border-[rgb(var(--line))] text-right')}>Đã xuất</th><th className={cn(soTh, 'text-right')}>Trả lại</th><th className={cn(soTh, 'pr-5 text-right')}>Còn phải xuất</th></tr></thead>
-                  <tbody>
-                    {o.lines.map((l, i) => { const x = saleIssQ(o, l); const r = saleRetQ(o, l); const rest = l.kind === 'FREE' ? 0 : Math.max(0, l.qty - x); return (
-                      <tr key={l.id} className="border-b border-[rgb(var(--ink)/0.06)]">
-                        <td className={cn(soTd, 'pl-5 text-[rgb(var(--muted))]')}>{i + 1}</td>
-                        <td className={soTd}>{l.ref ? <Code>{l.ref}</Code> : '—'}</td>
-                        <td className={soTd}><span className="block max-w-[260px] truncate font-medium" title={l.name}>{l.name}</span></td>
-                        <td className={cn(soTd, 'text-[rgb(var(--muted))]')}>{l.unit}</td>
-                        <td className={cn(soTd, 'text-right tabular-nums')}>{fmtN(l.qty)}</td>
-                        <td className={cn(soTd, 'text-right tabular-nums')}>{fmtN(l.price)}</td>
-                        <td className={cn(soTd, 'text-right tabular-nums')}>{l.discountPct || 0}</td>
-                        <td className={cn(soTd, 'text-right tabular-nums')}>{fmtN(ckd(l))}</td>
-                        <td className={cn(soTd, 'text-right tabular-nums')}>{l.vat}</td>
-                        <td className={cn(soTd, 'text-right font-medium tabular-nums')}>{fmtN(saleLineNet(l))}</td>
-                        <td className={cn(soTd, 'border-l border-[rgb(var(--line))] text-right tabular-nums')}>{l.kind === 'FREE' ? '—' : fmtN(x)}</td>
-                        <td className={cn(soTd, 'text-right tabular-nums')}>{r ? fmtN(r) : '—'}</td>
-                        <td className={cn(soTd, 'pr-5 text-right tabular-nums', rest > 0 && o.status !== 'CANCELLED' && 'font-medium text-[rgb(var(--accent-fg))]')}>{rest || '—'}</td>
-                      </tr>); })}
-                    <tr className="bg-[rgb(var(--ink)/0.03)]">
-                      <td /><td colSpan={3} className={cn(soTd, 'text-[rgb(var(--muted))]')}>Cộng {o.lines.length} mặt hàng</td>
-                      <td className={cn(soTd, 'text-right tabular-nums')}>{fmtN(o.lines.reduce((s, l) => s + l.qty, 0))}</td><td /><td />
-                      <td className={cn(soTd, 'text-right tabular-nums')}>{fmtN(t.discount)}</td><td className={cn(soTd, 'text-right tabular-nums')}>{fmtN(t.vat)}</td>
-                      <td className={cn(soTd, 'text-right font-medium tabular-nums')}>{fmtN(t.net)}</td>
-                      <td className={cn(soTd, 'border-l border-[rgb(var(--line))] text-right tabular-nums')}>{fmtN(iss)}</td><td className={cn(soTd, 'text-right tabular-nums')}>{fmtN(rq)}</td>
-                      <td className={cn(soTd, 'pr-5 text-right font-medium tabular-nums text-[rgb(var(--accent-fg))]')}>{fmtN(Math.max(0, ord - iss))}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <span className="shrink-0 font-medium tabular-nums">{fmtN(saleLineNet(l))}</span>
+              </li>
+            ))}
+            <li className="flex justify-between py-2.5 text-[13px]"><span className="text-[rgb(var(--muted))]">Cộng {o.lines.length} mặt hàng</span><span className="font-medium tabular-nums">{fmtN(t.net)}</span></li>
+          </ul>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className={cn('w-full text-[13.5px]', ids.length > 8 && 'min-w-[1000px]')}>
+              <thead><tr className="border-b border-[rgb(var(--line))]">{ids.map((id, i) => <th key={id} className={cn(soTh, LCOL[id].right && 'text-right', LCOL[id].cls, edge(i))}>{LCOL[id].h}</th>)}</tr></thead>
+              <tbody>
+                {o.lines.map((l, i) => <tr key={l.id} className="border-b border-[rgb(var(--ink)/0.06)]">{ids.map((id, j) => <td key={id} className={cn(soTd, LCOL[id].right && 'text-right tabular-nums', LCOL[id].cls, edge(j))}>{LCOL[id].td(l, i)}</td>)}</tr>)}
+                <tr className="bg-[rgb(var(--ink)/0.03)]">{ids.map((id, j) => <td key={id} className={cn(soTd, LCOL[id].right && 'text-right tabular-nums', LCOL[id].cls, edge(j))}>{LCOL[id].tot ?? null}</td>)}</tr>
+              </tbody>
+            </table>
+          </div>
+        );
+        const hasFiles = blocks.some((b) => b.type === 'K-Order-Files');
+        const filesCard = (
+          <SoCard title={blkOf('K-Order-Files')?.config.title || 'Tệp đính kèm'} action={canUp ? <button className={cn(btnGhost, btnSm)} disabled={upBusy} onClick={() => upRef.current?.click()}><Upload className="h-3.5 w-3.5" aria-hidden />{upBusy ? 'Đang tải' : 'Tải lên'}</button> : undefined}>
+            {(o.files ?? []).length ? (
+              <ul className="space-y-1.5">{(o.files ?? []).map((f) => (
+                <li key={f.id} className="flex items-center gap-2 text-[13.5px]"><Paperclip className={iconCls} aria-hidden /><a href={f.url} download={f.name} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate hover:underline">{f.name}</a><span className="shrink-0 text-[12px] tabular-nums text-[rgb(var(--muted))]">{Math.max(1, Math.round(f.size / 1024))} KB</span>{canUp && <button className="text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => delFile(f)} aria-label={`Bỏ ${f.name}`}><X className="h-3.5 w-3.5" aria-hidden /></button>}</li>
+              ))}</ul>
+            ) : <p className="text-[13px] text-[rgb(var(--muted))]">Chưa có tệp. Ảnh tự nén; PDF, Word, Excel tối đa 2 MB; tối đa 10 tệp</p>}
+          </SoCard>
+        );
+        const linesNode = (
+          <>
+            <section className="glass-card min-w-0 overflow-hidden rounded-xl">
+              <div className="flex flex-wrap items-center gap-3 border-b border-[rgb(var(--line))] px-5">
+                <SoTabs tabs={[{ id: 'goods', label: 'Hàng hóa', count: o.lines.length }, { id: 'docs', label: 'Chứng từ liên quan', count: docs.length }]} value={tab} onChange={setTab} />
+                {tab === 'goods' ? <span className="ml-auto py-2 text-[12.5px] tabular-nums text-[rgb(var(--muted))] max-sm:hidden">{fmtN(ord)} đặt · {fmtN(iss)} đã xuất{rq ? ` · ${fmtN(rq)} trả lại` : ''} · {fmtN(Math.max(0, ord - iss))} còn phải xuất</span> : (
+                  <div className="ml-auto flex overflow-hidden rounded-lg border border-[rgb(var(--ink)/0.12)] py-0 text-[12.5px] divide-x divide-[rgb(var(--ink)/0.08)]">
+                    {([['ALL', 'Tất cả'], ['WH', 'Kho'], ['CASH', 'Thu chi'], ['INV', 'Hóa đơn']] as const).map(([k, tx]) => <button key={k} className={cn('px-3 py-1.5', docF === k ? 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))]' : 'hover:bg-[rgb(var(--ink)/0.04)]')} onClick={() => setDocF(k)}>{tx} {k === 'ALL' ? docs.length : docs.filter((d) => d.g === k).length}</button>)}
+                  </div>
+                )}
               </div>
-            ) : docsV.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] text-[13.5px]">
-                  <thead><tr className="border-b border-[rgb(var(--line))]"><th className={cn(soTh, 'pl-5')}>Mã chứng từ</th><th className={soTh}>Loại</th><th className={soTh}>Ngày</th><th className={cn(soTh, 'text-right')}>Số lượng</th><th className={cn(soTh, 'text-right')}>Giá trị</th><th className={soTh}>Ghi chú</th><th className={soTh}>Người xử lý</th><th className={soTh}>Trạng thái</th><th className={cn(soTh, 'w-8 pr-5')} /></tr></thead>
-                  <tbody>{docsV.map((d) => (
-                    <tr key={d.key} className="cursor-pointer border-b border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--ink)/0.03)]" onClick={() => setView(d.key)}>
-                      <td className={cn(soTd, 'pl-5')}><Code>{d.code}</Code></td><td className={soTd}>{d.type}</td><td className={cn(soTd, 'tabular-nums text-[rgb(var(--fg2))]')}>{fmtDate(d.date)}</td>
-                      <td className={cn(soTd, 'text-right tabular-nums')}>{d.qty !== undefined ? fmtN(d.qty) : '—'}</td><td className={cn(soTd, 'text-right tabular-nums')}>{d.amt !== undefined ? fmtN(d.amt) : '—'}</td>
-                      <td className={soTd}><span className="block max-w-[220px] truncate text-[rgb(var(--fg2))]" title={d.note}>{d.note || '—'}</span></td><td className={soTd}>{d.who ?? '—'}</td><td className={soTd}>{d.st}</td>
-                      <td className={cn(soTd, 'pr-5 text-[rgb(var(--muted))]')}><Eye className="h-4 w-4" aria-label="Xem" /></td>
-                    </tr>))}</tbody>
-                </table>
-              </div>
-            ) : <p className="px-5 py-6 text-[13.5px] text-[rgb(var(--muted))]">Chưa có chứng từ</p>}
-            {vs.some((v) => v.type === 'OUT' && v.status === 'PENDING') && <div className="flex flex-wrap gap-3 px-5 py-3">{vs.filter((v) => v.type === 'OUT' && v.status === 'PENDING').map((v) => <Chip key={v.id} tone="orange">{v.code} chờ kho duyệt · {fmtN(v.lines.reduce((s, l) => s + l.qty, 0))}</Chip>)}</div>}
-          </section>
-          {tab === 'goods' && o.status === 'PENDING' && remain > 0 && stage !== 'APPROVAL' && <SaleStockCard o={o} />}
+              {tab === 'goods' ? goodsView : docsV.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[900px] text-[13.5px]">
+                    <thead><tr className="border-b border-[rgb(var(--line))]"><th className={cn(soTh, 'pl-5')}>Mã chứng từ</th><th className={soTh}>Loại</th><th className={soTh}>Ngày</th><th className={cn(soTh, 'text-right')}>Số lượng</th><th className={cn(soTh, 'text-right')}>Giá trị</th><th className={soTh}>Ghi chú</th><th className={soTh}>Người xử lý</th><th className={soTh}>Trạng thái</th><th className={cn(soTh, 'w-8 pr-5')} /></tr></thead>
+                    <tbody>{docsV.map((d) => (
+                      <tr key={d.key} className="cursor-pointer border-b border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--ink)/0.03)]" onClick={() => setView(d.key)}>
+                        <td className={cn(soTd, 'pl-5')}><Code>{d.code}</Code></td><td className={soTd}>{d.type}</td><td className={cn(soTd, 'tabular-nums text-[rgb(var(--fg2))]')}>{fmtDate(d.date)}</td>
+                        <td className={cn(soTd, 'text-right tabular-nums')}>{d.qty !== undefined ? fmtN(d.qty) : '—'}</td><td className={cn(soTd, 'text-right tabular-nums')}>{d.amt !== undefined ? fmtN(d.amt) : '—'}</td>
+                        <td className={soTd}><span className="block max-w-[220px] truncate text-[rgb(var(--fg2))]" title={d.note}>{d.note || '—'}</span></td><td className={soTd}>{d.who ?? '—'}</td><td className={soTd}>{d.st}</td>
+                        <td className={cn(soTd, 'pr-5 text-[rgb(var(--muted))]')}><Eye className="h-4 w-4" aria-label="Xem" /></td>
+                      </tr>))}</tbody>
+                  </table>
+                </div>
+              ) : <p className="px-5 py-6 text-[13.5px] text-[rgb(var(--muted))]">Chưa có chứng từ</p>}
+              {vs.some((v) => v.type === 'OUT' && v.status === 'PENDING') && <div className="flex flex-wrap gap-3 px-5 py-3">{vs.filter((v) => v.type === 'OUT' && v.status === 'PENDING').map((v) => <Chip key={v.id} tone="orange">{v.code} chờ kho duyệt · {fmtN(v.lines.reduce((s, l) => s + l.qty, 0))}</Chip>)}</div>}
+            </section>
+            {tab === 'goods' && o.status === 'PENDING' && remain > 0 && stage !== 'APPROVAL' && <SaleStockCard o={o} />}
+            {!hasFiles && (o.files ?? []).length > 0 && filesCard}
+          </>
+        );
+        const logCard = (
           <SoCard title="Trao đổi & nhật ký" action={
             <div className="flex overflow-hidden rounded-lg border border-[rgb(var(--ink)/0.12)] text-[12.5px] divide-x divide-[rgb(var(--ink)/0.08)]">
               {([['ALL', 'Tất cả'], ['NOTE', 'Trao đổi'], ['SYS', 'Hệ thống']] as const).map(([k, tx]) => <button key={k} className={cn('px-3 py-1.5', logF === k ? 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))]' : 'hover:bg-[rgb(var(--ink)/0.04)]')} onClick={() => setLogF(k)}>{tx}</button>)}
@@ -1523,48 +1680,96 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
               ) : null)}
             </ul>
           </SoCard>
-        </div>
-        <div className="space-y-4">
-          <SoCard title="Quy trình xử lý"><SoFlow steps={soSteps(o, stage, vs, users)} /></SoCard>
-          <SoCard title="Thanh toán" action={<span className="text-[12.5px] text-[rgb(var(--muted))]">{SALE_PAY[o.pay]}{o.creditDays ? ` ${o.creditDays} ngày` : ''}</span>}>
-            <SoKv label="Tiền hàng">{fmtN(t.net)}</SoKv>
-            {t.groups.filter((g) => g.rate > 0).map((g) => <SoKv key={g.rate} label={`Thuế GTGT ${g.rate}%`}>{fmtN(g.vat)}</SoKv>)}
-            {t.ship > 0 && <SoKv label="Phí vận chuyển">{fmtN(t.ship)}</SoKv>}
-            {ret > 0 && <SoKv label="Hàng trả lại">−{fmtN(ret)}</SoKv>}
-            <SoKv label="Thực tế phải thu" big>{fmtN(due)}</SoKv>
-            <SoKv label="Doanh thu (kế toán đã thu)">{fmtN(paid)}</SoKv>
-            {pend > 0 && <SoKv label="Chờ xác nhận">{fmtN(pend)}</SoKv>}
-            <SoKv label="Còn lại" tone={left > 0 ? 'warn' : undefined}>{fmtN(Math.max(0, left))}</SoKv>
-            {due > 0 && <div className="mt-2"><SoBar parts={[{ pct: (paid / due) * 100, cls: 'bg-[rgb(var(--fg))]' }, { pct: (pend / due) * 100, cls: 'bg-[rgb(var(--accent)/0.55)]' }]} /></div>}
-            {o.payments.length > 0 && (
-              <div className="mt-3 border-t border-[rgb(var(--line))] pt-3">
-                <p className="mb-1 text-[12.5px] text-[rgb(var(--muted))]">Lịch sử thu chi</p>
-                {o.payments.map((p) => (
-                  <div key={p.id} className="flex items-center gap-2 py-1 text-[13px]">
-                    <span className="tabular-nums">{fmtDate(p.date ?? iso(new Date(p.at))).slice(0, 5)}</span><span className="text-[rgb(var(--muted))]">{p.method === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'}</span>
-                    <span className="ml-auto font-medium tabular-nums">{fmtN(p.amount)}</span>
-                    {p.confirmed ? <Chip tone="teal">Đã xác nhận</Chip> : canCash ? <button className={cn(btnGhost, btnSm)} onClick={() => confirmSalePayment(o.id, p.id)}>Xác nhận</button> : <Chip tone="orange">Chờ</Chip>}
+        );
+        const payNode = (
+          <>
+            <SoCard title="Thanh toán" action={<span className="text-[12.5px] text-[rgb(var(--muted))]">{SALE_PAY[o.pay]}{o.creditDays ? ` ${o.creditDays} ngày` : ''}</span>}>
+              <SoKv label="Tiền hàng">{fmtN(t.net)}</SoKv>
+              {t.groups.filter((g) => g.rate > 0).map((g) => <SoKv key={g.rate} label={`Thuế GTGT ${g.rate}%`}>{fmtN(g.vat)}</SoKv>)}
+              {t.ship > 0 && <SoKv label="Phí vận chuyển">{fmtN(t.ship)}</SoKv>}
+              {ret > 0 && <SoKv label="Hàng trả lại">−{fmtN(ret)}</SoKv>}
+              <SoKv label="Thực tế phải thu" big>{fmtN(due)}</SoKv>
+              <SoKv label="Doanh thu (kế toán đã thu)">{fmtN(paid)}</SoKv>
+              {pend > 0 && <SoKv label="Chờ xác nhận">{fmtN(pend)}</SoKv>}
+              {left < 0 ? <SoKv label="Khách trả thừa" tone="warn">{fmtN(-left)}</SoKv> : <SoKv label="Còn lại" tone={left > 0 ? 'warn' : undefined}>{fmtN(left)}</SoKv>}
+              {due > 0 && <div className="mt-2"><SoBar parts={[{ pct: (paid / due) * 100, cls: 'bg-[rgb(var(--fg))]' }, { pct: (pend / due) * 100, cls: 'bg-[rgb(var(--accent)/0.55)]' }]} /></div>}
+              {o.payments.length > 0 && (
+                <div className="mt-3 border-t border-[rgb(var(--line))] pt-3">
+                  <p className="mb-1 text-[12.5px] text-[rgb(var(--muted))]">Lịch sử thu chi</p>
+                  {o.payments.map((p) => (
+                    <div key={p.id} className="flex items-center gap-2 py-1 text-[13px]">
+                      <span className="tabular-nums">{fmtDate(p.date ?? iso(new Date(p.at))).slice(0, 5)}</span><span className="text-[rgb(var(--muted))]">{p.method === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản'}</span>
+                      <span className="ml-auto font-medium tabular-nums">{fmtN(p.amount)}</span>
+                      {p.confirmed ? <Chip tone="teal">Đã xác nhận</Chip> : canCash ? <button className={cn(btnGhost, btnSm)} onClick={() => confirmSalePayment(o.id, p.id)}>Xác nhận</button> : <Chip tone="orange">Chờ</Chip>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SoCard>
+            {canCash && (o.invReqs ?? []).some((r) => r.status === 'PENDING') && (
+              <SoCard title="Yêu cầu xuất hóa đơn">
+                {(o.invReqs ?? []).filter((r) => r.status === 'PENDING').map((r) => (
+                  <div key={r.id} className="space-y-2 text-[13px]">
+                    <div className="flex justify-between"><span className="text-[rgb(var(--muted))]">{nm(r.by)} · {soTime(r.at)}</span><span className="font-medium tabular-nums">{fmtN(r.amount)}</span></div>
+                    {r.buyer && <div className="rounded-lg bg-[rgb(var(--ink)/0.04)] px-3 py-2 text-[12.5px]"><p className="font-medium">{r.buyer.name}</p><p className="text-[rgb(var(--fg2))]">{r.buyer.noTax ? 'Không MST' : `MST ${r.buyer.taxCode}`} · {r.buyer.email}</p><p className="text-[rgb(var(--fg2))]">{r.buyer.address}</p>{(r.items ?? []).map((x) => <p key={x.lineId} className="flex justify-between gap-2 text-[rgb(var(--muted))]"><span className="truncate">{x.name} × {fmtN(x.qty)}</span><span className="tabular-nums">{fmtN(x.amount)}</span></p>)}</div>}
+                    {r.note && <p className="text-[rgb(var(--fg2))]">{r.note}</p>}
+                    <input className={inputCls} value={dec[r.id] ?? ''} onChange={(e) => setDec({ ...dec, [r.id]: e.target.value })} placeholder="Số hóa đơn hoặc lý do trả lại" aria-label="Số hóa đơn hoặc lý do" />
+                    <div className="flex gap-2"><button className={cn(btnGhost, 'flex-1 justify-center')} onClick={() => decideSaleInvoice(o.id, r.id, false, dec[r.id] ?? '')}>Trả lại</button><button className={cn(btnPrimary, 'flex-1 justify-center')} onClick={() => decideSaleInvoice(o.id, r.id, true, dec[r.id] ?? '')}>Đã xuất</button></div>
                   </div>
                 ))}
-              </div>
+              </SoCard>
             )}
+          </>
+        );
+        const flowNode = cancel === null ? <SoCard title="Quy trình xử lý"><SoFlow steps={soSteps(o, stage, vs, users)} /></SoCard> : (() => { const st = [{ t: 'Nhập trả đủ hàng', ok: saleGoodsBack(o) }, { t: 'Hoàn tiền cho khách', ok: salePaid(o) === 0 && o.payments.every((p) => p.confirmed) }, { t: 'Hủy đơn, giữ chứng từ', ok: false }]; const cur = st.findIndex((x) => !x.ok); return (
+          <SoCard title="Quy trình hủy">
+            {st.map((x, i) => (
+              <div key={x.t} className="flex items-center gap-2.5 py-1.5 text-[13.5px]">
+                <span className={cn('h-[18px] w-[18px] rounded-full border-2', x.ok ? 'border-[rgb(var(--fg))] bg-[rgb(var(--fg))]' : i === cur ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent))] ring-[3px] ring-[rgb(var(--accent)/0.2)]' : 'border-[rgb(var(--line))]')} aria-hidden />
+                <span className={cn(!x.ok && i !== cur && 'text-[rgb(var(--muted))]')}>{x.t}</span>
+              </div>
+            ))}
           </SoCard>
-          {canCash && (o.invReqs ?? []).some((r) => r.status === 'PENDING') && (
-            <SoCard title="Yêu cầu xuất hóa đơn">
-              {(o.invReqs ?? []).filter((r) => r.status === 'PENDING').map((r) => (
-                <div key={r.id} className="space-y-2 text-[13px]">
-                  <div className="flex justify-between"><span className="text-[rgb(var(--muted))]">{nm(r.by)} · {soTime(r.at)}</span><span className="font-medium tabular-nums">{fmtN(r.amount)}</span></div>
-                  {r.buyer && <div className="rounded-lg bg-[rgb(var(--ink)/0.04)] px-3 py-2 text-[12.5px]"><p className="font-medium">{r.buyer.name}</p><p className="text-[rgb(var(--fg2))]">{r.buyer.noTax ? 'Không MST' : `MST ${r.buyer.taxCode}`} · {r.buyer.email}</p><p className="text-[rgb(var(--fg2))]">{r.buyer.address}</p>{(r.items ?? []).map((x) => <p key={x.lineId} className="flex justify-between gap-2 text-[rgb(var(--muted))]"><span className="truncate">{x.name} × {fmtN(x.qty)}</span><span className="tabular-nums">{fmtN(x.amount)}</span></p>)}</div>}
-                  {r.note && <p className="text-[rgb(var(--fg2))]">{r.note}</p>}
-                  <input className={inputCls} value={dec[r.id] ?? ''} onChange={(e) => setDec({ ...dec, [r.id]: e.target.value })} placeholder="Số hóa đơn hoặc lý do trả lại" aria-label="Số hóa đơn hoặc lý do" />
-                  <div className="flex gap-2"><button className={cn(btnGhost, 'flex-1 justify-center')} onClick={() => decideSaleInvoice(o.id, r.id, false, dec[r.id] ?? '')}>Trả lại</button><button className={cn(btnPrimary, 'flex-1 justify-center')} onClick={() => decideSaleInvoice(o.id, r.id, true, dec[r.id] ?? '')}>Đã xuất</button></div>
-                </div>
-              ))}
-            </SoCard>
-          )}
-          <SoDebt customerId={o.customerId} exceptId={o.id} />
-        </div>
-      </div>
+        ); })();
+        const profitNode = (canDo('sale.manage') || canCash || me?.role === 'BOD') && o.status !== 'CANCELLED' && cancel === null ? (() => { const rev = saleNetRevenue(o), cogs = saleCostEst(o, skus), gross = rev - cogs, dc = saleDirectCost(o, cashEntries); return (
+          <SoCard title="Lãi trên đơn" action={<span className="text-[12.5px] text-[rgb(var(--muted))]">tạm tính</span>}>
+            <SoKv label="Doanh thu thuần">{fmtN(rev)}</SoKv>
+            <SoKv label="Giá vốn tạm tính">−{fmtN(cogs)}</SoKv>
+            <SoKv label="Lãi gộp chuẩn" big>{fmtN(gross)}</SoKv>
+            <SoKv label="Chi phí gắn vào đơn">−{fmtN(dc)}</SoKv>
+            <SoKv label="Lãi ước tính" big tone={gross - dc < 0 ? 'warn' : undefined}>{fmtN(gross - dc)}</SoKv>
+            <p className="mt-1 text-[12px] text-[rgb(var(--muted))]">Giá vốn theo giá vốn hiện tại của mã hàng; chi phí gồm phiếu chi gắn đơn và phần phân bổ, chưa gồm thuế được khấu trừ</p>
+          </SoCard>
+        ); })() : null;
+        const shipNode = (
+          <SoCard title={blkOf('K-Order-Ship')?.config.title || 'Giao hàng & ghi chú'}>
+            <SoKv label="Giao nhận">{SALE_DELIVERY[o.delivery]}</SoKv>
+            {o.receiver && <SoKv label="Người nhận">{o.receiver}</SoKv>}
+            {o.phone && <SoKv label="Số điện thoại">{o.phone}</SoKv>}
+            {o.deliverAt && <SoKv label="Ngày giao">{fmtDate(o.deliverAt)}</SoKv>}
+            {o.address && <SoKv label="Địa chỉ">{o.address}</SoKv>}
+            {o.note && <p className="mt-2 text-[13px] text-[rgb(var(--fg2))]">{o.note}</p>}
+          </SoCard>
+        );
+        const node = (b: LBlock): ReactNode => {
+          if (!lIsCore(b.type) && !lCondOk(b.config, lstage, myRole)) return null;
+          switch (b.type) {
+            case 'K-Order-Info': return cancel !== null ? <SaleCancelCard o={o} why={cancel} setWhy={setCancel} /> : infoCard;
+            case 'K-Order-Lines': return linesNode;
+            case 'K-Order-Flow': return flowNode;
+            case 'K-Order-Pay': return payNode;
+            case 'K-Order-Profit': return profitNode;
+            case 'K-Order-Debt': return cancel === null ? <SoDebt customerId={o.customerId} exceptId={o.id} /> : null;
+            case 'K-Order-Log': return cancel === null ? logCard : null;
+            case 'K-Order-Ship': return shipNode;
+            case 'K-Order-Files': return filesCard;
+            case 'K-Text': return <section className={cn('glass-card rounded-xl px-5 py-4', lToneCls(b.config))}>{!b.config.hideTitle && <h3 className="mb-2 text-[15px] font-medium">{b.config.title}</h3>}<LText c={b.config} /></section>;
+            case 'K-Icons': return <LIcons c={b.config} onIcon={onIcon} off={{ prev: !prevO, next: !nextO, upload: !canUp || upBusy }} menu={moreItems} />;
+            default: return null;
+          }
+        };
+        return <LBusinessView blocks={blocks} node={node} narrow={!wide} dev={dev} />;
+      })()}
     </div>
   );
 }

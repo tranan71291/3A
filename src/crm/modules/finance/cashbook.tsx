@@ -1,22 +1,24 @@
 'use client';
 
 import { type ReactNode, useState } from 'react';
-import { ArrowLeftRight, ArrowRight, Building2, Check as CheckIcon, Download, FileText, Lock, Pencil, Plus, Printer, RefreshCw, ShoppingBag, Trash2, Upload, Wallet, X, XCircle } from 'lucide-react';
+import { ArrowLeftRight, ArrowRight, Building2, Check as CheckIcon, Download, Eye, FileText, Filter, Info, Lock, Pencil, Plus, Printer, RefreshCw, ShoppingBag, Trash2, Truck, Upload, Users, Wallet, X, XCircle } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { removeWithUndo } from '../../app/context';
 import { useIntent } from '../../components/command-palette';
-import { Pagination, usePaged } from '../../components/controls';
+import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, Tabs, useSticky } from '../../components/ui';
-import { bizMode, btnGhost, btnPrimary, btnSm, C, CASH_ACCOUNT, CASH_IN_CATS, CASH_OUT_CATS, CASH_SRC, cashEff, cashReversed, compact, esc, fmtDate, fmtN, inputCls, isCashReversal, iso, jobCustName, nextCode, noteFor, rangeBounds, readAsDataUrl, rowCls, saleOwed, salePaid, tdCls, tdFirst, tdLast, tipStyle, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, useSticky } from '../../components/ui';
+import { bizMode, btnGhost, btnPrimary, btnSm, C, CASH_ACCOUNT, CASH_IN_CATS, CASH_OUT_CATS, CASH_SRC, cashEff, cashReversed, compact, esc, fmtDate, fmtN, fold, inputCls, isCashReversal, iso, jobCustName, nextCode, rangeBounds, readAsDataUrl, rowCls, saleOwed, salePaid, tdCls, tdFirst, tdLast, tipStyle, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
-import { saleTotals } from '../../lib/getfly';
-import type { CashAccount, CashEntry, CashFile, CashLine, CashSub, CompanyInfo, ConfirmState, SalesOrder } from '../../lib/types';
+import { allocCost, cashEvent, cashJournal, saleCostEst, saleDirectCost, saleNetRevenue, saleTotals } from '../../lib/getfly';
+import type { CashAccount, CashEntry, CashFile, CashLine, CashSub, CompanyInfo, ConfirmState, PickItem, SalesOrder } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { cashLines, compressImage, jobActualCost } from '../../lib/workshop';
 import { SearchBox } from '../alux/orders';
 import { lastMonths } from '../alux/overview';
+import { useOutside } from '../sales/orders';
 import { docShell, moneyToWordsVN, printHtml } from '../sales/templates';
+import { JournalBox, useAcct } from '../settings/security-data';
 
 export function cashVoucherHtml(e: CashEntry, company: CompanyInfo, by: string) {
   const title = e.kind === 'IN' ? 'PHIẾU THU' : e.kind === 'OUT' ? 'PHIẾU CHI' : 'PHIẾU CHUYỂN QUỸ';
@@ -57,11 +59,39 @@ export function CbFiles({ files, onRemove }: { files: CashFile[]; onRemove?: (i:
   ))}</>;
 }
 
-/** v51.2: phiếu thu / phiếu chi / chuyển quỹ: nhập liệu bên trái, kết quả (công nợ, quỹ trước / sau) bên phải */
+export function PickChip({ value, items, onPick, placeholder, icon: Ico, label, free }: { value: PickItem | null; items: PickItem[]; onPick: (v: PickItem | null) => void; placeholder: string; icon: typeof Wallet; label: string; free?: boolean }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useOutside(open, () => setOpen(false));
+  if (value) return (
+    <div className={cn(inputCls, 'flex items-center gap-2')}>
+      <Ico className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden />
+      <span className="min-w-0 truncate"><b className="font-medium">{value.name}</b>{value.sub && <span className="text-[12.5px] text-[rgb(var(--muted))]"> · {value.sub}</span>}</span>
+      <button type="button" className="ml-auto shrink-0 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => { onPick(null); setQ(''); }} aria-label={`Bỏ chọn ${value.name}`}><X className="h-4 w-4" aria-hidden /></button>
+    </div>
+  );
+  const t = fold(q.trim());
+  const hits = items.filter((x) => !t || fold(`${x.name} ${x.sub ?? ''}`).includes(t)).slice(0, 8);
+  return (
+    <div className="relative" ref={ref}>
+      <input className={inputCls} value={q} placeholder={placeholder} aria-label={label} onFocus={() => setOpen(true)} onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (hits[0]) onPick(hits[0]); else if (free && q.trim()) onPick({ id: `free:${q.trim()}`, name: q.trim() }); } }} />
+      {open && (hits.length > 0 || (free && q.trim())) && (
+        <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-72 overflow-y-auto rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-xl" role="listbox" aria-label={label}>
+          {hits.map((x) => <li key={x.id}><button type="button" role="option" aria-selected={false} className="block w-full rounded-md px-3 py-2 text-left text-[13.5px] hover:bg-[rgb(var(--ink)/0.05)]" onClick={() => { onPick(x); setOpen(false); }}><span className="font-medium">{x.name}</span>{x.sub && <span className="block text-[12px] text-[rgb(var(--muted))]">{x.sub}</span>}</button></li>)}
+          {free && q.trim() && !items.some((x) => x.name === q.trim()) && <li><button type="button" className="block w-full rounded-md px-3 py-2 text-left text-[13.5px] text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)]" onClick={() => { onPick({ id: `free:${q.trim()}`, name: q.trim() }); setOpen(false); }}>Dùng “{q.trim()}”</button></li>}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** v51.3: phiếu thu / phiếu chi / chuyển quỹ: nhập liệu bên trái; công nợ, quỹ, lãi đơn, hạch toán bên phải */
 export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }: { kind: CashEntry['kind']; entry?: CashEntry; onClose: () => void; onAgain?: () => void; onDelete?: () => void; bal: (a: CashAccount) => number }) {
-  const { me, cashEntries, setCashEntries, jobs, customers, notify, audit, mySales, users, pos, saleCashMulti, company } = useApp();
+  const { me, cashEntries, setCashEntries, jobs, customers, notify, audit, mySales, users, pos, saleCashMulti, company, skus } = useApp();
+  const { cfg } = useAcct();
   const hasSales = mySales.length > 0;
-  const [f, setF] = useState<CashEntry>(entry ?? { id: uid('ce'), code: '', kind, date: todayISO(), account: 'CASH', toAccount: 'BANK', category: kind === 'IN' ? CASH_IN_CATS[0] : kind === 'OUT' ? CASH_OUT_CATS[0] : 'Chuyển quỹ', amount: 0, by: me.id, at: Date.now(),
+  const [f, setF] = useState<CashEntry>(entry ?? { id: uid('ce'), code: '', kind, date: todayISO(), account: kind === 'TRANSFER' ? 'BANK' : 'CASH', toAccount: kind === 'TRANSFER' ? 'CASH' : 'BANK', category: kind === 'IN' ? CASH_IN_CATS[0] : kind === 'OUT' ? CASH_OUT_CATS[0] : 'Chuyển quỹ', amount: 0, by: me.id, at: Date.now(),
     sub: kind === 'IN' ? (hasSales ? 'CUSTOMER' : 'OTHER') : kind === 'OUT' ? 'COST' : undefined });
   const set = (p: Partial<CashEntry>) => setF((x) => ({ ...x, ...p }));
   const sub: CashSub = f.sub ?? (f.kind === 'IN' ? 'OTHER' : 'COST');
@@ -70,6 +100,9 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
   const [hasInv, setHasInv] = useState(!!entry?.invNo);
   const [fee, setFee] = useState(0);
   const [print, setPrint] = useState(false);
+  const [multi, setMulti] = useState<string[]>(entry?.allocs?.map((a) => a.saleId) ?? []);
+  const [multiOn, setMultiOn] = useState(!!entry?.allocs?.length);
+  const [mq, setMq] = useState('');
   const saleMode = sub === 'CUSTOMER' || sub === 'REFUND';
   const owe = (o: SalesOrder) => saleOwed(o) - salePaid(o, true);
   const extra = (o: SalesOrder) => Math.max(0, Math.min(-owe(o), salePaid(o)));
@@ -81,20 +114,31 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
   const allocSum = rowsO.reduce((s, o) => s + (alloc[o.id] ?? 0), 0);
   const amount = saleMode ? allocSum : f.amount;
   const spread = (total: number) => { let r = Math.max(0, Math.round(total)); const m: Record<string, number> = {}; rowsO.forEach((o) => { const v = Math.min(cap(o), r); m[o.id] = v; r -= v; }); setAlloc(m); };
-  const pickCust = (name: string) => { setCust(name); setAlloc({}); set({ partner: name }); };
-  const setSub = (k: CashSub) => { setCust(''); setAlloc({}); set({ sub: k, partner: '', saleId: undefined, jobId: undefined, category: k === 'OTHER' ? CASH_IN_CATS[0] : k === 'ADVANCE' ? 'Tạm ứng công tác' : k === 'COST' || k === 'VENDOR' ? CASH_OUT_CATS[0] : f.category }); };
-  const sales = mySales.filter((o) => o.status !== 'CANCELLED').sort((a, b) => b.date.localeCompare(a.date)).slice(0, 200);
+  const custItems: PickItem[] = custList.map((n) => { const os = pool.filter((o) => o.customer === n); const c = customers.find((x) => x.name === n); const tax = os.find((o) => o.taxCode)?.taxCode ?? c?.taxCode; return { id: n, name: n, sub: [tax ? `MST ${tax}` : '', `${sub === 'REFUND' ? 'trả thừa' : 'còn nợ'} ${fmtN(os.reduce((s, o) => s + cap(o), 0))}`].filter(Boolean).join(' · ') }; });
+  const setSub = (k: CashSub) => { setCust(''); setAlloc({}); setMulti([]); setMultiOn(false); set({ sub: k, partner: '', saleId: undefined, jobId: undefined, allocs: undefined, category: k === 'OTHER' ? CASH_IN_CATS[0] : k === 'ADV_BACK' ? 'Hoàn ứng công tác' : k === 'ADVANCE' ? 'Tạm ứng công tác' : k === 'COST' || k === 'VENDOR' ? CASH_OUT_CATS[0] : f.category }); };
+  const sales = mySales.filter((o) => o.status !== 'CANCELLED').sort((a, b) => b.date.localeCompare(a.date)).slice(0, 300);
   const activeJobs = jobs.filter((j) => j.wonAt && !j.lostAt).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const costSale = f.saleId ? mySales.find((o) => o.id === f.saleId) : undefined;
   const costJob = f.jobId ? jobs.find((j) => j.id === f.jobId) : undefined;
-  const costOf = (pick: (x: CashEntry) => boolean) => cashEntries.filter((x) => x.kind === 'OUT' && pick(x) && x.source !== 'SALE' && !isCashReversal(x) && x.id !== f.id).reduce((s, x) => s + x.amount, 0);
   const vendors = Array.from(new Set(pos.map((p) => p.vendor))).sort();
   const staff = users.filter((u) => u.active);
+  const partyItems: PickItem[] = [
+    ...vendors.map((v) => ({ id: `v:${v}`, name: v, sub: 'nhà cung cấp' })),
+    ...(sub === 'VENDOR' ? [] : [...staff.map((u) => ({ id: `u:${u.id}`, name: u.name, sub: ['nhân viên', u.phone].filter(Boolean).join(' · ') })), ...customers.slice(0, 400).map((c) => ({ id: `c:${c.id}`, name: c.name, sub: ['khách hàng', c.contactPhone].filter(Boolean).join(' · ') }))]),
+  ];
+  const partyVal: PickItem | null = f.partner ? (partyItems.find((x) => x.name === f.partner) ?? { id: `free:${f.partner}`, name: f.partner }) : null;
   const prefix = f.kind === 'IN' ? 'PTQ' : f.kind === 'OUT' ? 'PCQ' : 'CQ';
   const code = f.code || nextCode(cashEntries.filter((e) => e.code.startsWith(`${prefix}-`)).map((e) => e.code), `${prefix}-${f.date.slice(0, 4)}-`, 4);
   const now = (a: CashAccount) => bal(a) - (entry ? cashEff(entry, a) : 0);
   const after = (a: CashAccount) => now(a) + cashEff({ ...f, amount }, a) - (f.kind === 'TRANSFER' && fee > 0 && f.account === a ? fee : 0);
   const vat = hasInv && f.vatRate ? Math.round((amount * f.vatRate) / (100 + f.vatRate)) : 0;
+  // ---- thu hoàn ứng: số tạm ứng nhân viên đang giữ
+  const advHeld = (name: string) => cashEntries.filter((e) => e.id !== f.id && e.partner === name && !isCashReversal(e)).reduce((s, e) => s + (e.kind === 'OUT' && cashEvent(e) === 'OUT_ADVANCE' ? e.amount : e.kind === 'IN' && (e.sub === 'ADV_BACK' || e.category === 'Hoàn ứng công tác') ? -e.amount : 0), 0);
+  // ---- chi phí nhiều đơn
+  const multiOrders = sales.filter((o) => multi.includes(o.id));
+  const allocs = multiOn ? allocCost(amount, multiOrders, f.allocBy ?? 'REVENUE') : [];
+  const netK = amount ? (amount - vat) / amount : 1;
+  const profit = (o: SalesOrder, add: number) => { const rev = saleNetRevenue(o), cogs = saleCostEst(o, skus), gross = rev - cogs, cb = saleDirectCost(o, cashEntries, f.id); return { rev, cogs, gross, cb, add, est0: gross - cb, est1: gross - cb - add }; };
+  const singleSale = !multiOn && f.saleId ? sales.find((o) => o.id === f.saleId) ?? mySales.find((o) => o.id === f.saleId) : undefined;
   const addFiles = async (fs: File[]) => {
     const out: CashFile[] = [];
     for (const file of fs.slice(0, 4)) {
@@ -104,10 +148,13 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
     }
     setF((x) => ({ ...x, files: [...(x.files ?? []), ...out].slice(0, 6) }));
   };
+  const preview: CashEntry = { ...f, amount, code, invNo: hasInv ? f.invNo || '—' : undefined, vatRate: hasInv ? f.vatRate : undefined, category: saleMode ? (sub === 'REFUND' ? 'Hoàn tiền bán hàng' : 'Thu tiền bán hàng') : f.category, source: saleMode ? 'SALE' : f.source ?? 'MANUAL' };
+  const jLines = cfg ? [...cashJournal(preview, cfg).lines, ...(f.kind === 'TRANSFER' && fee > 0 ? cashJournal({ ...preview, id: 'fee', kind: 'OUT', category: 'Phí ngân hàng', amount: fee, sub: 'COST', invNo: undefined }, cfg).lines : [])] : [];
   const save = (again: boolean) => {
     if (amount <= 0) return notify(saleMode ? 'Nhập số tiền cho ít nhất một đơn' : 'Nhập số tiền', 'red');
     if (f.kind === 'TRANSFER' && f.account === f.toAccount) return notify('Chọn hai quỹ khác nhau', 'red');
-    if ((sub === 'VENDOR' || sub === 'ADVANCE') && f.kind === 'OUT' && !f.partner?.trim()) return notify(sub === 'VENDOR' ? 'Nhập nhà cung cấp' : 'Chọn nhân viên nhận tạm ứng', 'red');
+    if ((sub === 'VENDOR' || sub === 'ADVANCE' || sub === 'ADV_BACK') && f.kind !== 'TRANSFER' && !f.partner?.trim()) return notify(sub === 'VENDOR' ? 'Chọn nhà cung cấp' : 'Chọn nhân viên', 'red');
+    if (multiOn && multiOrders.length < 2) return notify('Chọn ít nhất 2 đơn để phân bổ', 'red');
     let doc: CashEntry;
     if (saleMode) {
       if (!cust) return notify('Chọn khách hàng', 'red');
@@ -115,17 +162,18 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
       const picked = rowsO.filter((o) => (alloc[o.id] ?? 0) > 0);
       if (!saleCashMulti(picked.map((o) => ({ id: o.id, amount: alloc[o.id] })), f.account, { date: f.date, payer: f.partner?.trim() || cust, note: f.note?.trim() || undefined, refund: sub === 'REFUND' || undefined, files: f.files })) return;
       const codes = picked.map((o) => o.code).join(', ');
-      doc = { ...f, code, amount, partner: f.partner?.trim() || cust, ref: codes, category: sub === 'REFUND' ? 'Hoàn tiền bán hàng' : 'Thu tiền bán hàng', note: f.note?.trim() || `${sub === 'REFUND' ? 'Hoàn tiền' : 'Thu tiền'} đơn hàng ${codes}` };
+      doc = { ...preview, partner: f.partner?.trim() || cust, ref: codes, note: f.note?.trim() || `${sub === 'REFUND' ? 'Hoàn tiền' : 'Thu tiền'} đơn hàng ${codes}` };
       notify(`Đã lưu ${code} cho ${picked.length} đơn`, 'teal');
     } else {
-      const x: CashEntry = { ...f, amount, source: f.source ?? 'MANUAL', code, partner: f.partner?.trim() || undefined, note: f.note?.trim() || undefined, invNo: hasInv ? f.invNo?.trim() || undefined : undefined, vatRate: hasInv ? f.vatRate : undefined };
-      const feeE: CashEntry | null = f.kind === 'TRANSFER' && fee > 0 ? { id: uid('ce'), code: '', kind: 'OUT', date: f.date, account: f.account, category: 'Chi khác', amount: fee, note: `Phí chuyển quỹ ${code}`, ref: code, by: me.id, at: Date.now(), source: 'MANUAL', sub: 'COST' } : null;
+      const x: CashEntry = { ...f, amount, source: f.source ?? 'MANUAL', code, partner: f.partner?.trim() || undefined, note: f.note?.trim() || undefined, invNo: hasInv ? f.invNo?.trim() || undefined : undefined, vatRate: hasInv ? f.vatRate : undefined,
+        saleId: multiOn ? undefined : f.saleId, allocs: multiOn ? allocs : undefined, allocBy: multiOn ? f.allocBy ?? 'REVENUE' : undefined };
+      const feeE: CashEntry | null = f.kind === 'TRANSFER' && fee > 0 ? { id: uid('ce'), code: '', kind: 'OUT', date: f.date, account: f.account, category: 'Phí ngân hàng', amount: fee, note: `Phí chuyển quỹ ${code}`, ref: code, by: me.id, at: Date.now(), source: 'MANUAL', sub: 'COST' } : null;
       setCashEntries((all) => {
         const base = all.some((e) => e.id === x.id) ? all.map((e) => (e.id === x.id ? x : e)) : [x, ...all];
         if (!feeE) return base;
         return [{ ...feeE, code: nextCode(base.filter((e) => e.code.startsWith('PCQ-')).map((e) => e.code), `PCQ-${f.date.slice(0, 4)}-`, 4) }, ...base];
       });
-      audit('CASH_' + x.kind, `${x.code}: ${vnd(x.amount)} ${x.category}`);
+      audit('CASH_' + x.kind, `${x.code}: ${vnd(x.amount)} ${x.category}${multiOn ? `, phân bổ ${multiOrders.length} đơn` : ''}`);
       notify(`Đã lưu ${x.code}${feeE ? ', kèm phiếu chi phí chuyển' : ''}`, 'teal');
       doc = x;
     }
@@ -136,13 +184,12 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
   const words = amount > 0 ? <p className="mt-1 text-[12px] text-[rgb(var(--muted))]">{moneyToWordsVN(amount)}</p> : null;
   const accSeg = (label: string) => <Field label={label}><CbSeg label={label} items={[['CASH', 'Tiền mặt'], ['BANK', 'Ngân hàng']]} value={f.account} onChange={(v) => set({ account: v })} /></Field>;
   const dateF = <Field label="Ngày chứng từ"><input className={inputCls} type="date" value={f.date} onChange={(e) => set({ date: e.target.value })} /></Field>;
+  const amountF = (lb = 'Số tiền *') => <Field label={lb}><MoneyInput value={f.amount} onChange={(n) => set({ amount: n })} />{words}</Field>;
   const noteF = <Field label="Diễn giải"><input className={inputCls} value={f.note ?? ''} onChange={(e) => set({ note: e.target.value })} placeholder={saleMode && rowsO.length ? `${sub === 'REFUND' ? 'Hoàn tiền' : 'Thu tiền'} đơn hàng ${rowsO.filter((o) => (alloc[o.id] ?? 0) > 0).map((o) => o.code).join(', ')}` : undefined} /></Field>;
   const filesF = (
     <Field label="Chứng từ kèm theo">
-      <div className="flex flex-wrap items-center gap-2">
-        <CbFiles files={f.files ?? []} onRemove={(i) => set({ files: (f.files ?? []).filter((_, j) => j !== i) })} />
-        <FilePicker accept="image/*,application/pdf" multiple onFiles={(fs) => { void addFiles(fs); }} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-[rgb(var(--ink)/0.2)] px-3 py-1.5 text-[12.5px] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"><Upload className="h-3.5 w-3.5" aria-hidden />Ảnh, ủy nhiệm chi, hóa đơn</FilePicker>
-      </div>
+      {(f.files ?? []).length > 0 && <div className="mb-2 flex flex-wrap gap-2"><CbFiles files={f.files ?? []} onRemove={(i) => set({ files: (f.files ?? []).filter((_, j) => j !== i) })} /></div>}
+      <FilePicker accept="image/*,application/pdf" multiple onFiles={(fs) => { void addFiles(fs); }} className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-[rgb(var(--ink)/0.2)] text-[13px] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"><Upload className="h-4 w-4" aria-hidden />Kéo thả ảnh, ủy nhiệm chi, hóa đơn hoặc bấm để chọn</FilePicker>
     </Field>
   );
   const fundBox = (a: CashAccount) => (
@@ -152,11 +199,37 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
       {after(a) < 0 && <p className="text-[12px] text-[rgb(var(--danger-fg))]">Quỹ âm sau khi lưu, kiểm tra số dư</p>}
     </CbBox>
   );
+  const fundSub = (a: CashAccount) => (a === 'BANK' ? [company.bankName, company.bankAccount ? `···${company.bankAccount.slice(-4)}` : ''].filter(Boolean).join(' ') || 'Tiền gửi không kỳ hạn' : 'Tiền mặt tại quỹ');
   const fund = (a: CashAccount, to: boolean) => (
     <div className={cn('rounded-xl border p-4', to ? 'border-[rgb(var(--accent)/0.5)] bg-[rgb(var(--accent)/0.05)]' : 'border-[rgb(var(--line))]')}>
       <p className="text-[12px] text-[rgb(var(--muted))]">{to ? 'Sang quỹ' : 'Từ quỹ'}</p>
-      <div className="mt-2 flex items-center gap-2.5"><span className="grid h-9 w-9 place-items-center rounded-lg bg-[rgb(var(--ink)/0.05)] text-[rgb(var(--fg2))]">{a === 'CASH' ? <Wallet className="h-4 w-4" aria-hidden /> : <Building2 className="h-4 w-4" aria-hidden />}</span><p className="font-medium">{CASH_ACCOUNT[a]}</p></div>
+      <div className="mt-2 flex items-center gap-2.5"><span className="grid h-9 w-9 place-items-center rounded-lg bg-[rgb(var(--ink)/0.05)] text-[rgb(var(--fg2))]">{a === 'CASH' ? <Wallet className="h-4 w-4" aria-hidden /> : <Building2 className="h-4 w-4" aria-hidden />}</span><div className="min-w-0"><p className="font-medium">{CASH_ACCOUNT[a]}</p><p className="truncate text-[12px] text-[rgb(var(--muted))]">{fundSub(a)}</p></div></div>
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[rgb(var(--line)/0.6)] pt-2.5 text-[13px]"><span className="text-[rgb(var(--muted))]">Số dư</span><span className="tabular-nums">{fmtN(now(a))}</span><ArrowRight className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden /><b className={cn('font-medium tabular-nums', after(a) < 0 && 'text-[rgb(var(--danger-fg))]')}>{fmtN(after(a))}</b></div>
+    </div>
+  );
+  const costPick = (
+    <Field label="Tính vào chi phí của">
+      <select className={inputCls} value={multiOn ? 'MULTI' : f.saleId ? `S:${f.saleId}` : f.jobId ? `J:${f.jobId}` : ''} onChange={(e) => { const v = e.target.value; setMultiOn(v === 'MULTI'); set({ saleId: v.startsWith('S:') ? v.slice(2) : undefined, jobId: v.startsWith('J:') ? v.slice(2) : undefined, allocBy: f.allocBy ?? 'REVENUE' }); }}>
+        <option value="">Chi phí chung</option>
+        {sales.length > 1 && <option value="MULTI">Nhiều đơn bán (phân bổ)</option>}
+        {sales.length > 0 && <optgroup label="Đơn bán">{sales.map((o) => <option key={o.id} value={`S:${o.id}`}>{o.code} · {o.customer}</option>)}</optgroup>}
+        {activeJobs.length > 0 && <optgroup label="Đơn hàng xưởng">{activeJobs.map((j) => <option key={j.id} value={`J:${j.id}`}>{j.code} · {jobCustName(j, customers)}</option>)}</optgroup>}
+      </select>
+    </Field>
+  );
+  const multiBlock = multiOn && (
+    <div className="rounded-xl border border-[rgb(var(--line))] p-3">
+      <div className="flex flex-wrap items-center gap-2"><p className="text-[13px] font-medium">Phân bổ cho {multiOrders.length} đơn</p><div className="ml-auto w-[300px] max-w-full"><CbSeg label="Cách phân bổ" items={[['REVENUE', 'Theo doanh thu'], ['QTY', 'Theo số lượng'], ['EQUAL', 'Chia đều']]} value={f.allocBy ?? 'REVENUE'} onChange={(v) => set({ allocBy: v })} /></div></div>
+      <input className={cn(inputCls, 'mt-2')} value={mq} onChange={(e) => setMq(e.target.value)} placeholder="Tìm mã đơn, khách hàng" aria-label="Tìm đơn để phân bổ" />
+      <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-[rgb(var(--line)/0.7)]">
+        {sales.filter((o) => multi.includes(o.id) || !mq.trim() || fold(`${o.code} ${o.customer}`).includes(fold(mq.trim()))).slice(0, 60).map((o) => { const a = allocs.find((x) => x.saleId === o.id); return (
+          <label key={o.id} className="flex cursor-pointer items-center gap-2.5 border-t border-[rgb(var(--line)/0.5)] px-3 py-1.5 text-[13px] first:border-t-0">
+            <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={multi.includes(o.id)} onChange={(e) => setMulti(e.target.checked ? [...multi, o.id] : multi.filter((x) => x !== o.id))} />
+            <Code>{o.code}</Code><span className="min-w-0 truncate text-[rgb(var(--fg2))]">{o.customer}</span>
+            <span className="ml-auto tabular-nums">{a ? fmtN(a.amount) : ''}</span>
+          </label>
+        ); })}
+      </div>
     </div>
   );
   const left = f.kind === 'TRANSFER' ? (
@@ -167,22 +240,28 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
         {fund(f.toAccount ?? 'BANK', true)}
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Số tiền *"><MoneyInput value={f.amount} onChange={(n) => set({ amount: n })} />{words}</Field>
-        {dateF}
-        <Field label="Người thực hiện"><input className={inputCls} list="cb-staff" value={f.partner ?? ''} onChange={(e) => set({ partner: e.target.value })} /></Field>
-        <Field label="Phí chuyển" hint="Có phí thì lập thêm phiếu chi từ quỹ nguồn"><MoneyInput value={fee} onChange={setFee} disabled={!!entry} /></Field>
+        {amountF()}{dateF}
+        <Field label="Người thực hiện"><select className={inputCls} value={f.partner ?? ''} onChange={(e) => set({ partner: e.target.value })}><option value="">Chọn nhân viên</option>{staff.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}</select></Field>
+        <Field label="Phí chuyển"><MoneyInput value={fee} onChange={setFee} disabled={!!entry} /></Field>
       </div>
       {noteF}
+      <p className="flex items-center gap-1.5 text-[12.5px] text-[rgb(var(--muted))]"><Info className="h-3.5 w-3.5" aria-hidden />Có phí chuyển thì hệ thống lập thêm phiếu chi phí ngân hàng từ quỹ nguồn</p>
     </>
   ) : f.kind === 'IN' ? (
     <>
-      {!entry && hasSales && <Field label="Loại thu"><CbSeg label="Loại thu" items={[['CUSTOMER', 'Thu tiền khách hàng'], ['OTHER', 'Thu khác']]} value={sub} onChange={setSub} /></Field>}
+      {!entry && <Field label="Loại thu"><CbSeg label="Loại thu" items={[...(hasSales ? [['CUSTOMER', 'Thu tiền khách hàng'] as [CashSub, string]] : []), ['ADV_BACK', 'Thu hoàn ứng'], ['OTHER', 'Thu khác']]} value={sub} onChange={setSub} /></Field>}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{dateF}{accSeg('Quỹ nhận')}</div>
-      {sub === 'CUSTOMER' ? null : (
+      {sub === 'ADV_BACK' && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Nhân viên nộp *"><select className={inputCls} value={f.partner ?? ''} onChange={(e) => set({ partner: e.target.value })}><option value="">Chọn nhân viên</option>{staff.map((u) => <option key={u.id} value={u.name}>{u.name}{advHeld(u.name) > 0 ? ` · giữ ${fmtN(advHeld(u.name))}` : ''}</option>)}</select></Field>
+          {amountF()}
+        </div>
+      )}
+      {sub === 'OTHER' && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Khoản mục"><select className={inputCls} value={f.category} onChange={(e) => set({ category: e.target.value })}>{Array.from(new Set([...CASH_IN_CATS, f.category])).map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
           <Field label="Người nộp"><input className={inputCls} value={f.partner ?? ''} onChange={(e) => set({ partner: e.target.value })} /></Field>
-          <Field label="Số tiền *" className="sm:col-span-2"><MoneyInput value={f.amount} onChange={(n) => set({ amount: n })} />{words}</Field>
+          <div className="sm:col-span-2">{amountF()}</div>
         </div>
       )}
     </>
@@ -193,19 +272,11 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
       {sub !== 'REFUND' && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {sub !== 'ADVANCE' && <Field label="Khoản mục *"><select className={inputCls} value={f.category} onChange={(e) => set({ category: e.target.value })}>{Array.from(new Set([...CASH_OUT_CATS, f.category])).map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>}
-          {sub !== 'ADVANCE' && (
-            <Field label="Tính vào chi phí của">
-              <select className={inputCls} value={f.saleId ? `S:${f.saleId}` : f.jobId ? `J:${f.jobId}` : ''} onChange={(e) => { const v = e.target.value; set({ saleId: v.startsWith('S:') ? v.slice(2) : undefined, jobId: v.startsWith('J:') ? v.slice(2) : undefined }); }}>
-                <option value="">Chi phí chung</option>
-                {sales.length > 0 && <optgroup label="Đơn bán">{sales.map((o) => <option key={o.id} value={`S:${o.id}`}>{o.code} · {o.customer}</option>)}</optgroup>}
-                {activeJobs.length > 0 && <optgroup label="Đơn hàng xưởng">{activeJobs.map((j) => <option key={j.id} value={`J:${j.id}`}>{j.code} · {jobCustName(j, customers)}</option>)}</optgroup>}
-              </select>
-            </Field>
-          )}
+          {sub !== 'ADVANCE' && costPick}
           {sub === 'ADVANCE'
             ? <Field label="Nhân viên nhận *" className="sm:col-span-2"><select className={inputCls} value={f.partner ?? ''} onChange={(e) => set({ partner: e.target.value })}><option value="">Chọn nhân viên</option>{staff.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}</select></Field>
-            : <Field label={sub === 'VENDOR' ? 'Nhà cung cấp *' : 'Người nhận'} className="sm:col-span-2"><input className={inputCls} list={sub === 'VENDOR' ? 'cb-vendor' : undefined} value={f.partner ?? ''} onChange={(e) => set({ partner: e.target.value })} /></Field>}
-          <Field label="Số tiền *"><MoneyInput value={f.amount} onChange={(n) => set({ amount: n })} />{words}</Field>
+            : <Field label={sub === 'VENDOR' ? 'Nhà cung cấp *' : 'Người nhận'} className="sm:col-span-2"><PickChip label={sub === 'VENDOR' ? 'Nhà cung cấp' : 'Người nhận'} icon={sub === 'VENDOR' ? Truck : Users} value={partyVal} items={partyItems} free placeholder={sub === 'VENDOR' ? 'Tìm nhà cung cấp' : 'Tìm nhà cung cấp, nhân viên, khách hàng'} onPick={(v) => set({ partner: v?.name ?? '' })} /></Field>}
+          {amountF()}
           {sub !== 'ADVANCE' && <Field label="Hóa đơn đầu vào"><CbSeg label="Hóa đơn đầu vào" items={[['Y', 'Có hóa đơn'], ['N', 'Không có']]} value={hasInv ? 'Y' : 'N'} onChange={(v) => { setHasInv(v === 'Y'); if (v === 'Y' && f.vatRate == null) set({ vatRate: 8 }); }} /></Field>}
         </div>
       )}
@@ -216,16 +287,14 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
           <Field label="Tiền thuế"><div className={cn(inputCls, 'flex items-center gap-2 bg-[rgb(var(--ink)/0.03)] tabular-nums')}>{fmtN(vat)}<Lock className="ml-auto h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden /></div></Field>
         </div>
       )}
+      {sub !== 'REFUND' && multiBlock}
     </>
   );
   const saleBlock = saleMode && (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Khách hàng *"><input className={inputCls} list="cb-cust" value={cust} onChange={(e) => pickCust(e.target.value)} placeholder={custList.length ? `${custList.length} khách ${sub === 'REFUND' ? 'đang trả thừa' : 'còn nợ'}` : 'Không có khách phù hợp'} /></Field>
-        <Field label={sub === 'REFUND' ? 'Người nhận' : 'Người nộp'}><input className={inputCls} value={f.partner ?? ''} onChange={(e) => set({ partner: e.target.value })} /></Field>
-      </div>
+      <Field label="Khách hàng *"><PickChip label="Khách hàng" icon={Building2} value={cust ? custItems.find((x) => x.id === cust) ?? { id: cust, name: cust } : null} items={custItems} placeholder={custItems.length ? `Tìm trong ${custItems.length} khách ${sub === 'REFUND' ? 'đang trả thừa' : 'còn nợ'}` : 'Không có khách phù hợp'} onPick={(v) => { setCust(v?.name ?? ''); setAlloc({}); set({ partner: v?.name ?? '' }); }} /></Field>
       <div>
-        <div className="mb-1.5 flex items-center"><p className="text-[13px] font-medium">{sub === 'REFUND' ? 'Hoàn tiền cho đơn' : 'Thu cho đơn hàng'}</p>{rowsO.length > 1 && <button type="button" className="ml-auto text-[12.5px] text-[rgb(var(--accent))] hover:underline" onClick={() => spread(amount || custOwe)}>Phân bổ cho đơn cũ trước</button>}</div>
+        <div className="mb-1.5 flex items-center"><p className="text-[12.5px] text-[rgb(var(--fg2))]">{sub === 'REFUND' ? 'Hoàn tiền cho đơn' : 'Thu cho đơn hàng'}</p>{rowsO.length > 1 && <button type="button" className="ml-auto text-[12.5px] text-[rgb(var(--accent))] hover:underline" onClick={() => spread(amount || custOwe)}>Phân bổ cho đơn cũ trước</button>}</div>
         {!cust ? <p className="rounded-lg border border-dashed border-[rgb(var(--line))] px-3 py-4 text-center text-[13px] text-[rgb(var(--muted))]">Chọn khách hàng để hiện các đơn {sub === 'REFUND' ? 'trả thừa' : 'còn phải thu'}</p>
           : !rowsO.length ? <p className="rounded-lg border border-dashed border-[rgb(var(--line))] px-3 py-4 text-center text-[13px] text-[rgb(var(--muted))]">Khách không có đơn {sub === 'REFUND' ? 'trả thừa' : 'còn phải thu'} trong phạm vi bạn xem</p>
           : (
@@ -247,18 +316,32 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
             </div>
           )}
       </div>
-      <Field label={sub === 'REFUND' ? 'Số tiền hoàn' : 'Số tiền'}><MoneyInput value={amount} onChange={spread} disabled={!rowsO.length} />{words}</Field>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label={sub === 'REFUND' ? 'Số tiền hoàn *' : 'Số tiền *'}><MoneyInput value={amount} onChange={spread} disabled={!rowsO.length} />{words}</Field>
+        <Field label={sub === 'REFUND' ? 'Người nhận' : 'Người nộp'}><input className={inputCls} value={f.partner ?? ''} onChange={(e) => set({ partner: e.target.value })} /></Field>
+      </div>
     </>
   );
+  const partial = rowsO.filter((o) => (alloc[o.id] ?? 0) > 0 && (alloc[o.id] ?? 0) < cap(o));
+  const nPicked = rowsO.filter((o) => (alloc[o.id] ?? 0) > 0).length;
+  const profitBox = (o: SalesOrder, add: number, key?: string) => { const p = profit(o, add); return (
+    <CbBox key={key} title={<span className="inline-flex items-center gap-1.5">Đơn hàng <Code>{o.code}</Code></span>}>
+      <CbKv a="Doanh thu thuần" b={fmtN(p.rev)} />
+      <CbKv a="Giá vốn tạm tính" b={fmtN(p.cogs)} />
+      <CbKv a="Lãi gộp chuẩn" b={fmtN(p.gross)} tot />
+      <CbKv a="Chi phí gắn vào đơn" b={`${fmtN(p.cb)} → ${fmtN(p.cb + p.add)}`} />
+      <CbKv a="Lãi ước tính" b={`${fmtN(p.est0)} → ${fmtN(p.est1)}`} tot warn={p.est1 < 0} />
+    </CbBox>
+  ); };
   const right = (
     <>
       {f.kind === 'TRANSFER' ? (
         <>
           <CbBox title="Ghi vào sổ">
-            <CbKv a={CASH_ACCOUNT[f.account]} b={<span className="text-[rgb(var(--danger-fg))]">−{fmtN(amount)}</span>} />
-            <CbKv a={CASH_ACCOUNT[f.toAccount ?? 'BANK']} b={<span className="text-[rgb(var(--success-fg))]">+{fmtN(amount)}</span>} />
+            <CbKv a={<span className="inline-flex items-center gap-1.5">Sổ {f.account === 'CASH' ? 'tiền mặt' : 'ngân hàng'}<Code>{code}</Code></span>} b={<span className="text-[rgb(var(--danger-fg))]">−{fmtN(amount)}</span>} />
+            <CbKv a={<span className="inline-flex items-center gap-1.5">Sổ {(f.toAccount ?? 'BANK') === 'CASH' ? 'tiền mặt' : 'ngân hàng'}<Code>{code}</Code></span>} b={<span className="text-[rgb(var(--success-fg))]">+{fmtN(amount)}</span>} />
             {fee > 0 && <CbKv a="Phí chuyển (phiếu chi riêng)" b={`−${fmtN(fee)}`} />}
-            <p className="mt-1 text-[12px] text-[rgb(var(--muted))]">Một phiếu {code}, hiện ở cả hai sổ</p>
+            <p className="mt-1 text-[12px] text-[rgb(var(--muted))]">Một phiếu, hiện ở cả hai sổ. Hủy phiếu thì cả hai sổ cùng đảo</p>
           </CbBox>
           <CbBox title="Tổng tiền của doanh nghiệp">
             <CbKv a="Trước" b={fmtN(now('CASH') + now('BANK'))} />
@@ -275,44 +358,46 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
               <CbKv a={sub === 'REFUND' ? 'Còn trả thừa' : 'Còn phải thu'} b={fmtN(custOwe - amount)} tot warn={custOwe - amount < 0} />
             </CbBox>
           )}
+          {sub === 'ADV_BACK' && f.partner && (
+            <CbBox title={`Tạm ứng của ${f.partner}`}>
+              <CbKv a="Đang giữ" b={fmtN(advHeld(f.partner))} />
+              <CbKv a="Hoàn lần này" b={`−${fmtN(amount)}`} />
+              <CbKv a="Còn giữ" b={fmtN(advHeld(f.partner) - amount)} tot warn={advHeld(f.partner) - amount < 0} />
+            </CbBox>
+          )}
           {fundBox(f.account)}
-          {costSale && (
-            <CbBox title={<>Đơn hàng <Code>{costSale.code}</Code></>}>
-              <CbKv a="Doanh số" b={fmtN(saleTotals(costSale).net)} />
-              <CbKv a="Chi phí đã tính" b={`${fmtN(costOf((x) => x.saleId === costSale.id))} → ${fmtN(costOf((x) => x.saleId === costSale.id) + amount - vat)}`} tot />
-            </CbBox>
-          )}
+          {f.kind === 'OUT' && singleSale && profitBox(singleSale, Math.round(amount * netK))}
+          {f.kind === 'OUT' && multiOn && multiOrders.slice(0, 4).map((o) => profitBox(o, Math.round((allocs.find((a) => a.saleId === o.id)?.amount ?? 0) * netK), o.id))}
+          {f.kind === 'OUT' && multiOn && multiOrders.length > 4 && <p className="text-[12px] text-[rgb(var(--muted))]">và {multiOrders.length - 4} đơn khác</p>}
           {costJob && (
-            <CbBox title={<>Đơn hàng <Code>{costJob.code}</Code></>}>
+            <CbBox title={<span className="inline-flex items-center gap-1.5">Đơn hàng <Code>{costJob.code}</Code></span>}>
               <CbKv a="Giá trị hợp đồng" b={fmtN(costJob.contractValue ?? 0)} />
-              <CbKv a="Chi phí khác đã tính" b={`${fmtN(costOf((x) => x.jobId === costJob.id))} → ${fmtN(costOf((x) => x.jobId === costJob.id) + amount)}`} tot />
+              <CbKv a="Chi phí khác đã tính" b={`${fmtN(cashEntries.filter((x) => x.kind === 'OUT' && x.jobId === costJob.id && x.id !== f.id).reduce((s, x) => s + x.amount, 0))} → ${fmtN(cashEntries.filter((x) => x.kind === 'OUT' && x.jobId === costJob.id && x.id !== f.id).reduce((s, x) => s + x.amount, 0) + amount)}`} tot />
             </CbBox>
           )}
-          {saleMode && rowsO.some((o) => (alloc[o.id] ?? 0) > 0) && <p className="border-l-2 border-[rgb(var(--accent))] pl-3 text-[12.5px] text-[rgb(var(--fg2))]">{sub === 'REFUND' ? 'Số đã thu của đơn giảm tương ứng ngay khi lưu' : 'Các đơn ghi nhận doanh thu ngay khi lưu'}</p>}
         </>
       )}
+      <JournalBox cfg={cfg} lines={jLines} />
+      {saleMode && nPicked > 0 && <p className="border-l-2 border-[rgb(var(--accent))] pl-3 text-[12.5px] text-[rgb(var(--fg2))]">{sub === 'REFUND' ? `${nPicked} đơn giảm số đã thu ngay khi lưu` : `${nPicked} đơn được ghi nhận doanh thu ngay khi lưu`}{partial.map((o) => `. ${o.code} còn ${sub === 'REFUND' ? 'trả thừa' : 'thu'} ${fmtN(cap(o) - (alloc[o.id] ?? 0))}`).join('')}</p>}
     </>
   );
   return (
     <Modal xl flush title={entry ? `Sửa ${title.toLowerCase()}` : title} head={<><Code>{code}</Code>{!entry && <span className="text-[12px] text-[rgb(var(--muted))]">số tự động</span>}</>} onClose={onClose} footer={<>
-      <label className="mr-auto inline-flex items-center gap-2 text-[13px] text-[rgb(var(--fg2))]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={print} onChange={(e) => setPrint(e.target.checked)} />{f.kind === 'TRANSFER' ? 'In phiếu chuyển quỹ' : 'In phiếu sau khi lưu'}</label>
+      <label className="mr-auto inline-flex items-center gap-2 text-[13px] text-[rgb(var(--fg2))]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={print} onChange={(e) => setPrint(e.target.checked)} />{f.kind === 'TRANSFER' ? (f.account === 'BANK' && f.toAccount === 'CASH' ? 'In giấy rút tiền' : 'In phiếu chuyển quỹ') : 'In phiếu sau khi lưu'}</label>
       {entry && onDelete && <button className={cn(btnGhost, 'hover:text-[rgb(var(--danger-fg))]')} onClick={onDelete}><Trash2 className="h-4 w-4" aria-hidden />Xóa phiếu</button>}
       <button className={btnGhost} onClick={onClose}>Hủy</button>
       {!entry && onAgain && <button className={btnGhost} onClick={() => save(true)}>Lưu và thêm mới</button>}
       <button className={btnPrimary} onClick={() => save(false)}><CheckIcon className="h-4 w-4" aria-hidden />{entry ? 'Lưu' : `Lưu ${title.toLowerCase()}`}</button>
     </>}>
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4 p-5">
           {left}
           {saleBlock}
-          {noteFor(f.kind) && noteF}
+          {f.kind !== 'TRANSFER' && noteF}
           {filesF}
         </div>
         <div className="space-y-5 border-t border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.025)] p-5 lg:border-l lg:border-t-0">{right}</div>
       </div>
-      <datalist id="cb-cust">{custList.map((c) => <option key={c} value={c} />)}</datalist>
-      <datalist id="cb-vendor">{vendors.map((c) => <option key={c} value={c} />)}</datalist>
-      <datalist id="cb-staff">{staff.map((u) => <option key={u.id} value={u.name} />)}</datalist>
     </Modal>
   );
 }
@@ -320,6 +405,7 @@ export function CashEntryModal({ kind, entry, onClose, onAgain, onDelete, bal }:
 /** v51.2: xem phiếu (phiếu tự sinh / phiếu đảo): chứng từ gốc, sửa ngày và diễn giải, hủy phiếu thu / chi đơn hàng bằng phiếu đảo */
 export function CashViewModal({ e, onClose }: { e: CashEntry; onClose: () => void }) {
   const { cashEntries, setCashEntries, salesOrders, setSalesOrders, postCash, company, users, canDo, go, setOpenSale, openJob, notify, audit } = useApp();
+  const { cfg: acfg } = useAcct();
   const can = canDo('cash.manage');
   const rev = cashReversed(cashEntries, e);
   const isRev = isCashReversal(e);
@@ -388,8 +474,11 @@ export function CashViewModal({ e, onClose }: { e: CashEntry; onClose: () => voi
             <CbKv a="Khoản mục" b={e.category} />
             {e.invNo && <CbKv a="Hóa đơn" b={`${e.invNo}${e.vatRate != null ? ` · ${e.vatRate}%` : ''}`} />}
           </div>
-          <Field label="Ngày chứng từ"><input className={inputCls} type="date" value={date} disabled={!can} onChange={(x) => setDate(x.target.value)} /></Field>
-          <Field label="Diễn giải"><input className={inputCls} value={note} disabled={!can} onChange={(x) => setNote(x.target.value)} /></Field>
+          <div className="grid grid-cols-[150px_1fr] gap-3">
+            <Field label="Ngày chứng từ"><input className={inputCls} type="date" value={date} disabled={!can} onChange={(x) => setDate(x.target.value)} /></Field>
+            <Field label="Diễn giải"><input className={inputCls} value={note} disabled={!can} onChange={(x) => setNote(x.target.value)} /></Field>
+          </div>
+          <JournalBox cfg={acfg} lines={acfg ? cashJournal(e, acfg).lines : []} />
           {e.files && e.files.length > 0 && <div className="flex flex-wrap gap-2"><CbFiles files={e.files} /></div>}
           {auto && <p className="text-[12px] text-[rgb(var(--muted))]">Số tiền, quỹ theo chứng từ gốc: muốn đổi thì hủy phiếu và lập lại</p>}
           {revs.length > 0 && <p className="text-[13px] text-[rgb(var(--fg2))]">Đã đảo bằng {revs.map((r) => <Code key={r.id} className="mx-0.5">{r.code}</Code>)} · {fmtN(rev)}</p>}
@@ -423,6 +512,9 @@ export function CashbookModule() {
   const [q, setQ] = useSticky('CashbookModule.q', '');
   const [modal, setModal] = useState<{ kind: CashEntry['kind']; entry?: CashEntry; k?: number } | null>(null);
   const [view, setView] = useState<CashEntry | null>(null);
+  const [fOpen, setFOpen] = useState(false);
+  const fRef = useOutside(fOpen, () => setFOpen(false));
+  const nFilter = (kind !== 'ALL' ? 1 : 0) + (cat !== 'ALL' ? 1 : 0) + (partner !== 'ALL' ? 1 : 0);
   useIntent('cash.in', () => setModal({ kind: 'IN' }));
   useIntent('cash.out', () => setModal({ kind: 'OUT' }));
   const [opening, setOpening] = useState<{ cash: number; bank: number } | null>(null);
@@ -472,45 +564,59 @@ export function CashbookModule() {
   };
   return (
     <div className="space-y-4">
-      <Tabs tabs={[{ id: 'book', label: 'Sổ chi tiết' }, { id: 'summary', label: mode === 'TRADING' ? 'Tổng hợp' : 'Tổng hợp & theo đơn hàng' }]} value={tab} onChange={setTab}
-        aside={<>
-          <button className={cn(btnGhost, btnSm, 'border-0')} disabled={!can} onClick={() => setModal({ kind: 'TRANSFER' })}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Chuyển quỹ</button>
-          <button className={cn(btnGhost, btnSm, 'border-0')} disabled={!can} onClick={() => setOpening({ cash: mfgConfig.openingCash, bank: mfgConfig.openingBank })}><Pencil className="h-3.5 w-3.5" aria-hidden />Số dư đầu</button>
-          <button className={cn(btnGhost, btnSm)} disabled={!can} onClick={() => setModal({ kind: 'IN' })}><Plus className="h-3.5 w-3.5" aria-hidden />Phiếu thu</button>
-          <button className={cn(btnPrimary, btnSm)} disabled={!can} onClick={() => setModal({ kind: 'OUT' })}><Plus className="h-3.5 w-3.5" aria-hidden />Phiếu chi</button>
-        </>} />
-      <div className="flex w-fit max-w-full overflow-x-auto rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-0.5" role="radiogroup" aria-label="Sổ quỹ">
-        {([['CASH', 'Tiền mặt'], ['BANK', 'Ngân hàng'], ['ALL', 'Cả 2 sổ']] as const).map(([k, label]) => (
-          <button key={k} role="radio" aria-checked={acc === k} onClick={() => { setAcc(k); paged.setPage(1); }}
-            className={cn('flex items-baseline gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px]', acc === k ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>
-            {label}<span className="font-mono text-[12px] text-[rgb(var(--muted))]">{compact(balance(k))}</span>
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-[240px] max-w-[520px] flex-1"><SearchBox value={q} onChange={(v) => { setQ(v); paged.setPage(1); }} placeholder="Tìm số phiếu, đối tượng, mã đơn" /></div>
+        <div className="relative" ref={fRef}>
+          <button className={cn(btnGhost, 'relative h-9 w-9 justify-center p-0', fOpen && 'bg-[rgb(var(--ink)/0.05)]')} onClick={() => setFOpen((v) => !v)} aria-label="Bộ lọc" aria-expanded={fOpen} title="Bộ lọc"><Filter className="h-4 w-4" aria-hidden />{nFilter > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[rgb(var(--fg))] px-1 text-[10px] text-[rgb(var(--surface))]">{nFilter}</span>}</button>
+          {fOpen && (
+            <div className="absolute left-0 top-full z-30 mt-1 w-[300px] space-y-3 rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4 shadow-xl">
+              <Field label="Loại phiếu"><CbSeg label="Loại phiếu" items={[['ALL', 'Thu và chi'], ['IN', 'Chỉ thu'], ['OUT', 'Chỉ chi']]} value={kind} onChange={(v) => { setKind(v); paged.setPage(1); }} /></Field>
+              <Field label="Khoản mục"><select className={inputCls} value={cat} onChange={(e) => { setCat(e.target.value); paged.setPage(1); }}><option value="ALL">Mọi khoản mục</option>{cats.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+              <Field label="Đối tượng nộp / nhận"><select className={inputCls} value={partner} onChange={(e) => { setPartner(e.target.value); paged.setPage(1); }}><option value="ALL">Tất cả</option>{partners.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+              <div className="flex justify-end gap-2"><button className={btnGhost} disabled={!nFilter} onClick={() => { setKind('ALL'); setCat('ALL'); setPartner('ALL'); paged.setPage(1); }}>Đặt lại</button><button className={btnPrimary} onClick={() => setFOpen(false)}>Xong</button></div>
+            </div>
+          )}
+        </div>
+        <button className={cn(btnGhost, 'h-9 w-9 justify-center p-0')} title="Tải về CSV" aria-label="Tải về CSV" onClick={() => downloadCsv(`so-quy-${acc}-${fromISO}-${toISO}.csv`, [['Ngày', 'Số phiếu', 'Sổ', 'Nguồn', 'Khoản mục', 'Đối tượng', 'Diễn giải', 'Chứng từ gốc', 'Thu', 'Chi', 'Tồn'], ...list.map((l) => [l.date, l.code, CASH_ACCOUNT[l.account], CASH_SRC[l.source ?? 'MANUAL'], l.category, l.partner ?? '', l.note ?? '', l.ref ?? '', l.kind === 'IN' ? l.amount : '', l.kind === 'OUT' ? l.amount : '', acc === 'ALL' ? '' : running.get(l.id) ?? ''])])}><Download className="h-4 w-4" aria-hidden /></button>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <button className={btnGhost} disabled={!can} onClick={() => setModal({ kind: 'TRANSFER' })}><RefreshCw className="h-4 w-4" aria-hidden />Chuyển quỹ</button>
+          <button className={cn(btnGhost, 'max-lg:hidden')} disabled={!can} onClick={() => setOpening({ cash: mfgConfig.openingCash, bank: mfgConfig.openingBank })}><Pencil className="h-4 w-4" aria-hidden />Số dư đầu</button>
+          <button className={btnGhost} disabled={!can} onClick={() => setModal({ kind: 'IN' })}><Plus className="h-4 w-4" aria-hidden />Phiếu thu</button>
+          <button className={btnPrimary} disabled={!can} onClick={() => setModal({ kind: 'OUT' })}><Plus className="h-4 w-4" aria-hidden />Phiếu chi</button>
+        </div>
       </div>
-      <div className="glass-card flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl px-5 py-4">
-        {([['Đầu kỳ', openBal, ''], ['+', 0, 'op'], ['Thu', sumIn, `${period.filter((l) => l.kind === 'IN').length} phiếu`], ['−', 0, 'op'], ['Chi', sumOut, `${period.filter((l) => l.kind === 'OUT').length} phiếu`], ['=', 0, 'op']] as [string, number, string][]).map(([k, v, s], i) => (s === 'op'
-          ? <span key={i} className="text-lg text-[rgb(var(--muted))]" aria-hidden>{k}</span>
-          : <div key={i}><p className="text-[12px] text-[rgb(var(--muted))]">{k}</p><p className="text-base font-medium tabular-nums">{v.toLocaleString('vi-VN')}</p>{s && <p className="text-[11.5px] text-[rgb(var(--muted))]">{s}</p>}</div>))}
-        <div><p className="text-[12px] text-[rgb(var(--muted))]">Cuối kỳ</p><p className={cn('text-xl font-medium tabular-nums', openBal + sumIn - sumOut < 0 && 'text-[rgb(var(--danger-fg))]')}>{(openBal + sumIn - sumOut).toLocaleString('vi-VN')}</p></div>
-        <span className="ml-auto text-[12px] text-[rgb(var(--muted))]">{fmtDate(fromISO)} – {fmtDate(toISO)} · {accLabel}</span>
-      </div>
-      {tab === 'book' ? (
-        <>
-          <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
-            <SearchBox value={q} onChange={(v) => { setQ(v); paged.setPage(1); }} placeholder="Tìm số phiếu, diễn giải, chứng từ gốc" />
-            <select className={cn(inputCls, 'py-1.5 text-[13px] lg:w-36')} value={kind} onChange={(e) => { setKind(e.target.value as 'ALL' | 'IN' | 'OUT'); paged.setPage(1); }} aria-label="Loại"><option value="ALL">Thu và chi</option><option value="IN">Chỉ thu</option><option value="OUT">Chỉ chi</option></select>
-            <select className={cn(inputCls, 'py-1.5 text-[13px] lg:w-44')} value={cat} onChange={(e) => { setCat(e.target.value); paged.setPage(1); }} aria-label="Khoản mục"><option value="ALL">Mọi khoản mục</option>{cats.map((c) => <option key={c} value={c}>{c}</option>)}</select>
-            <select className={cn(inputCls, 'py-1.5 text-[13px] lg:w-48')} value={partner} onChange={(e) => { setPartner(e.target.value); paged.setPage(1); }} aria-label="Đối tượng"><option value="ALL">Mọi đối tượng nộp / nhận</option>{partners.map((c) => <option key={c} value={c}>{c}</option>)}</select>
-            <button className={cn(btnGhost, btnSm, 'justify-center border-0 lg:ml-auto')} onClick={() => downloadCsv(`so-quy-${acc}-${fromISO}-${toISO}.csv`, [['Ngày', 'Số phiếu', 'Sổ', 'Khoản mục', 'Đối tượng', 'Diễn giải', 'Chứng từ gốc', 'Thu', 'Chi', 'Tồn'], ...list.map((l) => [l.date, l.code, CASH_ACCOUNT[l.account], l.category, l.partner ?? '', l.note ?? '', l.ref ?? '', l.kind === 'IN' ? l.amount : '', l.kind === 'OUT' ? l.amount : '', acc === 'ALL' ? '' : running.get(l.id) ?? ''])])}><Download className="h-4 w-4" aria-hidden />CSV</button>
+      <section className="glass-card overflow-hidden rounded-xl">
+        <div className="flex flex-wrap items-center gap-3 border-b border-[rgb(var(--line))] px-5">
+          <div className="flex gap-5" role="tablist">
+            {([['book', 'Sổ chi tiết'], ['summary', mode === 'TRADING' ? 'Tổng hợp' : 'Tổng hợp & theo đơn hàng']] as const).map(([k, l]) => (
+              <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn('-mb-px border-b-2 py-3.5 text-[14px]', tab === k ? 'border-[rgb(var(--accent))] font-medium text-[rgb(var(--fg))]' : 'border-transparent text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>{l}</button>
+            ))}
           </div>
-          <Panel>
-          <Table head={['Ngày', 'Số phiếu', 'Nguồn', 'Khoản mục', 'Diễn giải', 'Đối tượng', ...(acc === 'ALL' ? ['Sổ'] : []), <span key="t" className="block text-right">Thu</span>, <span key="c" className="block text-right">Chi</span>, 'Trạng thái', ...(acc === 'ALL' ? [] : [<span key="b" className="block text-right">Tồn</span>])]} minW={1040} stt={false} select={false}>
+          <div className="my-2 ml-auto flex max-w-full overflow-x-auto rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Sổ quỹ">
+            {([['CASH', 'Tiền mặt'], ['BANK', 'Ngân hàng'], ['ALL', 'Cả 2 sổ']] as const).map(([k, label]) => (
+              <button key={k} role="radio" aria-checked={acc === k} onClick={() => { setAcc(k); paged.setPage(1); }}
+                className={cn('flex items-baseline gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px]', acc === k ? 'bg-[rgb(var(--fg))] font-medium text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>
+                {label}{k !== 'ALL' && <span className={cn('text-[11.5px] tabular-nums', acc === k ? 'opacity-70' : 'text-[rgb(var(--muted))]')}>{compact(balance(k))}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-[rgb(var(--line)/0.6)] px-5 py-4">
+          {([['Đầu kỳ', openBal, ''], ['+', 0, 'op'], ['Thu', sumIn, `${period.filter((l) => l.kind === 'IN').length} phiếu`], ['−', 0, 'op'], ['Chi', sumOut, `${period.filter((l) => l.kind === 'OUT').length} phiếu`], ['=', 0, 'op']] as [string, number, string][]).map(([k, v, s], i) => (s === 'op'
+            ? <span key={i} className="text-lg text-[rgb(var(--muted))]" aria-hidden>{k}</span>
+            : <div key={i}><p className="text-[12px] text-[rgb(var(--muted))]">{k}</p><p className="text-base font-medium tabular-nums">{v.toLocaleString('vi-VN')}</p>{s && <p className="text-[11.5px] text-[rgb(var(--muted))]">{s}</p>}</div>))}
+          <div><p className="text-[12px] text-[rgb(var(--muted))]">Cuối kỳ</p><p className={cn('text-xl font-medium tabular-nums', openBal + sumIn - sumOut < 0 && 'text-[rgb(var(--danger-fg))]')}>{(openBal + sumIn - sumOut).toLocaleString('vi-VN')}</p></div>
+          <span className="ml-auto text-[12px] text-[rgb(var(--muted))]">{fmtDate(fromISO)} – {fmtDate(toISO)} · {accLabel}</span>
+        </div>
+      {tab === 'book' && (
+        <div className="px-5 pt-1">
+          <Table head={['Ngày', 'Số phiếu', 'Nguồn', 'Khoản mục', 'Diễn giải', 'Đối tượng', ...(acc === 'ALL' ? ['Sổ'] : []), <span key="t" className="block text-right">Thu</span>, <span key="c" className="block text-right">Chi</span>, 'Trạng thái', ...(acc === 'ALL' ? [] : [<span key="b" className="block text-right">Tồn quỹ</span>]), <span key="m" className="sr-only">Thao tác</span>]} minW={1080} stt={false} select={false} optional={[4]}>
             {paged.page === 1 && !filtered && (
-              <tr className="border-b border-[rgb(var(--line)/0.6)] bg-[rgb(var(--raised)/0.5)]">
-                <td className={cn(tdFirst, 'font-mono text-xs')}>{fmtDate(fromISO)}</td>
+              <tr className="border-b border-[rgb(var(--line)/0.6)] bg-[rgb(var(--ink)/0.025)]">
+                <td className={cn(tdFirst, 'tabular-nums text-[rgb(var(--fg2))]')}>{fmtDate(fromISO)}</td>
                 {acc === 'ALL'
-                  ? <td className={cn(tdLast, 'font-medium')} colSpan={9}>Số dư đầu kỳ hai sổ: <span className="tabular-nums">{openBal.toLocaleString('vi-VN')}</span></td>
-                  : <><td className={cn(tdCls, 'font-medium')} colSpan={8}>Số dư đầu kỳ</td><td className={cn(tdLast, 'text-right font-semibold tabular-nums')}>{openBal.toLocaleString('vi-VN')}</td></>}
+                  ? <td className={cn(tdLast, 'text-[rgb(var(--fg2))]')} colSpan={10}>Số dư đầu kỳ hai sổ: <span className="tabular-nums">{openBal.toLocaleString('vi-VN')}</span></td>
+                  : <><td className={cn(tdCls, 'text-[rgb(var(--fg2))]')} colSpan={8}>Số dư đầu kỳ</td><td className={cn(tdCls, 'text-right font-medium tabular-nums')}>{openBal.toLocaleString('vi-VN')}</td><td className={tdLast} /></>}
               </tr>
             )}
             {paged.slice.map((l) => {
@@ -521,37 +627,46 @@ export function CashbookModule() {
               const dead = !!e && rv >= e.amount && rv > 0;
               const src = e?.kind === 'TRANSFER' ? 'Chuyển quỹ' : isRev ? 'Phiếu đảo' : CASH_SRC[l.source ?? 'MANUAL'];
               const srcRef = isRev ? e?.ref : l.source === 'SALE' ? l.ref : l.auto && l.ref !== l.code ? l.ref : undefined;
+              const refs = (srcRef ?? '').split(/,\s*/).filter(Boolean);
+              const openRow = () => { if (!e) { if (l.jobId) openJob(l.jobId); return; } if (manual && can) setModal({ kind: e.kind, entry: e }); else setView(e); };
               return (
-                <tr key={l.id} className={cn(rowCls, (e || l.jobId) && 'cursor-pointer hover:bg-[rgb(var(--ink)/0.03)]', dead && 'text-[rgb(var(--muted))]')} onClick={() => { if (!e) { if (l.jobId) openJob(l.jobId); return; } if (manual && can) setModal({ kind: e.kind, entry: e }); else setView(e); }}>
-                  <td className={cn(tdFirst, 'whitespace-nowrap font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(l.date)}</td>
+                <tr key={l.id} className={cn(rowCls, (e || l.jobId) && 'cursor-pointer hover:bg-[rgb(var(--ink)/0.03)]', dead && 'text-[rgb(var(--muted))]')} onClick={openRow}>
+                  <td className={cn(tdFirst, 'whitespace-nowrap tabular-nums text-[rgb(var(--fg2))]')}>{fmtDate(l.date)}</td>
                   <td className={tdCls}><Code className={dead ? 'line-through' : undefined}>{l.code}</Code></td>
-                  <td className={tdCls}><span className="inline-flex max-w-[170px] items-center gap-1.5"><span className={cn('whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[11.5px]', isRev ? 'border-[rgb(var(--danger)/0.3)] text-[rgb(var(--danger-fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--fg2))]')}>{src}</span>{srcRef && <span className="truncate font-mono text-[11.5px] text-[rgb(var(--muted))]" title={srcRef}>{srcRef}</span>}</span></td>
-                  <td className={tdCls}><span className="font-medium">{l.category}</span></td>
-                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[170px] truncate" title={l.note}>{l.note || '—'}</span></td>
-                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[150px] truncate" title={l.partner}>{l.partner ?? '—'}</span></td>
+                  <td className={tdCls}><span className="inline-flex items-center gap-1.5"><span className={cn('whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[12px]', isRev ? 'border-[rgb(var(--danger)/0.3)] bg-[rgb(var(--danger)/0.06)] text-[rgb(var(--danger-fg))]' : 'border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.03)] text-[rgb(var(--fg2))]')}>{src}</span>{refs[0] && <Code className={dead ? 'line-through' : undefined}>{refs[0]}</Code>}{refs.length > 1 && <span className="text-[11.5px] text-[rgb(var(--muted))]" title={srcRef}>+{refs.length - 1}</span>}</span></td>
+                  <td className={tdCls}><span className={cn(!dead && 'font-medium')}>{l.category}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[200px] truncate" title={l.note}>{l.note || '—'}</span></td>
+                  <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}><span className="block max-w-[190px] truncate" title={l.partner}>{l.partner ?? '—'}</span></td>
                   {acc === 'ALL' && <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{l.account === 'CASH' ? 'Tiền mặt' : 'Ngân hàng'}</td>}
                   <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums', !dead && 'text-[rgb(var(--success-fg))]')}>{l.kind === 'IN' ? l.amount.toLocaleString('vi-VN') : ''}</td>
                   <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums', !dead && 'text-[rgb(var(--danger-fg))]')}>{l.kind === 'OUT' ? l.amount.toLocaleString('vi-VN') : ''}</td>
-                  <td className={acc === 'ALL' ? tdLast : tdCls}>{isRev ? <Chip tone="muted">Phiếu đảo</Chip> : dead ? <Chip tone="red">Đã hủy</Chip> : rv > 0 ? <Chip tone="orange">Hủy một phần</Chip> : <Chip tone="teal">Hiệu lực</Chip>}</td>
-                  {acc !== 'ALL' && <td className={cn(tdLast, 'whitespace-nowrap text-right tabular-nums', (running.get(l.id) ?? 0) < 0 && 'text-[rgb(var(--danger-fg))]')}>{(running.get(l.id) ?? 0).toLocaleString('vi-VN')}</td>}
+                  <td className={tdCls}>{isRev ? <Chip tone="muted">Phiếu đảo</Chip> : dead ? <Chip tone="red">Đã hủy</Chip> : rv > 0 ? <Chip tone="orange">Hủy một phần</Chip> : <Chip tone="teal">Hiệu lực</Chip>}</td>
+                  {acc !== 'ALL' && <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums', (running.get(l.id) ?? 0) < 0 && 'text-[rgb(var(--danger-fg))]')}>{(running.get(l.id) ?? 0).toLocaleString('vi-VN')}</td>}
+                  <td className={cn(tdLast, 'w-12')} onClick={(x) => x.stopPropagation()}>{e && <RowMenu items={[
+                    { label: manual && can ? 'Sửa phiếu' : 'Xem phiếu', icon: manual && can ? Pencil : Eye, onClick: openRow },
+                    { label: 'In phiếu', icon: Printer, onClick: () => printHtml(docShell(e.code, cashVoucherHtml(e, company, users.find((u) => u.id === e.by)?.name ?? ''))) },
+                    ...(e.source === 'SALE' && !isRev && !dead && can ? [{ label: 'Hủy phiếu', icon: XCircle, danger: true, onClick: () => setView(e) }] : []),
+                  ]} />}</td>
                 </tr>
               );
             })}
             {list.length > 0 && (
-              <tr className="border-t border-[rgb(var(--line))] font-semibold">
-                <td className={tdFirst} colSpan={acc === 'ALL' ? 7 : 6}>{filtered ? 'Cộng các dòng đang lọc' : 'Cộng phát sinh trong kỳ'}</td>
-                <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--success-fg))]')}>{list.filter((l) => l.kind === 'IN').reduce((s, l) => s + l.amount, 0).toLocaleString('vi-VN')}</td>
-                <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--danger-fg))]')}>{list.filter((l) => l.kind === 'OUT').reduce((s, l) => s + l.amount, 0).toLocaleString('vi-VN')}</td>
-                <td className={acc === 'ALL' ? tdLast : tdCls} />
-                {acc !== 'ALL' && <td className={cn(tdLast, 'text-right tabular-nums')}>{filtered ? '' : (openBal + sumIn - sumOut).toLocaleString('vi-VN')}</td>}
+              <tr className="border-t border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.025)]">
+                <td className={cn(tdFirst, 'text-[rgb(var(--fg2))]')} colSpan={acc === 'ALL' ? 7 : 6}>{filtered ? 'Cộng các dòng đang lọc' : 'Cộng phát sinh trong kỳ'}</td>
+                <td className={cn(tdCls, 'text-right font-medium tabular-nums text-[rgb(var(--success-fg))]')}>{list.filter((l) => l.kind === 'IN').reduce((s, l) => s + l.amount, 0).toLocaleString('vi-VN')}</td>
+                <td className={cn(tdCls, 'text-right font-medium tabular-nums text-[rgb(var(--danger-fg))]')}>{list.filter((l) => l.kind === 'OUT').reduce((s, l) => s + l.amount, 0).toLocaleString('vi-VN')}</td>
+                <td className={tdCls} />
+                {acc !== 'ALL' && <td className={cn(tdCls, 'text-right font-medium tabular-nums')}>{filtered ? '' : (openBal + sumIn - sumOut).toLocaleString('vi-VN')}</td>}
+                <td className={tdLast} />
               </tr>
             )}
           </Table>
           {!list.length && <EmptyState text={<>Không có phát sinh trong kỳ.</>} art="ledger" />}
-          <Pagination paged={paged} unit="dòng" />
-        </Panel>
-        </>
-      ) : (
+          <div className="pb-3"><Pagination paged={paged} unit="dòng" /></div>
+        </div>
+      )}
+      </section>
+      {tab === 'book' ? null : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <Panel title={`Thu chi 6 tháng (${accLabel})`}>
             <div className="h-64">

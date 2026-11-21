@@ -218,7 +218,9 @@ export type PoPurpose = 'PROJECT' | 'STOCK' | 'MIXED';
 /** v46: đơn bán. SKU: hàng trong kho hàng hóa; ITEM: vật tư (xưởng); MAKE: hàng cần gia công (tạo lệnh sản xuất); FREE: dòng tự nhập, không trừ kho */
 export type SaleLineKind = 'SKU' | 'ITEM' | 'MAKE' | 'FREE';
 
-export type SaleLine = { id: string; kind: SaleLineKind; ref?: string; name: string; unit: string; qty: number; price: number; discountPct: number; vat: number; note?: string };
+export type SaleLine = { id: string; kind: SaleLineKind; ref?: string; name: string; unit: string; qty: number; price: number; discountPct: number; vat: number; note?: string;
+  /** v53: trường tùy chỉnh trên dòng hàng (chỉ ghi chú, không tính tiền) */
+  cf?: Record<string, CfVal> };
 
 export type SalePay = 'CASH' | 'BANK' | 'PARTIAL' | 'CREDIT';
 
@@ -253,6 +255,8 @@ export type SalesOrder = {
   issuedQ?: Record<string, number>; returnedQ?: Record<string, number>; invReqs?: SaleInvReq[];
   /** v50: nguồn đơn hàng, nguồn chứng từ (PO / hợp đồng), người nhận hàng, trao đổi trên đơn */
   origin?: string; docRef?: string; receiver?: string; notes?: SaleNote[];
+  /** v53: trường tùy chỉnh do 3A định nghĩa (theo mã lưu trữ), tệp đính kèm của đơn */
+  cf?: Record<string, CfVal>; files?: SaleFile[];
 };
 
 export type SaleInvReq = { id: string; at: number; by?: string; amount: number; note?: string; status: 'PENDING' | 'DONE' | 'REJECTED'; no?: string; doneBy?: string; doneAt?: number; why?: string;
@@ -273,6 +277,75 @@ export type ApprovalLevel = 'AUTO' | 'HEAD' | 'BOD';
 export type CustomerStatus = 'PROSPECT' | 'INTERESTED' | 'FOLLOW' | 'ACTIVE';
 
 export type DateRange = { from: string; to: string };
+
+// ---------------- v52: Thiết kế giao diện (Page Builder) ----------------
+/** Trang dựng được bằng khối. Bản 1: Tổng quan */
+export type LPage = 'home' | 'desk' | 'reports' | 'sale-detail' | 'customer' | 'claim';
+
+export type LBlockType = 'K-Stat-Simple' | 'K-Chart-Line' | 'K-Table-Compact' | 'K-Text' | 'K-Icons'
+  | 'K-Order-Info' | 'K-Order-Lines' | 'K-Order-Flow' | 'K-Order-Pay' | 'K-Order-Profit' | 'K-Order-Debt' | 'K-Order-Log' | 'K-Order-Ship' | 'K-Order-Files';
+
+/** v53: nút của khối Nút biểu tượng */
+export type LIconAct = 'back' | 'prev' | 'next' | 'print' | 'download' | 'upload' | 'menu';
+
+/** v53: trạng thái đơn dùng cho điều kiện hiện khối (trang đơn hàng) */
+export type LStage = 'APPROVAL' | 'ISSUE' | 'PAY' | 'CANCEL' | 'DONE';
+
+export type LDevice = 'lg' | 'md' | 'sm';
+
+export type LPos = { x: number; y: number; w: number; h: number };
+
+export type LDataset = 'sales' | 'leads' | 'customers' | 'cash' | 'mdf';
+
+export type LPeriod = 'month' | 'quarter' | 'year' | 'last30' | 'inherit' | 'all';
+
+export type LAgg = 'sum' | 'count' | 'avg';
+
+export type LBlockCfg = {
+  title: string; ds: LDataset; filter?: string; open?: boolean;
+  /** Chỉ số: chỉ tiêu ('count' = số bản ghi), cách tính, kỳ, so sánh kỳ trước */
+  field?: string; agg?: LAgg; period?: LPeriod; compare?: boolean;
+  /** Biểu đồ đường: tối đa 2 đường, số tháng */
+  series?: string[]; months?: number;
+  /** Bảng thu gọn: danh sách các cột / nhóm theo một chiều; số dòng */
+  mode?: 'rows' | 'group'; group?: string; cols?: string[]; sort?: string; limit?: number;
+  /** v53 bảng: cột STT; trên điện thoại hiện dạng thẻ (mặc định) hoặc bảng */
+  stt?: boolean; smView?: 'card' | 'table';
+  /** v53 Khối text: nội dung gọn (**đậm**, *nghiêng*, dòng "- " là danh sách, "## " là tiêu đề nhỏ, [chữ](https://…)), kiểu khung, ẩn tiêu đề */
+  text?: string; tone?: 'plain' | 'note' | 'warn'; hideTitle?: boolean;
+  /** v53 Nút biểu tượng: các nút theo thứ tự, căn trái / phải */
+  icons?: LIconAct[]; align?: 'left' | 'right';
+  /** v53 trang nghiệp vụ: thứ tự trường / cột (fields), trường / cột đang tắt (off), số cột trường của khối Thông tin */
+  fields?: string[]; off?: string[]; gridCols?: 2 | 3 | 4;
+  /** v53: chỉ hiện khi đơn ở các trạng thái / với các vai trò (rỗng = luôn hiện) */
+  stages?: LStage[]; roles?: Role[];
+};
+
+export type LBlock = { id: string; type: LBlockType; pos: { lg: LPos; sm: { w: number; order: number } }; show: Record<LDevice, boolean>; config: LBlockCfg };
+
+/** Một phiên bản bố cục của một trang (role = null: dùng chung mọi vai trò) */
+export type LayoutVer = { id: string; schema: 1; page: LPage; version: number; status: 'DRAFT' | 'PUBLISHED'; role: Role | null; blocks: LBlock[]; note?: string; by: string; at: number; publishedAt?: number; publishedBy?: string };
+
+/** Áp dụng một phiên bản cho một cấp: toàn hệ thống / mô hình doanh nghiệp / riêng một doanh nghiệp */
+export type LayoutAssign = { id: string; page: LPage; level: 'SYSTEM' | 'PROFILE' | 'TENANT'; profile: 'TRADING' | 'MFG' | null; tenantId: string | null; role: Role | null; verId: string; at: number; by: string };
+
+export type LRow = { date: string; v: Record<string, number>; d: Record<string, string>; f: string[] };
+
+// ---------------- v53: Trường tùy chỉnh ----------------
+export type CfType = 'text' | 'number' | 'money' | 'date' | 'select' | 'user' | 'check';
+
+/** Định nghĩa trường do 3A tạo. scope HEAD: đầu đơn; LINE: dòng hàng (chỉ ghi chú). key cố định sau khi tạo */
+export type CfDef = {
+  id: string; entity: 'sale'; scope: 'HEAD' | 'LINE'; key: string; label: string; type: CfType; options?: string[];
+  required: 'NONE' | 'SAVE' | 'APPROVE';
+  levels: { sys: boolean; tr: boolean; mfg: boolean; tenants: string[] };
+  where: { form: boolean; info: boolean; list: boolean; filter: boolean };
+  status: 'ACTIVE' | 'OFF'; order: number; at: number; by: string;
+};
+
+export type CfVal = string | number | boolean;
+
+export type SaleFile = { id: string; name: string; url: string; size: number; type: string; at: number; by?: string };
 
 export type Department = { code: DeptCode; name: string; short: string; slaMinutes: number; headId?: string; receivesLeads: boolean; active: boolean };
 
@@ -723,7 +796,24 @@ export type Receipt = {
   status: ReceiptStatus; submittedAt?: number; confirmedBy?: string; confirmedAt?: number; rejectNote?: string;
 };
 
-export type MfgConfig = { schedule: PayStage[]; vatPct: number; quoteValidDays: number; warrantyMonths: number; submitHours: number; productionDays: number; openingCash: number; openingBank: number; creditDays: number; dueDays: number; salesCommissionPct: number; installCommissionPct: number; agingScheme?: AgingScheme };
+export type MfgConfig = { schedule: PayStage[]; vatPct: number; quoteValidDays: number; warrantyMonths: number; submitHours: number; productionDays: number; openingCash: number; openingBank: number; creditDays: number; dueDays: number; salesCommissionPct: number; installCommissionPct: number; agingScheme?: AgingScheme;
+  /** v51.3: chế độ kế toán (bộ tài khoản, quy tắc định khoản) của doanh nghiệp */
+  acct?: AcctConfig };
+
+/** Chế độ kế toán: TT 99/2025/TT-BTC (thay TT 200) hoặc TT 133/2016/TT-BTC (DN nhỏ và vừa) */
+export type AcctStd = 'TT99' | 'TT133';
+
+export type Acct = { code: string; name: string; parent?: string; custom?: boolean };
+
+/** Sự kiện kinh tế → cặp Nợ / Có. Ký hiệu: @FUND quỹ của phiếu, @FUND_TO quỹ nhận (chuyển quỹ), @CAT tài khoản theo khoản mục */
+export type AcctEvent = 'IN_SALE' | 'IN_OTHER' | 'IN_ADV_BACK' | 'OUT_COST' | 'OUT_VENDOR' | 'OUT_ADVANCE' | 'OUT_REFUND' | 'TRANSFER' | 'SALE_REVENUE' | 'SALE_COGS' | 'SALE_RETURN' | 'SALE_RETURN_STOCK';
+
+export type PostRule = { dr: string; cr: string };
+
+export type AcctConfig = { std: AcctStd; year: number; chosenAt: number; chosenBy?: string; custom: Acct[]; rules: Record<AcctEvent, PostRule>; cats: Record<string, string>; funds: Record<CashAccount, string>; vatIn: string; vatOut: string };
+
+/** Một dòng định khoản (bút toán đơn) */
+export type JLine = { id: string; date: string; ref: string; desc: string; dr: string; cr: string; amount: number; saleId?: string; src: 'CASH' | 'SALE' };
 
 /** Cách phân nhóm tuổi nợ: theo tuổi chứng từ (<30 / 31–60 / >60 ngày) hoặc theo số ngày quá hạn (1–15 / 16–30 / >30) */
 export type AgingScheme = 'AGE_30_60' | 'OVERDUE_15_30';
@@ -749,12 +839,16 @@ export type CashEntry = {
   source?: CashSource; sourceId?: string; claimId?: string;
   /** v51.2: phiếu đảo của phiếu nào; các khoản thu / hoàn tiền trên đơn mà phiếu này gộp; đơn bán chịu chi phí; hóa đơn đầu vào; chứng từ kèm; loại thu / chi */
   reverses?: string; payIds?: string[]; saleId?: string; invNo?: string; vatRate?: number; files?: CashFile[]; sub?: CashSub;
+  /** v51.3: một phiếu chi phân bổ cho nhiều đơn (số tiền gồm thuế của từng đơn) và cách phân bổ */
+  allocs?: { saleId: string; amount: number }[]; allocBy?: CostAllocBy;
 };
+
+export type CostAllocBy = 'REVENUE' | 'QTY' | 'EQUAL';
 
 export type CashFile = { name: string; url: string };
 
 /** Loại phiếu: thu tiền khách / thu khác; chi phí / trả NCC / tạm ứng / hoàn tiền khách */
-export type CashSub = 'CUSTOMER' | 'OTHER' | 'COST' | 'VENDOR' | 'ADVANCE' | 'REFUND';
+export type CashSub = 'CUSTOMER' | 'OTHER' | 'ADV_BACK' | 'COST' | 'VENDOR' | 'ADVANCE' | 'REFUND';
 
 /** Hoa hồng đã quyết toán của 1 đơn (chỉ khi kế toán đã xác nhận thu đủ 100%) */
 export type JobCommission = { paidAt: number; by: string; base: number; lines: { userId: string; role: 'SALES' | 'INSTALL'; amount: number }[] };
@@ -895,6 +989,10 @@ export type AppCtx = {
     consoleView: boolean; openConsole: (tab?: ConsoleTab) => void; consoleTab: ConsoleTab; setConsoleTab: (t: ConsoleTab) => void;
     runMigration: (org: string) => void; backupTenant: (org: string, pass: string) => Promise<void>; restoreTenantSnapshot: (org: string, key: string) => void;
     log: (action: string, detail: string, tenant?: string) => void;
+    /** v52: mẫu bố cục (Thiết kế giao diện) và nơi áp dụng */
+    layouts: LayoutVer[]; setLayouts: Dispatch<SetStateAction<LayoutVer[]>>; layoutAssigns: LayoutAssign[]; setLayoutAssigns: Dispatch<SetStateAction<LayoutAssign[]>>;
+    /** v53: trường tùy chỉnh do 3A định nghĩa */
+    customFields: CfDef[]; setCustomFields: Dispatch<SetStateAction<CfDef[]>>;
   };
   me: User;
   role: Role;
@@ -1854,6 +1952,10 @@ export type ContactPrefs = { fav: string[]; recent: string[]; labels: { id: stri
 
 export type ContactItem = { key: string; kind: 'staff' | 'customer'; name: string; title: string; org: string; phone?: string; email?: string; extra?: string; user?: User; customer?: Customer; group: string };
 
+export type LTypeDef = { type: LBlockType; label: string; def: LPos; desc: string; pages: LPage[]; core?: boolean; data?: boolean };
+
+export type LField = { id: string; label: string; unit: 'money' | 'count' };
+
 // =====================================================================
 //  TỔNG QUAN ĐIỀU HÀNH v37 — 4 tab Tổng Quan · Kinh doanh · Marketing · Tài chính, KPI so chỉ tiêu
 //  Chỉ tiêu tháng: Giám đốc nhập cho phòng ban, Trưởng phòng nhập cho nhân viên phòng mình (kiểm cả RLS máy chủ).
@@ -1970,6 +2072,9 @@ export type JobFilter = 'ACTIVE' | JobStage | 'ALL';
 
 export type VoucherLine = { key: string; itemId: string; qty: number; unitCost: number; actual?: number };
 
+/** Ô chọn có danh sách gợi ý; đã chọn thì hiện dạng thẻ (tên · thông tin phụ) */
+export type PickItem = { id: string; name: string; sub?: string };
+
 // =====================================================================
 //  CÔNG NỢ & TUỔI NỢ KHÁCH HÀNG (AR Aging) — dùng chung 2 mô hình
 //  Xưởng: theo đợt thanh toán đã đến mốc của từng đơn (cọc, giao hàng, nghiệm thu)
@@ -2032,14 +2137,18 @@ export type SoStep = { label: string; at?: string; sub?: ReactNode; state: 'done
 
 export type SalePick = { kind: SaleLineKind; ref?: string; name: string; unit: string; price: number; sub: string; vat: number };
 
-export type SettingsTab = 'overview' | 'ai' | 'zalo' | 'perms' | 'workflow' | 'hub' | 'platform' | 'company' | 'org' | 'fund' | 'mkt' | 'segments' | 'pricing' | 'accounting' | 'getfly' | 'email' | 'zns' | 'security' | 'warehouses';
+export type SettingsTab = 'coa' | 'overview' | 'ai' | 'zalo' | 'perms' | 'workflow' | 'hub' | 'platform' | 'company' | 'org' | 'fund' | 'mkt' | 'segments' | 'pricing' | 'accounting' | 'getfly' | 'email' | 'zns' | 'security' | 'warehouses';
 
 // =====================================================================
 //  3A PLATFORM CONSOLE — quản trị nền tảng: doanh nghiệp, cấp phép module, dữ liệu & nâng cấp an toàn
 //  Chỉ tài khoản @3agroup.vn. Mỗi doanh nghiệp một khóa lưu riêng, thao tác trên bên này không chạm bên kia.
 // =====================================================================
 
-export type ConsoleTab = 'overview' | 'tenants' | 'modules' | 'users' | 'data' | 'admins';
+export type ConsoleTab = 'overview' | 'tenants' | 'modules' | 'users' | 'design' | 'data' | 'admins';
+
+export type LPtr = { preventDefault: () => void; stopPropagation: () => void; currentTarget: EventTarget; pointerId: number; clientX: number; clientY: number };
+
+export type LDrop = { preventDefault: () => void; clientX: number; clientY: number };
 
 // =====================================================================
 //  PHÂN QUYỀN CHI TIẾT (v34): vai trò × phân hệ × thao tác, phạm vi dữ liệu, ngoại lệ từng tài khoản

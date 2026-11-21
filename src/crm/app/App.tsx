@@ -15,7 +15,7 @@ import { LoginScreen, orgDefaults, pathOrgOf, registerOrgs, regsFromStored, setP
 import { initialNotices } from '../lib/notify';
 import { encryptBackup, hashPassword, verifyPassword } from '../lib/security';
 import { listSnapshots, migrateData, takeSnapshot, withDefaults } from '../lib/storage';
-import type { Action, Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, InvMoveType, Job, KbItem, KpiTarget, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SaleDelivery, SaleInvReq, SaleLine, SalePay, SalePayExtra, SalePayment, SalesOrder, SaleStatus, SaleStockData, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WfCtx, WfDecideArgs, WfDecision, WfDef, WfDelegation, WfPolicy, WfRun, WfRunStatus, WfSubject, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
+import type { Action, Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, CfDef, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, InvMoveType, Job, KbItem, KpiTarget, LayoutAssign, LayoutVer, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SaleDelivery, SaleInvReq, SaleLine, SalePay, SalePayExtra, SalePayment, SalesOrder, SaleStatus, SaleStockData, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WfCtx, WfDecideArgs, WfDecision, WfDef, WfDelegation, WfPolicy, WfRun, WfRunStatus, WfSubject, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
 import { cn, initialLeads, initialMoves, initialPOs, initialQuotes, initialReservations, syncCatalog, wfApprovers, wfMerge, wfPath } from '../lib/utils';
 import { stockOf } from '../lib/workshop';
 import { AiChatBot } from '../modules/ai/copilot-plus';
@@ -59,6 +59,9 @@ export default function DashboardApp() {
   const [platformAdmins, setPlatformAdmins] = useState<User[]>(INITIAL_PLATFORM_ADMINS);
   const [platformTenants, setPlatformTenants] = useState<TenantReg[]>(() => ORGS.map(defaultTenantReg));
   const [platformLogs, setPlatformLogs] = useState<PlatformLog[]>([]);
+  const [platformLayouts, setPlatformLayouts] = useState<LayoutVer[]>([]);
+  const [platformAssigns, setPlatformAssigns] = useState<LayoutAssign[]>([]);
+  const [platformCf, setPlatformCf] = useState<CfDef[]>([]);
   const [consoleView, setConsoleView] = useState(false);
   const [consoleTab, setConsoleTab] = useState<ConsoleTab>('overview');
   const [platformId, setPlatformId] = useState<string | null>(null);
@@ -290,7 +293,10 @@ export default function DashboardApp() {
     try {
       const p = storage.get(PLATFORM_KEY);
       if (p) {
-        const pl = JSON.parse(p) as { admins?: User[]; tenants?: TenantReg[]; logs?: PlatformLog[] };
+        const pl = JSON.parse(p) as { admins?: User[]; tenants?: TenantReg[]; logs?: PlatformLog[]; layouts?: LayoutVer[]; layoutAssigns?: LayoutAssign[]; customFields?: CfDef[] };
+        if (Array.isArray(pl.customFields)) setPlatformCf(pl.customFields);
+        if (Array.isArray(pl.layouts)) setPlatformLayouts(pl.layouts);
+        if (Array.isArray(pl.layoutAssigns)) setPlatformAssigns(pl.layoutAssigns);
         if (Array.isArray(pl.admins) && pl.admins.length) admins = [...pl.admins, ...INITIAL_PLATFORM_ADMINS.filter((d) => !pl.admins!.some((a) => a.email === d.email))];
         // Hồ sơ doanh nghiệp: bổ sung doanh nghiệp / module / tính năng mới với giá trị mặc định, không xóa cấu hình cũ
         if (Array.isArray(pl.tenants)) regs = regsFromStored(pl.tenants);
@@ -341,10 +347,10 @@ export default function DashboardApp() {
   // ---- Lưu tài khoản quản trị nền tảng (tách khỏi dữ liệu doanh nghiệp) ----
   useEffect(() => {
     if (!hydrated) return;
-    storage.set(PLATFORM_KEY, JSON.stringify({ admins: CLOUD_ON ? [] : platformAdmins, tenants: platformTenants, logs: CLOUD_ON ? [] : platformLogs.slice(0, 300) }));
-    if (CLOUD_ON && platformId && platSyncRef.current) platSyncRef.current.schedule({ tenants: platformTenants, logs: platformLogs.slice(0, 300) });
+    storage.set(PLATFORM_KEY, JSON.stringify({ admins: CLOUD_ON ? [] : platformAdmins, tenants: platformTenants, logs: CLOUD_ON ? [] : platformLogs.slice(0, 300), layouts: platformLayouts, layoutAssigns: platformAssigns, customFields: platformCf }));
+    if (CLOUD_ON && platformId && platSyncRef.current) platSyncRef.current.schedule({ tenants: platformTenants, logs: platformLogs.slice(0, 300), layouts: platformLayouts, layoutAssigns: platformAssigns, customFields: platformCf });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, platformAdmins, platformTenants, platformLogs]);
+  }, [hydrated, platformAdmins, platformTenants, platformLogs, platformLayouts, platformAssigns, platformCf]);
 
   // ---- Tự lưu (sau 0,6 giây không đổi) ----
   useEffect(() => {
@@ -1516,6 +1522,9 @@ export default function DashboardApp() {
       if (mine?.value) setCompany((c) => ({ ...c, enabledModules: (mine.value as TenantReg).modules }));
     }
     if (b.keyed.logs) setPlatformLogs((prev) => ps.mergeList(prev as AnyRec[], 'logs', b.keyed.logs) as PlatformLog[]);
+    if (b.keyed.layouts) setPlatformLayouts((prev) => ps.mergeList(prev as AnyRec[], 'layouts', b.keyed.layouts) as LayoutVer[]);
+    if (b.keyed.layoutAssigns) setPlatformAssigns((prev) => ps.mergeList(prev as AnyRec[], 'layoutAssigns', b.keyed.layoutAssigns) as LayoutAssign[]);
+    if (b.keyed.customFields) setPlatformCf((prev) => ps.mergeList(prev as AnyRec[], 'customFields', b.keyed.customFields) as CfDef[]);
   };
   const attachSync = (ts: TenantSync, ps?: TenantSync) => {
     syncRef.current = ts;
@@ -1555,6 +1564,9 @@ export default function DashboardApp() {
       syncRef.current?.stop(); platSyncRef.current?.stop();
       setPlatformTenants(regs);
       setPlatformLogs(Array.isArray(pl.data.logs) ? (pl.data.logs as PlatformLog[]) : []);
+      setPlatformLayouts(Array.isArray(pl.data.layouts) ? (pl.data.layouts as LayoutVer[]) : []);
+      setPlatformAssigns(Array.isArray(pl.data.layoutAssigns) ? (pl.data.layoutAssigns as LayoutAssign[]) : []);
+      setPlatformCf(Array.isArray(pl.data.customFields) ? (pl.data.customFields as CfDef[]) : []);
       const users = loadOrg(org, regs, td);
       if (td.version > DATA_VERSION) ts.readOnly = true;
       tenantCloudStats[org] = { ...statsOf(td.data), version: td.version || DATA_VERSION };
@@ -1969,6 +1981,8 @@ export default function DashboardApp() {
     platform: {
       userId: platformId, admins: platformAdmins, setAdmins: setPlatformAdmins, switchTenant, tenants: platformTenants, setTenantReg, logs: platformLogs, addTenant,
       consoleView, openConsole: (t) => { setConsoleView(true); if (t) setConsoleTab(t); }, consoleTab, setConsoleTab, runMigration: runTenantMigration, backupTenant, restoreTenantSnapshot, log: platformLog,
+      layouts: platformLayouts, setLayouts: setPlatformLayouts, layoutAssigns: platformAssigns, setLayoutAssigns: setPlatformAssigns,
+      customFields: platformCf, setCustomFields: setPlatformCf,
     }, postCash,
     me, role, loginAt, switchRole, logout, now,
     leads, setLeads, customers, setCustomers, users, setUsers, departments, setDepartments,

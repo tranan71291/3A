@@ -1,4 +1,50 @@
-# 3A CRM v51.2 (Thu chi nâng cấp, hủy đơn đã có chứng từ — dựa trên v51.1)
+# 3A CRM v53 (Page Builder bản 2: trang Chi tiết đơn hàng theo khối, khối text, nút biểu tượng, trường tùy chỉnh đơn bán — dựa trên v52)
+
+## Cập nhật v53 (20/11)
+
+- **Trang Chi tiết đơn hàng dựng bằng khối** (3A Platform › Thiết kế giao diện › Trang). Khối lõi khóa (không xóa, luôn hiện): Thông tin đơn hàng, Hàng hóa & chứng từ, Quy trình xử lý, Thanh toán. Khối thêm: Lãi trên đơn, Công nợ khách, Trao đổi & nhật ký, Giao hàng & ghi chú, Tệp đính kèm. Chưa phát hành thì doanh nghiệp dùng giao diện gốc như cũ.
+- **Khối text** (cả Tổng quan và trang đơn): **đậm**, *nghiêng*, danh sách, tiêu đề nhỏ, liên kết; khung Thường / Lưu ý / Cảnh báo; hiện theo trạng thái đơn và vai trò. Không dùng HTML.
+- **Nút biểu tượng**: Quay lại, Đơn trước / Đơn sau, In, Tải xuống Excel, Tải lên tệp đính kèm, Xổ xuống (Sửa / Hủy / Xóa đơn theo quyền). Trang Tổng quan: In, Tải số liệu các khối ra Excel.
+- **Trường tùy chỉnh đơn bán** (3A Platform › Thiết kế giao diện › Trường tùy chỉnh): đầu đơn hoặc dòng hàng; kiểu Chữ, Số, Tiền, Ngày, Danh sách chọn, Người dùng, Tích chọn; bắt buộc khi lưu / khi duyệt; áp dụng Toàn hệ thống / Mô hình / Riêng doanh nghiệp; hiện ở form lên đơn, khối Thông tin, cột và bộ lọc Quản lý đơn hàng. Giá trị lưu trong đơn của doanh nghiệp (không thêm bảng, vẫn qua RLS). Trường dòng hàng chỉ để ghi chú, không tính tiền.
+- **Bảng**: cột STT; trên điện thoại bảng thu gọn và bảng Hàng hóa tự chuyển dạng thẻ.
+- **Xem trước** trang đơn hàng theo vai trò và trạng thái đơn mẫu (Chờ duyệt / Chờ xuất kho / Chờ thu tiền / Đang hủy / Hoàn thành).
+- Tệp đính kèm lưu ngay trong đơn (ảnh tự nén; PDF, Word, Excel tối đa 2 MB; tối đa 10 tệp/đơn).
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict). Chạy thử: 3A tạo trường "Hình thức vận chuyển" (bắt buộc khi duyệt, Mô hình Thương mại, có lọc) → thiết kế trang đơn hàng (thêm Nút biểu tượng, Khối text có điều kiện, Tệp đính kèm, Giao hàng; tắt cột Trả lại) → xem trước Kế toán trên điện thoại, Sales khi đơn đang hủy → phát hành. Sales lên đơn có Thông tin thêm; đơn thiếu trường bị chặn duyệt, cập nhật thông tin xong duyệt được; tải lên tệp, tải Excel, đơn trước / sau; danh sách bật cột và lọc theo trường. Kế toán thấy Lãi trên đơn. Ảnh ở thư mục `anh-v53`.
+
+
+> Không đổi bảng, SQL, không thêm thư viện. Mẫu bố cục lưu trong kho dữ liệu nền tảng `_platform` (2 danh sách mới `layouts`, `layoutAssigns`), cùng chỗ với hồ sơ doanh nghiệp: chỉ quản trị 3A ghi, doanh nghiệp chỉ đọc (theo chính sách RLS hiện có).
+
+## Cập nhật v52 (20/11)
+1. **3A Platform › Thiết kế giao diện** (chỉ tài khoản quản trị 3A): danh sách trang (Tổng quan mở ở bản này; Bàn làm việc, Báo cáo, trang nghiệp vụ ghi "Bản 2 / Bản sau"), cột phiên bản đang áp dụng theo cấp Toàn hệ thống / Thương mại / Xưởng / Riêng doanh nghiệp; mỗi dòng có nút **Thiết kế** và **Phát hành**.
+2. **Màn thiết kế** toàn màn hình (ẩn thanh điều hướng, có ← Quay lại; quay lại khi còn thay đổi thì tự lưu nháp): thư viện khối (3 khối dùng được; các khối khác gom ở mục "Bản sau"), lưới 12 cột: kéo khối bằng tay nắm, kéo góc phải dưới đổi độ rộng 1–12 / chiều cao, thêm khối bằng bấm hoặc kéo từ thư viện, nhân bản, xóa, Hoàn tác / Làm lại; khối tự dồn lên, không chồng nhau. Dữ liệu mẫu, không đọc dữ liệu doanh nghiệp.
+3. **Cài đặt khối**: tiêu đề, nguồn dữ liệu (Đơn bán, Lead, Khách hàng, Thu chi, Chương trình MDF), lọc, chỉ tiêu, cách tính (Tổng / Đếm / Trung bình), kỳ, so sánh kỳ trước; biểu đồ 2 đường 6 / 12 tháng; bảng thu gọn dạng danh sách (≤ 5 cột) hoặc nhóm theo (VD Top 5 khách hàng); nút mở phân hệ; vị trí cột / hàng / rộng / cao; **hiển thị trên Máy tính / Tablet / Điện thoại**; **độ rộng trên điện thoại** Cả hàng / 1/2 / 1/3 / 1/4 (khối chỉ số xếp lưới 2 × 2).
+4. **Xem trước**: chọn thiết bị (máy tính 12 cột, tablet 6 cột, điện thoại theo độ rộng khối) và **vai trò** (Giám đốc, Trưởng phòng, Sales, Trưởng MKT, Kế toán) để thấy khối tự ẩn theo quyền mặc định; ngăn kiểm tra trước khi phát hành; danh sách khối trên từng thiết bị (bật / tắt, kéo đổi thứ tự trên điện thoại).
+5. **Phát hành** (ngăn phải, tab Phát hành / Lịch sử): tick Toàn hệ thống / Mô hình Thương mại / Mô hình Xưởng / Riêng doanh nghiệp, phát hành thử cho 1 doanh nghiệp, ghi chú phiên bản, danh sách đang áp dụng có nút Gỡ; Lịch sử phiên bản có Khôi phục (chép thành bản nháp). Mọi thao tác ghi nhật ký nền tảng.
+6. **Phía doanh nghiệp**: trang Tổng quan hiện bố cục đã phát hành (ưu tiên riêng doanh nghiệp → mô hình → toàn hệ thống), chưa phát hành thì giữ giao diện gốc; không có nút sửa, kể cả Giám đốc. Số liệu theo phạm vi xem của người đăng nhập; khối thuộc phân hệ / quyền người đó không có thì tự ẩn; tự xếp lại theo bề rộng màn hình.
+7. **Schema JSON**: `LayoutVer { id, schema: 1, page, version, status: DRAFT | PUBLISHED, role (null = mọi vai trò; để dành tách theo vai trò), blocks[], note, by, at }`; `LBlock { id, type, pos: { lg: { x, y, w, h }, sm: { w, order } }, show: { lg, md, sm }, config }`; `LayoutAssign { page, level: SYSTEM | PROFILE | TENANT, profile, tenantId, role, verId }`. Vị trí x / y / w / h cùng định dạng react-grid-layout.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict). Chạy thử: quản trị 3A mở Thiết kế Tổng quan → đổi tiêu đề, kéo khối, kéo góc đổi cỡ, thêm khối bằng bấm và kéo thả, hoàn tác / làm lại → xem trước điện thoại và tablet với vai trò Sales → phát hành Toàn hệ thống → Lịch sử; đăng nhập Sales và Giám đốc VASSH thấy bố cục mới, màn điện thoại xếp 2 cột cho khối chỉ số. Chạy lại luồng đơn hàng v50 không lỗi. Ảnh ở thư mục `anh-v52`.
+**Giới hạn**: lưới kéo thả tự viết thay cho `react-grid-layout` vì môi trường build của 3A lần này không tải được gói npm để kiểm thử; dữ liệu cùng định dạng nên đổi sang thư viện sau không phải chuyển dữ liệu. Bản 1 chỉ áp dụng trang Tổng quan và 3 khối; vai trò khi xem trước dùng phân quyền mặc định (khi chạy thật theo phân quyền thật của doanh nghiệp). Mọi thành viên doanh nghiệp đọc được mẫu bố cục của nền tảng (không chứa dữ liệu nghiệp vụ).
+
+## (v51.3) 3A CRM v51.3 (hệ thống tài khoản TT 99 / TT 133, định khoản tự động, lãi đơn hàng — dựa trên v51.2)
+
+> Không đổi bảng, SQL, không thêm thư viện. Cấu hình kế toán lưu trong cấu hình doanh nghiệp sẵn có (khóa `mfgConfig.acct`); phiếu quỹ thêm trường tùy chọn phân bổ chi phí.
+
+## Cập nhật v51.3 (20/11)
+1. **Chế độ kế toán** (Cài đặt › Hệ thống tài khoản): chọn bộ tài khoản **TT 99/2025/TT-BTC** hoặc **TT 133/2016/TT-BTC**, khóa trong năm tài chính (01/01–31/12), đổi được từ năm sau. Danh mục tài khoản đối chiếu phụ lục của từng thông tư; kế toán thêm tài khoản chi tiết (cấp 2, 3…) dưới tài khoản cha (số hiệu bắt đầu bằng số hiệu cha), xóa được tài khoản chi tiết chưa dùng; tài khoản của thông tư không sửa / xóa.
+2. **Định khoản tự động theo sự kiện kinh tế**: thu tiền khách, thu hoàn ứng, thu khác, chi phí (tách thuế GTGT đầu vào khi có hóa đơn), trả nhà cung cấp, tạm ứng, hoàn tiền khách, chuyển quỹ, doanh thu + thuế đầu ra + giá vốn khi kho duyệt xuất bán, hàng bán bị trả lại. Mỗi sự kiện có cặp Nợ / Có sửa được; tài khoản quỹ, thuế; bảng **khoản mục thu chi → tài khoản** (khoản mục chưa gán được nhắc). Mặc định theo thông tư (VD chi phí vận chuyển: 6417 theo TT 99, 6421 theo TT 133). Có **Sổ nhật ký** (xuất CSV) và **Bảng cân đối số phát sinh** theo kỳ.
+3. **Khung Hạch toán (Nợ / Có)** ở phiếu thu, phiếu chi, chuyển quỹ (hiện trước khi lưu) và ở bản xem phiếu.
+4. **Lãi trên đơn** (chi tiết đơn, người có quyền quản lý bán hàng / kế toán / Giám đốc): Doanh thu thuần (sau chiết khấu, trừ hàng trả lại, chưa VAT) − Giá vốn tạm tính = **Lãi gộp chuẩn**; trừ chi phí gắn vào đơn (chưa gồm thuế được khấu trừ) = **Lãi ước tính**. Phiếu chi gắn đơn vẫn hạch toán vào tài khoản chi phí của khoản mục, kèm mã đơn.
+5. **Một phiếu chi cho nhiều đơn**: "Tính vào chi phí của › Nhiều đơn bán (phân bổ)", chọn đơn, phân bổ theo doanh thu / số lượng / chia đều; cột phải hiện lãi ước tính từng đơn trước → sau.
+6. **Giao diện Thu chi theo ảnh mẫu**: thanh công cụ (tìm kiếm, nút lọc gom khoản mục / đối tượng / loại phiếu, tải CSV, Chuyển quỹ / Phiếu thu / Phiếu chi); thẻ sổ gồm tab, chọn sổ có số dư, dòng Đầu kỳ + Thu − Chi = Cuối kỳ, bảng có cột Nguồn (mã chứng từ gốc), Trạng thái, cột thao tác (xem / sửa, in, hủy phiếu); cột Diễn giải ẩn mặc định (bật ở nút chọn cột).
+7. **Phiếu thu**: thêm **Thu hoàn ứng** (chọn nhân viên, hiện số tạm ứng đang giữ trước / sau); chọn khách dạng thẻ (MST, còn nợ). **Phiếu chi**: chọn người nhận dạng thẻ (nhà cung cấp / nhân viên / khách, SĐT). **Chuyển quỹ**: thẻ quỹ có tên ngân hàng / số tài khoản (theo Cài đặt › Doanh nghiệp), mã phiếu CQ ở phần Ghi vào sổ, "In giấy rút tiền" khi rút từ ngân hàng; phí chuyển ghi khoản mục "Phí ngân hàng".
+8. **Hủy đơn theo ảnh mẫu**: thẻ hủy nằm cột trái cùng bảng chứng từ (tự mở tab Chứng từ, thêm dòng "Phiếu chi hoàn tiền · Cần lập"); cột phải Thanh toán (có "Khách trả thừa") và **Quy trình hủy**; ẩn các nút thu tiền / xuất kho / hóa đơn khi đang hủy.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict). Chạy thử: chọn TT 99 → phiếu thu 2 đơn (Nợ 111 / Có 131) → hủy phiếu (phiếu đảo) → chuyển quỹ có phí (Nợ 111, Nợ 6427 / Có 112) → phiếu chi 600.000 có hóa đơn 8% phân bổ 2 đơn (Nợ 152 555.556, Nợ 1331 44.444 / Có 111; mỗi đơn chịu 277.778) → bảng cân đối số phát sinh tổng Nợ = tổng Có → nhập trả, hoàn tiền ở Phiếu chi › Hoàn tiền khách → hủy đơn. Chạy lại luồng đơn hàng v50, v51 không lỗi; xem được ở giao diện tối. Ảnh ở thư mục `anh-v51-3`.
+**Giới hạn**: Báo cáo tình hình tài chính (B01) và Kết quả kinh doanh (B02) theo mẫu từng thông tư chưa làm (cần thêm bút toán mua hàng, lương, khấu hao, số dư đầu kỳ các tài khoản). Giá vốn là tạm tính theo giá vốn hiện tại của mã hàng, chưa tự cập nhật theo bình quân cuối kỳ. Chưa có phân bổ theo trọng lượng (mã hàng chưa có trường trọng lượng). Năm tài chính tính theo năm dương lịch.
+
+## (v51.2) 3A CRM v51.2 (Thu chi nâng cấp, hủy đơn đã có chứng từ — dựa trên v51.1)
 
 > Không đổi bảng, SQL, không thêm thư viện. Phiếu quỹ thêm vài trường tùy chọn (phiếu đảo, các khoản thu gộp, đơn chịu chi phí, hóa đơn đầu vào, chứng từ kèm); dữ liệu cũ đọc như trước.
 

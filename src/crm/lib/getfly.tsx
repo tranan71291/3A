@@ -1,7 +1,7 @@
 'use client';
 
-import { boqIsEstimate, boqTotal, latestQuote, lineNet, saleIssQ, saleLineNet, saleResOf, saleRetQ, whQty } from './core';
-import type { GetflyOrderPayload, GetflyOrderRec, Lead, Quote, QuoteLine, SaleLineKind, SalesOrder, SaleStage, SaleStockData, StockVoucher } from './types';
+import { ACCT_STD, boqIsEstimate, boqTotal, cashVat, isCashReversal, iso, latestQuote, lineNet, saleIssQ, saleLineNet, saleResOf, saleRetQ, whQty } from './core';
+import type { Acct, AcctConfig, AcctEvent, AcctStd, CashEntry, CostAllocBy, GetflyOrderPayload, GetflyOrderRec, JLine, Lead, Quote, QuoteLine, SaleLineKind, SalesOrder, SaleStage, SaleStockData, SkuItem, StockVoucher } from './types';
 import { stockOf } from './workshop';
 
 /** Tiền hàng, chiết khấu, thuế theo từng mức, phí giao, tổng phải trả */
@@ -18,6 +18,131 @@ export function saleTotals(o: Pick<SalesOrder, 'lines' | 'shipFee'>) {
 /** Giá trị hàng trả lại (sau chiết khấu, gồm VAT) — trừ vào số phải thu */
 export function saleReturned(o: SalesOrder) {
   return o.lines.reduce((s, l) => { const r = saleRetQ(o, l); return r && l.qty ? s + Math.round((saleLineNet(l) / l.qty) * r * (1 + l.vat / 100)) : s; }, 0);
+}
+
+/** Cấu hình mặc định theo thông tư (doanh nghiệp sửa được ở Cài đặt › Hệ thống tài khoản) */
+export function acctDefaults(std: AcctStd, year: number, by?: string): AcctConfig {
+  const t99 = std === 'TT99';
+  const sell = t99 ? '6418' : '6421', sellSvc = t99 ? '6417' : '6421', adm = t99 ? '6428' : '6422', admSvc = t99 ? '6427' : '6422';
+  return {
+    std, year, chosenAt: Date.now(), chosenBy: by, custom: [],
+    funds: { CASH: t99 ? '111' : '1111', BANK: t99 ? '112' : '1121' }, vatIn: '1331', vatOut: '33311',
+    rules: {
+      IN_SALE: { dr: '@FUND', cr: '131' }, IN_ADV_BACK: { dr: '@FUND', cr: '141' }, IN_OTHER: { dr: '@FUND', cr: '@CAT' },
+      OUT_COST: { dr: '@CAT', cr: '@FUND' }, OUT_VENDOR: { dr: '331', cr: '@FUND' }, OUT_ADVANCE: { dr: '141', cr: '@FUND' }, OUT_REFUND: { dr: '131', cr: '@FUND' },
+      TRANSFER: { dr: '@FUND_TO', cr: '@FUND' },
+      SALE_REVENUE: { dr: '131', cr: t99 ? '511' : '5111' }, SALE_COGS: { dr: '632', cr: '156' }, SALE_RETURN: { dr: t99 ? '521' : '5111', cr: '131' }, SALE_RETURN_STOCK: { dr: '156', cr: '632' },
+    },
+    cats: {
+      'Thu khác': '711', 'Bán phế liệu': '711', 'Thặng dư quỹ MDF': '711', 'Góp vốn / vay': t99 ? '4111' : '4111', 'Hoàn tiền nhà cung cấp': '331',
+      'Thu tiền khách hàng': '131', 'Thu tiền bán hàng': '131', 'Hoàn tiền bán hàng': '131', 'Hủy phiếu thu bán hàng': '131', 'Hủy phiếu hoàn tiền bán hàng': '131', 'Hoàn ứng công tác': '141',
+      'Vật tư, nguyên liệu': '152', 'Nhân công lắp đặt': '154', 'Vận chuyển': sellSvc, 'Lương, thưởng': '334', 'Mặt bằng, điện nước': admSvc, 'Marketing': sell,
+      'Hoa hồng giới thiệu': sell, 'Hoa hồng': t99 ? '6411' : '6421', 'Bảo hành, sửa chữa': sell, 'Chi khác': '811', 'Phí ngân hàng': admSvc,
+      'Tạm ứng công tác': '141', 'Tạm ứng nhân viên': '141', 'Công tác phí': adm, 'Chi phí triển khai sự kiện': sell,
+    },
+  };
+}
+
+export function acctList(c: AcctConfig): Acct[] {
+  const all: Acct[] = [...ACCT_STD[c.std].coa.map(([code, name]) => ({ code, name })), ...c.custom];
+  const codes = new Set(all.map((a) => a.code));
+  return all.map((a) => { let p: string | undefined; for (let n = a.code.length - 1; n >= 3; n--) if (codes.has(a.code.slice(0, n))) { p = a.code.slice(0, n); break; } return { ...a, parent: a.parent ?? p }; })
+    .sort((x, y) => x.code.localeCompare(y.code));
+}
+
+/** Sự kiện kinh tế của một phiếu quỹ */
+export function cashEvent(e: CashEntry): AcctEvent {
+  if (e.kind === 'TRANSFER') return 'TRANSFER';
+  if (e.kind === 'IN') return e.sub === 'ADV_BACK' ? 'IN_ADV_BACK' : (e.sub === 'CUSTOMER' || ((e.source === 'SALE' || e.source === 'RECEIPT') && !isCashReversal(e))) ? 'IN_SALE' : 'IN_OTHER';
+  if (e.sub === 'VENDOR') return 'OUT_VENDOR';
+  if (e.sub === 'ADVANCE' || e.source === 'ADVANCE') return 'OUT_ADVANCE';
+  if (e.sub === 'REFUND') return 'OUT_REFUND';
+  return 'OUT_COST';
+}
+
+/** Định khoản một phiếu quỹ theo quy tắc của doanh nghiệp; acctMissing = khoản mục chưa gán tài khoản */
+export function cashJournal(e: CashEntry, c: AcctConfig): { lines: JLine[]; event: AcctEvent; missing?: string } {
+  const ev = cashEvent(e);
+  const r = c.rules[ev];
+  let missing: string | undefined;
+  const res = (t: string) => {
+    if (t === '@FUND') return c.funds[e.account];
+    if (t === '@FUND_TO') return c.funds[e.toAccount ?? 'BANK'];
+    if (t === '@CAT') { const a = c.cats[e.category]; if (!a) missing = e.category; return a || (e.kind === 'IN' ? '711' : '811'); }
+    return t;
+  };
+  const base = { date: e.date, ref: e.code, desc: e.note || e.category, src: 'CASH' as const, saleId: e.saleId };
+  const vat = ev === 'OUT_COST' ? cashVat(e) : 0;
+  const lines: JLine[] = [{ ...base, id: `${e.id}:1`, dr: res(r.dr), cr: res(r.cr), amount: e.amount - vat }];
+  if (vat) lines.push({ ...base, id: `${e.id}:v`, dr: c.vatIn, cr: res(r.cr), amount: vat, desc: `Thuế GTGT đầu vào ${e.invNo ?? ''}`.trim() });
+  return { lines, event: ev, missing };
+}
+
+/** Định khoản đơn bán theo phiếu kho đã duyệt: doanh thu + thuế, giá vốn tạm tính; hàng trả lại ghi giảm */
+export function saleJournal(o: SalesOrder, vs: StockVoucher[], skus: SkuItem[], c: AcctConfig): JLine[] {
+  const out: JLine[] = [];
+  const cost = (sku: string) => skus.find((k) => k.sku === sku)?.costPrice ?? 0;
+  vs.filter((v) => v.saleId === o.id && v.status === 'DONE' && (v.type === 'OUT' || v.type === 'IN')).forEach((v) => {
+    let net = 0, vat = 0, cogs = 0;
+    v.lines.forEach((l) => {
+      const ol = o.lines.find((x) => x.id === l.lineId);
+      if (!ol || !ol.qty) return;
+      const n = Math.round((saleLineNet(ol) / ol.qty) * l.qty);
+      net += n; vat += Math.round((n * ol.vat) / 100); cogs += Math.round(l.qty * cost(l.sku));
+    });
+    const d = v.approvedAt ? iso(new Date(v.approvedAt)) : v.date;
+    const base = { date: d, ref: v.code, saleId: o.id, src: 'SALE' as const };
+    if (v.type === 'OUT') {
+      if (net) out.push({ ...base, id: `${v.id}:r`, dr: c.rules.SALE_REVENUE.dr, cr: c.rules.SALE_REVENUE.cr, amount: net, desc: `Doanh thu ${o.code}` });
+      if (vat) out.push({ ...base, id: `${v.id}:t`, dr: c.rules.SALE_REVENUE.dr, cr: c.vatOut, amount: vat, desc: `Thuế GTGT đầu ra ${o.code}` });
+      if (cogs) out.push({ ...base, id: `${v.id}:c`, dr: c.rules.SALE_COGS.dr, cr: c.rules.SALE_COGS.cr, amount: cogs, desc: `Giá vốn ${o.code} (tạm tính)` });
+    } else {
+      if (net) out.push({ ...base, id: `${v.id}:r`, dr: c.rules.SALE_RETURN.dr, cr: c.rules.SALE_RETURN.cr, amount: net, desc: `Hàng bán trả lại ${o.code}` });
+      if (vat) out.push({ ...base, id: `${v.id}:t`, dr: c.vatOut, cr: c.rules.SALE_RETURN.cr, amount: vat, desc: `Thuế GTGT hàng trả lại ${o.code}` });
+      if (cogs) out.push({ ...base, id: `${v.id}:c`, dr: c.rules.SALE_RETURN_STOCK.dr, cr: c.rules.SALE_RETURN_STOCK.cr, amount: cogs, desc: `Nhập lại kho ${o.code}` });
+    }
+  });
+  return out;
+}
+
+// ---------------- Lãi trên đơn bán (v51.3) ----------------
+/** Doanh thu thuần: sau chiết khấu, trừ hàng bán bị trả lại, chưa gồm thuế GTGT */
+export function saleNetRevenue(o: SalesOrder) {
+  if (o.status === 'CANCELLED') return 0;
+  const ret = o.lines.reduce((s, l) => { const r = saleRetQ(o, l); return r && l.qty ? s + Math.round((saleLineNet(l) / l.qty) * r) : s; }, 0);
+  return saleTotals(o).net - ret;
+}
+
+/** Giá vốn tạm tính: (đã xuất − trả lại; chưa xuất thì số đặt) × giá vốn hiện tại của mã hàng; dòng không quản lý kho không có giá vốn */
+export function saleCostEst(o: SalesOrder, skus: SkuItem[]) {
+  if (o.status === 'CANCELLED') return 0;
+  return o.lines.reduce((s, l) => {
+    if (l.kind !== 'SKU' || !l.ref) return s;
+    const iss = saleIssQ(o, l);
+    const q = iss > 0 ? iss - saleRetQ(o, l) : l.qty;
+    return s + Math.max(0, q) * (skus.find((k) => k.sku === l.ref)?.costPrice ?? 0);
+  }, 0);
+}
+
+/** Chi phí trực tiếp gắn vào đơn (chưa gồm thuế GTGT được khấu trừ): phiếu chi gắn đơn + phần phân bổ của phiếu chi nhiều đơn */
+export function saleDirectCost(o: SalesOrder, entries: CashEntry[], exceptId?: string) {
+  return entries.reduce((s, e) => {
+    if (e.kind !== 'OUT' || e.source === 'SALE' || isCashReversal(e) || e.id === exceptId || !e.amount) return s;
+    const netK = (e.amount - cashVat(e)) / e.amount;
+    if (e.allocs?.length) { const a = e.allocs.find((x) => x.saleId === o.id); return a ? s + Math.round(a.amount * netK) : s; }
+    return e.saleId === o.id ? s + Math.round(e.amount * netK) : s;
+  }, 0);
+}
+
+/** Phân bổ một khoản cho nhiều đơn: theo doanh thu thuần, số lượng hàng, hoặc chia đều; làm tròn dồn vào đơn cuối */
+export function allocCost(total: number, orders: SalesOrder[], by: CostAllocBy): { saleId: string; amount: number }[] {
+  if (!orders.length) return [];
+  const w = orders.map((o) => (by === 'EQUAL' ? 1 : by === 'QTY' ? o.lines.filter((l) => l.kind !== 'FREE').reduce((s, l) => s + l.qty, 0) : Math.max(0, saleNetRevenue(o))));
+  const sum = w.reduce((s, x) => s + x, 0);
+  const ww = sum > 0 ? w : orders.map(() => 1);
+  const tot = sum > 0 ? sum : orders.length;
+  let left = Math.round(total);
+  return orders.map((o, i) => { const a = i === orders.length - 1 ? left : Math.round((total * ww[i]) / tot); left -= a; return { saleId: o.id, amount: a }; });
 }
 
 /** Số đang chờ kho duyệt theo dòng (phiếu xuất chờ duyệt của đơn) */
