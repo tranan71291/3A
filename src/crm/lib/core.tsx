@@ -9,7 +9,7 @@ import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
 import { acctList, saleReturned, saleTotals } from './getfly';
-import type { AcctConfig, AcctEvent, AcctStd, Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, CfDef, CfType, CfVal, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashPeriod, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, Lead, LeadStatus, LeaveKind, LField, LostReason, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, LTextKind, LTypeDef, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { AcctConfig, AcctEvent, AcctStd, Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, CfDef, CfType, CfVal, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashPeriod, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, Lead, LeadStatus, LeaveKind, LField, LostReason, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, LTextKind, LTypeDef, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, SoColDef, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
@@ -2561,7 +2561,28 @@ export const lOnTab = (b: LBlock, bs: LBlock[], t: string) => { const ids = lTab
 /** Tab trạng thái và cột của danh sách đơn (khối Danh sách đơn hàng) */
 export const SO_LIST_TABS: { id: string; label: string; lock?: boolean }[] = [{ id: 'ALL', label: 'Tất cả', lock: true }, { id: 'APPROVAL', label: 'Chờ duyệt' }, { id: 'APPROVED', label: 'Đã duyệt' }, { id: 'WAIT', label: 'Chờ xuất kho' }, { id: 'UNPAID', label: 'Chưa thanh toán' }, { id: 'PAID', label: 'Đã thanh toán' }, { id: 'DONE', label: 'Hoàn thành' }, { id: 'CANCELLED', label: 'Đã hủy' }];
 
-export const SO_LIST_COLS: { id: string; label: string; lock?: boolean; def?: boolean }[] = [{ id: 'date', label: 'Ngày', def: true }, { id: 'code', label: 'Mã đơn', lock: true }, { id: 'seller', label: 'NV bán (dưới mã đơn)', def: true }, { id: 'cust', label: 'Khách hàng', lock: true }, { id: 'status', label: 'Trạng thái', lock: true }, { id: 'origin', label: 'Nguồn đơn' }, { id: 'by', label: 'Người tạo' }, { id: 'wh', label: 'Kho xuất' }, { id: 'issue', label: 'Trạng thái xuất kho' }, { id: 'deliver', label: 'Ngày giao' }, { id: 'gross', label: 'Doanh số', def: true }, { id: 'disc', label: 'Chiết khấu' }, { id: 'vat', label: 'VAT', def: true }, { id: 'grand', label: 'Tổng đơn', def: true }, { id: 'paid', label: 'Doanh thu', def: true }, { id: 'wait', label: 'Chờ kế toán thu' }, { id: 'left', label: 'Còn lại', def: true }, { id: 'ret', label: 'Hàng trả lại' }, { id: 'dueAt', label: 'Hạn thanh toán' }, { id: 'note', label: 'Ghi chú', def: true }, { id: 'inv', label: 'Hóa đơn thuế', def: true }];
+/** v54.1 trường của nguồn Đơn bán (khối Bảng): cột theo nhóm, kể cả trường liên quan Khách hàng › / Người tạo › */
+export const SO_LIST_COLS: SoColDef[] = [{ id: 'date', label: 'Ngày', def: true, g: 'Thông tin' }, { id: 'code', label: 'Mã đơn', lock: true, g: 'Thông tin' }, { id: 'seller', label: 'NV bán (dưới mã đơn)', def: true, g: 'Thông tin' }, { id: 'cust', label: 'Khách hàng', lock: true, g: 'Thông tin' }, { id: 'origin', label: 'Nguồn đơn', g: 'Thông tin' }, { id: 'by', label: 'Người tạo', g: 'Thông tin' }, { id: 'wh', label: 'Kho xuất', g: 'Thông tin' }, { id: 'note', label: 'Ghi chú', def: true, g: 'Thông tin' },
+  { id: 'status', label: 'Trạng thái', lock: true, g: 'Tiến độ' }, { id: 'issue', label: 'Trạng thái xuất kho', g: 'Tiến độ' }, { id: 'deliver', label: 'Ngày giao', g: 'Tiến độ' }, { id: 'inv', label: 'Hóa đơn thuế', def: true, g: 'Tiến độ' },
+  { id: 'gross', label: 'Doanh số', def: true, g: 'Tiền', num: true, sum: true }, { id: 'disc', label: 'Chiết khấu', g: 'Tiền', num: true, sum: true }, { id: 'vat', label: 'VAT', def: true, g: 'Tiền', num: true, sum: true }, { id: 'grand', label: 'Tổng đơn', def: true, g: 'Tiền', num: true, sum: true }, { id: 'paid', label: 'Doanh thu', def: true, g: 'Tiền', num: true, sum: true }, { id: 'wait', label: 'Chờ kế toán thu', g: 'Tiền', num: true, sum: true }, { id: 'left', label: 'Còn lại', def: true, g: 'Tiền', num: true, sum: true }, { id: 'ret', label: 'Hàng trả lại', g: 'Tiền', num: true, sum: true }, { id: 'dueAt', label: 'Hạn thanh toán', g: 'Tiền' },
+  { id: 'kh_code', label: 'Mã khách hàng', g: 'Khách hàng' }, { id: 'kh_tax', label: 'MST', g: 'Khách hàng' }, { id: 'kh_phone', label: 'SĐT khách', g: 'Khách hàng' }, { id: 'kh_dept', label: 'Phòng ban phụ trách', g: 'Khách hàng' }, { id: 'kh_region', label: 'Khu vực', g: 'Khách hàng' }, { id: 'kh_seg', label: 'Phân khúc', g: 'Khách hàng' }, { id: 'kh_tier', label: 'Hạng khách', g: 'Khách hàng' }, { id: 'kh_am', label: 'NV phụ trách khách', g: 'Khách hàng' }, { id: 'kh_limit', label: 'Hạn mức công nợ', g: 'Khách hàng', num: true }, { id: 'kh_debt', label: 'Công nợ khách hiện tại', g: 'Khách hàng', num: true },
+  { id: 'u_dept', label: 'Phòng ban người tạo', g: 'Người tạo' }, { id: 'u_title', label: 'Chức danh người tạo', g: 'Người tạo' }];
+
+/** Thứ tự cột khi hiển thị (giống danh sách thật) */
+export const SO_LIST_ORDER = ['date', 'code', 'cust', 'kh_code', 'kh_tax', 'kh_phone', 'kh_dept', 'kh_region', 'kh_seg', 'kh_tier', 'kh_am', 'status', 'origin', 'by', 'u_dept', 'u_title', 'wh', 'issue', 'deliver', 'gross', 'disc', 'vat', 'grand', 'paid', 'wait', 'left', 'ret', 'dueAt', 'kh_limit', 'kh_debt', 'note', 'inv'];
+
+/** Trường cho ô tìm kiếm (s: chữ trong gợi ý) */
+export const SO_SEARCH: { id: string; label: string; s: string }[] = [{ id: 'code', label: 'Mã đơn', s: 'mã đơn' }, { id: 'cust', label: 'Tên khách hàng', s: 'khách hàng' }, { id: 'phone', label: 'SĐT', s: 'SĐT' }, { id: 'sku', label: 'Mã / tên hàng', s: 'mã hàng' }, { id: 'note', label: 'Ghi chú', s: 'ghi chú' }, { id: 'by', label: 'Người tạo', s: 'người tạo' }, { id: 'tax', label: 'MST khách', s: 'MST' }];
+
+export const SO_SEARCH_DEF = ['code', 'cust', 'phone', 'sku'];
+
+/** Trường của bộ lọc (biểu tượng phễu) */
+export const SO_FILTERS: { id: string; label: string }[] = [{ id: 'dateBy', label: 'Theo ngày đặt / ngày tạo' }, { id: 'code', label: 'Mã đơn hàng' }, { id: 'origin', label: 'Nguồn đơn hàng' }, { id: 'by', label: 'Nhân viên bán' }, { id: 'cust', label: 'Khách hàng' }, { id: 'wh', label: 'Kho xuất' }, { id: 'issue', label: 'Trạng thái xuất kho' }, { id: 'pay', label: 'Phương thức thanh toán' }, { id: 'paySt', label: 'Trạng thái thanh toán' }, { id: 'inv', label: 'Hóa đơn thuế' }, { id: 'rev', label: 'Doanh thu lớn / nhỏ hơn' }, { id: 'ret', label: 'Có hàng trả lại' }, { id: 'overdue', label: 'Quá hạn thanh toán' }];
+
+/** Nút đầu bảng */
+export const SO_HEAD_BTNS: { id: string; label: string }[] = [{ id: 'filter', label: 'Bộ lọc' }, { id: 'cols', label: 'Cột hiển thị' }, { id: 'excel', label: 'Tải Excel' }, { id: 'print', label: 'In' }, { id: 'new', label: 'Lên đơn bán' }];
+
+export const SO_PERS: [string, string][] = [['ALL', 'Tất cả'], ['D', 'Hôm nay'], ['W', 'Tuần này'], ['M', 'Tháng này'], ['Q', 'Quý này'], ['Y', 'Năm nay']];
 
 /** Đảm bảo trang nghiệp vụ luôn đủ khối lõi (luôn hiện trên mọi thiết bị) */
 export const lEnsureCore = (page: LPage, bs: LBlock[]): LBlock[] => {
@@ -2635,10 +2656,40 @@ export const L_KIND: Record<LTextKind, string> = { title: 'Tiêu đề trang', h
 
 export const lKind = (c: LBlockCfg): LTextKind => c.kind ?? (c.tone === 'note' ? 'note' : c.tone === 'warn' ? 'warn' : 'para');
 
+/** v54.1 bảng màu hệ thống: text = màu chữ (đủ tương phản), base = màu nền / viền; tự đổi theo giao diện sáng / tối */
+export const L_TONE: Record<string, { label: string; text: string; base: string }> = {
+  fg: { label: 'Chữ chính', text: '--fg', base: '--fg' },
+  fg2: { label: 'Chữ phụ', text: '--fg2', base: '--fg2' },
+  muted: { label: 'Xám', text: '--muted', base: '--muted' },
+  accent: { label: 'Cam', text: '--accent-fg', base: '--accent' },
+  success: { label: 'Xanh lá', text: '--success-fg', base: '--success' },
+  danger: { label: 'Đỏ', text: '--danger-fg', base: '--danger' },
+  warn: { label: 'Vàng', text: '--warn', base: '--warn' },
+  blue: { label: 'Xanh dương', text: '--secondary-fg', base: '--secondary' },
+};
+
+export const lHex = (v?: string): v is string => !!v && /^#[0-9a-f]{6}$/i.test(v);
+
+export const L_FS = { sm: 0.9, md: 1, lg: 1.12, xl: 1.25 } as const;
+
+export const L_RAD = { none: '0px', sm: '6px', md: '12px', lg: '18px', xl: '24px' } as const;
+
+export const L_SH = { none: 'none', sm: '0 1px 2px rgb(0 0 0 / 0.06)', md: '0 2px 10px rgb(0 0 0 / 0.09)', lg: '0 10px 28px rgb(0 0 0 / 0.14)' } as const;
+
+export const L_TS = { sm: '12.5px', md: '14px', lg: '16px', xl: '19px' } as const;
+
+export const L_TW = { normal: '400', medium: '500', bold: '600' } as const;
+
+/** Khối không có thẻ nền riêng (nền / viền đặt cho chính vùng khối) */
+export const lBoxType = (b: LBlock) => !(lIsCore(b.type) || lType(b.type).tier === 'biz' || lHasData(b.type) || (b.type === 'K-Text' && lFramed(b.config)));
+
 /** Khối text có khung (viền + nền): mặc định cho Ghi chú / Lưu ý / Cảnh báo và khối text kiểu cũ */
 export const lFramed = (c: LBlockCfg) => c.frame ?? (c.kind ? ['info', 'note', 'warn'].includes(c.kind) : true);
 
-export const lToneCls = (c: LBlockCfg) => { const k = lKind(c); return k === 'note' ? '!border-[rgb(var(--accent)/0.4)] !bg-[rgb(var(--accent)/0.07)]' : k === 'warn' ? '!border-[rgb(var(--danger-fg)/0.4)] !bg-[rgb(var(--danger-fg)/0.07)]' : ''; };
+export const lToneCls = (c: LBlockCfg) => {
+  const k = lKind(c); const ownBg = !!c.st?.bg && c.st.bg !== 'auto'; const ownBd = !!c.st && ((!!c.st.bd && c.st.bd !== 'auto') || !!c.st.bdS || !!c.st.bdW);
+  return k === 'note' ? cn(!ownBd && '!border-[rgb(var(--accent)/0.4)]', !ownBg && '!bg-[rgb(var(--accent)/0.07)]') : k === 'warn' ? cn(!ownBd && '!border-[rgb(var(--danger-fg)/0.4)]', !ownBg && '!bg-[rgb(var(--danger-fg)/0.07)]') : '';
+};
 
 /** Bộ icon cho nút (3A chọn) */
 export const L_ICONSET: Record<string, typeof Printer> = { Target, Printer, Download, Upload, ArrowLeft, ChevronLeft, ChevronRight, RefreshCw, Filter, Plus, Send, ExternalLink, Link2, CalendarDays, Bell, Star, Settings, Eye, FileText, MoreVertical, Pencil, ShoppingBag, Users, Wallet, Package, LayoutDashboard, Megaphone, ClipboardList, Paperclip, Info };

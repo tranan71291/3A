@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, type CSSProperties, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRight, Bell, Bot, ChevronDown, Clock, Download, ExternalLink, FileText, FolderKanban, Hash, Inbox, Info, MessageSquare, Paperclip, Pin, Plus, Reply, Search, SmilePlus, Sparkles, Star, StickyNote, Target, TrendingUp, Upload, Users, Users2, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Bell, Bot, ChevronDown, Clock, Columns3, Download, ExternalLink, FileText, Filter, FolderKanban, Hash, Inbox, Info, MessageSquare, Paperclip, Pin, Plus, Printer, Reply, Search, SmilePlus, Sparkles, Star, StickyNote, Target, TrendingUp, Upload, Users, Users2, X } from 'lucide-react';
 import { CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { PAvatar } from '../../app/header';
 import { MentionComposer, MentionText, useDeepLinks } from '../../components/comments';
@@ -9,10 +9,10 @@ import { Avatar, MobileRow } from '../../components/controls';
 import { claimDate } from '../../components/filters';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, monthly, Panel, ProgressBar, StatCard, Table, Tabs, useSticky } from '../../components/ui';
 import { auditClaim, claimState, scoreLead } from '../../lib/business';
-import { bizMode, blockersOf, boqTotal, btnGhost, btnPrimary, btnSm, C, cfDefsFor, cfEmpty, cfSample, chatFileMax, claimYear, CLOUD_ON, compact, deptIcon, dmId, downloadBlob, fmtDate, fmtN, fmtSize, fold, GRAD, inputBase, inputCls, isAcceptLate, isMktCustomer, iso, isQuoteOverdue, isTextFile, jobCustName, kpiGrid, L_ACT, L_DS, L_GAP, L_ICONSET, L_PER, L_PER_LOW, L_PERIOD, L_ROW, L_SAMPLE_CUST, L_SAMPLE_STAFF, L_SO_LINES, lAgg, lCondOk, lDeviceOf, LEAD_STATUS, leadAt, lEnsureCore, lField, lFieldOrder, lFill, lFilter, lFmt, lFramed, lHasData, lHit, lIsCore, lKind, lMigrate, LPageC, lPeriodLabel, lTabList, lToneCls, lType, MODULE_LABEL, MQL_THRESHOLD, OPEN_STATUSES, pct, PRESENCE_META, presenceOf, progName, PROGRAM_COLOR, PROGRAM_LABEL, PROGRAM_STATUS, QUICK_REACTIONS, REGION_LABEL, ROLE_LABEL, rowCls, SALE_STAGE, saleOwed, salePaid, SO_INFO_F, SO_LINE_F, SO_LIST_COLS, SO_LIST_TABS, SOURCE_LABEL, tdCls, tdFirst, tdLast, threadKey, tierInfo, tipStyle, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { bizMode, blockersOf, boqTotal, btnGhost, btnPrimary, btnSm, C, cfDefsFor, cfEmpty, cfSample, chatFileMax, claimYear, CLOUD_ON, compact, deptIcon, dmId, downloadBlob, fmtDate, fmtN, fmtSize, fold, GRAD, inputBase, inputCls, isAcceptLate, isMktCustomer, iso, isQuoteOverdue, isTextFile, jobCustName, kpiGrid, L_ACT, L_DS, L_FS, L_GAP, L_ICONSET, L_PER, L_PER_LOW, L_PERIOD, L_RAD, L_ROW, L_SAMPLE_CUST, L_SAMPLE_STAFF, L_SH, L_SO_LINES, L_TONE, L_TS, L_TW, lAgg, lBoxType, lCondOk, lDeviceOf, LEAD_STATUS, leadAt, lEnsureCore, lField, lFieldOrder, lFill, lFilter, lFmt, lFramed, lHasData, lHex, lHit, lIsCore, lKind, lMigrate, LPageC, lPeriodLabel, lTabList, lToneCls, lType, MODULE_LABEL, MQL_THRESHOLD, OPEN_STATUSES, pct, PRESENCE_META, presenceOf, progName, PROGRAM_COLOR, PROGRAM_LABEL, PROGRAM_STATUS, QUICK_REACTIONS, REGION_LABEL, ROLE_LABEL, rowCls, SALE_STAGE, saleOwed, salePaid, SO_INFO_F, SO_LINE_F, SO_LIST_COLS, SO_LIST_ORDER, SO_LIST_TABS, SO_PERS, SO_SEARCH, SO_SEARCH_DEF, SOURCE_LABEL, tdCls, tdFirst, tdLast, threadKey, tierInfo, tipStyle, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { xlsxBlob } from '../../lib/csv';
 import { saleStage, saleTotals } from '../../lib/getfly';
-import type { AppCtx, CfDef, CfVal, ChatChannel, ChatFile, Claim, CommentEntity, DashPeriod, DashScope, DateRange, DeptCode, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, LeadStatus, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, Module, ProgramType, Role, RowComment, StockVoucher, Thread, User, XlsxSheet } from '../../lib/types';
+import type { AppCtx, CfDef, CfVal, ChatChannel, ChatFile, Claim, CommentEntity, DashPeriod, DashScope, DateRange, DeptCode, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, LeadStatus, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, Module, ProgramType, Role, RowComment, SoColDef, StockVoucher, Thread, User, XlsxSheet } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { dashRange, ExecDashboard, KpiTargetSheet, useDashData } from '../dashboard/exec-dashboard';
 import { CommandCenter } from '../dashboard/widget-board';
@@ -612,7 +612,7 @@ export function LLine({ c, rows }: { c: LBlockCfg; rows: LRow[] }) {
   const ser = (c.series ?? ['revenue']).filter(Boolean).slice(0, 2);
   const data = Array.from({ length: n }, (_, i) => { const d = new Date(t.getFullYear(), t.getMonth() - (n - 1 - i), 1); const k = iso(d).slice(0, 7); const rs = base.filter((r) => r.date.slice(0, 7) === k);
     return { name: `T${d.getMonth() + 1}`, ...Object.fromEntries(ser.map((f) => [lField(c.ds, f).label, lAgg(rs, f, f === 'count' ? 'count' : 'sum')])) }; });
-  const colors = [C.orange, C.muted];
+  const colors = [lCol(c.colors?.[0], 'solid') ?? C.orange, lCol(c.colors?.[1], 'solid') ?? C.muted];
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex gap-3 text-[12px] text-[rgb(var(--muted))]">{ser.map((f, i) => <span key={f} className="inline-flex items-center gap-1.5"><i className="inline-block h-0.5 w-3" style={{ background: colors[i] }} />{lField(c.ds, f).label}</span>)}</div>
@@ -659,16 +659,56 @@ export function lDesignCtx(page: LPage, tab: string, setTab: (t: string) => void
   return { live: false, page, period, setPeriod, dept: 'ALL', setDept: () => {}, tab, setTab, vars: lVars(period, 'VASSH', 'Trần Quốc Bảo', { 'mã đơn': 'DH201126-02', 'khách hàng': 'NPP Hoàng Phát', 'trạng thái đơn': 'Chờ xuất kho' }), act: () => {}, can: () => true, openTargets: () => {} };
 }
 
+/** Màu theo khóa bảng màu hoặc #mã: text (chữ), solid (đặc), tint (nhạt theo độ trong a) */
+export function lCol(v: string | undefined, mode: 'text' | 'solid' | 'tint', a = 0.08): string | undefined {
+  if (!v || v === 'auto') return undefined;
+  if (lHex(v)) return mode === 'tint' ? `${v}${Math.round(a * 255).toString(16).padStart(2, '0')}` : v;
+  const t = L_TONE[v];
+  if (!t) return undefined;
+  return mode === 'text' ? `rgb(var(${t.text}))` : mode === 'solid' ? `rgb(var(${t.base}))` : `rgb(var(${t.base}) / ${a})`;
+}
+
+/** Màu chữ đặt trên nền đặc */
+export function lOnColor(v: string): string {
+  if (lHex(v)) { const n = parseInt(v.slice(1), 16); const y = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; return y > 0.6 ? '#1c1917' : '#ffffff'; }
+  return v === 'fg' ? 'rgb(var(--bg))' : v === 'warn' ? '#1c1917' : '#ffffff';
+}
+
+/** Kiểu dáng của khối → lớp CSS + biến CSS (box = khối không có thẻ nền: nút, bộ lọc, chữ không khung) và hệ số cỡ chữ z */
+export function lSt(c: LBlockCfg, box = false, noBd = false): { cls: string; css: CSSProperties; z?: number } {
+  const s = c.st;
+  if (!s) return { cls: '', css: {} };
+  const v: Record<string, string> = {}; const k: string[] = [];
+  const bgKey = s.bg && s.bg !== 'auto' ? s.bg : undefined;
+  const bg = !bgKey ? undefined : bgKey === 'none' ? 'transparent' : bgKey === 'surface' ? 'rgb(var(--surface))' : bgKey === 'sunken' ? 'rgb(var(--sunken))' : lCol(bgKey, s.bgA === 'solid' ? 'solid' : 'tint', s.bgA === 'mid' ? 0.16 : 0.08);
+  if (bg) { v['--lb-bg'] = bg; k.push('lst-bg'); }
+  const solid = !!bg && s.bgA === 'solid' && !!bgKey && !['none', 'surface', 'sunken'].includes(bgKey);
+  const col = lCol(s.color, 'text') ?? (solid ? lOnColor(bgKey!) : undefined);
+  if (col) { v['--lb-c'] = col; k.push('lst-c'); }
+  if (!noBd && ((s.bd && s.bd !== 'auto') || s.bdS || s.bdW)) {
+    v['--lb-bd'] = !s.bd || s.bd === 'auto' || s.bd === 'line' ? 'rgb(var(--line))' : s.bd === 'none' ? 'transparent' : s.bd === 'strong' ? 'rgb(var(--ink) / 0.3)' : lCol(s.bd, 'solid') ?? 'rgb(var(--line))';
+    v['--lb-bw'] = `${s.bdW ?? 1}px`; v['--lb-bs'] = s.bdS ?? 'solid'; k.push('lst-bd');
+  }
+  if (s.r) { v['--lb-r'] = L_RAD[s.r]; k.push('lst-r'); }
+  if (s.sh) { v['--lb-sh'] = L_SH[s.sh]; k.push('lst-sh'); }
+  if (s.tSize) { v['--lb-ts'] = L_TS[s.tSize]; k.push('lst-ts'); }
+  const tc = lCol(s.tColor, 'text'); if (tc) { v['--lb-tc'] = tc; k.push('lst-tc'); }
+  if (s.tW) { v['--lb-tw'] = L_TW[s.tW]; k.push('lst-tw'); }
+  if (solid) k.push('lst-solid');
+  if (box && (k.includes('lst-bg') || k.includes('lst-bd'))) k.push('lst-box');
+  return { cls: k.join(' '), css: v as CSSProperties, z: s.fs && s.fs !== 'md' ? L_FS[s.fs] : undefined };
+}
+
 export function LText({ c }: { c: LBlockCfg }) {
   const ctx = useContext(LPageC);
   const v = ctx?.vars;
   const k = lKind(c);
   const sz = c.size ?? 'md';
-  const main = k === 'title' ? cn('font-medium', sz === 'lg' ? 'text-[26px] leading-8' : sz === 'sm' ? 'text-[18px] leading-6' : 'text-[22px] leading-7')
-    : k === 'heading' ? cn('font-medium', sz === 'lg' ? 'text-[17px]' : sz === 'sm' ? 'text-[13.5px]' : 'text-[15px]')
+  const main = k === 'title' ? cn('font-medium', sz === 'xl' ? 'text-[32px] leading-10' : sz === 'lg' ? 'text-[26px] leading-8' : sz === 'sm' ? 'text-[18px] leading-6' : 'text-[22px] leading-7')
+    : k === 'heading' ? cn('font-medium', sz === 'xl' ? 'text-[20px]' : sz === 'lg' ? 'text-[17px]' : sz === 'sm' ? 'text-[13.5px]' : 'text-[15px]')
     : k === 'label' ? 'text-[12px] font-medium text-[rgb(var(--muted))]'
     : k === 'quote' ? 'border-l-2 border-[rgb(var(--line))] pl-3 text-[13px] leading-relaxed text-[rgb(var(--fg2))]'
-    : cn('leading-relaxed', sz === 'lg' ? 'text-[14.5px]' : sz === 'sm' ? 'text-[12.5px]' : 'text-[13px]', k === 'info' && 'text-[rgb(var(--fg2))]');
+    : cn('leading-relaxed', sz === 'xl' ? 'text-[16.5px]' : sz === 'lg' ? 'text-[14.5px]' : sz === 'sm' ? 'text-[12.5px]' : 'text-[13px]', k === 'info' && 'text-[rgb(var(--fg2))]');
   const out: ReactNode[] = [];
   let ul: string[] = [];
   const flush = () => { if (ul.length) { const n = out.length; out.push(<ul key={`u${n}`} className="list-disc space-y-0.5 pl-5 text-left">{ul.map((x, i) => <li key={i}>{lInline(x, `l${n}-${i}`)}</li>)}</ul>); ul = []; } };
@@ -693,10 +733,11 @@ export function LText({ c }: { c: LBlockCfg }) {
 }
 
 /** Khối text đặt trên trang: có khung thì thành thẻ (tiêu đề khối nếu không ẩn), không khung thì chữ nằm thẳng trên nền trang */
-export function LTextBlock({ c, style, cls }: { c: LBlockCfg; style?: CSSProperties; cls?: string }) {
+export function LTextBlock({ c, style, cls, st = true }: { c: LBlockCfg; style?: CSSProperties; cls?: string; st?: boolean }) {
   const f = lFramed(c);
+  const s = st ? lSt(c, !f) : { cls: '', css: {} };
   return (
-    <section style={style} className={cn('min-w-0', f ? cn('glass-card rounded-xl px-4 py-3', lToneCls(c)) : 'flex flex-col justify-center', cls)}>
+    <section style={{ ...style, ...s.css }} className={cn('min-w-0', f ? cn('glass-card rounded-xl px-4 py-3', lToneCls(c)) : 'flex flex-col justify-center', cls, s.cls)}>
       {f && !c.hideTitle && <h3 className="mb-1.5 text-[14px] font-medium">{c.title}</h3>}
       <LText c={c} />
     </section>
@@ -725,12 +766,13 @@ export function LButtons({ c }: { c: LBlockCfg }) {
         const name = b.label || L_ACT[b.act].label;
         const cls = b.style === 'primary' ? cn(btnPrimary, 'h-9') : b.style === 'ghost' ? cn(btnGhost, 'h-9') : b.style === 'text' ? 'inline-flex h-9 items-center rounded-lg px-2.5 text-[13.5px] text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.05)] hover:text-[rgb(var(--fg))] disabled:opacity-40' : ico;
         const inner = b.style === 'text' ? <>{b.label || L_ACT[b.act].label}</> : <><I className="h-4 w-4" aria-hidden />{b.style !== 'icon' && b.label}</>;
+        const tone: CSSProperties | undefined = !b.tone ? undefined : b.style === 'primary' ? { background: lCol(b.tone, 'solid'), borderColor: lCol(b.tone, 'solid'), color: lOnColor(b.tone) } : b.style === 'text' ? { color: lCol(b.tone, 'text') } : { color: lCol(b.tone, 'text'), borderColor: lCol(b.tone, 'solid') };
         return b.act === 'menu' ? (
           <div key={b.id} className="relative" ref={ref}>
-            <button className={cls} disabled={!ctx?.menu} onClick={() => setOpen(!open)} aria-label={name} title={name} aria-expanded={open}>{inner}</button>
+            <button className={cls} style={tone} disabled={!ctx?.menu} onClick={() => setOpen(!open)} aria-label={name} title={name} aria-expanded={open}>{inner}</button>
             {open && ctx?.menu && <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 text-left text-[13.5px] shadow-xl" onClick={() => setOpen(false)}>{ctx.menu}</div>}
           </div>
-        ) : <button key={b.id} className={cls} disabled={!!ctx?.off?.(b)} onClick={() => ctx?.act(b)} aria-label={name} title={name}>{inner}</button>;
+        ) : <button key={b.id} className={cls} style={tone} disabled={!!ctx?.off?.(b)} onClick={() => ctx?.act(b)} aria-label={name} title={name}>{inner}</button>;
       })}
     </div>
   );
@@ -762,7 +804,14 @@ export function LFilter({ c }: { c: LBlockCfg }) {
 }
 
 /** Khối Tab: thanh tab, chỉ hiện tab có khối người xem thấy */
-export function LTabsBar({ tabs, cur, onChange }: { tabs: { id: string; label: string }[]; cur: string; onChange: (t: string) => void }) {
+export function LTabsBar({ tabs, cur, onChange, kind = 'line' }: { tabs: { id: string; label: string }[]; cur: string; onChange: (t: string) => void; kind?: LBlockCfg['tabStyle'] }) {
+  if (kind === 'pill' || kind === 'chip') return (
+    <div className="flex h-full items-center overflow-x-auto" role="tablist">
+      <div className={cn('flex gap-1', kind === 'pill' && 'rounded-lg bg-[rgb(var(--ink)/0.05)] p-1')}>
+        {tabs.map((t) => <button key={t.id} role="tab" aria-selected={cur === t.id} onClick={() => onChange(t.id)} className={cn('whitespace-nowrap px-3 py-1.5 text-[13.5px]', kind === 'pill' ? cn('rounded-md', cur === t.id ? 'bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]') : cn('rounded-full border', cur === t.id ? 'border-[rgb(var(--fg))] bg-[rgb(var(--fg))] font-medium text-[rgb(var(--bg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--fg2))] hover:border-[rgb(var(--ink)/0.3)]'))}>{t.label}</button>)}
+      </div>
+    </div>
+  );
   return (
     <div className="flex h-full items-end gap-6 overflow-x-auto border-b border-[rgb(var(--line))]" role="tablist">
       {tabs.map((t) => <button key={t.id} role="tab" aria-selected={cur === t.id} onClick={() => onChange(t.id)} className={cn('-mb-px whitespace-nowrap border-b-2 pb-2 text-[14px]', cur === t.id ? 'border-[rgb(var(--fg))] font-medium text-[rgb(var(--fg))]' : 'border-transparent text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>{t.label}</button>)}
@@ -803,12 +852,14 @@ export function LTarget() {
 }
 
 export function LDivider({ c }: { c: LBlockCfg }) {
-  return <div className="flex h-full items-center gap-3">{!c.hideTitle && c.title && <span className="whitespace-nowrap text-[12.5px] font-medium text-[rgb(var(--muted))]">{c.title}</span>}<hr className="flex-1 border-[rgb(var(--line))]" /></div>;
+  const s = c.st;
+  const line: CSSProperties = { borderTopWidth: s?.bdW ?? 1, borderTopStyle: s?.bdS ?? 'solid', borderTopColor: s?.bd === 'strong' ? 'rgb(var(--ink) / 0.3)' : lCol(s?.bd, 'solid') ?? 'rgb(var(--line))' };
+  return <div className="flex h-full items-center gap-3">{!c.hideTitle && c.title && <span className="whitespace-nowrap text-[12.5px] font-medium text-[rgb(var(--muted))]" style={{ fontSize: s?.tSize ? L_TS[s.tSize] : undefined, color: lCol(s?.tColor, 'text'), fontWeight: s?.tW ? Number(L_TW[s.tW]) : undefined }}>{c.title}</span>}<hr className="flex-1 border-0" style={line} /></div>;
 }
 
 /** Khối hiển thị dùng chung trên trang nghiệp vụ */
 export function lCommonNode(b: LBlock): ReactNode {
-  if (b.type === 'K-Text') return <LTextBlock c={b.config} />;
+  if (b.type === 'K-Text') return <LTextBlock c={b.config} st={false} />;
   if (b.type === 'K-Button' || b.type === 'K-Icons') return <LButtons c={b.config} />;
   if (b.type === 'K-Divider') return <LDivider c={b.config} />;
   if (b.type === 'K-Spacer') return <div style={{ height: Math.max(1, b.pos.lg.h) * 20 }} aria-hidden />;
@@ -817,6 +868,9 @@ export function lCommonNode(b: LBlock): ReactNode {
 
 export function LTable({ c, rows, narrow }: { c: LBlockCfg; rows: LRow[]; narrow?: boolean }) {
   const ds = L_DS[c.ds];
+  const pyc = c.dense === 'sm' ? 'l-dn-sm' : c.dense === 'lg' ? 'l-dn-lg' : '';
+  const trc = (i: number) => cn('border-t border-[rgb(var(--line)/0.6)]', pyc, c.zebra && i % 2 === 1 && 'bg-[rgb(var(--ink)/0.03)]');
+  const thc = cn('text-[rgb(var(--muted))]', c.thBg && 'l-th-bg');
   const base = lFilter(rows, c.filter);
   const lim = c.limit ?? 5;
   if ((c.mode ?? 'rows') === 'group') {
@@ -827,8 +881,8 @@ export function LTable({ c, rows, narrow }: { c: LBlockCfg; rows: LRow[]; narrow
     if (!base.length) return <p className="py-6 text-center text-[12.5px] text-[rgb(var(--muted))]">Chưa có dữ liệu</p>;
     const list = Array.from(m.entries()).map(([k, rs]) => ({ k, v: lAgg(rs, fl.id, fl.id === 'count' ? 'count' : 'sum') })).sort((a, b) => b.v - a.v).slice(0, lim);
     return (
-      <table className="w-full text-[12.5px]"><thead><tr className="text-[rgb(var(--muted))]">{c.stt && <th className="w-7 py-1 text-left font-normal">#</th>}<th className="py-1 text-left font-normal">{ds.dims.find((x) => x.id === g)?.label}</th><th className="py-1 text-right font-normal">{fl.label}</th></tr></thead>
-        <tbody>{list.map((r, i) => <tr key={r.k} className="border-t border-[rgb(var(--line)/0.6)]">{c.stt && <td className="py-1.5 tabular-nums text-[rgb(var(--muted))]">{i + 1}</td>}<td className="max-w-0 truncate py-1.5 pr-2">{r.k}</td><td className="py-1.5 text-right tabular-nums">{lFmt(fl.unit, r.v)}</td></tr>)}</tbody></table>
+      <table className="w-full text-[12.5px]"><thead><tr className={thc}>{c.stt && <th className="w-7 py-1 text-left font-normal">#</th>}<th className="py-1 text-left font-normal">{ds.dims.find((x) => x.id === g)?.label}</th><th className="py-1 text-right font-normal">{fl.label}</th></tr></thead>
+        <tbody>{list.map((r, i) => <tr key={r.k} className={trc(i)}>{c.stt && <td className="py-1.5 tabular-nums text-[rgb(var(--muted))]">{i + 1}</td>}<td className="max-w-0 truncate py-1.5 pr-2">{r.k}</td><td className="py-1.5 text-right tabular-nums">{lFmt(fl.unit, r.v)}</td></tr>)}</tbody></table>
     );
   }
   if (!base.length) return <p className="py-6 text-center text-[12.5px] text-[rgb(var(--muted))]">Chưa có dữ liệu</p>;
@@ -854,8 +908,8 @@ export function LTable({ c, rows, narrow }: { c: LBlockCfg; rows: LRow[]; narrow
     );
   }
   return (
-    <table className="w-full text-[12.5px]"><thead><tr className="text-[rgb(var(--muted))]">{c.stt && <th className="w-7 py-1 text-left font-normal">#</th>}{cols.map((x) => <th key={x} className={cn('py-1 font-normal', isNum(x) ? 'text-right' : 'text-left')}>{lab(x)}</th>)}</tr></thead>
-      <tbody>{sorted.map((r, i) => <tr key={i} className="border-t border-[rgb(var(--line)/0.6)]">{c.stt && <td className="py-1.5 tabular-nums text-[rgb(var(--muted))]">{i + 1}</td>}{cols.map((x) => <td key={x} className={cn('max-w-0 truncate py-1.5 pr-2', isNum(x) && 'text-right tabular-nums')}>{isNum(x) ? lFmt(lField(c.ds, x).unit, r.v[x] ?? 0) : x === 'code' ? <Code>{r.d[x]}</Code> : r.d[x]}</td>)}</tr>)}</tbody></table>
+    <table className="w-full text-[12.5px]"><thead><tr className={thc}>{c.stt && <th className="w-7 py-1 text-left font-normal">#</th>}{cols.map((x) => <th key={x} className={cn('py-1 font-normal', isNum(x) ? 'text-right' : 'text-left')}>{lab(x)}</th>)}</tr></thead>
+      <tbody>{sorted.map((r, i) => <tr key={i} className={trc(i)}>{c.stt && <td className="py-1.5 tabular-nums text-[rgb(var(--muted))]">{i + 1}</td>}{cols.map((x) => <td key={x} className={cn('max-w-0 truncate py-1.5 pr-2', isNum(x) && 'text-right tabular-nums')}>{isNum(x) ? lFmt(lField(c.ds, x).unit, r.v[x] ?? 0) : x === 'code' ? <Code>{r.d[x]}</Code> : r.d[x]}</td>)}</tr>)}</tbody></table>
   );
 }
 
@@ -865,7 +919,7 @@ export function LBlockBody({ b, rows, range, narrow }: { b: LBlock; rows: LRow[]
   if (b.type === 'K-Text') return <LText c={b.config} />;
   if (b.type === 'K-Icons' || b.type === 'K-Button') return <LButtons c={b.config} />;
   if (b.type === 'K-Filter') return <LFilter c={b.config} />;
-  if (b.type === 'K-Tabs') return <LTabsBar tabs={b.config.tabs ?? []} cur={b.config.tabs?.[0]?.id ?? ''} onChange={() => {}} />;
+  if (b.type === 'K-Tabs') return <LTabsBar tabs={b.config.tabs ?? []} cur={b.config.tabs?.[0]?.id ?? ''} onChange={() => {}} kind={b.config.tabStyle} />;
   if (b.type === 'K-Target') return <LTarget />;
   if (b.type === 'K-Divider') return <LDivider c={b.config} />;
   if (b.type === 'K-Spacer') return <div className="h-full rounded-md border border-dashed border-[rgb(var(--line))]" aria-hidden />;
@@ -898,21 +952,25 @@ export function LayoutView({ blocks, rowsOf, device, range, onOpen, role }: { bl
     <div ref={ref} className="grid" style={{ gridTemplateColumns: `repeat(${dev === 'md' ? 6 : 12}, minmax(0, 1fr))`, gridAutoRows: `${L_ROW}px`, gap: L_GAP, gridAutoFlow: dev === 'md' ? 'row dense' : 'row' }}>
       {ordered.map((b) => {
         const st = style(b);
-        if (b.type === 'K-Tabs') return <div key={b.id} style={st} className="min-w-0"><LTabsBar tabs={tabList} cur={cur} onChange={(t) => ctx?.setTab(t)} /></div>;
-        if (b.type === 'K-Icons' || b.type === 'K-Button') return <div key={b.id} style={st} className="min-w-0"><LButtons c={b.config} /></div>;
-        if (b.type === 'K-Filter') return <div key={b.id} style={st} className="flex min-w-0 items-center"><LFilter c={b.config} /></div>;
-        if (b.type === 'K-Target') return <div key={b.id} style={st} className="flex min-w-0 items-center"><LTarget /></div>;
-        if (b.type === 'K-Divider') return <div key={b.id} style={st} className="min-w-0"><LDivider c={b.config} /></div>;
-        if (b.type === 'K-Spacer') return <div key={b.id} style={st} aria-hidden />;
+        /** khối không có thẻ nền: kiểu đặt cho vùng khối, cỡ chữ cho phần trong */
+        const wrap = (inner: ReactNode, cls = '', noBd = false) => { const s = lSt(b.config, true, noBd); return <div key={b.id} style={{ ...st, ...s.css }} className={cn('min-w-0', cls, s.cls)}><div className={cn('h-full min-w-0', cls)} style={s.z ? { zoom: s.z } : undefined}>{inner}</div></div>; };
+        if (b.type === 'K-Tabs') return wrap(<LTabsBar tabs={tabList} cur={cur} onChange={(t) => ctx?.setTab(t)} kind={b.config.tabStyle} />);
+        if (b.type === 'K-Icons' || b.type === 'K-Button') return wrap(<LButtons c={b.config} />);
+        if (b.type === 'K-Filter') return wrap(<LFilter c={b.config} />, 'flex items-center');
+        if (b.type === 'K-Target') return wrap(<LTarget />, 'flex items-center');
+        if (b.type === 'K-Divider') return wrap(<LDivider c={b.config} />, '', true);
+        if (b.type === 'K-Spacer') return wrap(null);
         if (b.type === 'K-Text') return <LTextBlock key={b.id} c={b.config} style={st} cls="overflow-y-auto" />;
         const rows = rowsOf(b.config.ds) ?? [];
         const ds = L_DS[b.config.ds];
+        const s = lSt(b.config);
+        const zs: CSSProperties | undefined = s.z ? { zoom: s.z } : undefined;
         return (
-          <section key={b.id} style={st} className="glass-card flex min-w-0 flex-col overflow-hidden rounded-xl">
-            <div className="flex items-center gap-2 px-4 pt-3"><h3 className="min-w-0 truncate text-[13px] font-medium">{b.config.title}</h3>
+          <section key={b.id} style={{ ...st, ...s.css }} className={cn('glass-card flex min-w-0 flex-col overflow-hidden rounded-xl', s.cls)}>
+            <div className="flex items-center gap-2 px-4 pt-3" style={zs}><h3 className="min-w-0 truncate text-[13px] font-medium">{b.config.title}</h3>
               {b.config.open !== false && onOpen && <button className="ml-auto shrink-0 text-[12px] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => onOpen(ds.module)} aria-label={`Mở ${MODULE_LABEL[ds.module]}`}><ArrowRight className="h-3.5 w-3.5" aria-hidden /></button>}
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-1"><LBlockBody b={b} rows={rows} range={range} narrow={dev === 'sm'} /></div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-1" style={zs}><LBlockBody b={b} rows={rows} range={range} narrow={dev === 'sm'} /></div>
           </section>
         );
       })}
@@ -951,7 +1009,8 @@ export function lBands(bs: LBlock[]): { x: number; w: number; items: LBlock[] }[
 
 /** Hiển thị trang nghiệp vụ theo bố cục: máy tính theo dải / cột 12; màn hẹp xếp một cột theo thứ tự điện thoại */
 export function LBusinessView({ blocks, node, narrow, dev }: { blocks: LBlock[]; node: (b: LBlock) => ReactNode; narrow: boolean; dev: LDevice }) {
-  const vis = blocks.filter((b) => lIsCore(b.type) || b.show[dev]).map((b) => ({ b, n: node(b) })).filter((x) => x.n !== null && x.n !== undefined && x.n !== false);
+  const styled = (b: LBlock, n: ReactNode): ReactNode => { if (!b.config.st) return n; const s = lSt(b.config, lBoxType(b), b.type === 'K-Divider'); return <div className={s.cls} style={{ ...s.css, ...(s.z ? { zoom: s.z } : {}) }}>{n}</div>; };
+  const vis = blocks.filter((b) => lIsCore(b.type) || b.show[dev]).map((b) => ({ b, n: node(b) })).filter((x) => x.n !== null && x.n !== undefined && x.n !== false).map((x) => ({ b: x.b, n: styled(x.b, x.n) }));
   if (narrow) return <div className="space-y-4">{[...vis].sort((a, b) => (a.b.pos.sm.order || 99) - (b.b.pos.sm.order || 99)).map((x) => <Fragment key={x.b.id}>{x.n}</Fragment>)}</div>;
   const nodes = new Map(vis.map((x) => [x.b.id, x.n]));
   return (
@@ -999,17 +1058,43 @@ export function lSaleSample({ b, stage, cf, narrow }: { b: LBlock; stage: LStage
   if (b.type === 'K-Spacer') return <div className="h-5" aria-hidden />;
   if (b.type === 'K-SaleList') {
     const tabs = lFieldOrder(SO_LIST_TABS, c);
-    const def = c.cols?.length ? SO_LIST_COLS.filter((x) => x.lock || c.cols!.includes(x.id)) : SO_LIST_COLS.filter((x) => x.lock || x.def);
-    const cfc = cf.filter((d) => d.scope === 'HEAD' && d.where.list && c.cols?.includes(`cf:${d.key}`));
-    const head = [...def.filter((x) => x.id !== 'seller').map((x) => x.label), ...cfc.map((d) => d.label)];
-    const rows = [['20/11/2026', 'DH201126-04', 'Xưởng Nhôm kính Phú Quý', 'Chờ duyệt'], ['20/11/2026', 'DH201126-03', 'Cửa hàng Vật tư điện Phúc An', 'Chờ xuất kho'], ['20/11/2026', 'DH201126-02', 'NPP Hoàng Phát', 'Chờ xuất kho'], ['19/11/2026', 'DH191126-07', 'Tổng thầu Điện Thành', 'Hoàn thành']];
-    const val = (h: string, r: string[], i: number) => (h === 'Ngày' ? r[0] : h === 'Mã đơn' ? <Code>{r[1]}</Code> : h === 'Khách hàng' ? r[2] : h === 'Trạng thái' ? r[3] : ['Doanh số', 'Tổng đơn', 'Doanh thu', 'Còn lại', 'VAT', 'Chiết khấu', 'Hàng trả lại', 'Chờ kế toán thu'].includes(h) ? fmtN([2160000, 8100000, 1425000, 3390000][i] * (h === 'VAT' ? 0.08 : h === 'Doanh thu' ? 0 : 1)) : cfc.some((d) => d.label === h) ? cfSample(cfc.find((d) => d.label === h)!) : '—');
+    const cfc = cf.filter((d) => d.scope === 'HEAD' && d.status === 'ACTIVE' && d.where.list);
+    const all: SoColDef[] = [...SO_LIST_COLS, ...cfc.map((d): SoColDef => ({ id: `cf:${d.key}`, label: d.label, g: 'Trường tùy chỉnh', num: d.type === 'money' || d.type === 'number', sum: d.type === 'money' || d.type === 'number' }))];
+    const onIds = c.cols?.length ? c.cols : all.filter((x) => x.def).map((x) => x.id);
+    const order = [...SO_LIST_ORDER, ...cfc.map((d) => `cf:${d.key}`)];
+    const cols = order.map((id) => all.find((x) => x.id === id)!).filter((x) => x && x.id !== 'seller' && (x.lock || onIds.includes(x.id)));
+    const S = [{ d: '20/11/2026', code: 'DH201126-04', cust: 'Xưởng Nhôm kính Phú Quý', st: 'Chờ duyệt', net: 2160000, paid: 0 }, { d: '20/11/2026', code: 'DH201126-03', cust: 'Cửa hàng Vật tư điện Phúc An', st: 'Chờ xuất kho', net: 8100000, paid: 0 }, { d: '20/11/2026', code: 'DH201126-02', cust: 'NPP Hoàng Phát', st: 'Chờ xuất kho', net: 1425000, paid: 500000 }, { d: '19/11/2026', code: 'DH191126-07', cust: 'Tổng thầu Điện Thành', st: 'Hoàn thành', net: 3390000, paid: 3661200 }];
+    const num = (id: string, r: typeof S[number]): number => { const vat = Math.round(r.net * 0.08); const g = r.net + vat; return id === 'gross' ? r.net : id === 'vat' ? vat : id === 'grand' ? g : id === 'paid' ? r.paid : id === 'left' ? g - r.paid : id === 'kh_limit' ? 500000000 : id === 'kh_debt' ? 124000000 : id.startsWith('cf:') ? 1500000 : 0; };
+    const txt: Record<string, string> = { origin: 'Tại quầy', by: 'Trần Quốc Bảo', wh: 'Kho Tổng Hà Nội', issue: '0 / 30', deliver: fmtDate(todayISO()), dueAt: '—', note: '—', inv: '—', kh_code: 'KH0012', kh_tax: '0101234567', kh_phone: '0903 112 245', kh_dept: 'Thương mại', kh_region: 'Miền Bắc', kh_seg: 'Đại lý', kh_tier: 'Vàng', kh_am: 'Phạm Minh Đức', u_dept: 'Kinh doanh', u_title: 'Nhân viên kinh doanh' };
+    const cell = (x: SoColDef, r: typeof S[number]): ReactNode => (x.id === 'date' ? r.d : x.id === 'code' ? <Code>{r.code}</Code> : x.id === 'cust' ? r.cust : x.id === 'status' ? r.st : x.num ? fmtN(num(x.id, r)) : x.id.startsWith('cf:') ? cfSample(cfc.find((d) => `cf:${d.key}` === x.id)!) : txt[x.id] ?? '—');
+    const sumOff = c.sumOff ?? [];
+    const first = cols.findIndex((x) => x.sum && !sumOff.includes(x.id));
+    const lead = (c.pick !== false ? 1 : 0) + (c.stt !== false ? 1 : 0);
+    const hbOn = (k: string) => !(c.hbOff ?? []).includes(k);
+    const sIn = c.sIn?.length ? c.sIn : SO_SEARCH_DEF;
+    const ph = c.ph || (c.sIn?.length ? `Tìm ${sIn.map((k) => SO_SEARCH.find((x) => x.id === k)?.s ?? cfc.find((d) => `cf:${d.key}` === k)?.label.toLowerCase()).filter(Boolean).join(', ')}` : 'Tìm mã đơn, khách hàng, SĐT, mã hàng');
+    const py = c.dense === 'sm' ? 'py-1' : c.dense === 'lg' ? 'py-2.5' : 'py-1.5';
+    const ic = 'grid h-7 w-7 place-items-center rounded-md border border-[rgb(var(--line))] text-[rgb(var(--fg2))]';
     return (
       <div className="overflow-hidden text-[12px]">
-        <div className="mb-2 flex items-center gap-2"><span className="text-[15px] font-medium">Quản lý đơn hàng</span><span className="ml-2 h-7 flex-1 rounded-md border border-[rgb(var(--line))] px-2 leading-7 text-[rgb(var(--muted))]">Tìm mã đơn, khách hàng</span><span className="rounded-md border border-[rgb(var(--line))] px-2 leading-7">Tháng này</span></div>
-        <div className="flex gap-4 border-b border-[rgb(var(--line))] pb-1.5">{tabs.map((id, i) => <span key={id} className={i === 0 ? 'font-medium' : 'text-[rgb(var(--muted))]'}>{SO_LIST_TABS.find((x) => x.id === id)?.label}</span>)}</div>
-        <table className="w-full"><thead><tr className="text-[rgb(var(--muted))]">{head.map((h) => <th key={h} className="whitespace-nowrap px-1.5 py-1 text-left font-normal">{h}</th>)}</tr></thead>
-          <tbody>{rows.map((r, i) => <tr key={r[1]} className="border-t border-[rgb(var(--line)/0.6)]">{head.map((h) => <td key={h} className="max-w-[160px] truncate whitespace-nowrap px-1.5 py-1.5">{val(h, r, i)}</td>)}</tr>)}</tbody></table>
+        <div className="mb-2 flex items-center gap-2">
+          {!c.hideHead && <h1 className="whitespace-nowrap text-[15px] font-medium">{lFill(c.head || 'Quản lý đơn hàng', lVars('MONTH', 'VASSH', 'Trần Quốc Bảo'))}</h1>}
+          {c.search !== false ? <span className="ml-1 h-7 min-w-0 flex-1 truncate rounded-md border border-[rgb(var(--line))] px-2 leading-7 text-[rgb(var(--muted))]">{ph}</span> : <span className="flex-1" />}
+          {!c.hidePer && <span className="whitespace-nowrap rounded-md border border-[rgb(var(--line))] px-2 leading-7">{SO_PERS.find((x) => x[0] === (c.per0 ?? 'M'))?.[1]}</span>}
+          {hbOn('filter') && <span className={ic}><Filter className="h-3.5 w-3.5" aria-hidden /></span>}
+          {hbOn('cols') && <span className={ic}><Columns3 className="h-3.5 w-3.5" aria-hidden /></span>}
+          {hbOn('excel') && <span className={ic}><Download className="h-3.5 w-3.5" aria-hidden /></span>}
+          {hbOn('print') && <span className={ic}><Printer className="h-3.5 w-3.5" aria-hidden /></span>}
+          {hbOn('new') && <span className="inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-md bg-[rgb(var(--accent))] px-2 font-medium text-[rgb(var(--on-accent))]"><Plus className="h-3.5 w-3.5" aria-hidden />Lên đơn bán</span>}
+        </div>
+        <div className="glass-card overflow-hidden rounded-lg">
+          <div className="flex gap-4 border-b border-[rgb(var(--line))] px-2.5 pt-1.5">{tabs.map((id, i) => <span key={id} className={cn('whitespace-nowrap border-b-2 pb-1.5', i === 0 ? 'border-[rgb(var(--fg))] font-medium' : 'border-transparent text-[rgb(var(--muted))]')}>{SO_LIST_TABS.find((x) => x.id === id)?.label}</span>)}</div>
+          <table className="w-full"><thead><tr className={cn('text-[rgb(var(--muted))]', c.thBg !== false && 'bg-[rgb(var(--ink)/0.03)]')}>{c.pick !== false && <th className="w-6 px-1.5"><span className="inline-block h-3 w-3 rounded-sm border border-[rgb(var(--ink)/0.35)]" /></th>}{c.stt !== false && <th className="w-6 px-1.5 py-1 text-left font-normal">#</th>}{cols.map((x) => <th key={x.id} className={cn('whitespace-nowrap px-1.5 py-1 font-normal', x.num ? 'text-right' : 'text-left')}>{x.label}</th>)}</tr></thead>
+            <tbody>
+              {S.map((r, i) => <tr key={r.code} className={cn('border-t border-[rgb(var(--line)/0.6)]', c.zebra && i % 2 === 1 && 'bg-[rgb(var(--ink)/0.03)]')}>{c.pick !== false && <td className="px-1.5"><span className="inline-block h-3 w-3 rounded-sm border border-[rgb(var(--ink)/0.35)]" /></td>}{c.stt !== false && <td className={cn('px-1.5 tabular-nums text-[rgb(var(--muted))]', py)}>{i + 1}</td>}{cols.map((x) => <td key={x.id} className={cn('max-w-[160px] truncate whitespace-nowrap px-1.5', py, x.num && 'text-right tabular-nums')}>{cell(x, r)}</td>)}</tr>)}
+              {c.sumRow !== false && <tr className="border-t border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.03)] font-medium"><td className={cn('whitespace-nowrap px-1.5', py)} colSpan={lead + Math.max(1, first)}>Tổng {S.length} đơn <span className="font-normal text-[rgb(var(--muted))]">· theo bộ lọc</span></td>{first >= 0 ? cols.slice(Math.max(1, first)).map((x) => <td key={x.id} className={cn('px-1.5 text-right tabular-nums', py, x.id === 'left' && 'text-[rgb(var(--accent-fg))]')}>{x.sum && !sumOff.includes(x.id) ? fmtN(S.reduce((s, r) => s + num(x.id, r), 0)) : ''}</td>) : <td colSpan={Math.max(0, cols.length - 1)} />}</tr>}
+            </tbody></table>
+        </div>
       </div>
     );
   }

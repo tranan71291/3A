@@ -292,7 +292,16 @@ export type LTextKind = 'title' | 'heading' | 'para' | 'label' | 'info' | 'note'
 /** v54: hành động của nút: chung (mọi trang) + riêng từng trang */
 export type LBtnAct = LIconAct | 'go' | 'link' | 'targets' | 'excel' | 'new';
 
-export type LBtn = { id: string; icon: string; label: string; style: 'icon' | 'ghost' | 'primary' | 'text'; act: LBtnAct; arg?: string };
+export type LBtn = { id: string; icon: string; label: string; style: 'icon' | 'ghost' | 'primary' | 'text'; act: LBtnAct; arg?: string; /** v54.1 màu nút (bảng màu hoặc #mã) */ tone?: string };
+
+/** v54.1 kiểu dáng chung của khối. Màu: khóa bảng màu hệ thống (fg, accent, success…) hoặc #rrggbb */
+export type LStyle = {
+  fs?: 'sm' | 'md' | 'lg' | 'xl'; color?: string;
+  bg?: string; bgA?: 'soft' | 'mid' | 'solid';
+  bd?: string; bdS?: 'solid' | 'dashed' | 'dotted'; bdW?: 1 | 2 | 3;
+  r?: 'none' | 'sm' | 'md' | 'lg' | 'xl'; sh?: 'none' | 'sm' | 'md' | 'lg';
+  tSize?: 'sm' | 'md' | 'lg' | 'xl'; tColor?: string; tW?: 'normal' | 'medium' | 'bold';
+};
 
 /** v53: nút của khối Nút biểu tượng */
 export type LIconAct = 'back' | 'prev' | 'next' | 'print' | 'download' | 'upload' | 'menu';
@@ -325,7 +334,12 @@ export type LBlockCfg = {
   /** v53 Nút biểu tượng: các nút theo thứ tự, căn trái / phải */
   icons?: LIconAct[]; align?: 'left' | 'center' | 'right';
   /** v54 Khối text: kiểu, dòng phụ, cỡ chữ, có khung */
-  kind?: LTextKind; sub?: string; size?: 'sm' | 'md' | 'lg'; frame?: boolean;
+  kind?: LTextKind; sub?: string; size?: 'sm' | 'md' | 'lg' | 'xl'; frame?: boolean;
+  /** v54.1 kiểu dáng chung; màu 2 đường biểu đồ; bảng: sọc xen kẽ, mật độ dòng, nền dòng tiêu đề; kiểu thanh tab */
+  st?: LStyle; colors?: string[]; zebra?: boolean; dense?: 'sm' | 'md' | 'lg'; thBg?: boolean; tabStyle?: 'line' | 'pill' | 'chip';
+  /** v54.1 Khối Bảng (Danh sách đơn hàng): nguồn, tiêu đề, ô tìm kiếm, kỳ mặc định, bộ lọc, nút đầu bảng, dòng tổng, STT, ô chọn dòng, số dòng / trang */
+  src?: 'sale'; head?: string; hideHead?: boolean; search?: boolean; ph?: string; sIn?: string[]; per0?: string; hidePer?: boolean;
+  fltOff?: string[]; hbOff?: string[]; sumRow?: boolean; sumOff?: string[]; pick?: boolean; size0?: number;
   /** v54 Nút / Icon */
   buttons?: LBtn[];
   /** v54 Tab: danh sách tab; khối thuộc tab nào (không đặt = hiện ở mọi tab) */
@@ -1972,6 +1986,8 @@ export type ContactItem = { key: string; kind: 'staff' | 'customer'; name: strin
 export type LTypeDef = { type: LBlockType; label: string; def: LPos; desc: string; pages: LPage[]; tier: 'show' | 'data' | 'biz'; core?: boolean; data?: boolean };
 
 export type LField = { id: string; label: string; unit: 'money' | 'count' };
+
+export type SoColDef = { id: string; label: string; lock?: boolean; def?: boolean; g: 'Thông tin' | 'Tiến độ' | 'Tiền' | 'Khách hàng' | 'Người tạo' | 'Trường tùy chỉnh'; num?: boolean; sum?: boolean };
 
 /** Ngữ cảnh chung của một trang dựng bằng khối: kỳ / phòng của Bộ lọc chung, tab đang mở, biến tự điền, hành động của nút */
 export type LPageCtx = {

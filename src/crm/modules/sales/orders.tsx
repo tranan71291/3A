@@ -1,11 +1,11 @@
 'use client';
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Banknote, Building2, CalendarDays, Check as CheckIcon, ChevronDown, ChevronLeft, ChevronRight, Coins, Columns3, Download, Eye, FileText, Filter, Lock, MoreVertical, PackageMinus, Paperclip, Pencil, Plus, Printer, Receipt as ReceiptIcon, Search, Send, Trash2, Truck, Undo2, Upload, Users, Wallet, Warehouse, X, XCircle } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { RowMenu } from '../../components/controls';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, useSticky } from '../../components/ui';
-import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, CF_FILTERABLE, cfDefsFor, cfEmpty, cfMissing, cfSet, compact, DECISION_LABEL, digits, downloadBlob, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, lCondOk, lFieldOrder, lIsCore, LPageC, lStageOf, lStarterSale, MAIN_WH, nextCode, overdueDays, PRICE_TIER, readAsDataUrl, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleCashOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, SO_INFO_F, SO_LINE_F, SO_LIST_TABS, soGrid, soIco, soTd, soTh, soTime, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
+import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, CF_FILTERABLE, cfDefsFor, cfEmpty, cfMissing, cfSet, compact, DECISION_LABEL, digits, downloadBlob, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, lCondOk, lFieldOrder, lFill, lIsCore, LPageC, lStageOf, lStarterSale, MAIN_WH, nextCode, overdueDays, PRICE_TIER, readAsDataUrl, REGION_LABEL, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleCashOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, SEGMENT_LABEL, SO_INFO_F, SO_LINE_F, SO_LIST_TABS, SO_SEARCH, SO_SEARCH_DEF, soGrid, soIco, soTd, soTh, soTime, TIER, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
 import { downloadCsv, xlsxBlob } from '../../lib/csv';
 import { saleCostEst, saleDirectCost, saleHeld, saleNetRevenue, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
 import type { ApprovalDecision, CfVal, CompanyInfo, Customer, LBlock, LBlockCfg, LBlockType, LDevice, LIconAct, LPageCtx, PriceTier, SaleDelivery, SaleFile, SaleFilter, SaleInvBuyer, SaleInvItem, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
@@ -271,13 +271,23 @@ export function SaleListPage(props: { onNew?: () => void; onEdit: (id: string) =
 
 export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void; onEdit: (id: string) => void; onCancel: (id: string) => void; cfg?: LBlockCfg }) {
   const R = useSaleRights();
-  const { mySales: salesOrders, setOpenSale, users, quotes, warehouses, stockVouchers, customers } = useApp();
+  const { mySales: salesOrders, setOpenSale, users, quotes, warehouses, stockVouchers, customers, departments } = useApp();
+  const pctx = useContext(LPageC);
+  /** v54.1: nút đầu bảng, trường lọc 3A cho hiện */
+  const hb = (k: string) => !(cfg?.hbOff ?? []).includes(k);
+  const fOff = cfg?.fltOff ?? [];
+  const fo = (k: string) => !fOff.includes(k);
+  const onNewB = hb('new') ? onNew : undefined;
   const [tab0, setTab] = useSticky<SaleTab>('Sales.tab50', 'ALL');
-  const [per, setPer] = useSticky<SalePer>('Sales.per50', 'M');
+  const [perU, setPer] = useSticky<SalePer>('Sales.per50', (cfg?.per0 as SalePer | undefined) ?? 'M');
+  const per: SalePer = cfg?.hidePer ? (cfg.per0 as SalePer | undefined) ?? 'M' : perU;
   const [range, setRange] = useSticky<{ from: string; to: string }>('Sales.range50', { from: addDaysISO(todayISO(), -14), to: todayISO() });
-  const [f, setF] = useSticky<SaleFilter>('Sales.f50', SALE_F0);
+  const [fU, setF] = useSticky<SaleFilter>('Sales.f50', SALE_F0);
+  // trường lọc 3A tắt thì không áp điều kiện cũ người dùng đã lưu
+  const fKey = fOff.join('|');
+  const f: SaleFilter = useMemo(() => (fOff.length ? { ...fU, ...Object.fromEntries(fOff.filter((k) => k in SALE_F0).map((k) => [k, SALE_F0[k as keyof SaleFilter]])), ...(fOff.includes('rev') ? { revOp: SALE_F0.revOp } : {}) } : fU), [fU, fKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cols, setCols] = useSticky<string[]>('Sales.cols50', []);
-  const [size, setSize] = useSticky('Sales.size50', 20);
+  const [size, setSize] = useSticky('Sales.size50', cfg?.size0 ?? 20);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState('');
   const [pop, setPop] = useState<'' | 'per' | 'filter' | 'cols' | 'size'>('');
@@ -289,7 +299,7 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
   const [picked, setPicked] = useState<string[]>([]);
   const cfd = useSaleCf();
   const cfL = cfd.head.filter((d) => d.where.list);
-  const cfFl = cfd.head.filter((d) => d.status === 'ACTIVE' && d.where.filter && CF_FILTERABLE.includes(d.type));
+  const cfFl = cfd.head.filter((d) => d.status === 'ACTIVE' && d.where.filter && CF_FILTERABLE.includes(d.type) && fo(`cf:${d.key}`));
   const [cff, setCff] = useSticky<Record<string, string>>('Sales.cf53', {});
   const [draftCf, setDraftCf] = useState<Record<string, string>>(cff);
   const cfHit = (o: SalesOrder) => cfFl.every((d) => { const want = cff[d.key]; if (!want) return true; const v = o.cf?.[d.key]; if (d.type === 'check') return want === 'Y' ? v === true : v !== true; if (d.type === 'text') return fold(String(v ?? '')).includes(fold(want)); return String(v ?? '') === want; });
@@ -324,6 +334,10 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
   const invOf = (o: SalesOrder) => { const r = o.invReqs ?? []; return !o.invoice && !r.length ? 'NO' : r.some((x) => x.status === 'DONE') ? 'DONE' : r.some((x) => x.status === 'PENDING') ? 'WAIT' : 'NONE'; };
   const overdueOf = (o: SalesOrder) => o.creditDays > 0 && !!o.issuedAt && leftOf(o) > 0 && saleDue(o) < today;
   const key = fold(q.trim());
+  const custOf = (o: SalesOrder) => (o.customerId ? customers.find((c) => c.id === o.customerId) : undefined);
+  const sIn = cfg?.sIn?.length ? cfg.sIn : SO_SEARCH_DEF;
+  const hay = (o: SalesOrder) => sIn.map((k) => (k === 'code' ? o.code : k === 'cust' ? o.customer : k === 'phone' ? o.phone ?? '' : k === 'sku' ? o.lines.map((l) => `${l.ref ?? ''} ${l.name}`).join(' ') : k === 'note' ? o.note ?? '' : k === 'by' ? nm(o.by) : k === 'tax' ? custOf(o)?.taxCode ?? '' : k.startsWith('cf:') ? String(o.cf?.[k.slice(3)] ?? '') : '')).join(' ');
+  const ph = cfg?.ph || (cfg?.sIn?.length ? `Tìm ${sIn.map((k) => SO_SEARCH.find((x) => x.id === k)?.s ?? cfd.head.find((d) => `cf:${d.key}` === k)?.label.toLowerCase()).filter(Boolean).join(', ')}` : 'Tìm mã đơn, khách hàng, SĐT, mã hàng');
   const day = (o: SalesOrder) => (f.dateBy === 'created' ? iso(new Date(o.createdAt)) : o.date);
   const base = salesOrders
     .filter((o) => (!from || day(o) >= from) && (!to || day(o) <= to))
@@ -340,7 +354,7 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
         && (f.inv === 'ALL' || invOf(o) === f.inv)
         && (!f.rev || (f.revOp === 'GT' ? g > f.rev : g < f.rev)) && (!f.ret || saleReturned(o) > 0) && (!f.overdue || overdueOf(o));
     })
-    .filter((o) => !key || fold(`${o.code} ${o.customer} ${o.phone ?? ''} ${o.lines.map((l) => `${l.ref ?? ''} ${l.name}`).join(' ')}`).includes(key))
+    .filter((o) => !key || fold(hay(o)).includes(key))
     .filter(cfHit);
   const rows = base.filter((o) => inTab(o, tab)).sort((a, b) => b.createdAt - a.createdAt);
   const pages = Math.max(1, Math.ceil(rows.length / size));
@@ -351,7 +365,10 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
   const sellers = Array.from(new Set(salesOrders.map((o) => o.by).filter((x): x is string => !!x)));
   const nF = (Object.keys(SALE_F0) as (keyof SaleFilter)[]).filter((k) => k !== 'revOp' && k !== 'dateBy' && f[k] !== SALE_F0[k]).length + cfFl.filter((d) => cff[d.key]).length;
   const nDraft = (Object.keys(SALE_F0) as (keyof SaleFilter)[]).filter((k) => k !== 'revOp' && k !== 'dateBy' && draftF[k] !== SALE_F0[k]).length + cfFl.filter((d) => draftCf[d.key]).length;
-  type Col = { id: string; label: string; group: 'Thông tin' | 'Tiến độ' | 'Tiền' | 'Trường tùy chỉnh'; lock?: boolean; def?: boolean; right?: boolean; sum?: (o: SalesOrder) => number; cell: (o: SalesOrder) => ReactNode };
+  type Col = { id: string; label: string; group: 'Thông tin' | 'Tiến độ' | 'Tiền' | 'Khách hàng' | 'Người tạo' | 'Trường tùy chỉnh'; lock?: boolean; def?: boolean; right?: boolean; sum?: (o: SalesOrder) => number; cell: (o: SalesOrder) => ReactNode; /** chữ khi xuất Excel / in */ txt?: (o: SalesOrder) => string };
+  const deptName = (d?: string) => { const x = departments.find((y) => y.code === d); return x ? x.short || x.name : ''; };
+  const userOf = (id?: string) => users.find((u) => u.id === id);
+  const tcol = (id: string, label: string, group: Col['group'], fn: (o: SalesOrder) => string): Col => ({ id, label, group, cell: (o) => { const t = fn(o); return t ? <span className="block max-w-[200px] truncate" title={t}>{t}</span> : '—'; }, txt: fn });
   const money = (n: number, warn?: boolean) => <span className={cn('tabular-nums', warn && 'text-[rgb(var(--accent-fg))]')}>{fmtN(n)}</span>;
   const COLS: Col[] = [
     { id: 'date', label: 'Ngày', group: 'Thông tin', def: true, cell: (o) => <span className="tabular-nums">{fmtDate(o.date)}</span> },
@@ -375,34 +392,50 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
     { id: 'left', label: 'Còn lại', group: 'Tiền', def: true, right: true, sum: (o) => Math.max(0, leftOf(o)), cell: (o) => money(Math.max(0, leftOf(o)), leftOf(o) > 0) },
     { id: 'dueAt', label: 'Hạn thanh toán', group: 'Tiền', cell: (o) => (o.creditDays && o.issuedAt ? <span className={cn('tabular-nums', overdueOf(o) && 'text-[rgb(var(--danger-fg))]')}>{fmtDate(saleDue(o))}</span> : '—') },
     { id: 'inv', label: 'Hóa đơn thuế', group: 'Tiến độ', def: true, cell: (o) => { const s = invOf(o); return s === 'NO' ? <span className="text-[rgb(var(--muted))]">Không lấy</span> : s === 'DONE' ? <span className="flex gap-1">{(o.invReqs ?? []).filter((r) => r.status === 'DONE').map((r) => <Code key={r.id}>{r.no}</Code>)}</span> : s === 'WAIT' ? <Chip tone="orange">Chờ xuất</Chip> : '—'; } },
-    ...cfL.map((d): Col => ({ id: `cf:${d.key}`, label: d.label, group: 'Trường tùy chỉnh', right: d.type === 'money' || d.type === 'number', cell: (o) => { const t = cfText(d, o.cf?.[d.key], nm); return t ? <span className={cn('block max-w-[200px] truncate', (d.type === 'money' || d.type === 'number') && 'tabular-nums')} title={t}>{t}</span> : '—'; } })),
+    tcol('kh_code', 'Mã khách hàng', 'Khách hàng', (o) => custOf(o)?.code ?? ''),
+    tcol('kh_tax', 'MST', 'Khách hàng', (o) => custOf(o)?.taxCode ?? ''),
+    tcol('kh_phone', 'SĐT khách', 'Khách hàng', (o) => o.phone || custOf(o)?.contactPhone || ''),
+    tcol('kh_dept', 'Phòng ban phụ trách', 'Khách hàng', (o) => deptName(custOf(o)?.dept)),
+    tcol('kh_region', 'Khu vực', 'Khách hàng', (o) => { const c = custOf(o); return c ? REGION_LABEL[c.region] ?? '' : ''; }),
+    tcol('kh_seg', 'Phân khúc', 'Khách hàng', (o) => { const c = custOf(o); return c ? SEGMENT_LABEL[c.segment] ?? c.segment : ''; }),
+    tcol('kh_tier', 'Hạng khách', 'Khách hàng', (o) => { const c = custOf(o); return c ? TIER[c.tier]?.label ?? c.tier : ''; }),
+    tcol('kh_am', 'NV phụ trách khách', 'Khách hàng', (o) => nm(custOf(o)?.amId)),
+    { id: 'kh_limit', label: 'Hạn mức công nợ', group: 'Khách hàng', right: true, cell: (o) => (custOf(o) ? money(custOf(o)!.creditLimit) : '—'), txt: (o) => String(custOf(o)?.creditLimit ?? '') },
+    { id: 'kh_debt', label: 'Công nợ khách hiện tại', group: 'Khách hàng', right: true, cell: (o) => (custOf(o) ? money(custOf(o)!.debt) : '—'), txt: (o) => String(custOf(o)?.debt ?? '') },
+    tcol('u_dept', 'Phòng ban người tạo', 'Người tạo', (o) => deptName(userOf(o.by)?.dept)),
+    tcol('u_title', 'Chức danh người tạo', 'Người tạo', (o) => userOf(o.by)?.title ?? ''),
+    ...cfL.map((d): Col => ({ id: `cf:${d.key}`, label: d.label, group: 'Trường tùy chỉnh', right: d.type === 'money' || d.type === 'number', sum: d.type === 'money' || d.type === 'number' ? (o) => Number(o.cf?.[d.key]) || 0 : undefined, cell: (o) => { const t = cfText(d, o.cf?.[d.key], nm); return t ? <span className={cn('block max-w-[200px] truncate', (d.type === 'money' || d.type === 'number') && 'tabular-nums')} title={t}>{t}</span> : '—'; } })),
   ];
   // v54: 3A đặt bộ cột mặc định cho doanh nghiệp (khối Danh sách đơn hàng); người dùng vẫn tự lưu cột riêng
   const DEF = cfg?.cols?.length ? [...COLS.filter((c) => c.lock).map((c) => c.id), ...cfg.cols.filter((id) => COLS.some((c) => c.id === id && !c.lock))] : COLS.filter((c) => c.def || c.lock).map((c) => c.id);
   const on = cols.length ? cols : DEF;
-  const ORDER = ['date', 'code', 'cust', 'status', 'origin', 'by', 'wh', 'issue', 'deliver', 'gross', 'disc', 'vat', 'grand', 'paid', 'wait', 'left', 'ret', 'dueAt', 'note', 'inv', ...cfL.map((d) => `cf:${d.key}`)];
+  const ORDER = ['date', 'code', 'cust', 'kh_code', 'kh_tax', 'kh_phone', 'kh_dept', 'kh_region', 'kh_seg', 'kh_tier', 'kh_am', 'status', 'origin', 'by', 'u_dept', 'u_title', 'wh', 'issue', 'deliver', 'gross', 'disc', 'vat', 'grand', 'paid', 'wait', 'left', 'ret', 'dueAt', 'kh_limit', 'kh_debt', 'note', 'inv', ...cfL.map((d) => `cf:${d.key}`)];
   const vis = ORDER.map((id) => COLS.find((c) => c.id === id)!).filter((c) => c.lock || on.includes(c.id));
   const sumOf = (fn: (o: SalesOrder) => number) => rows.filter((o) => o.status !== 'CANCELLED').reduce((s, o) => s + fn(o), 0);
-  const firstSum = vis.findIndex((c) => !!c.sum);
+  const sumOff = cfg?.sumOff ?? [];
+  const sumOn = cfg?.sumRow !== false;
+  const firstSum = vis.findIndex((c) => !!c.sum && !sumOff.includes(c.id));
   const PER: [SalePer, string][] = [['ALL', 'Tất cả'], ['D', 'Hôm nay'], ['W', 'Tuần này'], ['M', 'Tháng này'], ['Q', 'Quý này'], ['Y', 'Năm nay'], ['C', 'Thời gian khác']];
   const perLabel = per === 'C' ? `${fmtDate(range.from).slice(0, 5)} – ${fmtDate(range.to)}` : PER.find((x) => x[0] === per)?.[1];
-  const exportRows = (list: SalesOrder[]) => [vis.map((c) => c.label), ...list.map((o) => vis.map((c) => { if (c.id.startsWith('cf:')) { const d = cfL.find((x) => `cf:${x.key}` === c.id); return d ? cfText(d, o.cf?.[d.key], nm) : ''; } return c.sum ? c.sum(o) : c.id === 'code' ? o.code : c.id === 'date' ? fmtDate(o.date) : c.id === 'cust' ? o.customer : c.id === 'status' ? SALE_STAGE[stage(o)].label : c.id === 'note' ? o.note ?? '' : c.id === 'inv' ? (o.invReqs ?? []).filter((r) => r.status === 'DONE').map((r) => r.no).join(', ') : c.id === 'by' ? nm(o.by) : c.id === 'wh' ? warehouses.find((w) => w.id === o.whId)?.name ?? '' : c.id === 'issue' ? `${unitsOf(o).done}/${unitsOf(o).all}` : c.id === 'origin' ? o.origin ?? '' : c.id === 'deliver' ? fmtDate(o.deliverAt) : c.id === 'dueAt' && o.issuedAt ? fmtDate(saleDue(o)) : ''; }))];
+  const exportRows = (list: SalesOrder[]) => [vis.map((c) => c.label), ...list.map((o) => vis.map((c) => { if (c.txt) return c.txt(o); if (c.id.startsWith('cf:')) { const d = cfL.find((x) => `cf:${x.key}` === c.id); return d ? cfText(d, o.cf?.[d.key], nm) : ''; } return c.sum ? c.sum(o) : c.id === 'code' ? o.code : c.id === 'date' ? fmtDate(o.date) : c.id === 'cust' ? o.customer : c.id === 'status' ? SALE_STAGE[stage(o)].label : c.id === 'note' ? o.note ?? '' : c.id === 'inv' ? (o.invReqs ?? []).filter((r) => r.status === 'DONE').map((r) => r.no).join(', ') : c.id === 'by' ? nm(o.by) : c.id === 'wh' ? warehouses.find((w) => w.id === o.whId)?.name ?? '' : c.id === 'issue' ? `${unitsOf(o).done}/${unitsOf(o).all}` : c.id === 'origin' ? o.origin ?? '' : c.id === 'deliver' ? fmtDate(o.deliverAt) : c.id === 'dueAt' && o.issuedAt ? fmtDate(saleDue(o)) : ''; }))];
   const chosen = rows.filter((o) => picked.includes(o.id));
   const csv = () => downloadCsv(`don-hang-${today}.csv`, exportRows(chosen.length ? chosen : rows));
   const print = () => { const g = exportRows(chosen.length ? chosen : rows); printHtml(docShell('Danh sách đơn hàng', `<h1>Danh sách đơn hàng</h1><table class="items"><thead><tr>${g[0].map((h) => `<th>${esc(String(h))}</th>`).join('')}</tr></thead><tbody>${g.slice(1).map((r) => `<tr>${r.map((c) => `<td>${esc(String(c))}</td>`).join('')}</tr>`).join('')}</tbody></table>`)); };
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { const t = e.target as HTMLElement; if (onNew && (e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && !t.isContentEditable) { e.preventDefault(); onNew(); } };
+    const h = (e: KeyboardEvent) => { const t = e.target as HTMLElement; if (onNewB && (e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test(t.tagName) && !t.isContentEditable) { e.preventDefault(); onNewB(); } };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [onNew]);
+  }, [onNewB]);
   const sel = (v: string, set: (v: string) => void, opts: [string, string][], label: string) => <Field label={label}><select className={inputCls} value={v} onChange={(e) => set(e.target.value)}>{opts.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></Field>;
   const allOn = view.length > 0 && view.every((o) => picked.includes(o.id));
+  const sttOn = cfg?.stt !== false, pickOn = cfg?.pick !== false;
+  const dcls = cfg?.dense === 'sm' ? 'l-dn-sm' : cfg?.dense === 'lg' ? 'l-dn-lg' : '';
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2" ref={popRef}>
-        <h1 className="mr-2 text-[20px] font-medium">Quản lý đơn hàng</h1>
-        <div className="order-last w-full min-w-0 lg:order-none lg:mx-auto lg:w-auto lg:max-w-[640px] lg:flex-1"><SearchBox value={q} onChange={setQ} placeholder="Tìm mã đơn, khách hàng, SĐT, mã hàng" /></div>
-        <div className="relative ml-auto lg:ml-0">
+        {!cfg?.hideHead && <h1 className="mr-2 text-[20px] font-medium">{lFill(cfg?.head || 'Quản lý đơn hàng', pctx?.vars)}</h1>}
+        {cfg?.search !== false ? <div className="order-last w-full min-w-0 lg:order-none lg:mx-auto lg:w-auto lg:max-w-[640px] lg:flex-1"><SearchBox value={q} onChange={setQ} placeholder={ph} /></div> : <div className="hidden flex-1 lg:block" />}
+        {!cfg?.hidePer && <div className="relative ml-auto lg:ml-0">
           <button className={cn(btnGhost, 'h-9 min-w-[150px] justify-between gap-2', per === 'C' && 'border-[rgb(var(--accent))]')} onClick={() => { setDraftR(range); setPerC(per === 'C'); setPop(pop === 'per' ? '' : 'per'); }} aria-expanded={pop === 'per'}><CalendarDays className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><span className="flex-1 text-left">{perLabel}</span><ChevronDown className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /></button>
           {pop === 'per' && (
             <div className="absolute right-0 top-full z-40 mt-1 w-64 rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1.5 shadow-xl">
@@ -416,27 +449,27 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
               )}
             </div>
           )}
-        </div>
+        </div>}
         <div className="flex">
-          <div className="relative">
-            <button className={cn(soIco, 'relative rounded-r-none', (pop === 'filter' || nF > 0) && 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))] hover:bg-[rgb(var(--fg))]')} onClick={() => { setDraftF(f); setDraftCf(cff); setPop(pop === 'filter' ? '' : 'filter'); }} aria-label="Bộ lọc" title="Bộ lọc" aria-expanded={pop === 'filter'}><Filter className="h-4 w-4" aria-hidden />{nF > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[rgb(var(--accent))] px-1 text-[10px] text-[rgb(var(--on-accent))]">{nF}</span>}</button>
+          {hb('filter') && <div className="relative">
+            <button className={cn(soIco, 'relative', hb('cols') && 'rounded-r-none', (pop === 'filter' || nF > 0) && 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))] hover:bg-[rgb(var(--fg))]')} onClick={() => { setDraftF(f); setDraftCf(cff); setPop(pop === 'filter' ? '' : 'filter'); }} aria-label="Bộ lọc" title="Bộ lọc" aria-expanded={pop === 'filter'}><Filter className="h-4 w-4" aria-hidden />{nF > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[rgb(var(--accent))] px-1 text-[10px] text-[rgb(var(--on-accent))]">{nF}</span>}</button>
             {pop === 'filter' && (
               <div className="absolute right-0 top-full z-40 mt-1 w-[620px] max-w-[92vw] rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-5 shadow-xl max-sm:-right-24">
                 <div className="mb-3 flex flex-wrap items-center gap-4 text-[14px]">
-                  {([['date', 'Theo ngày đặt hàng'], ['created', 'Theo ngày tạo đơn']] as const).map(([k, t]) => <label key={k} className="flex items-center gap-2"><input type="radio" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={draftF.dateBy === k} onChange={() => setDraftF({ ...draftF, dateBy: k })} />{t}</label>)}
+                  {fo('dateBy') && ([['date', 'Theo ngày đặt hàng'], ['created', 'Theo ngày tạo đơn']] as const).map(([k, t]) => <label key={k} className="flex items-center gap-2"><input type="radio" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={draftF.dateBy === k} onChange={() => setDraftF({ ...draftF, dateBy: k })} />{t}</label>)}
                   <span className="ml-auto text-[12.5px] text-[rgb(var(--muted))]">Kỳ: {perLabel}</span>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Field label="Mã đơn hàng"><input className={inputCls} value={draftF.code} onChange={(e) => setDraftF({ ...draftF, code: e.target.value })} placeholder="Nhập mã" /></Field>
-                  <Field label="Nguồn đơn hàng"><input className={inputCls} list="so-origins" value={draftF.origin} onChange={(e) => setDraftF({ ...draftF, origin: e.target.value })} placeholder="Tất cả" /></Field>
-                  {sel(draftF.by, (v) => setDraftF({ ...draftF, by: v }), [['ALL', 'Tất cả'], ...sellers.map((id): [string, string] => [id, nm(id) || id])], 'Nhân viên bán')}
-                  <Field label="Khách hàng"><input className={inputCls} list="so-custs" value={draftF.cust} onChange={(e) => setDraftF({ ...draftF, cust: e.target.value })} placeholder="Tìm khách hàng" /></Field>
-                  {sel(draftF.wh, (v) => setDraftF({ ...draftF, wh: v }), [['ALL', 'Tất cả'], ...warehouses.map((w): [string, string] => [w.id, w.name])], 'Kho xuất')}
-                  {sel(draftF.issue, (v) => setDraftF({ ...draftF, issue: v as SaleFilter['issue'] }), [['ALL', 'Tất cả'], ['NONE', 'Chưa xuất'], ['PART', 'Một phần'], ['FULL', 'Đã xuất đủ']], 'Trạng thái xuất kho')}
-                  {sel(draftF.pay, (v) => setDraftF({ ...draftF, pay: v as SalePay | 'ALL' }), [['ALL', 'Tất cả'], ...(Object.keys(SALE_PAY) as SalePay[]).map((p): [string, string] => [p, SALE_PAY[p]])], 'Phương thức thanh toán')}
-                  {sel(draftF.paySt, (v) => setDraftF({ ...draftF, paySt: v as SaleFilter['paySt'] }), [['ALL', 'Tất cả'], ['UNPAID', 'Chưa thu'], ['PART', 'Thu một phần'], ['PAID', 'Đã thu đủ']], 'Trạng thái thanh toán')}
-                  {sel(draftF.inv, (v) => setDraftF({ ...draftF, inv: v as SaleFilter['inv'] }), [['ALL', 'Tất cả'], ['NONE', 'Chưa xuất'], ['WAIT', 'Chờ kế toán'], ['DONE', 'Đã xuất'], ['NO', 'Không lấy']], 'Hóa đơn thuế')}
-                  <Field label="Doanh thu"><div className="flex gap-2"><select className={cn(inputBase, 'w-32')} value={draftF.revOp} onChange={(e) => setDraftF({ ...draftF, revOp: e.target.value as 'GT' | 'LT' })} aria-label="So sánh"><option value="GT">Lớn hơn</option><option value="LT">Nhỏ hơn</option></select><div className="min-w-0 flex-1"><MoneyInput value={draftF.rev} onChange={(v) => setDraftF({ ...draftF, rev: v })} /></div></div></Field>
+                  {fo('code') && <Field label="Mã đơn hàng"><input className={inputCls} value={draftF.code} onChange={(e) => setDraftF({ ...draftF, code: e.target.value })} placeholder="Nhập mã" /></Field>}
+                  {fo('origin') && <Field label="Nguồn đơn hàng"><input className={inputCls} list="so-origins" value={draftF.origin} onChange={(e) => setDraftF({ ...draftF, origin: e.target.value })} placeholder="Tất cả" /></Field>}
+                  {fo('by') && sel(draftF.by, (v) => setDraftF({ ...draftF, by: v }), [['ALL', 'Tất cả'], ...sellers.map((id): [string, string] => [id, nm(id) || id])], 'Nhân viên bán')}
+                  {fo('cust') && <Field label="Khách hàng"><input className={inputCls} list="so-custs" value={draftF.cust} onChange={(e) => setDraftF({ ...draftF, cust: e.target.value })} placeholder="Tìm khách hàng" /></Field>}
+                  {fo('wh') && sel(draftF.wh, (v) => setDraftF({ ...draftF, wh: v }), [['ALL', 'Tất cả'], ...warehouses.map((w): [string, string] => [w.id, w.name])], 'Kho xuất')}
+                  {fo('issue') && sel(draftF.issue, (v) => setDraftF({ ...draftF, issue: v as SaleFilter['issue'] }), [['ALL', 'Tất cả'], ['NONE', 'Chưa xuất'], ['PART', 'Một phần'], ['FULL', 'Đã xuất đủ']], 'Trạng thái xuất kho')}
+                  {fo('pay') && sel(draftF.pay, (v) => setDraftF({ ...draftF, pay: v as SalePay | 'ALL' }), [['ALL', 'Tất cả'], ...(Object.keys(SALE_PAY) as SalePay[]).map((p): [string, string] => [p, SALE_PAY[p]])], 'Phương thức thanh toán')}
+                  {fo('paySt') && sel(draftF.paySt, (v) => setDraftF({ ...draftF, paySt: v as SaleFilter['paySt'] }), [['ALL', 'Tất cả'], ['UNPAID', 'Chưa thu'], ['PART', 'Thu một phần'], ['PAID', 'Đã thu đủ']], 'Trạng thái thanh toán')}
+                  {fo('inv') && sel(draftF.inv, (v) => setDraftF({ ...draftF, inv: v as SaleFilter['inv'] }), [['ALL', 'Tất cả'], ['NONE', 'Chưa xuất'], ['WAIT', 'Chờ kế toán'], ['DONE', 'Đã xuất'], ['NO', 'Không lấy']], 'Hóa đơn thuế')}
+                  {fo('rev') && <Field label="Doanh thu"><div className="flex gap-2"><select className={cn(inputBase, 'w-32')} value={draftF.revOp} onChange={(e) => setDraftF({ ...draftF, revOp: e.target.value as 'GT' | 'LT' })} aria-label="So sánh"><option value="GT">Lớn hơn</option><option value="LT">Nhỏ hơn</option></select><div className="min-w-0 flex-1"><MoneyInput value={draftF.rev} onChange={(v) => setDraftF({ ...draftF, rev: v })} /></div></div></Field>}
                 </div>
                 {cfFl.length > 0 && (
                   <div className="mt-3 grid grid-cols-1 gap-3 border-t border-[rgb(var(--line))] pt-3 sm:grid-cols-2">
@@ -447,8 +480,8 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
                   </div>
                 )}
                 <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-[14px]">
-                  <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={draftF.ret} onChange={(e) => setDraftF({ ...draftF, ret: e.target.checked })} />Có hàng trả lại</label>
-                  <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={draftF.overdue} onChange={(e) => setDraftF({ ...draftF, overdue: e.target.checked })} />Quá hạn thanh toán</label>
+                  {fo('ret') && <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={draftF.ret} onChange={(e) => setDraftF({ ...draftF, ret: e.target.checked })} />Có hàng trả lại</label>}
+                  {fo('overdue') && <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={draftF.overdue} onChange={(e) => setDraftF({ ...draftF, overdue: e.target.checked })} />Quá hạn thanh toán</label>}
                 </div>
                 <div className="mt-4 flex items-center gap-2 border-t border-[rgb(var(--line))] pt-4">
                   <span className="text-[13px] text-[rgb(var(--muted))]">Đang chọn {nDraft} điều kiện</span>
@@ -458,14 +491,14 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
                 </div>
               </div>
             )}
-          </div>
-          <div className="relative">
-            <button className={cn(soIco, '-ml-px rounded-l-none', pop === 'cols' && 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))] hover:bg-[rgb(var(--fg))]')} onClick={() => { setDraftC(on); setColQ(''); setPop(pop === 'cols' ? '' : 'cols'); }} aria-label="Cột hiển thị" title="Cột hiển thị" aria-expanded={pop === 'cols'}><Columns3 className="h-4 w-4" aria-hidden /></button>
+          </div>}
+          {hb('cols') && <div className="relative">
+            <button className={cn(soIco, hb('filter') && '-ml-px rounded-l-none', pop === 'cols' && 'bg-[rgb(var(--fg))] text-[rgb(var(--bg))] hover:bg-[rgb(var(--fg))]')} onClick={() => { setDraftC(on); setColQ(''); setPop(pop === 'cols' ? '' : 'cols'); }} aria-label="Cột hiển thị" title="Cột hiển thị" aria-expanded={pop === 'cols'}><Columns3 className="h-4 w-4" aria-hidden /></button>
             {pop === 'cols' && (
-              <div className={cn('absolute right-0 top-full z-40 mt-1 max-w-[92vw] rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-5 shadow-xl max-sm:-right-12', cfL.length ? 'w-[900px]' : 'w-[720px]')}>
+              <div className={cn('absolute right-0 top-full z-40 mt-1 max-w-[92vw] rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-5 shadow-xl max-sm:-right-12', 'w-[860px]')}>
                 <div className="mb-3 flex flex-wrap items-center gap-2"><h3 className="text-[16px] font-medium">Cột hiển thị</h3><span className="text-[12.5px] tabular-nums text-[rgb(var(--muted))]">{COLS.filter((c) => c.lock || draftC.includes(c.id)).length} / {COLS.length}</span><div className="ml-auto w-48"><SearchBox value={colQ} onChange={setColQ} placeholder="Tìm cột" /></div></div>
-                <div className={cn('grid grid-cols-1 gap-x-6', cfL.length ? 'sm:grid-cols-4' : 'sm:grid-cols-3')}>
-                  {((cfL.length ? ['Thông tin', 'Tiến độ', 'Tiền', 'Trường tùy chỉnh'] : ['Thông tin', 'Tiến độ', 'Tiền']) as Col['group'][]).map((g) => (
+                <div className={cn('grid grid-cols-1 gap-x-6', 'gap-y-3 sm:grid-cols-3')}>
+                  {((cfL.length ? ['Thông tin', 'Tiến độ', 'Tiền', 'Khách hàng', 'Người tạo', 'Trường tùy chỉnh'] : ['Thông tin', 'Tiến độ', 'Tiền', 'Khách hàng', 'Người tạo']) as Col['group'][]).map((g) => (
                     <div key={g}>
                       <p className="mb-1 text-[12.5px] text-[rgb(var(--muted))]">{g}</p>
                       {COLS.filter((c) => c.group === g && (!colQ || fold(c.label).includes(fold(colQ)))).map((c) => (
@@ -484,13 +517,13 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
                 </div>
               </div>
             )}
-          </div>
+          </div>}
         </div>
         <div className="flex">
-          <button className={cn(soIco, 'rounded-r-none')} onClick={csv} disabled={!rows.length} aria-label="Xuất Excel (CSV)" title={chosen.length ? `Xuất ${chosen.length} đơn đã chọn` : 'Xuất Excel (CSV)'}><Download className="h-4 w-4" aria-hidden /></button>
-          <button className={cn(soIco, '-ml-px rounded-l-none')} onClick={print} disabled={!rows.length} aria-label="In danh sách" title={chosen.length ? `In ${chosen.length} đơn đã chọn` : 'In danh sách'}><Printer className="h-4 w-4" aria-hidden /></button>
+          {hb('excel') && <button className={cn(soIco, hb('print') && 'rounded-r-none')} onClick={csv} disabled={!rows.length} aria-label="Xuất Excel (CSV)" title={chosen.length ? `Xuất ${chosen.length} đơn đã chọn` : 'Xuất Excel (CSV)'}><Download className="h-4 w-4" aria-hidden /></button>}
+          {hb('print') && <button className={cn(soIco, hb('excel') && '-ml-px rounded-l-none')} onClick={print} disabled={!rows.length} aria-label="In danh sách" title={chosen.length ? `In ${chosen.length} đơn đã chọn` : 'In danh sách'}><Printer className="h-4 w-4" aria-hidden /></button>}
         </div>
-        {onNew && <button className={cn(btnPrimary, 'h-9')} onClick={onNew} title="Phím tắt N"><Plus className="h-4 w-4" aria-hidden />Lên đơn bán<kbd className="ml-1 rounded border border-current/40 px-1 font-mono text-[10px] opacity-70">N</kbd></button>}
+        {onNewB && <button className={cn(btnPrimary, 'h-9')} onClick={onNewB} title="Phím tắt N"><Plus className="h-4 w-4" aria-hidden />Lên đơn bán<kbd className="ml-1 rounded border border-current/40 px-1 font-mono text-[10px] opacity-70">N</kbd></button>}
         <datalist id="so-origins">{Array.from(new Set(['Tại quầy', 'Từ báo giá', ...salesOrders.map((o) => o.origin).filter((x): x is string => !!x)])).map((x) => <option key={x} value={x} />)}</datalist>
         <datalist id="so-custs">{customers.slice(0, 300).map((c) => <option key={c.id} value={c.name} />)}</datalist>
       </div>
@@ -513,30 +546,31 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
         {rows.length ? (
           <div className="overflow-x-auto">
             <table className="w-full text-[13.5px]">
-              <thead><tr className="border-b border-[rgb(var(--line))]">
-                <th className={cn(soTh, 'w-10 pl-5')}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={allOn} onChange={() => setPicked(allOn ? picked.filter((id) => !view.some((o) => o.id === id)) : Array.from(new Set([...picked, ...view.map((o) => o.id)])))} aria-label="Chọn cả trang" /></th>
-                <th className={cn(soTh, 'w-8')}>#</th>
+              <thead><tr className={cn('border-b border-[rgb(var(--line))]', cfg?.thBg === false && 'l-th-none')}>
+                {pickOn && <th className={cn(soTh, 'w-10 pl-5')}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={allOn} onChange={() => setPicked(allOn ? picked.filter((id) => !view.some((o) => o.id === id)) : Array.from(new Set([...picked, ...view.map((o) => o.id)])))} aria-label="Chọn cả trang" /></th>}
+                {sttOn && <th className={cn(soTh, 'w-8', !pickOn && 'pl-5')}>#</th>}
                 {vis.map((c) => <th key={c.id} className={cn(soTh, c.right && 'text-right')}>{c.label}</th>)}
                 <th className={cn(soTh, 'w-12 pr-5')}><span className="sr-only">Thao tác</span></th>
               </tr></thead>
               <tbody>
                 {view.map((o, i) => { const pk = picked.includes(o.id); return (
-                  <tr key={o.id} className={cn('cursor-pointer border-b border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--ink)/0.03)]', pk && 'bg-[rgb(var(--accent)/0.05)] shadow-[inset_3px_0_0_rgb(var(--accent))]')} onClick={() => setOpenSale(o.id)}>
-                    <td className={cn(soTd, 'pl-5')} onClick={(e) => e.stopPropagation()}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={pk} onChange={() => setPicked((p) => (p.includes(o.id) ? p.filter((x) => x !== o.id) : [...p, o.id]))} aria-label={`Chọn ${o.code}`} /></td>
-                    <td className={cn(soTd, 'tabular-nums text-[rgb(var(--muted))]')}>{pg * size + i + 1}</td>
+                  <tr key={o.id} className={cn('cursor-pointer border-b border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--ink)/0.03)]', dcls, cfg?.zebra && i % 2 === 1 && 'bg-[rgb(var(--ink)/0.025)]', pk && 'bg-[rgb(var(--accent)/0.05)] shadow-[inset_3px_0_0_rgb(var(--accent))]')} onClick={() => setOpenSale(o.id)}>
+                    {pickOn && <td className={cn(soTd, 'pl-5')} onClick={(e) => e.stopPropagation()}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={pk} onChange={() => setPicked((p) => (p.includes(o.id) ? p.filter((x) => x !== o.id) : [...p, o.id]))} aria-label={`Chọn ${o.code}`} /></td>}
+                    {sttOn && <td className={cn(soTd, 'tabular-nums text-[rgb(var(--muted))]', !pickOn && 'pl-5')}>{pg * size + i + 1}</td>}
                     {vis.map((c) => <td key={c.id} className={cn(soTd, c.right && 'text-right')}>{c.cell(o)}</td>)}
                     <td className={cn(soTd, 'pr-5')} onClick={(e) => e.stopPropagation()}><RowMenu items={[{ label: 'Xem chi tiết', icon: Eye, onClick: () => setOpenSale(o.id) }, { label: 'Sửa đơn', icon: Pencil, disabled: !R.canEdit(o), onClick: () => onEdit(o.id) }, { label: 'Hủy đơn', icon: XCircle, disabled: !R.canCancel(o), onClick: () => onCancel(o.id) }, { label: R.canDelete(o) ? 'Xóa đơn' : `Xóa đơn (${R.delWhy(o)})`, icon: Trash2, danger: true, disabled: !R.canDelete(o), onClick: () => R.remove(o) }]} /></td>
                   </tr>
                 ); })}
-                <tr className="bg-[rgb(var(--ink)/0.03)] font-medium">
-                  <td className={cn(soTd, 'pl-5')} colSpan={2 + Math.max(0, firstSum)}>Tổng {rows.length} đơn <span className="font-normal text-[rgb(var(--muted))]">· theo bộ lọc</span></td>
-                  {firstSum >= 0 && vis.slice(firstSum).map((c) => <td key={c.id} className={cn(soTd, 'text-right tabular-nums', c.id === 'left' && 'text-[rgb(var(--accent-fg))]')}>{c.sum ? fmtN(sumOf(c.sum)) : ''}</td>)}
+                {sumOn && <tr className="bg-[rgb(var(--ink)/0.03)] font-medium">
+                  <td className={cn(soTd, 'pl-5')} colSpan={(pickOn ? 1 : 0) + (sttOn ? 1 : 0) + Math.max(1, firstSum)}>Tổng {rows.length} đơn <span className="font-normal text-[rgb(var(--muted))]">· theo bộ lọc</span></td>
+                  {firstSum >= 0 && vis.slice(Math.max(1, firstSum)).map((c) => <td key={c.id} className={cn(soTd, 'text-right tabular-nums', c.id === 'left' && 'text-[rgb(var(--accent-fg))]')}>{c.sum && !sumOff.includes(c.id) ? fmtN(sumOf(c.sum)) : ''}</td>)}
+                  {firstSum < 0 && <td colSpan={Math.max(0, vis.length - 1)} />}
                   <td />
-                </tr>
+                </tr>}
               </tbody>
             </table>
           </div>
-        ) : <EmptyState text={salesOrders.length ? 'Không có đơn khớp bộ lọc' : 'Chưa có đơn hàng'} art="box" action={!salesOrders.length && onNew ? 'Lên đơn bán' : undefined} onAction={onNew} />}
+        ) : <EmptyState text={salesOrders.length ? 'Không có đơn khớp bộ lọc' : 'Chưa có đơn hàng'} art="box" action={!salesOrders.length && onNewB ? 'Lên đơn bán' : undefined} onAction={onNewB} />}
       </section>
     </div>
   );

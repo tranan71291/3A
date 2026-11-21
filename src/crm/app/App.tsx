@@ -1946,6 +1946,20 @@ export default function DashboardApp() {
       .kpi-strip > * { border-left: 1px solid rgb(var(--line)); border-top: 1px solid rgb(var(--line)); margin: 0 0 -1px -1px; }
       /* Card chuẩn: nền surface, viền mảnh, bóng nhẹ (thay hiệu ứng kính để dễ đọc và nhẹ máy) */
       .glass-card { background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); }
+      .lst-bg.glass-card, .lst-bg > .glass-card, .lst-bg > * > .glass-card, .lst-box.lst-bg { background: var(--lb-bg) !important; }
+      .lst-bd.glass-card, .lst-bd > .glass-card, .lst-bd > * > .glass-card, .lst-box.lst-bd { border: var(--lb-bw) var(--lb-bs) var(--lb-bd) !important; }
+      .lst-r.glass-card, .lst-r > .glass-card, .lst-r > * > .glass-card, .lst-box.lst-r { border-radius: var(--lb-r) !important; }
+      .lst-sh.glass-card, .lst-sh > .glass-card, .lst-sh > * > .glass-card, .lst-box.lst-sh { box-shadow: var(--lb-sh) !important; }
+      .lst-box { border-radius: var(--lb-r, 12px); padding: 8px 12px; }
+      .lst-c { color: var(--lb-c); }
+      .l-dn-sm > td { padding-top: 5px !important; padding-bottom: 5px !important; }
+      .l-dn-lg > td { padding-top: 13px !important; padding-bottom: 13px !important; }
+      .l-th-bg > th { background: rgb(var(--ink) / 0.04); padding-left: 6px; padding-right: 6px; }
+      .l-th-none > th { background: transparent !important; }
+      .lst-solid :is([class*="--muted"], [class*="--fg2"]) { color: inherit !important; opacity: 0.8; }
+      .lst-ts :is(h1, h3) { font-size: var(--lb-ts) !important; line-height: 1.3 !important; }
+      .lst-tc :is(h1, h3) { color: var(--lb-tc) !important; }
+      .lst-tw :is(h1, h3) { font-weight: var(--lb-tw) !important; }
       .ambient { display: none; }
       .glass { background: rgb(var(--raised) / 0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--shadow-lg); }
       option { background: rgb(var(--surface)); color: rgb(var(--fg)); }
