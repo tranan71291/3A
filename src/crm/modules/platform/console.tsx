@@ -1,22 +1,22 @@
 'use client';
 
-import { Fragment, type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Bold, Building2, CalendarDays, Check as CheckIcon, CheckCircle2, ChevronLeft, ChevronRight, Columns3, Copy, Download, Eye, FileText, Filter, GripVertical, Hash, Heading2, Info, Italic, KeyRound, LayoutGrid, LayoutTemplate, Link2, List, ListChecks, Lock, LogIn, MessageSquare, Minus, Monitor, Paperclip, Pencil, Plug, Plus, Redo2, RefreshCw, Rocket, Rows3, Scale, Search, Settings, ShoppingBag, SlidersHorizontal, Smartphone, StickyNote, Tablet, Target, Trash2, TrendingUp, Truck, Undo2, Users, Wallet, X, XCircle } from 'lucide-react';
 import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { cloudMessage } from '../../lib/cloud';
-import { btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, CF_FILTERABLE, CF_TYPE, cfSlug, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, fold, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, iso, isPlatformEmail, kpiGrid, L_ACT, L_ALL_PAGES, L_DS, L_GAP, L_ICONSET, L_KIND, L_LATER, L_PAGES, L_PER, L_PERIOD, L_ROLES, L_ROW, L_STAGE, L_TYPES, L_VAR_KEYS, lAssignLabel, lCondOk, lDrag, lEnsureCore, lFramed, lHasData, lIsCore, lKind, lMigrate, lNewBlock, lOnTab, lOrderSm, LPageC, lRoleProfit, lRoleSees, lSaleSampleShows, lStarter, lStarterList, lStarterSale, lTabList, lToneCls, lType, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, portal, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, SO_INFO_F, SO_LINE_F, SO_LIST_COLS, SO_LIST_TABS, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, verLabel, vnd } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, CF_FILTERABLE, CF_TYPE, cfSlug, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, fold, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, iso, isPlatformEmail, kpiGrid, L_ACT, L_ALL_PAGES, L_DS, L_GAP, L_ICONSET, L_KIND, L_LATER, L_PAGES, L_PER, L_PERIOD, L_ROLES, L_ROW, L_STAGE, L_TONE, L_TYPES, L_VAR_KEYS, lAssignLabel, lCondOk, lDrag, lEnsureCore, lFramed, lHasData, lHex, lIsCore, lKind, lMigrate, lNewBlock, lOnTab, lOrderSm, LPageC, lRoleProfit, lRoleSees, lSaleSampleShows, lStarter, lStarterList, lStarterSale, lTabList, lToneCls, lType, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, portal, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, SO_FILTERS, SO_HEAD_BTNS, SO_INFO_F, SO_LINE_F, SO_LIST_COLS, SO_LIST_TABS, SO_PERS, SO_SEARCH, SO_SEARCH_DEF, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, verLabel, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { AddTenantModal, OrgMark } from '../../lib/modules';
 import { hashPassword } from '../../lib/security';
 import { listSnapshots, tenantStats } from '../../lib/storage';
-import type { AnyRec, AppCtx, CfDef, CfType, ConfirmState, ConsoleTab, DashPeriod, DateRange, Department, DeptCode, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, LDrop, LPage, LPeriod, LPos, LPtr, LRow, LStage, LTextKind, LTypeDef, MfgConfig, Module, Org, PayStage, PayTrigger, Perms, PriceItem, PriceUnit, Role, SecurityPolicy, StoredData, TenantPlan, TenantReg, Tone, User } from '../../lib/types';
+import type { AnyRec, AppCtx, CfDef, CfType, ConfirmState, ConsoleTab, DashPeriod, DateRange, Department, DeptCode, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, LDrop, LPage, LPeriod, LPos, LPtr, LRow, LStage, LStyle, LTextKind, LTypeDef, MfgConfig, Module, Org, PayStage, PayTrigger, Perms, PriceItem, PriceUnit, Role, SecurityPolicy, SoColDef, StoredData, TenantPlan, TenantReg, Tone, User } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { SearchBox } from '../alux/orders';
 import { dashRange } from '../dashboard/exec-dashboard';
 import { CbSeg } from '../finance/cashbook';
-import { LayoutView, LBlockBody, LBusinessView, lDesignCtx, lRowsSample, lSaleSample, lSettle, LTextBlock } from '../messages/messenger';
+import { LayoutView, LBlockBody, LBusinessView, lDesignCtx, lRowsSample, lSaleSample, lSettle, lSt, LTextBlock } from '../messages/messenger';
 
 export function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (
@@ -368,10 +368,10 @@ export function LGridEditor({ blocks, commit, sel, setSel, page, stage, cf, etab
         return (
           <Fragment key={b.id}>
             {on && <div className="absolute rounded-xl border-[1.5px] border-dashed border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.08)]" style={px(p)} />}
-            <section className={cn('absolute flex flex-col overflow-hidden rounded-xl border bg-[rgb(var(--surface))]', !lOnTab(b, blocks, etab) && 'opacity-35', sel === b.id ? 'border-[rgb(var(--accent))] ring-[3px] ring-[rgb(var(--accent)/0.18)]' : 'border-[rgb(var(--line))]', on && 'opacity-95 shadow-2xl')} style={float} onClick={() => setSel(b.id)} aria-label={`Khối ${b.config.title}`}>
+            <section className={cn('absolute flex flex-col overflow-hidden rounded-xl border bg-[rgb(var(--surface))]', !lOnTab(b, blocks, etab) && 'opacity-35', sel === b.id ? 'border-[rgb(var(--accent))] ring-[3px] ring-[rgb(var(--accent)/0.18)]' : 'border-[rgb(var(--line))]', on && 'opacity-95 shadow-2xl')} style={float} onClick={() => setSel(b.id)} aria-label={`Khối ${b.config.title || lType(b.type).label}`}>
               <div className="flex items-center gap-1.5 px-2 pt-2 text-[rgb(var(--muted))]">
                 <button className="cursor-grab touch-none rounded p-0.5 hover:bg-[rgb(var(--ink)/0.06)] active:cursor-grabbing" onPointerDown={(e) => start(e, b, 'move')} onPointerMove={move} onPointerUp={end} onPointerCancel={end} aria-label={`Kéo ${b.config.title}`}><GripVertical className="h-3.5 w-3.5" aria-hidden /></button>
-                <span className="min-w-0 truncate text-[12.5px] font-medium text-[rgb(var(--fg))]">{b.config.title || 'Chưa đặt tiêu đề'}</span>
+                <span className="min-w-0 truncate text-[12.5px] font-medium text-[rgb(var(--fg))]">{b.config.title || lType(b.type).label}</span>
                 {lIsCore(b.type) ? <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-[rgb(var(--line))] px-1 text-[10.5px]" title="Khối lõi: không xóa được"><Lock className="h-2.5 w-2.5" aria-hidden />lõi</span> : <span className="shrink-0 rounded border border-[rgb(var(--line))] px-1 font-mono text-[10.5px]">span {p.w}</span>}
                 {(b.config.stages?.length || b.config.roles?.length) ? <span className="shrink-0 text-[10.5px] text-[rgb(var(--accent))]" title="Có điều kiện hiện">có điều kiện</span> : null}
                 <span className="ml-auto flex shrink-0 gap-0.5">
@@ -381,7 +381,11 @@ export function LGridEditor({ blocks, commit, sel, setSel, page, stage, cf, etab
                     : sel === b.id && <button className="rounded p-1 hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--danger-fg))]" onClick={(e) => { e.stopPropagation(); commit(lSettle(blocks.filter((x) => x.id !== b.id))); setSel(null); }} aria-label="Xóa khối"><Trash2 className="h-3.5 w-3.5" aria-hidden /></button>}
                 </span>
               </div>
-              <div className={cn('pointer-events-none min-h-0 flex-1 overflow-hidden px-3 pb-3 pt-1', b.type === 'K-Text' && lToneCls(b.config), b.type === 'K-Text' && 'mx-2 mb-2 rounded-lg border')}>{page !== 'home' ? lSaleSample({ b, stage, cf }) : <LBlockBody b={b} rows={lHasData(b.type) ? rowsOf(b.config.ds) : []} />}</div>
+              {(() => { const s = lSt(b.config, true, b.type === 'K-Divider'); return (
+                <div className={cn('pointer-events-none min-h-0 flex-1 overflow-hidden px-3 pb-3 pt-1', b.type === 'K-Text' && lToneCls(b.config), b.type === 'K-Text' && 'mx-2 mb-2 rounded-lg border', s.cls.includes('lst-box') && 'mx-2 mb-2', s.cls)} style={s.css}>
+                  <div className="h-full" style={s.z ? { zoom: s.z } : undefined}>{page !== 'home' ? lSaleSample({ b, stage, cf }) : <LBlockBody b={b} rows={lHasData(b.type) ? rowsOf(b.config.ds) : []} />}</div>
+                </div>
+              ); })()}
               <button className="absolute bottom-0.5 right-0.5 h-4 w-4 cursor-se-resize touch-none" onPointerDown={(e) => start(e, b, 'resize')} onPointerMove={move} onPointerUp={end} onPointerCancel={end} aria-label={`Đổi kích thước ${b.config.title}`}>
                 <span className={cn('absolute bottom-0.5 right-0.5 h-2.5 w-2.5 rounded-br border-b-2 border-r-2', sel === b.id ? 'border-[rgb(var(--accent))]' : 'border-[rgb(var(--muted))]')} />
               </button>
@@ -409,6 +413,87 @@ export function LFieldList({ all, c, onCfg, cfIds }: { all: { id: string; label:
           : <label className="flex w-[74px] items-center justify-end gap-1.5 text-[11.5px] text-[rgb(var(--muted))]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={on} onChange={() => onCfg({ off: on ? [...off, id] : off.filter((x) => x !== id) })} aria-label={`Hiện ${f.label}`} />hiện</label>}
       </div>
     ); })}</div>
+  );
+}
+
+/** v54.1 nhóm điều khiển có nhãn (không dùng thẻ label: bấm nhãn không chọn nhầm ô đầu) */
+export function LFg({ label, children }: { label: string; children: ReactNode }) {
+  return <div><p className="mb-1.5 text-xs font-medium text-[rgb(var(--muted))]">{label}</p>{children}</div>;
+}
+
+/** v54.1 chọn màu: Mặc định, màu đặc biệt (không nền, viền mảnh…), bảng màu hệ thống, màu tự chọn (#) */
+export function LColorPick({ value, onChange, label, special }: { value?: string; onChange: (v: string | undefined) => void; label: string; special?: [string, string, string][] }) {
+  const sw = 'relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-[rgb(var(--ink)/0.18)]';
+  const ring = 'ring-2 ring-[rgb(var(--fg))] ring-offset-2 ring-offset-[rgb(var(--surface))]';
+  const custom = lHex(value) ? value : '';
+  const none = <i className="absolute left-1/2 top-[-2px] h-[calc(100%+4px)] w-px -translate-x-1/2 rotate-45 bg-[rgb(var(--danger-fg))]" aria-hidden />;
+  return (
+    <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label={label}>
+      <button type="button" role="radio" aria-checked={!value || value === 'auto'} aria-label="Mặc định" title="Mặc định" onClick={() => onChange(undefined)} className={cn(sw, 'grid place-items-center bg-[rgb(var(--surface))] text-[10.5px] font-medium text-[rgb(var(--muted))]', (!value || value === 'auto') && ring)}>A</button>
+      {special?.map(([k, l, bg]) => <button key={k} type="button" role="radio" aria-checked={value === k} aria-label={l} title={l} onClick={() => onChange(k)} className={cn(sw, value === k && ring)} style={{ background: bg }}>{k === 'none' && none}</button>)}
+      {Object.entries(L_TONE).map(([k, t]) => <button key={k} type="button" role="radio" aria-checked={value === k} aria-label={t.label} title={t.label} onClick={() => onChange(k)} className={cn(sw, value === k && ring)} style={{ background: `rgb(var(${t.base}))` }} />)}
+      <label className={cn(sw, 'grid cursor-pointer place-items-center border-dashed text-[11px] text-[rgb(var(--muted))]', custom && ring)} title="Màu tự chọn" style={custom ? { background: custom, borderStyle: 'solid' } : undefined}>{!custom && '#'}
+        <input type="color" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" value={custom || '#ff8c00'} onChange={(e) => onChange(e.target.value)} aria-label={`${label}: màu tự chọn`} />
+      </label>
+      {custom && <span className="font-mono text-[11.5px] text-[rgb(var(--muted))]">{custom}</span>}
+    </div>
+  );
+}
+
+/** v54.1 thẻ Kiểu của khối */
+export function LStyleEditor({ b, onCfg }: { b: LBlock; onCfg: (c: Partial<LBlockCfg>) => void }) {
+  const c = b.config; const s = c.st ?? {};
+  const set = (p: Partial<LStyle>) => { const n: Record<string, unknown> = { ...s, ...p }; Object.keys(n).forEach((k) => { if (n[k] === undefined) delete n[k]; }); onCfg({ st: Object.keys(n).length ? (n as LStyle) : undefined }); };
+  const isText = b.type === 'K-Text', isDiv = b.type === 'K-Divider', isSp = b.type === 'K-Spacer';
+  const hasTitle = isDiv || lHasData(b.type) || lIsCore(b.type) || lType(b.type).tier === 'biz' || (isText && lFramed(c) && !c.hideTitle);
+  const grp = (t: string, kids: ReactNode) => <section className="space-y-3 border-t border-[rgb(var(--line))] pt-3 first:border-t-0 first:pt-0"><h4 className="text-[12.5px] font-medium text-[rgb(var(--fg2))]">{t}</h4>{kids}</section>;
+  const tint = !!s.bg && !['none', 'surface', 'sunken', 'auto'].includes(s.bg);
+  const BG: [string, string, string][] = [['none', 'Không nền', 'rgb(var(--surface))'], ['surface', 'Nền thẻ', 'rgb(var(--surface))'], ['sunken', 'Nền chìm', 'rgb(var(--sunken))']];
+  const BD: [string, string, string][] = [...(isDiv ? [] : [['none', 'Không viền', 'rgb(var(--surface))'] as [string, string, string]]), ['line', 'Mảnh (màu đường kẻ)', 'rgb(var(--line))'], ['strong', 'Đậm', 'rgb(var(--ink) / 0.3)']];
+  return (
+    <div className="space-y-4">
+      {!isSp && !isDiv && grp('Chữ', <>
+        <LFg label="Cỡ chữ">{isText
+          ? <CbSeg label="Cỡ chữ" items={[['sm', 'Nhỏ'], ['md', 'Vừa'], ['lg', 'Lớn'], ['xl', 'Rất lớn']]} value={c.size ?? 'md'} onChange={(v) => onCfg({ size: v })} />
+          : <CbSeg label="Cỡ chữ" items={[['sm', 'Nhỏ'], ['md', 'Vừa'], ['lg', 'Lớn'], ['xl', 'Rất lớn']]} value={s.fs ?? 'md'} onChange={(v) => set({ fs: v === 'md' ? undefined : v })} />}</LFg>
+        <LFg label="Màu chữ"><LColorPick value={s.color} onChange={(v) => set({ color: v })} label="Màu chữ" /></LFg>
+      </>)}
+      {hasTitle && grp(isDiv ? 'Nhãn trên đường kẻ' : 'Tiêu đề khối', <>
+        <LFg label="Cỡ"><CbSeg label="Cỡ tiêu đề" items={[['auto', 'Mặc định'], ['sm', 'Nhỏ'], ['md', 'Vừa'], ['lg', 'Lớn'], ['xl', 'Rất lớn']]} value={s.tSize ?? 'auto'} onChange={(v) => set({ tSize: v === 'auto' ? undefined : v })} /></LFg>
+        <LFg label="Độ đậm"><CbSeg label="Độ đậm tiêu đề" items={[['auto', 'Mặc định'], ['normal', 'Thường'], ['medium', 'Vừa'], ['bold', 'Đậm']]} value={s.tW ?? 'auto'} onChange={(v) => set({ tW: v === 'auto' ? undefined : v })} /></LFg>
+        <LFg label="Màu"><LColorPick value={s.tColor} onChange={(v) => set({ tColor: v })} label="Màu tiêu đề" /></LFg>
+      </>)}
+      {!isDiv && grp('Nền', <>
+        <LFg label="Màu nền"><LColorPick value={s.bg} onChange={(v) => set({ bg: v })} label="Màu nền" special={BG} /></LFg>
+        {tint && <LFg label="Độ đậm nền"><CbSeg label="Độ đậm nền" items={[['soft', 'Nhạt'], ['mid', 'Vừa'], ['solid', 'Đặc']]} value={s.bgA ?? 'soft'} onChange={(v) => set({ bgA: v === 'soft' ? undefined : v })} /></LFg>}
+        {tint && s.bgA === 'solid' && !s.color && <p className="-mt-1 text-[12px] text-[rgb(var(--muted))]">Nền đặc: chữ tự đổi trắng / đen cho dễ đọc</p>}
+      </>)}
+      {grp(isDiv ? 'Đường kẻ' : 'Viền', <>
+        <LFg label={isDiv ? 'Màu đường' : 'Màu viền'}><LColorPick value={s.bd} onChange={(v) => set({ bd: v })} label={isDiv ? 'Màu đường' : 'Màu viền'} special={BD} /></LFg>
+        <div className="grid grid-cols-2 gap-3">
+          <LFg label="Kiểu"><CbSeg label="Kiểu viền" items={[['solid', 'Liền'], ['dashed', 'Gạch'], ['dotted', 'Chấm']]} value={s.bdS ?? 'solid'} onChange={(v) => set({ bdS: v === 'solid' ? undefined : v })} /></LFg>
+          <LFg label="Độ dày"><CbSeg label="Độ dày viền" items={[['1', '1'], ['2', '2'], ['3', '3']]} value={String(s.bdW ?? 1) as '1' | '2' | '3'} onChange={(v) => set({ bdW: v === '1' ? undefined : (Number(v) as 2 | 3) })} /></LFg>
+        </div>
+      </>)}
+      {!isDiv && !isSp && grp('Góc và bóng', <>
+        <LFg label="Bo góc"><CbSeg label="Bo góc" items={[['none', 'Vuông'], ['sm', 'Nhỏ'], ['md', 'Vừa'], ['lg', 'Lớn'], ['xl', 'Tròn']]} value={s.r ?? 'md'} onChange={(v) => set({ r: v === 'md' ? undefined : v })} /></LFg>
+        <LFg label="Đổ bóng"><CbSeg label="Đổ bóng" items={[['none', 'Không'], ['sm', 'Nhẹ'], ['md', 'Vừa'], ['lg', 'Đậm']]} value={s.sh ?? 'none'} onChange={(v) => set({ sh: v === 'none' ? undefined : v })} /></LFg>
+      </>)}
+      {b.type === 'K-Chart-Line' && grp('Màu biểu đồ', <>
+        <LFg label="Đường 1"><LColorPick value={c.colors?.[0]} onChange={(v) => onCfg({ colors: [v ?? '', c.colors?.[1] ?? ''] })} label="Màu đường 1" /></LFg>
+        <LFg label="Đường 2"><LColorPick value={c.colors?.[1]} onChange={(v) => onCfg({ colors: [c.colors?.[0] ?? '', v ?? ''] })} label="Màu đường 2" /></LFg>
+      </>)}
+      {(b.type === 'K-Table-Compact' || b.type === 'K-SaleList') && grp('Bảng', <>
+        <LFg label="Mật độ dòng"><CbSeg label="Mật độ dòng" items={[['sm', 'Gọn'], ['md', 'Vừa'], ['lg', 'Thoáng']]} value={c.dense ?? 'md'} onChange={(v) => onCfg({ dense: v === 'md' ? undefined : v })} /></LFg>
+        <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={!!c.zebra} onChange={(e) => onCfg({ zebra: e.target.checked || undefined })} />Sọc xen kẽ</label>
+        <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={b.type === 'K-SaleList' ? c.thBg !== false : !!c.thBg} onChange={(e) => onCfg({ thBg: e.target.checked })} />Tô nền dòng tiêu đề</label>
+      </>)}
+      {b.type === 'K-Tabs' && grp('Kiểu tab', <CbSeg label="Kiểu tab" items={[['line', 'Gạch chân'], ['pill', 'Khối'], ['chip', 'Viên']]} value={c.tabStyle ?? 'line'} onChange={(v) => onCfg({ tabStyle: v === 'line' ? undefined : v })} />)}
+      <div className="flex items-start gap-3 border-t border-[rgb(var(--line))] pt-3">
+        <p className="flex-1 text-[12px] text-[rgb(var(--muted))]">Màu trong bảng màu tự đổi theo giao diện sáng / tối. Màu tự chọn (#) giữ nguyên ở cả hai, nên chọn màu đủ tương phản.</p>
+        <button type="button" className={cn(btnGhost, 'h-8 shrink-0 py-0 text-[12.5px]')} onClick={() => onCfg({ st: undefined, colors: undefined, zebra: undefined, dense: undefined, thBg: undefined, tabStyle: undefined, ...(isText ? { size: undefined } : {}) })}>Về mặc định</button>
+      </div>
+    </div>
   );
 }
 
@@ -440,12 +525,18 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
     <Field label={label}><select className={inputCls} value={v ?? ''} onChange={(e) => set(e.target.value)}>{none && <option value="">Không</option>}{ds.fields.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select></Field>
   );
   const typeLabel = lType(b.type).label;
+  const [sec, setSec] = useState<'c' | 's' | 'v'>('c');
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2"><Settings className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><h3 className="font-medium">Cài đặt khối</h3></div>
       <div className="flex items-center gap-2"><Code>{b.type}</Code><span className="text-[12.5px] text-[rgb(var(--muted))]">{typeLabel}</span>{core && <span className="inline-flex items-center gap-1 rounded border border-[rgb(var(--line))] px-1.5 text-[11.5px] text-[rgb(var(--muted))]"><Lock className="h-3 w-3" aria-hidden />Khối lõi</span>}</div>
       {core && <p className="flex gap-2 rounded-lg bg-[rgb(var(--ink)/0.04)] px-3 py-2 text-[12.5px] text-[rgb(var(--fg2))]"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />Khối lõi của luồng bán hàng: được di chuyển, đổi kích thước, ẩn trường không bắt buộc. Không xóa được, luôn hiện trên mọi thiết bị. Nút thao tác theo trạng thái đơn do luồng nghiệp vụ điều khiển</p>}
-      {b.type !== 'K-Icons' && <Field label="Tiêu đề"><input className={inputCls} value={c.title} onChange={(e) => onCfg({ title: e.target.value })} /></Field>}
+      <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="tablist" aria-label="Nhóm cài đặt">
+        {([['c', 'Nội dung'], ['s', 'Kiểu'], ['v', 'Hiển thị']] as const).map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={sec === k} onClick={() => setSec(k)} className={cn('flex-1 rounded-md py-1.5 text-[13px]', sec === k ? 'bg-[rgb(var(--fg))] font-medium text-[rgb(var(--bg))]' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>{l}</button>)}
+      </div>
+      {sec === 's' && <LStyleEditor b={b} onCfg={onCfg} />}
+      {sec === 'c' && <>
+      {b.type !== 'K-Icons' && <Field label={b.type === 'K-SaleList' ? 'Tên khối (chỉ trong màn thiết kế)' : 'Tiêu đề'}><input className={inputCls} value={c.title} onChange={(e) => onCfg({ title: e.target.value })} /></Field>}
       {b.type === 'K-Text' && (
         <>
           <Field label="Kiểu">
@@ -461,10 +552,7 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
             <p className="mt-1.5 text-[12px] text-[rgb(var(--muted))]">**đậm**, *nghiêng*, dòng "- " là danh sách, "## " là tiêu đề nhỏ, [chữ](https://…) là liên kết, {'{biến}'} tự điền khi hiển thị. Không chèn mã, không chèn ảnh</p>
           </Field>
           {(lKind(c) === 'title' || lKind(c) === 'heading') && <Field label="Dòng phụ"><input className={inputCls} value={c.sub ?? ''} onChange={(e) => onCfg({ sub: e.target.value || undefined })} placeholder="VD: Cập nhật {giờ cập nhật} · còn {số ngày còn lại} ngày" /></Field>}
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Căn"><CbSeg label="Căn" items={[['left', 'Trái'], ['center', 'Giữa'], ['right', 'Phải']]} value={c.align ?? 'left'} onChange={(v) => onCfg({ align: v })} /></Field>
-            <Field label="Cỡ chữ"><CbSeg label="Cỡ chữ" items={[['sm', 'Nhỏ'], ['md', 'Vừa'], ['lg', 'Lớn']]} value={c.size ?? 'md'} onChange={(v) => onCfg({ size: v })} /></Field>
-          </div>
+          <Field label="Căn"><CbSeg label="Căn" items={[['left', 'Trái'], ['center', 'Giữa'], ['right', 'Phải']]} value={c.align ?? 'left'} onChange={(v) => onCfg({ align: v })} /></Field>
           <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={lFramed(c)} onChange={(e) => onCfg({ frame: e.target.checked })} />Hiện khung (viền, nền)</label>
           {lFramed(c) && <label className="-mt-2 flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={!c.hideTitle} onChange={(e) => onCfg({ hideTitle: !e.target.checked })} />Hiện tiêu đề khối trong khung</label>}
         </>
@@ -498,6 +586,7 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
                         <Field label="Nhãn"><input className={inputCls} value={x.label} onChange={(e) => set({ label: e.target.value })} aria-label="Nhãn nút" /></Field>
                         <Field label="Kiểu nút"><select className={inputCls} value={x.style} onChange={(e) => set({ style: e.target.value as LBtn['style'] })} aria-label="Kiểu nút"><option value="icon">Chỉ icon</option><option value="ghost">Viền</option><option value="text">Chỉ chữ (nút phụ)</option><option value="primary">Nút chính</option></select></Field>
                       </div>
+                      <LFg label="Màu nút"><LColorPick value={x.tone} onChange={(v) => set({ tone: v })} label="Màu nút" /></LFg>
                       <Field label="Hành động"><select className={inputCls} value={x.act} onChange={(e) => { const a = e.target.value as LBtnAct; set({ act: a, arg: undefined, icon: L_ACT[a].icon }); }} aria-label="Hành động">
                         <optgroup label="Chung · trang nào cũng có">{acts.filter((a) => L_ACT[a].pages.length === L_ALL_PAGES.length).map((a) => <option key={a} value={a}>{L_ACT[a].label}</option>)}</optgroup>
                         <optgroup label={`Riêng trang ${L_PAGES.find((p) => p.id === page)?.label ?? ''}`}>{acts.filter((a) => L_ACT[a].pages.length < L_ALL_PAGES.length).map((a) => <option key={a} value={a}>{L_ACT[a].label}</option>)}</optgroup>
@@ -547,20 +636,54 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
       })()}
       {b.type === 'K-Divider' && chk(!c.hideTitle, 'Hiện tiêu đề làm nhãn trên đường kẻ', () => onCfg({ hideTitle: !c.hideTitle }))}
       {b.type === 'K-SaleList' && (() => {
-        const cfL = cf.filter((d) => d.scope === 'HEAD' && d.status === 'ACTIVE' && d.where.list);
-        const all: { id: string; label: string; lock?: boolean }[] = [...SO_LIST_COLS, ...cfL.map((d) => ({ id: `cf:${d.key}`, label: d.label }))];
+        const head = cf.filter((d) => d.scope === 'HEAD' && d.status === 'ACTIVE');
+        const cfL = head.filter((d) => d.where.list);
+        const all: SoColDef[] = [...SO_LIST_COLS, ...cfL.map((d): SoColDef => ({ id: `cf:${d.key}`, label: d.label, g: 'Trường tùy chỉnh', num: d.type === 'money' || d.type === 'number', sum: d.type === 'money' || d.type === 'number' }))];
         const cur = c.cols?.length ? c.cols : SO_LIST_COLS.filter((x) => x.def).map((x) => x.id);
+        const tog = (k: 'hbOff' | 'fltOff' | 'sumOff', id: string) => { const l = c[k] ?? []; onCfg({ [k]: l.includes(id) ? l.filter((x) => x !== id) : [...l, id] }); };
+        const sIn = c.sIn?.length ? c.sIn : SO_SEARCH_DEF;
+        const grp = (t: string, kids: ReactNode) => <section className="space-y-2.5 rounded-lg border border-[rgb(var(--line)/0.8)] p-3"><h4 className="text-[12.5px] font-medium">{t}</h4>{kids}</section>;
+        const two = 'grid grid-cols-2 gap-x-3 gap-y-1.5';
+        const sums = all.filter((x) => x.sum && (x.lock || cur.includes(x.id)));
         return (
           <>
-            <Field label="Tab trạng thái"><LFieldList all={SO_LIST_TABS} c={c} onCfg={onCfg} cfIds={[]} /></Field>
-            <Field label="Cột mặc định cho doanh nghiệp">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1">{all.map((x) => <label key={x.id} className={cn('flex items-center gap-2 text-[13px]', x.lock && 'text-[rgb(var(--muted))]')}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={!!x.lock || cur.includes(x.id)} disabled={!!x.lock} onChange={() => onCfg({ cols: cur.includes(x.id) ? cur.filter((y) => y !== x.id) : [...cur, x.id] })} /><span className="truncate">{x.label}</span>{x.id.startsWith('cf:') && <i className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[rgb(var(--accent))]" title="Trường tùy chỉnh" />}</label>)}</div>
-            </Field>
-            <p className="text-[12px] text-[rgb(var(--muted))]">Người dùng vẫn tự đổi cột cho riêng mình ở nút Cột hiển thị; nút "Mặc định" trong đó trả về bộ cột này. Danh sách giữ quy tắc bảng: một trường một cột, lọc trong phễu, không hàng KPI, không nút nghiệp vụ hàng loạt</p>
+            <Field label="Nguồn dữ liệu"><select className={inputCls} value={c.src ?? 'sale'} onChange={() => onCfg({ src: 'sale' })} aria-label="Nguồn dữ liệu"><option value="sale">Đơn bán</option><option disabled>Khách hàng (bản sau)</option><option disabled>Lead (bản sau)</option><option disabled>Phiếu thu chi (bản sau)</option></select></Field>
+            {grp('Đầu bảng', <>
+              {chk(!c.hideHead, 'Hiện tiêu đề trang', () => onCfg({ hideHead: !c.hideHead || undefined }))}
+              {!c.hideHead && <>
+                <input className={inputCls} value={c.head ?? ''} placeholder="Quản lý đơn hàng" onChange={(e) => onCfg({ head: e.target.value || undefined })} aria-label="Tiêu đề trang" />
+                <div className="flex flex-wrap gap-1">{L_VAR_KEYS['sale-list'].map((k) => <button key={k} type="button" className="rounded border border-[rgb(var(--accent)/0.35)] bg-[rgb(var(--accent)/0.06)] px-1.5 font-mono text-[11.5px] text-[rgb(var(--accent-fg))]" onClick={() => onCfg({ head: `${c.head || 'Quản lý đơn hàng'} {${k}}` })}>{`{${k}}`}</button>)}</div>
+              </>}
+              {chk(c.search !== false, 'Ô tìm kiếm', () => onCfg({ search: c.search === false ? undefined : false }))}
+              {c.search !== false && <>
+                <input className={inputCls} value={c.ph ?? ''} placeholder="Chữ gợi ý (trống: tự theo trường tìm)" onChange={(e) => onCfg({ ph: e.target.value || undefined })} aria-label="Chữ gợi ý ô tìm kiếm" />
+                <p className="text-[12px] text-[rgb(var(--muted))]">Tìm theo</p>
+                <div className={two}>{[...SO_SEARCH, ...head.filter((d) => d.type === 'text' || d.type === 'select').map((d) => ({ id: `cf:${d.key}`, label: d.label }))].map((x) => chk(sIn.includes(x.id), x.label, () => { const n = sIn.includes(x.id) ? sIn.filter((y) => y !== x.id) : [...sIn, x.id]; onCfg({ sIn: n.length ? n : undefined }); }))}</div>
+              </>}
+              {chk(!c.hidePer, 'Ô chọn kỳ', () => onCfg({ hidePer: !c.hidePer || undefined }))}
+              <Field label={c.hidePer ? 'Kỳ cố định' : 'Kỳ mặc định'}><select className={inputCls} value={c.per0 ?? 'M'} onChange={(e) => onCfg({ per0: e.target.value === 'M' ? undefined : e.target.value })} aria-label="Kỳ mặc định">{SO_PERS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
+              <p className="text-[12px] text-[rgb(var(--muted))]">Nút đầu bảng</p>
+              <div className={two}>{SO_HEAD_BTNS.map((x) => chk(!(c.hbOff ?? []).includes(x.id), x.label, () => tog('hbOff', x.id)))}</div>
+            </>)}
+            {grp('Tab trạng thái', <LFieldList all={SO_LIST_TABS} c={c} onCfg={onCfg} cfIds={[]} />)}
+            {grp('Bộ lọc · trường được lọc', <div className={two}>{[...SO_FILTERS, ...head.filter((d) => d.where.filter && CF_FILTERABLE.includes(d.type)).map((d) => ({ id: `cf:${d.key}`, label: d.label }))].map((x) => chk(!(c.fltOff ?? []).includes(x.id), x.label, () => tog('fltOff', x.id)))}</div>)}
+            {grp('Cột mặc định cho doanh nghiệp', <>
+              {(['Thông tin', 'Tiến độ', 'Tiền', 'Khách hàng', 'Người tạo', 'Trường tùy chỉnh'] as SoColDef['g'][]).filter((g) => all.some((x) => x.g === g)).map((g) => (
+                <div key={g}><p className="mb-1 text-[12px] text-[rgb(var(--muted))]">{g === 'Khách hàng' || g === 'Người tạo' ? `${g} ›` : g}</p>
+                  <div className={two}>{all.filter((x) => x.g === g).map((x) => <label key={x.id} className={cn('flex items-center gap-2 text-[13px]', x.lock && 'text-[rgb(var(--muted))]')}><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={!!x.lock || cur.includes(x.id)} disabled={x.lock} onChange={() => onCfg({ cols: cur.includes(x.id) ? cur.filter((y) => y !== x.id) : [...cur, x.id] })} />{x.label}</label>)}</div>
+                </div>
+              ))}
+              <div className={two}>{chk(c.stt !== false, 'Cột STT', () => onCfg({ stt: c.stt === false ? undefined : false }))}{chk(c.pick !== false, 'Ô chọn dòng', () => onCfg({ pick: c.pick === false ? undefined : false }))}</div>
+              <LFg label="Số dòng mỗi trang"><CbSeg label="Số dòng mỗi trang" items={[['20', '20'], ['50', '50'], ['100', '100']]} value={String(c.size0 ?? 20) as '20' | '50' | '100'} onChange={(v) => onCfg({ size0: v === '20' ? undefined : Number(v) })} /></LFg>
+            </>)}
+            {grp('Dòng tổng', <>
+              {chk(c.sumRow !== false, 'Hiện dòng tổng dưới bảng', () => onCfg({ sumRow: c.sumRow === false ? undefined : false }))}
+              {c.sumRow !== false && <><p className="text-[12px] text-[rgb(var(--muted))]">Cộng các cột (cột Số / Tiền đang bật)</p><div className={two}>{sums.map((x) => chk(!(c.sumOff ?? []).includes(x.id), x.label, () => tog('sumOff', x.id)))}</div></>}
+            </>)}
+            <p className="text-[12px] text-[rgb(var(--muted))]">Mỗi người vẫn tự đổi cột, kỳ, số dòng cho riêng mình; nút "Mặc định" trong Cột hiển thị trả về bộ cột này. Thao tác trên dòng (Sửa, Hủy, Xóa) vẫn theo quyền; trường lọc 3A tắt thì không áp điều kiện cũ người dùng đã lưu.</p>
           </>
         );
       })()}
-      {tabs.length > 0 && b.type !== 'K-Tabs' && <Field label="Thuộc tab"><select className={inputCls} value={c.tab && tabs.some((t) => t.id === c.tab) ? c.tab : ''} onChange={(e) => onCfg({ tab: e.target.value || undefined })} aria-label="Thuộc tab"><option value="">Mọi tab (luôn hiện)</option>{tabs.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></Field>}
       {b.type === 'K-Order-Info' && (
         <>
           <Field label="Trường hiển thị"><LFieldList all={[...SO_INFO_F, ...cfInfo.map((d) => ({ id: `cf:${d.key}`, label: d.label }))]} c={c} onCfg={onCfg} cfIds={cfInfo.map((d) => `cf:${d.key}`)} /></Field>
@@ -574,19 +697,6 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
           <p className="flex gap-2 rounded-lg bg-[rgb(var(--ink)/0.04)] px-3 py-2 text-[12.5px] text-[rgb(var(--fg2))]"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />Cột tính tiền (Đơn giá, CK, VAT, Thành tiền) là trường gốc nối với tổng đơn và bút toán. Tắt cột chỉ ẩn khỏi màn hình, không đổi cách tính tiền. Trường tùy chỉnh dòng hàng chỉ để ghi chú</p>
           <Field label="Trên điện thoại"><CbSeg label="Trên điện thoại" items={[['card', 'Dạng thẻ'], ['table', 'Bảng (cuộn ngang)']]} value={c.smView ?? 'card'} onChange={(v) => onCfg({ smView: v })} /></Field>
         </>
-      )}
-      {!data && !core && page === 'sale-detail' && (
-        <div className="border-t border-[rgb(var(--line))] pt-3">
-          <p className="mb-2 text-[12px] text-[rgb(var(--muted))]">Hiện khi đơn ở trạng thái (không chọn = luôn hiện)</p>
-          <div className="grid grid-cols-2 gap-1.5">{(Object.keys(L_STAGE) as LStage[]).map((s) => chk((c.stages ?? []).includes(s), L_STAGE[s], () => onCfg({ stages: (c.stages ?? []).includes(s) ? (c.stages ?? []).filter((x) => x !== s) : [...(c.stages ?? []), s] })))}</div>
-        </div>
-      )}
-      {!data && !core && (
-        <div className="border-t border-[rgb(var(--line))] pt-3">
-          <p className="mb-2 text-[12px] text-[rgb(var(--muted))]">Hiện với vai trò (không chọn = mọi vai trò)</p>
-          <div className="grid grid-cols-2 gap-1.5">{L_ROLES.map((r) => chk((c.roles ?? []).includes(r), ROLE_LABEL[r], () => onCfg({ roles: (c.roles ?? []).includes(r) ? (c.roles ?? []).filter((x) => x !== r) : [...(c.roles ?? []), r] })))}</div>
-          {b.type === 'K-Order-Profit' && <p className="mt-2 text-[12px] text-[rgb(var(--muted))]">Ngoài điều kiện này, Lãi trên đơn chỉ hiện với người có quyền quản lý bán hàng, kế toán, Giám đốc</p>}
-        </div>
       )}
       {data && <Field label="Nguồn dữ liệu"><select className={inputCls} value={c.ds} onChange={(e) => { const d = e.target.value as LDataset; onCfg({ ds: d, field: L_DS[d].fields[1]?.id ?? 'count', series: [L_DS[d].fields[1]?.id ?? 'count'], filter: '', group: L_DS[d].dims[0].id, cols: [], sort: undefined }); }}>{(Object.keys(L_DS) as LDataset[]).map((k) => <option key={k} value={k}>{L_DS[k].label}</option>)}</select></Field>}
       {data && ds.filters.length > 1 && <Field label="Lọc"><select className={inputCls} value={c.filter ?? ''} onChange={(e) => onCfg({ filter: e.target.value })}>{ds.filters.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select></Field>}
@@ -632,6 +742,22 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
       )}
       {data && <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={c.open !== false} onChange={(e) => onCfg({ open: e.target.checked })} />Có nút mở {MODULE_LABEL[ds.module]}</label>}
       {data && <p className="flex gap-2 rounded-lg bg-[rgb(var(--ink)/0.04)] px-3 py-2 text-[12.5px] text-[rgb(var(--fg2))]"><Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />Người xem chỉ thấy số trong phạm vi dữ liệu của mình. Không có quyền {MODULE_LABEL[ds.module]}{ds.perm ? ' hoặc quyền quỹ' : ''} thì khối tự ẩn.</p>}
+      </>}
+      {sec === 'v' && <>
+      {tabs.length > 0 && b.type !== 'K-Tabs' && <Field label="Thuộc tab"><select className={inputCls} value={c.tab && tabs.some((t) => t.id === c.tab) ? c.tab : ''} onChange={(e) => onCfg({ tab: e.target.value || undefined })} aria-label="Thuộc tab"><option value="">Mọi tab (luôn hiện)</option>{tabs.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></Field>}
+      {!data && !core && page === 'sale-detail' && (
+        <div className="border-t border-[rgb(var(--line))] pt-3">
+          <p className="mb-2 text-[12px] text-[rgb(var(--muted))]">Hiện khi đơn ở trạng thái (không chọn = luôn hiện)</p>
+          <div className="grid grid-cols-2 gap-1.5">{(Object.keys(L_STAGE) as LStage[]).map((s) => chk((c.stages ?? []).includes(s), L_STAGE[s], () => onCfg({ stages: (c.stages ?? []).includes(s) ? (c.stages ?? []).filter((x) => x !== s) : [...(c.stages ?? []), s] })))}</div>
+        </div>
+      )}
+      {!data && !core && (
+        <div className="border-t border-[rgb(var(--line))] pt-3">
+          <p className="mb-2 text-[12px] text-[rgb(var(--muted))]">Hiện với vai trò (không chọn = mọi vai trò)</p>
+          <div className="grid grid-cols-2 gap-1.5">{L_ROLES.map((r) => chk((c.roles ?? []).includes(r), ROLE_LABEL[r], () => onCfg({ roles: (c.roles ?? []).includes(r) ? (c.roles ?? []).filter((x) => x !== r) : [...(c.roles ?? []), r] })))}</div>
+          {b.type === 'K-Order-Profit' && <p className="mt-2 text-[12px] text-[rgb(var(--muted))]">Ngoài điều kiện này, Lãi trên đơn chỉ hiện với người có quyền quản lý bán hàng, kế toán, Giám đốc</p>}
+        </div>
+      )}
       <div className="border-t border-[rgb(var(--line))] pt-3">
         <p className="mb-2 text-[12px] text-[rgb(var(--muted))]">Vị trí trên lưới 12 cột</p>
         <div className="grid grid-cols-4 gap-2">{num('x', 'Cột', 12)}{num('y', 'Hàng', 99)}{num('w', 'Rộng', 12)}{num('h', 'Cao', 12)}</div>
@@ -642,6 +768,7 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
         ))}</div>
       </Field>
       <Field label="Độ rộng trên điện thoại"><CbSeg label="Độ rộng trên điện thoại" items={[['12', 'Cả hàng'], ['6', '1/2'], ['4', '1/3'], ['3', '1/4']]} value={String(b.pos.sm.w || 12) as '12' | '6' | '4' | '3'} onChange={(v) => onBlock({ pos: { ...b.pos, sm: { ...b.pos.sm, w: Number(v) } } })} /></Field>
+      </>}
     </div>
   );
 }

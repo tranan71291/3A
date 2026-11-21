@@ -1,4 +1,23 @@
-# 3A CRM v54 (Page Builder bản 3: thư viện khối dùng chung, mở trang Quản lý đơn hàng — dựa trên v53)
+# 3A CRM v54.1 (Page Builder bản 3.1: kiểu dáng cho mọi khối, khối Bảng Quản lý đơn hàng — dựa trên v54, vẫn nhánh v54)
+
+## Cập nhật v54.1 (21/11)
+
+- **Cài đặt khối chia 3 thẻ**: Nội dung · Kiểu · Hiển thị (vị trí, thiết bị, thuộc tab, điều kiện hiện).
+- **Thẻ Kiểu cho mọi khối**: cỡ chữ (Nhỏ / Vừa / Lớn / Rất lớn), màu chữ; tiêu đề khối (cỡ, độ đậm, màu); nền (không nền, nền thẻ, nền chìm, 8 màu hệ thống hoặc mã # tự chọn; độ đậm Nhạt / Vừa / Đặc, nền đặc tự đổi chữ trắng / đen); viền (màu, Liền / Gạch / Chấm, dày 1–3); bo góc; đổ bóng; nút "Về mặc định". Màu hệ thống tự đổi theo nền sáng / tối.
+- **Riêng từng loại**: biểu đồ chọn màu từng đường; bảng chọn mật độ dòng, sọc xen kẽ, nền dòng tiêu đề; tab chọn kiểu Gạch chân / Khối / Viên; đường kẻ chọn màu, kiểu, độ dày, màu nhãn; mỗi nút chọn màu riêng.
+- **Khối Bảng (Danh sách đơn hàng)**, nguồn Đơn bán:
+  - Đầu bảng: sửa tiêu đề trang (có biến {tên doanh nghiệp}, {ngày}, {người xem}) hoặc ẩn; bật / tắt ô tìm kiếm, chữ gợi ý, chọn trường tìm (mã đơn, khách hàng, SĐT, mã hàng, ghi chú, người tạo, MST, trường tùy chỉnh chữ / danh sách); ô chọn kỳ và kỳ mặc định (hoặc cố định kỳ); bật / tắt nút Bộ lọc, Cột hiển thị, Tải Excel, In, Lên đơn bán.
+  - Bộ lọc: chọn trường được lọc; trường 3A tắt thì điều kiện cũ người dùng đã lưu cũng không áp.
+  - Cột: thêm nhóm **Khách hàng ›** (mã KH, MST, SĐT, phòng ban phụ trách, khu vực, phân khúc, hạng, NV phụ trách, hạn mức, công nợ hiện tại) và **Người tạo ›** (phòng ban, chức danh); cột STT, ô chọn dòng; số dòng mỗi trang mặc định.
+  - **Dòng tổng**: bật / tắt, chọn cột được cộng; trường tùy chỉnh kiểu Số / Tiền nay cũng được cộng.
+  - Khung thiết kế hiện đúng tiêu đề, ô tìm, nút, cột và dòng tổng theo cấu hình.
+- Sửa: bấm nhãn của nhóm nút chọn trong cài đặt kiểu không còn chọn nhầm ô đầu tiên.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict). Chạy thử: 3A đặt tiêu đề "Đơn hàng {tên doanh nghiệp}", thêm MST vào trường tìm, tắt nút In, tắt lọc Kho xuất / Hóa đơn thuế, bỏ cột Ghi chú / Hóa đơn thuế, thêm Mã khách hàng / Phòng ban phụ trách, không cộng VAT, bảng Gọn + sọc, tiêu đề cam cỡ lớn → phát hành. Tổng quan: thẻ Doanh số nền cam nhạt viền cam chữ lớn, Còn phải thu nền xanh đặc có bóng, biểu đồ xanh dương / xanh lá, ghi chú nền # tự chọn viền gạch xanh lá, tab kiểu Khối, đường kẻ cam dày 2, nút Lên đơn màu xanh → phát hành; xem cả nền sáng và nền tối. Sales thấy đúng tiêu đề "Đơn hàng VASSH", gợi ý tìm có MST, không có nút In, cột và dòng tổng đúng cấu hình, bộ lọc không còn Kho xuất / Hóa đơn thuế. Ảnh ở thư mục `anh-v54.1`.
+
+> Không đổi bảng, SQL, không thêm thư viện. Kiểu dáng lưu trong cấu hình khối của bố cục (`_platform`) như v54; bố cục v54 đã phát hành giữ nguyên hiển thị.
+
+## (v54) 3A CRM v54 (Page Builder bản 3: thư viện khối dùng chung, mở trang Quản lý đơn hàng — dựa trên v53)
 
 ## Cập nhật v54 (21/11)
 
