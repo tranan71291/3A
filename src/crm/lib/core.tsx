@@ -9,12 +9,12 @@ import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
 import { acctList, saleReturned, saleTotals } from './getfly';
-import type { AcctConfig, AcctEvent, AcctStd, Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, CfDef, CfType, CfVal, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashPeriod, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, Lead, LeadStatus, LeaveKind, LField, LostReason, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, LTextKind, LTypeDef, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, SoColDef, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { AcctConfig, AcctEvent, AcctStd, Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, CfDef, CfEntity, CfType, CfVal, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashPeriod, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LFieldItem, LSection, LDevice, Lead, LeadStatus, LeaveKind, LField, LostReason, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, LTextKind, LTypeDef, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, SoColDef, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
 import { useContentExport, vGroups, vPicked, vWords, wsDocHtml, wsDocToSections, wsInline } from '../modules/marketing/content-workspace';
-import { lDefaultCfg } from '../modules/messages/messenger';
+import { lDefaultCfg } from '../modules/page-builder/engine';
 
 // =====================================================================
 //  DESIGN TOKENS & HELPERS
@@ -2476,11 +2476,25 @@ export const L_PAGES: { id: LPage; label: string; kind: 'SUMMARY' | 'BUSINESS'; 
   { id: 'reports', label: 'Báo cáo', kind: 'SUMMARY', open: false, plan: 'Bản sau' },
   { id: 'sale-detail', label: 'Chi tiết đơn hàng', kind: 'BUSINESS', open: true, plan: '' },
   { id: 'sale-list', label: 'Quản lý đơn hàng', kind: 'BUSINESS', open: true, plan: '' },
-  { id: 'customer', label: 'Khách hàng', kind: 'BUSINESS', open: false, plan: 'Bản sau' },
+  { id: 'sale-form', label: 'Form lên đơn bán', kind: 'BUSINESS', open: true, plan: '' },
+  // v55.3: khách hàng, lead — danh sách và chi tiết / form (cùng bộ Studio, cùng DynamicFieldRenderer)
+  { id: 'customer-list', label: 'Danh sách khách hàng', kind: 'BUSINESS', open: true, plan: '' },
+  { id: 'customer-detail', label: 'Chi tiết / form khách hàng', kind: 'BUSINESS', open: true, plan: '' },
+  { id: 'lead-list', label: 'Danh sách lead (Data MKT)', kind: 'BUSINESS', open: true, plan: '' },
+  { id: 'lead-detail', label: 'Chi tiết / form lead', kind: 'BUSINESS', open: true, plan: '' },
   { id: 'claim', label: 'Hồ sơ MDF / Claim', kind: 'BUSINESS', open: false, plan: 'Bản sau' },
 ];
 
-export const L_ALL_PAGES: LPage[] = ['home', 'sale-detail', 'sale-list'];
+export const L_ALL_PAGES: LPage[] = ['home', 'sale-detail', 'sale-list', 'customer-list', 'customer-detail', 'lead-list', 'lead-detail'];
+
+/** v55.3 Đối tượng của trang thiết kế (trang tổng hợp: không có) */
+export const L_PAGE_ENTITY: Partial<Record<LPage, CfEntity>> = { 'sale-detail': 'sale', 'sale-list': 'sale', 'sale-form': 'sale', 'customer-list': 'customer', 'customer-detail': 'customer', 'lead-list': 'lead', 'lead-detail': 'lead' };
+
+/** v55.3 Trang chứa bố cục form (K-RecordForm) / chi tiết (K-RecordDetail) của từng đối tượng; sản phẩm chưa có trang thiết kế (dùng mặc định theo cờ) */
+export const L_FORM_PAGE: Record<CfEntity, LPage | null> = { sale: 'sale-form', customer: 'customer-detail', lead: 'lead-detail', product: null };
+export const L_DETAIL_PAGE: Record<CfEntity, LPage | null> = { sale: 'sale-detail', customer: 'customer-detail', lead: 'lead-detail', product: null };
+
+export const CF_ENTITY: Record<CfEntity, string> = { sale: 'Đơn bán hàng', customer: 'Khách hàng', lead: 'Lead', product: 'Sản phẩm' };
 
 export const L_TYPES: LTypeDef[] = [
   { type: 'K-Text', label: 'Khối text', def: { x: 0, y: 0, w: 6, h: 2 }, desc: '8 kiểu: tiêu đề, đoạn văn, nhãn, ghi chú, lưu ý, cảnh báo…; biến tự điền', pages: L_ALL_PAGES, tier: 'show' },
@@ -2493,7 +2507,10 @@ export const L_TYPES: LTypeDef[] = [
   { type: 'K-Filter', label: 'Bộ lọc chung', def: { x: 6, y: 0, w: 6, h: 1 }, desc: 'Kỳ Tuần / Tháng / Quý / Năm, so kỳ trước, phòng ban', pages: ['home'], tier: 'data' },
   { type: 'K-Tabs', label: 'Tab', def: { x: 0, y: 0, w: 12, h: 1 }, desc: 'Chia trang thành tab, mỗi tab một nhóm khối', pages: ['home'], tier: 'data' },
   { type: 'K-Target', label: 'Tiến độ mục tiêu', def: { x: 0, y: 0, w: 12, h: 1 }, desc: 'Doanh thu so với chỉ tiêu tháng, vạch kỳ vọng', pages: ['home'], tier: 'data' },
-  { type: 'K-Order-Info', label: 'Thông tin đơn hàng', def: { x: 0, y: 0, w: 8, h: 3 }, desc: 'Khách hàng, mã đơn, kho, trường tùy chỉnh', pages: ['sale-detail'], tier: 'biz', core: true },
+  { type: 'K-RecordDetail', label: 'Chi tiết bản ghi', def: { x: 0, y: 0, w: 8, h: 3 }, desc: 'Nhóm trường, kéo thả từng trường (trường gốc và trường tùy chỉnh)', pages: ['sale-detail', 'customer-detail', 'lead-detail'], tier: 'biz', core: true },
+  { type: 'K-RecordForm', label: 'Form bản ghi', def: { x: 0, y: 0, w: 12, h: 4 }, desc: 'Phần Thông tin thêm của form: nhóm trường, nhãn, gợi ý, chỉ đọc, bắt buộc', pages: ['sale-form', 'customer-detail', 'lead-detail'], tier: 'biz', core: true },
+  { type: 'K-RecordList', label: 'Danh sách bản ghi', def: { x: 0, y: 0, w: 12, h: 8 }, desc: 'Bảng thật của phân hệ; 3A chọn cột trường tùy chỉnh và thứ tự', pages: ['customer-list', 'lead-list'], tier: 'biz', core: true },
+  { type: 'K-Order-Info', label: 'Thông tin đơn hàng (cũ)', def: { x: 0, y: 0, w: 8, h: 3 }, desc: 'Đã thay bằng Chi tiết bản ghi', pages: [], tier: 'biz' },
   { type: 'K-Order-Lines', label: 'Hàng hóa & chứng từ', def: { x: 0, y: 0, w: 8, h: 5 }, desc: 'Bảng hàng hóa, chứng từ liên quan', pages: ['sale-detail'], tier: 'biz', core: true },
   { type: 'K-Order-Flow', label: 'Quy trình xử lý', def: { x: 8, y: 0, w: 4, h: 3 }, desc: 'Các bước duyệt, xuất kho, thu tiền; khi hủy là Quy trình hủy', pages: ['sale-detail'], tier: 'biz', core: true },
   { type: 'K-Order-Pay', label: 'Thanh toán', def: { x: 8, y: 0, w: 4, h: 4 }, desc: 'Tiền hàng, thuế, đã thu, còn lại, yêu cầu hóa đơn', pages: ['sale-detail'], tier: 'biz', core: true },
@@ -2544,14 +2561,155 @@ export const lNewBlock = (type: LBlockType, at?: Partial<LPos>, page: LPage = 'h
 /** Bố cục khởi tạo trang Chi tiết đơn hàng: giống giao diện gốc (cột trái 8, cột phải 4) */
 export const lStarterSale = (): LBlock[] => {
   const b = (t: LBlockType, x: number, y: number, w: number, h: number) => lNewBlock(t, { x, y, w, h }, 'sale-detail');
-  return lOrderSm([b('K-Order-Info', 0, 0, 8, 3), b('K-Order-Lines', 0, 3, 8, 5), b('K-Order-Log', 0, 8, 8, 4), b('K-Order-Flow', 8, 0, 4, 3), b('K-Order-Pay', 8, 3, 4, 4), b('K-Order-Profit', 8, 7, 4, 3), b('K-Order-Debt', 8, 10, 4, 2)]);
+  return lOrderSm([b('K-RecordDetail', 0, 0, 8, 3), b('K-Order-Lines', 0, 3, 8, 5), b('K-Order-Log', 0, 8, 8, 4), b('K-Order-Flow', 8, 0, 4, 3), b('K-Order-Pay', 8, 3, 4, 4), b('K-Order-Profit', 8, 7, 4, 3), b('K-Order-Debt', 8, 10, 4, 2)]);
 };
 
 /** Bố cục khởi tạo trang Quản lý đơn hàng */
 export const lStarterList = (): LBlock[] => lOrderSm([lNewBlock('K-SaleList', { x: 0, y: 0, w: 12, h: 8 }, 'sale-list')]);
 
-/** Đọc bố cục cũ: Nút biểu tượng (v53) thành Nút / Icon */
-export const lMigrate = (page: LPage, bs: LBlock[]): LBlock[] => bs.map((b) => (b.type !== 'K-Icons' ? b : { ...b, type: 'K-Button' as LBlockType, config: { ...b.config, buttons: (b.config.icons ?? []).map((a): LBtn => ({ id: `${b.id}-${a}`, icon: L_ACT[a].icon, label: '', style: 'icon', act: page === 'home' && a === 'download' ? 'excel' : a })) } }));
+/** v55.3 Bố cục khởi tạo trang khách hàng / lead: danh sách = khối Danh sách bản ghi; chi tiết = khối Chi tiết + khối Form */
+export const lStarterEntity = (page: LPage): LBlock[] => lOrderSm(page.endsWith('-list')
+  ? [lNewBlock('K-RecordList', { x: 0, y: 0, w: 12, h: 8 }, page)]
+  : [lNewBlock('K-RecordDetail', { x: 0, y: 0, w: 12, h: 3 }, page), lNewBlock('K-RecordForm', { x: 0, y: 3, w: 12, h: 4 }, page)]);
+
+/** Bố cục khởi tạo trang Form lên đơn bán (v55.2): một khối Thông tin thêm, nhóm trường lấy theo cờ "Form" của trường tùy chỉnh */
+export const lStarterForm = (): LBlock[] => lOrderSm([lNewBlock('K-RecordForm', { x: 0, y: 0, w: 12, h: 4 }, 'sale-form')]);
+
+// ---------------------------------------------------------------------
+//  v55.2 Cấp 2 — bố cục từng trường trong khối Form / Chi tiết bản ghi
+// ---------------------------------------------------------------------
+export const L_SEC_COLS: LSection['cols'][] = [1, 2, 3, 4];
+
+/** Ô trường mới (id cố định theo khóa để bố cục chuyển đổi cho kết quả giống nhau mỗi lần đọc) */
+export const lFieldItem = (fieldKey: string, colSpan: number, id = uid('lf')): LFieldItem => ({ id, fieldKey, colSpan: Math.max(1, Math.min(12, Math.round(colSpan))) });
+
+/** Khối Thông tin đơn hàng kiểu cũ (thứ tự `fields`, trường tắt `off`, số cột `gridCols`) → một nhóm trường không tiêu đề, giữ đúng thứ tự, độ rộng và trường tắt */
+export const lInfoSections = (blockId: string, c: LBlockCfg): LSection[] => {
+  const cols = c.gridCols ?? 4;
+  const unit = 12 / cols;
+  const keys = lFieldOrder([...SO_INFO_F, ...(c.fields ?? []).filter((k) => k.startsWith('cf:')).map((id) => ({ id }))], c);
+  return [{ id: `${blockId}-s1`, title: '', cols, fields: keys.map((k) => lFieldItem(k, k === 'customer' ? Math.min(12, unit * 2) : unit, `${blockId}-f-${k}`)) }];
+};
+
+/**
+ * Đọc bố cục cũ:
+ *  - Nút biểu tượng (v53) thành Nút / Icon
+ *  - v55.2: khối Thông tin đơn hàng (K-Order-Info, cấu hình `fields` / `off` / `gridCols` + cờ "Thông tin" của trường tùy chỉnh)
+ *    thành Chi tiết bản ghi (K-RecordDetail) có `sections`. Kết quả cố định (không sinh id ngẫu nhiên), đọc lại nhiều lần vẫn như nhau,
+ *    nên bố cục v54.1 / v55.1 đã phát hành hiển thị y như cũ mà không cần phát hành lại.
+ */
+export const lMigrate = (page: LPage, bs: LBlock[]): LBlock[] => bs.map((b) => {
+  if (b.type === 'K-Icons') return { ...b, type: 'K-Button' as LBlockType, config: { ...b.config, buttons: (b.config.icons ?? []).map((a): LBtn => ({ id: `${b.id}-${a}`, icon: L_ACT[a].icon, label: '', style: 'icon', act: page === 'home' && a === 'download' ? 'excel' : a })) } };
+  if (b.type === 'K-Order-Info') return { ...b, type: 'K-RecordDetail' as LBlockType, config: { ...b.config, entity: 'sale', sections: b.config.sections ?? lInfoSections(b.id, b.config) } };
+  // v55.3: khối bản ghi luôn mang đối tượng (bố cục trước v55.3 chỉ có đơn bán)
+  const ent: CfEntity = b.config.entity ?? L_PAGE_ENTITY[page] ?? 'sale';
+  if (b.type === 'K-RecordDetail' && !b.config.sections) return { ...b, config: { ...b.config, entity: ent, sections: ent === 'sale' ? lInfoSections(b.id, b.config) : [] } };
+  if (b.type === 'K-RecordForm' && !b.config.sections) return { ...b, config: { ...b.config, entity: ent, sections: [] } };
+  if ((b.type === 'K-RecordDetail' || b.type === 'K-RecordForm' || b.type === 'K-RecordList') && !b.config.entity) return { ...b, config: { ...b.config, entity: ent } };
+  return b;
+});
+
+/** v55.3 Trường gốc đặt được vào khối Chi tiết của từng đối tượng (trường khóa luôn hiện) */
+export const ENTITY_INFO_F: Record<CfEntity, { id: string; label: string; lock?: boolean }[]> = {
+  sale: [],
+  customer: [{ id: 'code', label: 'Mã khách hàng' }, { id: 'name', label: 'Tên khách hàng' }, { id: 'taxCode', label: 'Mã số thuế' }, { id: 'segment', label: 'Nhóm khách hàng' }, { id: 'tier', label: 'Hạng khách hàng' }, { id: 'region', label: 'Khu vực' }, { id: 'dept', label: 'Phòng ban quản lý' }, { id: 'amId', label: 'Người phụ trách' }, { id: 'contactName', label: 'Người liên hệ' }, { id: 'contactPhone', label: 'Điện thoại liên hệ' }, { id: 'contactEmail', label: 'Email liên hệ' }, { id: 'address', label: 'Địa chỉ' }, { id: 'creditLimit', label: 'Hạn mức công nợ' }, { id: 'debt', label: 'Công nợ hiện tại' }],
+  lead: [{ id: 'code', label: 'Mã lead' }, { id: 'company', label: 'Công ty' }, { id: 'contact', label: 'Người liên hệ' }, { id: 'phone', label: 'Điện thoại' }, { id: 'email', label: 'Email' }, { id: 'taxCode', label: 'Mã số thuế' }, { id: 'segment', label: 'Nhóm khách' }, { id: 'source', label: 'Nguồn' }, { id: 'region', label: 'Khu vực' }, { id: 'province', label: 'Tỉnh / thành' }],
+  product: [],
+};
+
+/** v55.3 Health Check đủ: cả trường tự vào bố cục theo cờ (trường mới) — VD trường chỉ áp dụng cho DN khác nhưng có cờ "Thông tin" */
+export const lHealthFull = (b: LBlock, all: CfDef[], orgs: Org[] = []): LHealth[] => {
+  const h = lHealth(b, all, orgs);
+  if (b.type !== 'K-RecordDetail' && b.type !== 'K-RecordForm') return h;
+  const ent: CfEntity = b.config.entity ?? 'sale';
+  const kind = b.type === 'K-RecordForm' ? 'form' : 'detail';
+  const extra: LFieldAvail[] = h.filter((x) => x.level !== 'tenant').map((x) => ({ key: x.key, label: x.label, missing: true }));
+  const secs = lEntitySections(ent, kind, b.config, all.filter((d) => d.scope === 'HEAD'), true, extra);
+  const h2 = lHealth({ ...b, config: { ...b.config, sections: secs } }, all, orgs);
+  return [...h, ...h2.filter((x) => !h.some((y) => y.key === x.key && y.level === x.level))];
+};
+
+/** v55.3 Cột trường tùy chỉnh của khối Danh sách bản ghi: chưa chỉnh thì theo cờ "Danh sách"; đã chỉnh thì theo thứ tự `fields`, bỏ `off` */
+export const lListCols = (defs: CfDef[], c?: LBlockCfg): CfDef[] => {
+  const act = defs.filter((d) => d.scope === 'HEAD' && d.status === 'ACTIVE');
+  if (!c?.fields) return act.filter((d) => d.where.list);
+  const ids = lFieldOrder(act.map((d) => ({ id: `cf:${d.key}` })), c);
+  return ids.map((id) => act.find((d) => `cf:${d.key}` === id)!).filter(Boolean);
+};
+
+/** v55.3 Health Check: trường trong bố cục đã bị xóa / ngừng dùng / không áp dụng cho doanh nghiệp được phát hành */
+export type LHealth = { key: string; label: string; level: 'missing' | 'off' | 'tenant'; msg: string };
+export const lHealth = (b: LBlock, all: CfDef[], orgs: Org[] = []): LHealth[] => {
+  if (b.type !== 'K-RecordDetail' && b.type !== 'K-RecordForm' && b.type !== 'K-RecordList') return [];
+  const ent: CfEntity = b.config.entity ?? 'sale';
+  const keys = b.type === 'K-RecordList' ? (b.config.fields ?? []).filter((k) => !(b.config.off ?? []).includes(k)) : (b.config.sections ?? []).flatMap((s) => s.fields.map((f) => f.fieldKey));
+  const builtin = new Set([...(ent === 'sale' ? SO_INFO_F : ENTITY_INFO_F[ent]).map((x) => x.id)]);
+  const out: LHealth[] = [];
+  for (const k of keys) {
+    if (!k.startsWith('cf:')) { if (!builtin.has(k)) out.push({ key: k, label: k, level: 'missing', msg: 'Trường gốc không còn' }); continue; }
+    const d = all.find((x) => x.entity === ent && x.key === k.slice(3));
+    if (!d) { out.push({ key: k, label: k.slice(3), level: 'missing', msg: 'Trường đã bị xóa' }); continue; }
+    if (d.status !== 'ACTIVE') { out.push({ key: k, label: d.label, level: 'off', msg: 'Trường đã ngừng dùng (OFF): khối không hiển thị trường này' }); continue; }
+    const no = orgs.filter((o) => !cfApplies(d, o));
+    if (no.length) out.push({ key: k, label: d.label, level: 'tenant', msg: `Không áp dụng cho ${no.map((o) => o.shortName || o.name).join(', ')}: doanh nghiệp này không thấy trường` });
+  }
+  return out;
+};
+
+/** Trường có thể đặt vào khối: khóa, nhãn mặc định, trường khóa (không bỏ được) */
+export type LFieldAvail = { key: string; label: string; lock?: boolean; cf?: CfDef; /** v55.3 Studio: trường trong bố cục không còn hợp lệ (giữ ô để 3A xử lý) */ missing?: boolean };
+
+/**
+ * Bố cục trường thực tế để hiển thị / chỉnh:
+ *  - bỏ ô của trường không còn (trường bị xóa, không áp dụng cho doanh nghiệp)
+ *  - trường khóa và trường bắt buộc (must) luôn có
+ *  - trường mới theo cờ (auto) chưa đặt và chưa bị 3A bỏ (off) tự thêm vào cuối nhóm cuối
+ *  - keepEmpty: giữ nhóm rỗng (màn thiết kế); hiển thị thật thì bỏ nhóm rỗng
+ */
+export const lResolveSections = (secs: LSection[] | undefined, avail: LFieldAvail[], o: { auto?: string[]; off?: string[]; must?: string[]; title?: string; cols?: LSection['cols']; keepEmpty?: boolean } = {}): LSection[] => {
+  const ok = new Set(avail.map((a) => a.key));
+  const out: LSection[] = (secs ?? []).map((s) => ({ ...s, fields: s.fields.filter((f) => ok.has(f.fieldKey)) }));
+  const placed = new Set(out.flatMap((s) => s.fields.map((f) => f.fieldKey)));
+  const off = o.off ?? [];
+  const add = [...new Set([...avail.filter((a) => a.lock).map((a) => a.key), ...(o.must ?? []), ...(o.auto ?? []).filter((k) => !off.includes(k))])].filter((k) => ok.has(k) && !placed.has(k));
+  if (add.length) {
+    const last = out[out.length - 1] ?? { id: 'auto-s', title: o.title ?? '', cols: o.cols ?? 2, fields: [] };
+    const unit = 12 / last.cols;
+    const next = { ...last, fields: [...last.fields, ...add.map((k) => lFieldItem(k, unit, `auto-${k}`))] };
+    if (out.length) out[out.length - 1] = next; else out.push(next);
+  }
+  return o.keepEmpty ? out : out.filter((s) => s.fields.length);
+};
+
+/** Trường tùy chỉnh áp yêu cầu bắt buộc theo bố cục form (requiredOverride); trường không đặt giữ theo định nghĩa */
+export const cfWithLayout = (defs: CfDef[], secs: LSection[] | undefined): CfDef[] => {
+  const m = new Map((secs ?? []).flatMap((s) => s.fields).filter((f) => f.requiredOverride).map((f) => [f.fieldKey, f.requiredOverride!] as const));
+  return defs.map((d) => (m.has(`cf:${d.key}`) ? { ...d, required: m.get(`cf:${d.key}`)! } : d));
+};
+
+/** Trường của đơn bán đặt được vào khối Chi tiết (trường gốc + trường tùy chỉnh đầu đơn) / khối Form (trường tùy chỉnh đầu đơn đang dùng) */
+export const lSaleAvail = (kind: 'detail' | 'form', head: CfDef[]): LFieldAvail[] => lEntityAvail('sale', kind, head);
+
+/** v55.3 Trường đặt được vào khối của một đối tượng: trường gốc (chỉ khối Chi tiết) + trường tùy chỉnh của đối tượng đó */
+export const lEntityAvail = (entity: CfEntity, kind: 'detail' | 'form', head: CfDef[]): LFieldAvail[] => [
+  ...(kind === 'detail' ? (entity === 'sale' ? SO_INFO_F : ENTITY_INFO_F[entity]).map((f) => ({ key: f.id, label: f.label, lock: f.lock })) : []),
+  ...head.filter((d) => d.entity === entity && d.scope === 'HEAD' && (d.status === 'ACTIVE' || kind === 'detail')).map((d) => ({ key: `cf:${d.key}`, label: d.label, cf: d })),
+];
+
+/** Bố cục trường đã tính sẵn của khối đơn bán (giữ tên cũ) */
+export const lSaleSections = (kind: 'detail' | 'form', c: LBlockCfg | undefined, head: CfDef[], keepEmpty = false): LSection[] => lEntitySections('sale', kind, c, head, keepEmpty);
+
+/** v55.3 Bố cục trường đã tính sẵn của khối (thứ tự đọc: bố cục → trường mới theo cờ → trường bắt buộc / khóa) */
+export const lEntitySections = (entity: CfEntity, kind: 'detail' | 'form', c: LBlockCfg | undefined, head0: CfDef[], keepEmpty = false, extra: LFieldAvail[] = []): LSection[] => {
+  const head = head0.filter((d) => d.entity === entity);
+  const avail = [...lEntityAvail(entity, kind, head), ...extra];
+  const eff = kind === 'form' ? cfWithLayout(head, c?.sections) : head;
+  // Chi tiết: cả trường đã ngừng dùng (khi bản ghi còn giá trị, bộ hiển thị tự ẩn ô trống của trường ngừng dùng)
+  const flag = (d: CfDef) => (kind === 'form' ? d.status === 'ACTIVE' && d.where.form : d.where.info);
+  const auto = head.filter((d) => d.scope === 'HEAD' && flag(d)).map((d) => `cf:${d.key}`);
+  const must = kind === 'form' ? eff.filter((d) => d.scope === 'HEAD' && d.status === 'ACTIVE' && d.where.form && d.required !== 'NONE').map((d) => `cf:${d.key}`) : [];
+  return lResolveSections(c?.sections, avail, { auto, off: c?.off, must, title: '', cols: kind === 'form' || entity !== 'sale' ? 2 : 4, keepEmpty });
+};
 
 /** Tab của khối trên trang có khối Tab (không thuộc tab nào = hiện mọi tab) */
 export const lTabList = (bs: LBlock[]) => bs.find((x) => x.type === 'K-Tabs')?.config.tabs ?? [];
@@ -2648,7 +2806,7 @@ export const LPageC = createContext<LPageCtx | null>(null);
 
 export const lPeriodLabel = (p: DashPeriod, now = new Date()) => (p === 'MONTH' ? `Tháng ${now.getMonth() + 1}/${now.getFullYear()}` : p === 'QUARTER' ? `Quý ${Math.floor(now.getMonth() / 3) + 1}/${now.getFullYear()}` : p === 'YEAR' ? `Năm ${now.getFullYear()}` : 'Tuần này');
 
-export const L_VAR_KEYS: Record<LPage, string[]> = { home: ['kỳ', 'kỳ trước', 'giờ cập nhật', 'kỳ vọng %', 'số ngày còn lại', 'ngày', 'tên doanh nghiệp', 'người xem'], 'sale-detail': ['mã đơn', 'khách hàng', 'trạng thái đơn', 'ngày', 'tên doanh nghiệp', 'người xem'], 'sale-list': ['ngày', 'tên doanh nghiệp', 'người xem'], desk: [], reports: [], customer: [], claim: [] };
+export const L_VAR_KEYS: Record<LPage, string[]> = { home: ['kỳ', 'kỳ trước', 'giờ cập nhật', 'kỳ vọng %', 'số ngày còn lại', 'ngày', 'tên doanh nghiệp', 'người xem'], 'sale-detail': ['mã đơn', 'khách hàng', 'trạng thái đơn', 'ngày', 'tên doanh nghiệp', 'người xem'], 'sale-list': ['ngày', 'tên doanh nghiệp', 'người xem'], 'sale-form': [], 'customer-list': ['ngày', 'tên doanh nghiệp', 'người xem'], 'customer-detail': [], 'lead-list': ['ngày', 'tên doanh nghiệp', 'người xem'], 'lead-detail': [], desk: [], reports: [], customer: [], claim: [] };
 
 export const lFill = (s: string, v?: Record<string, string>) => (v ? s.replace(/\{([^{}\n]{1,30})\}/g, (m, k: string) => v[k.trim()] ?? m) : s);
 
@@ -2725,7 +2883,9 @@ export const L_GAP = 12;
 export const lRoleProfit = (r: Role) => r === 'BOD' || ['sale.manage', 'cash.manage', 'receipt.confirm'].some((a) => (INITIAL_PERMS.actions[a as Action] ?? []).includes(r));
 
 /** Giá trị mẫu của trường tùy chỉnh (màn thiết kế) */
-export const cfSample = (d: CfDef): string => (d.type === 'check' ? 'Có' : d.type === 'select' ? d.options?.[0] ?? '—' : d.type === 'user' ? 'Phạm Minh Đức' : d.type === 'date' ? fmtDate(todayISO()) : d.type === 'money' ? fmtN(1500000) : d.type === 'number' ? '12' : 'Mẫu');
+export const cfSample = (d: CfDef): string => (d.type === 'check' ? 'Có' : d.type === 'select' ? d.options?.[0] ?? '—' : d.type === 'user' ? 'Phạm Minh Đức' : d.type === 'date' ? fmtDate(todayISO()) : d.type === 'money' ? fmtN(1500000) : d.type === 'number' ? `12${d.unit ? ` ${d.unit}` : ''}`
+  : d.type === 'formula' ? `${fmtN(18000000)}${d.unit ? ` ${d.unit}` : ''}` : d.type === 'datetime_range' ? '12/06 08:00 – 17:00 · 9 giờ' : d.type === 'resource_picker' ? 'Đội lắp đặt số 1'
+  : d.type === 'checklist' ? `2/${(d.options ?? []).length || 5} công đoạn` : d.type === 'media_gallery' ? '3 ảnh' : d.type === 'signature' ? 'Đã ký' : 'Mẫu');
 
 export const L_SO_LINES = [{ ref: '3M-SCOTCH-23', name: 'Băng keo cách điện cao áp Scotch 23', unit: 'Cuộn', qty: 20, price: 285000, ck: 5, vat: 8 }, { ref: '3M-1600', name: 'Băng keo điện vinyl 3M 1600', unit: 'Cuộn', qty: 100, price: 22000, ck: 0, vat: 8 }];
 
@@ -2742,12 +2902,14 @@ export const lRoleSees = (role: Role, ds: LDataset) => { const d = L_DS[ds]; ret
 // =====================================================================
 //  v53 TRƯỜNG TÙY CHỈNH (3A định nghĩa, doanh nghiệp nhập giá trị)
 // =====================================================================
-export const CF_TYPE: Record<CfType, string> = { text: 'Chữ', number: 'Số', money: 'Tiền', date: 'Ngày', select: 'Danh sách chọn', user: 'Người dùng', check: 'Tích chọn' };
+export const CF_TYPE: Record<CfType, string> = { text: 'Chữ', number: 'Số', money: 'Tiền', date: 'Ngày', select: 'Danh sách chọn', user: 'Người dùng', check: 'Tích chọn',
+  // v56 kiểu chuyên ngành
+  datetime_range: 'Khoảng thời gian', resource_picker: 'Chọn tài nguyên', formula: 'Công thức', checklist: 'Danh sách công đoạn', media_gallery: 'Bộ ảnh', signature: 'Chữ ký' };
 
 /** Trường áp dụng cho một doanh nghiệp: toàn hệ thống, mô hình của doanh nghiệp, hoặc được chọn riêng */
 export const cfApplies = (d: CfDef, org: Org) => d.levels.sys || (org.profile === 'MANUFACTURING' ? d.levels.mfg : d.levels.tr) || d.levels.tenants.includes(org.id);
 
-export const cfDefsFor = (all: CfDef[], org: Org) => all.filter((d) => d.entity === 'sale' && cfApplies(d, org)).sort((a, b) => a.order - b.order);
+export const cfDefsFor = (all: CfDef[], org: Org, entity: CfEntity = 'sale') => all.filter((d) => d.entity === entity && cfApplies(d, org)).sort((a, b) => a.order - b.order);
 
 export const cfEmpty = (v: CfVal | undefined) => v === undefined || v === '' || (typeof v === 'number' && Number.isNaN(v));
 
@@ -3619,7 +3781,7 @@ export const ORG_DEFAULTS: Record<string, Record<string, unknown>> = {
 // =====================================================================
 
 /** Tăng số này mỗi khi cấu trúc dữ liệu đổi, và thêm một bước vào MIGRATIONS */
-export const DATA_VERSION = 30;
+export const DATA_VERSION = 32;
 
 /** Dữ liệu bản trước khi tách doanh nghiệp (chuyển sang VASSH ở lần mở đầu) */
 export const LEGACY_STORE_KEY = 'vassh-crm:data';
@@ -3736,7 +3898,11 @@ export const MIGRATIONS: Record<number, (d: AnyRec) => AnyRec> = {
   29: (d) => ({ ...d, contentVersions: Array.isArray(d.contentVersions) ? d.contentVersions : [], aiQuota: d.aiQuota ?? INITIAL_AI_QUOTA }),
   // v38.6: thư viện ảnh marketing (chỉ thêm nhóm dữ liệu mới)
   30: (d) => ({ ...d, mktImages: Array.isArray(d.mktImages) ? d.mktImages : [] }),
-  23: (d) => ({ ...d, warehouses: Array.isArray(d.warehouses) && d.warehouses.length ? d.warehouses : INITIAL_WAREHOUSES }),
+  // v55.1: tùy chọn cá nhân "Lưu cho tôi" (nhóm dữ liệu mới). Đơn bán tách từng bản ghi ở tầng đồng bộ (TenantSync), không đổi cấu trúc mảng
+  31: (d) => ({ ...d, userPrefs: Array.isArray(d.userPrefs) ? d.userPrefs : [] }),
+  // v56: tài nguyên doanh nghiệp (nhóm dữ liệu mới, không đổi dữ liệu cũ)
+  32: (d) => ({ ...d, resources: Array.isArray(d.resources) ? d.resources : [] }),
+  23:(d) => ({ ...d, warehouses: Array.isArray(d.warehouses) && d.warehouses.length ? d.warehouses : INITIAL_WAREHOUSES }),
 };
 
 export const storage = {
@@ -3851,6 +4017,9 @@ export const CLOUD_ON = !!(CLOUD_URL && CLOUD_KEY);
 export const CLOUD_SESSION_KEY = '3a:cloud-session';
 
 export const CLOUD_BUCKET = 'crm-files';
+
+/** v55.1: kho riêng tư cho tệp đính kèm đơn hàng (cần SQL v55.1) */
+export const CLOUD_ATTACH = 'crm-attach';
 
 export const PLATFORM_TENANT = '_platform';
 
@@ -4007,7 +4176,92 @@ export const cloud = {
     }
     return this.publicUrl(path);
   },
+  /**
+   * v55.1: tải tệp đính kèm vào kho riêng tư 'crm-attach' (chỉ thành viên doanh nghiệp đọc được).
+   * Đường dẫn <doanh nghiệp>/<thư mục>/<băm nội dung>.<đuôi>; trùng nội dung trong cùng thư mục thì dùng lại.
+   */
+  async uploadAttachment(tenant: string, folder: string, blob: Blob, name: string): Promise<{ path: string; mimeType: string }> {
+    const buf = await blob.arrayBuffer();
+    const hash = Array.from(new Uint8Array(await subtle().digest('SHA-256', buf)), (b) => b.toString(16).padStart(2, '0')).join('').slice(0, 40);
+    const mimeType = blob.type || 'application/octet-stream';
+    const path = `${tenant}/${folder.replace(/[^\w/-]/g, '_')}/${hash}.${attachExt(name, mimeType)}`;
+    const res = await this.authed(`/storage/v1/object/${CLOUD_ATTACH}/${path}`, { method: 'POST', headers: { 'Content-Type': mimeType, 'x-upsert': 'false', 'cache-control': '3600' }, body: blob });
+    if (!res.ok) {
+      const txt = await res.text();
+      if (!/Duplicate|already exists|409/i.test(txt)) throw new CloudError(`Không tải được tệp lên: ${txt.slice(0, 160)}`, res.status);
+    }
+    return { path, mimeType };
+  },
+  /** v55.1: đọc tệp ở kho riêng tư (có xác thực) */
+  async attachmentBlob(path: string): Promise<Blob> {
+    const res = await this.authed(`/storage/v1/object/authenticated/${CLOUD_ATTACH}/${path}`);
+    if (!res.ok) await this.json(res);
+    return res.blob();
+  },
+  async removeAttachment(path: string) {
+    const res = await this.authed(`/storage/v1/object/${CLOUD_ATTACH}/${path}`, { method: 'DELETE' });
+    if (!res.ok && res.status !== 404) await this.json(res);
+  },
+  /**
+   * v55.1: hồ sơ các doanh nghiệp của chính tài khoản (RPC get_my_tenant_info) — người dùng doanh nghiệp không còn
+   * đọc thẳng danh mục 'tenants' của nền tảng. null = máy chủ chưa chạy SQL v55.1 (dùng cách đọc cũ).
+   */
+  async myTenants(): Promise<TenantReg[] | null> {
+    try {
+      const r = await this.rpc<TenantReg[]>('get_my_tenant_info');
+      return Array.isArray(r) ? r : [];
+    } catch (e) {
+      if (e instanceof CloudError && (e.status === 404 || e.code === 'PGRST202' || e.code === '42883')) return null;
+      throw e;
+    }
+  },
 };
+
+/** v55.1: đuôi tệp đính kèm theo tên (chữ thường, tối đa 8 ký tự), không có thì theo loại */
+export const attachExt = (name: string, mime: string) => {
+  const m = /\.([a-z0-9]{1,8})$/i.exec(name.trim());
+  if (m) return m[1].toLowerCase();
+  return ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' } as Record<string, string>)[mime] ?? 'bin';
+};
+
+/** v55.1: tệp nằm ở kho riêng tư (url dạng 'attach:<đường dẫn>') */
+export const ATTACH_PREFIX = 'attach:';
+export const attachPath = (f: { url: string; path?: string }) => f.path ?? (f.url.startsWith(ATTACH_PREFIX) ? f.url.slice(ATTACH_PREFIX.length) : null);
+
+/**
+ * v55.1: mở / tải tệp đính kèm. Kho riêng tư: tải có xác thực rồi mở bằng đường dẫn tạm của trình duyệt.
+ * Tệp cũ (data: base64 hoặc link công khai) mở thẳng như trước.
+ */
+export async function openAttachment(f: { name: string; url: string; path?: string }, mode: 'view' | 'download' = 'view') {
+  const path = attachPath(f);
+  // tệp cũ nhúng base64: trình duyệt chặn mở trực tiếp 'data:' ở tab mới -> đổi sang blob rồi mở
+  if (!path && f.url.startsWith('data:')) {
+    const w = mode === 'view' ? window.open('', '_blank') : null;
+    try {
+      const blob = await (await fetch(f.url)).blob();
+      if (mode === 'download') { downloadBlob(f.name, blob); return; }
+      const href = URL.createObjectURL(blob);
+      if (w) w.location.href = href; else window.open(href, '_blank');
+      setTimeout(() => URL.revokeObjectURL(href), 120_000);
+    } catch (e) { w?.close(); throw e; }
+    return;
+  }
+  if (!path) {
+    const a = document.createElement('a'); a.href = f.url; a.rel = 'noreferrer';
+    if (mode === 'download') a.download = f.name; else a.target = '_blank';
+    a.click();
+    return;
+  }
+  // mở cửa sổ ngay trong lúc người dùng bấm (tránh bị chặn popup), nạp nội dung sau khi tải xong
+  const w = mode === 'view' ? window.open('', '_blank') : null;
+  try {
+    const blob = await cloud.attachmentBlob(path);
+    if (mode === 'download') { downloadBlob(f.name, blob); return; }
+    const href = URL.createObjectURL(blob);
+    if (w) w.location.href = href; else window.open(href, '_blank');
+    setTimeout(() => URL.revokeObjectURL(href), 120_000);
+  } catch (e) { w?.close(); throw e; }
+}
 
 // ---------------------------------------------------------------------
 //  So sánh dữ liệu: chuỗi JSON chuẩn hóa (khóa sắp xếp) và thay file nhúng bằng đường dẫn đã tải lên
@@ -4027,8 +4281,19 @@ export const KEYED_COLLS: Record<string, string> = {
   genDocs: 'id', comments: 'id', contentVersions: 'id', mktImages: 'id', channels: 'id', posts: 'id', warehouses: 'id', stockVouchers: 'id', zaloConvs: 'id', zaloMsgs: 'id', campaigns: 'id', contents: 'id', banners: 'id', audiences: 'id', automations: 'id', autoRuns: 'id', kb: 'id', mktTasks: 'id', briefs: 'id', draftProducts: 'id', socialPosts: 'id', kpiTargets: 'id', getflyOrders: 'orderCode', notices: 'id', docs: 'id', approvalLogs: 'id', auditLogs: 'id', workOrders: 'id', installJobs: 'id', jobs: 'id',
   receipts: 'id', stockItems: 'id', stockMoves: 'id', cashEntries: 'id', priceItems: 'id', docTemplates: 'id', skus: 'sku', mktItems: 'id',
   // nền tảng 3A
-  tenants: 'id', logs: 'id', layouts: 'id', layoutAssigns: 'id', customFields: 'id',
+  tenants: 'id', logs: 'id', layouts: 'id', layoutAssigns: 'id', customFields: 'id', industryProfiles: 'id',
+  // v55.1: đơn bán mỗi đơn 1 dòng (trước đây cả mảng nằm trong 1 dòng '$'); tùy chọn cá nhân mỗi người 1 dòng
+  salesOrders: 'id', userPrefs: 'id',
+  // v56: tài nguyên doanh nghiệp (đội thợ, xe, phòng chụp…)
+  resources: 'id',
 };
+
+/**
+ * v55.1: nhóm dữ liệu từng lưu nguyên khối (1 dòng coll '$') nay lưu theo từng bản ghi.
+ * Khi tải: gộp dòng cũ với các dòng mới theo khóa (dòng mới thắng), giữ dòng cũ trong base để lần gửi sau
+ * tự đánh dấu xóa nó — chuyển đổi chạy lại được, dừng giữa chừng không mất bản ghi.
+ */
+export const LEGACY_WHOLE = ['salesOrders'];
 
 export const WHOLE = '$';
 
@@ -4047,6 +4312,8 @@ export class TenantSync {
   cursor = 0;
   version = 0;
   readOnly = false;
+  /** v55.1: số bản ghi lấy từ dòng nguyên khối cũ khi tải (để báo / kiểm tra chuyển đổi) */
+  legacyMoved: Record<string, number> = {};
   private latest: AnyRec | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private pullTimer: ReturnType<typeof setTimeout> | null = null;
@@ -4076,6 +4343,18 @@ export class TenantSync {
       (lists[r.coll] ??= []).push({ rank: r.rank, id: r.id, value: r.data });
     }
     for (const [coll, xs] of Object.entries(lists)) data[coll] = xs.sort((a, b) => a.rank - b.rank || (a.id < b.id ? -1 : 1)).map((x) => x.value);
+    // v55.1: còn dòng nguyên khối cũ của nhóm đã chuyển sang từng bản ghi -> gộp, dòng riêng thắng; dòng cũ nằm trong base
+    // nên lần gửi kế tiếp sẽ ghi đủ từng bản ghi rồi đánh dấu xóa dòng cũ
+    for (const coll of LEGACY_WHOLE) {
+      const keyField = KEYED_COLLS[coll];
+      const legacy = rows.find((r) => r.coll === WHOLE && r.id === coll && !r.deleted)?.data;
+      if (!keyField || !Array.isArray(legacy)) continue;
+      const kept = lists[coll] ? (data[coll] as AnyRec[]) : [];
+      const seen = new Set(kept.map((x) => String(x?.[keyField])));
+      const extra = (legacy as AnyRec[]).filter((x) => x && x[keyField] !== undefined && !seen.has(String(x[keyField])));
+      data[coll] = [...extra, ...kept];
+      this.legacyMoved[coll] = extra.length;
+    }
     this.setInfo({ state: 'idle', lastOk: Date.now(), pending: 0 });
     return { data, version: this.version, rows: rows.length };
   }
@@ -4188,9 +4467,21 @@ export class TenantSync {
       const [coll, id] = key.split('\u0001');
       rows.push({ tenant_id: this.tenant, coll, id, data: {}, rank: this.ranks.get(key) ?? 0, deleted: true });
     }
-    await cloud.upsert(rows);
-    for (const [key, json] of sent) this.base.set(key, json);
+    // v55.3: máy chủ chặn bản ghi có trường tùy chỉnh sai (CF_INVALID) -> gửi lại từng dòng, các dòng hợp lệ vẫn lưu,
+    // dòng bị chặn giữ ở trạng thái chờ gửi trên máy (không mất), báo lỗi để người dùng bổ sung
+    const bad = new Set<string>();
+    let badMsg = '';
+    try { await cloud.upsert(rows); }
+    catch (e) {
+      if (!/CF_INVALID/.test(String((e as Error)?.message)) || rows.length < 2) throw e;
+      for (const r of rows) {
+        try { await cloud.upsert([r]); }
+        catch (e2) { if (!/CF_INVALID/.test(String((e2 as Error)?.message))) throw e2; bad.add(rowKey(r.coll, r.id)); badMsg ||= cloudMessage(e2); }
+      }
+    }
+    for (const [key, json] of sent) if (!bad.has(key)) this.base.set(key, json);
     for (const key of removed) { this.base.delete(key); this.ranks.delete(key); }
+    if (bad.size) throw new Error(`${bad.size} bản ghi chưa lưu lên máy chủ. ${badMsg}`);
     const left = this.latest === data ? 0 : this.pendingCount();
     this.setInfo({ state: 'idle', pending: left, lastOk: Date.now(), error: undefined });
     tenantCloudStats[this.tenant] = { ...(tenantCloudStats[this.tenant] ?? statsOf(data)), ...statsOf(data), savedAt: Date.now() };

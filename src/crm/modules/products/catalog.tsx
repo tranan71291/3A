@@ -9,12 +9,13 @@ import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, SideSheet, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { poLineStats } from '../../lib/business';
-import { btnGhost, btnPrimary, btnSm, chatFileMax, downloadBlob, fmtDate, fmtN, fmtSize, fold, inputBase, inputCls, MAIN_WH, MOVE_LABEL, reservedInStock, rowCls, shrinkImage, SKU_FILTER0, SKU_IMPORT_COLS, SKU_RE, stickyStore, STOCK_LEVEL, stockLevel, tdCls, tdFirst, tdLast, todayISO, UNITS, useApp, whQty } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, cfMissing, cfSet, chatFileMax, downloadBlob, fmtDate, fmtN, fmtSize, fold, inputBase, inputCls, MAIN_WH, MOVE_LABEL, reservedInStock, rowCls, shrinkImage, SKU_FILTER0, SKU_IMPORT_COLS, SKU_RE, stickyStore, STOCK_LEVEL, stockLevel, tdCls, tdFirst, tdLast, todayISO, UNITS, useApp, whQty } from '../../lib/core';
 import { downloadCsv, parseCsv, readXlsx, xlsxBlob } from '../../lib/csv';
 import type { ConfirmState, ImportRow, SkuFilter, SkuItem, StockLevel, StockMoveType, StockVoucher, VoucherType, WarehouseInfo } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { DraftCatalog } from '../sales/smart-quote';
 import { useWarehouseData, VoucherModal } from '../warehouse/warehouse';
+import { EntityCfDetail, EntityCfForm, useEntityFormLayout } from '../page-builder';
 
 export function SkuModal({ sku, onClose }: { sku?: SkuItem; onClose: () => void }) {
   const { skus, setSkus, notify, canDo, warehouses, addMoves, me } = useApp();
@@ -47,10 +48,14 @@ export function SkuModal({ sku, onClose }: { sku?: SkuItem; onClose: () => void 
     if (file.size > chatFileMax()) return notify(`${file.name} vượt ${fmtSize(chatFileMax())}`, 'red');
     const r = new FileReader(); r.onload = () => setF((p) => ({ ...p, docs: [...(p.docs ?? []), { name: file.name, size: file.size, type: file.type || 'application/octet-stream', url: String(r.result) }] })); r.readAsDataURL(file);
   });
+  // v55.3: trường tùy chỉnh sản phẩm (chưa có trang thiết kế: theo cờ "Form" của trường; cùng quy tắc kiểm tra với máy chủ)
+  const fl = useEntityFormLayout('product');
+  const cfMiss = cfMissing(fl.formDefs, f.cf, 'SAVE');
   const save = () => {
     setTouched(true);
     if (Object.keys(e).length) { if (e.brand || e.vatPct) setMore(true); return; }
-    const clean: SkuItem = { ...f, name: f.name.trim(), brand: f.brand.trim(), category: f.category.trim(), supplier: f.supplier?.trim() || undefined, origin: f.origin?.trim() || undefined, dealerPrice: f.dealerPrice || f.basePrice, projectPrice: f.projectPrice || f.basePrice };
+    if (cfMiss.length) return notify(`${cfMiss[0].type === 'check' ? 'Cần tích' : 'Nhập'} ${cfMiss[0].label}`, 'red');
+    const clean: SkuItem = { ...f, cf: f.cf && Object.keys(f.cf).length ? f.cf : undefined, name: f.name.trim(), brand: f.brand.trim(), category: f.category.trim(), supplier: f.supplier?.trim() || undefined, origin: f.origin?.trim() || undefined, dealerPrice: f.dealerPrice || f.basePrice, projectPrice: f.projectPrice || f.basePrice };
     if (sku) setSkus((all) => all.map((s) => (s.sku === sku.sku ? { ...clean, stock: s.stock, whStock: s.whStock } : s)));
     else {
       const created: SkuItem = { ...clean, stock: opening, ...(opening && openWh !== main ? { whStock: { [openWh]: opening } } : {}) };
@@ -124,6 +129,7 @@ export function SkuModal({ sku, onClose }: { sku?: SkuItem; onClose: () => void 
           </>
         )}
       </div>
+      <div className="mt-4"><EntityCfForm entity="product" vals={f.cf} onChange={(k, v) => set('cf', cfSet(f.cf, k, v))} /></div>
     </Modal>
   );
 }
@@ -343,6 +349,8 @@ export function SkuDetail({ sku, onClose, onEdit, onStock, onCard }: { sku: stri
           {row('VAT', s.vatPct !== undefined ? `${s.vatPct}%` : '—')}
         </dl>
       </div>
+      {/* v55.3 trường tùy chỉnh sản phẩm (cờ "Thông tin") */}
+      <EntityCfDetail entity="product" vals={s.cf} />
       <section>
         <h3 className="mb-2 text-sm font-semibold">Giá bán</h3>
         <div className="grid grid-cols-3 gap-2 text-sm">

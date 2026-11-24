@@ -15,6 +15,9 @@ export function cloudMessage(e: unknown): string {
   if (/weak_password|Password should be/i.test(m)) return 'Mật khẩu quá ngắn (tối thiểu 8 ký tự).';
   if (/no_user/.test(m)) return 'Chưa có tài khoản đăng nhập cho email này.';
   if (/row-level security|permission denied|42501/i.test(m)) return 'Tài khoản không có quyền ghi dữ liệu doanh nghiệp này.';
+  // v55.3: máy chủ chặn bản ghi có trường tùy chỉnh sai (validate_custom_fields)
+  const cf = /CF_INVALID:\s*([^\n"]+)/.exec(m);
+  if (cf) return `Máy chủ từ chối lưu: ${cf[1].trim()}`;
   return m;
 }
 

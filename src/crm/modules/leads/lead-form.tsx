@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { FileText, Paperclip, X } from 'lucide-react';
 import { Field, FilePicker, Modal, MoneyInput } from '../../components/ui';
 import { scoreLead } from '../../lib/business';
-import { btnGhost, btnPrimary, EMAIL_RE, inputCls, MST_RE, nextCode, QUOTE_SLA_MS, REGION_LABEL, SEGMENT_LABEL, segName, SOURCE_LABEL, uid, useApp } from '../../lib/core';
-import type { DeptCode, Lead, LeadForm, Region, Source } from '../../lib/types';
+import { btnGhost, btnPrimary, cfMissing, cfSet, EMAIL_RE, inputCls, MST_RE, nextCode, QUOTE_SLA_MS, REGION_LABEL, SEGMENT_LABEL, segName, SOURCE_LABEL, uid, useApp } from '../../lib/core';
+import type { CfVal, DeptCode, Lead, LeadForm, Region, Source } from '../../lib/types';
+import { EntityCfForm, useEntityFormLayout } from '../page-builder';
 import { cn } from '../../lib/utils';
 
 export function validateLead(f: LeadForm, leads: Lead[], selfId?: string): Partial<Record<keyof LeadForm, string>> {
@@ -50,6 +51,11 @@ export function LeadFormModal({ id, asProject, onClose }: { id?: string; asProje
   const errors = validateLead(f, leads, id);
   const set = <K extends keyof LeadForm>(k: K, v: LeadForm[K]) => setF((p) => ({ ...p, [k]: v }));
   const err = (k: keyof LeadForm) => (touched ? errors[k] : undefined);
+  // v55.3: trường tùy chỉnh lead theo bố cục form 3A (cùng quy tắc kiểm tra với máy chủ)
+  const fl = useEntityFormLayout('lead');
+  const [cfv, setCfv] = useState<Record<string, CfVal>>(existing?.cf ?? {});
+  const cfMiss = cfMissing(fl.formDefs, cfv, 'SAVE');
+  const cfOut = Object.keys(cfv).length ? cfv : undefined;
 
   const addFiles = (files: File[]) => {
     const ok = files.filter((x) => x.size <= 20 * 1024 * 1024);
@@ -64,9 +70,10 @@ export function LeadFormModal({ id, asProject, onClose }: { id?: string; asProje
   const save = () => {
     setTouched(true);
     if (Object.keys(errors).length) return;
+    if (cfMiss.length) return notify(`${cfMiss[0].type === 'check' ? 'Cần tích' : 'Nhập'} ${cfMiss[0].label}`, 'red');
     if (existing) {
       setLeads((p) => p.map((l) => (l.id === existing.id ? {
-        ...l, company: f.company.trim(), contact: f.contact.trim(), phone: f.phone.trim(), taxCode: f.taxCode.trim() || undefined, email: f.email.trim() || undefined,
+        ...l, cf: cfOut, company: f.company.trim(), contact: f.contact.trim(), phone: f.phone.trim(), taxCode: f.taxCode.trim() || undefined, email: f.email.trim() || undefined,
         segment: f.segment, source: f.source, region: f.region, province: f.province.trim() || undefined, boqValue: f.boqValue, boqNote: f.boqNote.trim(), attachments: f.attachments,
         hasBoqFile: f.attachments.length > 0 || l.hasBoqFile, boqFile: l.boqFile ?? (f.attachments[0] ? { name: f.attachments[0].name, url: f.attachments[0].url } : undefined),
       } : l)));
@@ -75,11 +82,11 @@ export function LeadFormModal({ id, asProject, onClose }: { id?: string; asProje
       if (!pDept || !pRep) return notify('Chọn phòng ban và người phụ trách dự án', 'red');
       const base = formToLead(f, nextCode(leads.map((l) => l.code), 'LD-2026-', 4));
       const now = Date.now();
-      const lead: Lead = { ...base, status: 'ACCEPTED', dept: pDept, assignee: pRep, routedAt: now, slaMet: true, quoteDeadline: now + QUOTE_SLA_MS, boqStatus: 'NOT_STARTED', routingReason: 'Sales tự khai thác', score: scoreLead(base, customers), customerId: pCust || undefined };
+      const lead: Lead = { ...base, cf: cfOut, status: 'ACCEPTED', dept: pDept, assignee: pRep, routedAt: now, slaMet: true, quoteDeadline: now + QUOTE_SLA_MS, boqStatus: 'NOT_STARTED', routingReason: 'Sales tự khai thác', score: scoreLead(base, customers), customerId: pCust || undefined };
       setLeads((p) => [lead, ...p]);
       notify(`Đã tạo dự án ${lead.code}. Hạn nộp BOQ và báo giá: 24 giờ.`, 'teal');
     } else {
-      const lead = formToLead(f, nextCode(leads.map((l) => l.code), 'LD-2026-', 4));
+      const lead: Lead = { ...formToLead(f, nextCode(leads.map((l) => l.code), 'LD-2026-', 4)), cf: cfOut };
       setLeads((p) => [lead, ...p]);
       notify(`Đã thêm lead ${lead.code}, chờ Marketing phân phòng ban`, 'teal');
     }
@@ -168,6 +175,7 @@ export function LeadFormModal({ id, asProject, onClose }: { id?: string; asProje
           )}
         </div>
       </div>
+      <div className="mt-4"><EntityCfForm entity="lead" vals={cfv} onChange={(k, v) => setCfv((p) => cfSet(p, k, v))} /></div>
     </Modal>
   );
 }

@@ -5,7 +5,8 @@ import { ArrowRight, CheckCircle2, Eye, EyeOff, KeyRound, Mail, RefreshCw, Uploa
 import { Logo3A } from '../app/header';
 import { Field, FilePicker, Modal } from '../components/ui';
 import { BRAND, btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, CLOUD_ON, DATA_VERSION, defaultTenantReg, DEMO_PASSWORD, GRAD, INITIAL_COMPANY, inputCls, LOGIN_SLIDES, ORG_DEFAULTS, ORG_ID_RE, orgIdIssue, orgOf, ORGS, RESERVED_ORG_IDS, slugify, TENANT_KEEP_CONFIG, TENANT_PLAN, useApp } from './core';
-import type { AnyRec, BusinessProfile, CompanyInfo, Org, OrgChoices, TenantPlan, TenantReg } from './types';
+import type { AnyRec, BusinessProfile, CompanyInfo, IndustryCode, Org, OrgChoices, TenantPlan, TenantReg } from './types';
+import { industryProfilesEff } from './industry';
 import { cn } from './utils';
 
 /** Minh họa line-art cho slider trang đăng nhập (không dùng ảnh giả lập dự án thật) */
@@ -259,9 +260,11 @@ export function shrinkLogo(file: File): Promise<string> {
 }
 
 /** 3A Platform Console › Doanh nghiệp: thêm doanh nghiệp mới (hồ sơ, đường dẫn, tài khoản quản trị đầu tiên) */
-export function AddTenantModal({ onClose }: { onClose: () => void }) {
+export function AddTenantModal({ onClose, onCreated }: { onClose: () => void; /** v56: tạo xong mở bảng Ngành & mẫu ngành để áp dụng bộ mẫu */ onCreated?: (id: string) => void }) {
   const { platform, notify } = useApp();
-  const [f, setF] = useState({ name: '', shortName: '', id: '', domain: '', profile: 'TRADING' as BusinessProfile, color: '#2563EB', logo: '' as string, plan: 'BUSINESS' as TenantPlan, adminName: '', adminEmail: '', password: '' });
+  const [f, setF] = useState({ name: '', shortName: '', id: '', domain: '', profile: 'TRADING' as BusinessProfile, color: '#2563EB', logo: '' as string, plan: 'BUSINESS' as TenantPlan, adminName: '', adminEmail: '', password: '', industry: '' as IndustryCode | '' });
+  const profiles = industryProfilesEff(platform.industryProfiles);
+  const indEff: IndustryCode = f.industry || (f.profile === 'MANUFACTURING' ? 'mfg_install' : 'trade');
   const [idTouched, setIdTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -285,8 +288,10 @@ export function AddTenantModal({ onClose }: { onClose: () => void }) {
     const e = await platform.addTenant({ id, name: f.name.trim(), shortName: f.shortName.trim(), domain, profile: f.profile, color: f.color, logo: f.logo || undefined, adminName: f.adminName.trim() || undefined, adminEmail: mail }, f.plan, f.password);
     setBusy(false);
     if (e) { setErr(e); return; }
+    platform.setTenantReg(id, { industry: indEff }, `Đặt ngành ${profiles.find((p) => p.id === indEff)?.label ?? indEff}`);
     notify(`Đã tạo ${f.shortName.trim()}. Gửi đường dẫn ${link} cho quản trị viên ${mail}`, 'teal');
     onClose();
+    onCreated?.(id);
   };
   const showErr = (k: string) => (f[k as keyof typeof f] !== '' || k === 'id' ? issues[k] ?? undefined : undefined);
   return (
@@ -297,6 +302,7 @@ export function AddTenantModal({ onClose }: { onClose: () => void }) {
         <Field label="Mã đường dẫn" hint={`Đường dẫn đăng nhập: ${link}`} error={id || idTouched ? issues.id ?? undefined : undefined}><input className={cn(inputCls, 'font-mono')} value={f.id} onChange={(e) => { setIdTouched(true); set('id', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); }} placeholder="phuthanh" /></Field>
         <Field label="Tên miền email" hint="Nhân viên đăng nhập bằng email @tên-miền này" error={showErr('domain')}><input className={inputCls} value={f.domain} onChange={(e) => set('domain', e.target.value)} placeholder="phuthanh.vn" /></Field>
         <Field label="Loại hình"><select className={inputCls} value={f.profile} onChange={(e) => set('profile', e.target.value as BusinessProfile)}>{(['TRADING', 'MANUFACTURING', 'ALL'] as BusinessProfile[]).map((p) => <option key={p} value={p}>{BUSINESS_PROFILE[p].label}</option>)}</select></Field>
+        <Field label="Ngành nghề" hint="Thuật ngữ và bộ mẫu ngành; áp dụng bộ mẫu ở bước sau"><select className={inputCls} value={indEff} onChange={(e) => set('industry', e.target.value as IndustryCode)} aria-label="Ngành nghề">{profiles.map((p) => <option key={p.id} value={p.id}>{p.label}{p.ready ? '' : ' (hạ tầng)'}</option>)}</select></Field>
         <Field label="Gói bản quyền"><select className={inputCls} value={f.plan} onChange={(e) => set('plan', e.target.value as TenantPlan)}>{(Object.keys(TENANT_PLAN) as TenantPlan[]).map((p) => <option key={p} value={p}>{TENANT_PLAN[p].label} · {TENANT_PLAN[p].seats} người · {TENANT_PLAN[p].price}</option>)}</select></Field>
         <Field label="Màu thương hiệu"><div className="flex items-center gap-2"><input type="color" className="h-10 w-14 cursor-pointer rounded border border-[rgb(var(--line))] bg-transparent" value={f.color} onChange={(e) => set('color', e.target.value)} aria-label="Màu thương hiệu" /><input className={cn(inputCls, 'font-mono')} value={f.color} onChange={(e) => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && set('color', e.target.value)} aria-label="Mã màu" /></div></Field>
         <Field label="Logo (PNG nền trong suốt)" className="sm:col-span-2">

@@ -5,7 +5,7 @@ import { Tabs, useSticky } from '../../components/ui';
 import { btnPrimary, btnSm, useApp } from '../../lib/core';
 import { cn } from '../../lib/utils';
 import { AllocationPage } from './allocation';
-import { DataMktPage } from './data-mkt';
+import { DataMktLayoutPage } from './data-mkt';
 
 // =====================================================================
 //  PHÂN HỆ 2: HỘP LEAD MKT & ĐIỀU PHỐI
@@ -18,7 +18,7 @@ export function LeadsModule() {
     <div className="space-y-4">
       <Tabs tabs={[{ id: 'board', label: 'Điều phối' }, { id: 'list', label: 'Data MKT' }]} value={tab} onChange={setTab}
         aside={canDo('lead.create') ? <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => openLeadForm(false)}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm lead</button> : undefined} />
-      {tab === 'board' ? <AllocationPage /> : <DataMktPage />}
+      {tab === 'board' ? <AllocationPage /> : <DataMktLayoutPage />}
     </div>
   );
 }

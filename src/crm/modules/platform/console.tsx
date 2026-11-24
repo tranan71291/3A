@@ -6,17 +6,20 @@ import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { cloudMessage } from '../../lib/cloud';
-import { btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, CF_FILTERABLE, CF_TYPE, cfSlug, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, fold, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, iso, isPlatformEmail, kpiGrid, L_ACT, L_ALL_PAGES, L_DS, L_GAP, L_ICONSET, L_KIND, L_LATER, L_PAGES, L_PER, L_PERIOD, L_ROLES, L_ROW, L_STAGE, L_TONE, L_TYPES, L_VAR_KEYS, lAssignLabel, lCondOk, lDrag, lEnsureCore, lFramed, lHasData, lHex, lIsCore, lKind, lMigrate, lNewBlock, lOnTab, lOrderSm, LPageC, lRoleProfit, lRoleSees, lSaleSampleShows, lStarter, lStarterList, lStarterSale, lTabList, lToneCls, lType, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, portal, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, SO_FILTERS, SO_HEAD_BTNS, SO_INFO_F, SO_LINE_F, SO_LIST_COLS, SO_LIST_TABS, SO_PERS, SO_SEARCH, SO_SEARCH_DEF, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, verLabel, vnd } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, CF_ENTITY, CF_FILTERABLE, CF_TYPE, cfSlug, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, fold, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, iso, isPlatformEmail, kpiGrid, L_ACT, L_ALL_PAGES, L_DS, L_GAP, L_ICONSET, L_KIND, L_LATER, L_PAGES, L_PER, L_PERIOD, L_ROLES, L_ROW, L_STAGE, L_TONE, L_TYPES, L_VAR_KEYS, lAssignLabel, lCondOk, lDrag, lEnsureCore, lFramed, lHasData, lHex, lIsCore, lKind, lMigrate, lNewBlock, lOnTab, lOrderSm, LPageC, lRoleProfit, lRoleSees, lSaleSampleShows, lStarter, L_PAGE_ENTITY, lHealthFull, type LHealth, lListCols, lStarterEntity, lStarterForm, lStarterList, lStarterSale, lTabList, lToneCls, lType, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, portal, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, SO_FILTERS, SO_HEAD_BTNS, SO_LINE_F, SO_LIST_COLS, SO_LIST_TABS, SO_PERS, SO_SEARCH, SO_SEARCH_DEF, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, verLabel, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { AddTenantModal, OrgMark } from '../../lib/modules';
 import { hashPassword } from '../../lib/security';
 import { listSnapshots, tenantStats } from '../../lib/storage';
-import type { AnyRec, AppCtx, CfDef, CfType, ConfirmState, ConsoleTab, DashPeriod, DateRange, Department, DeptCode, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, LDrop, LPage, LPeriod, LPos, LPtr, LRow, LStage, LStyle, LTextKind, LTypeDef, MfgConfig, Module, Org, PayStage, PayTrigger, Perms, PriceItem, PriceUnit, Role, SecurityPolicy, SoColDef, StoredData, TenantPlan, TenantReg, Tone, User } from '../../lib/types';
+import type { AnyRec, AppCtx, CfDef, CfEntity, CfType, ConfirmState, ConsoleTab, DashPeriod, DateRange, Department, DeptCode, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, LDrop, LPage, LPeriod, LPos, LPtr, LRow, LStage, LStyle, LTextKind, LTypeDef, MfgConfig, Module, Org, PayStage, PayTrigger, Perms, PriceItem, PriceUnit, Role, SecurityPolicy, SoColDef, StoredData, TenantPlan, TenantReg, Tone, User } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { SearchBox } from '../alux/orders';
 import { dashRange } from '../dashboard/exec-dashboard';
 import { CbSeg } from '../finance/cashbook';
-import { LayoutView, LBlockBody, LBusinessView, lDesignCtx, lRowsSample, lSaleSample, lSettle, lSt, LTextBlock } from '../messages/messenger';
+import { LayoutView, LBlockBody, LBusinessView, lDesignCtx, lRowsSample, lSaleSample, lSettle, lSt, LTextBlock } from '../page-builder';
+import { LFieldCanvas, LFieldInspector, LFieldPalette, useFieldLayout } from './field-layout';
+import { cfKeyClash, formulaIssue, industryProfilesEff, tenantIndustry } from '../../lib/industry';
+import { IndustrySheet } from './industry';
 
 export function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (
@@ -51,15 +54,43 @@ export function usePlatformWho() {
   return platform.admins.find((a) => a.id === platform.userId)?.email ?? 'platform';
 }
 
+/** v55.2 URL của màn thiết kế: #/console/design/:page/:verId (verId = id phiên bản hoặc 'new') */
+// v56: 'new@<mã doanh nghiệp>' = bản nháp mới của bố cục riêng một doanh nghiệp
+const DESIGN_RE = /^#\/console\/design\/([\w-]+)\/([\w@-]+)$/;
+/** Doanh nghiệp sở hữu bố cục đang mở ở Studio (null = bố cục chung của 3A) */
+export const lOwnerOf = (verId: string, layouts: LayoutVer[]): string | null => (verId.startsWith('new@') ? verId.slice(4) : layouts.find((v) => v.id === verId)?.tenantId ?? null);
+
+/** Mở / đóng màn thiết kế theo URL: tải lại trang, gửi link, nút Back của trình duyệt giữ đúng màn hình */
+export function useDesignRoute() {
+  const [hash, setHash] = useState(() => (typeof window === 'undefined' ? '' : window.location.hash));
+  useEffect(() => {
+    const h = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', h); window.addEventListener('popstate', h);
+    return () => { window.removeEventListener('hashchange', h); window.removeEventListener('popstate', h); };
+  }, []);
+  const m = DESIGN_RE.exec(hash);
+  const route = m && L_PAGES.some((p) => p.id === m[1] && p.open) ? { page: m[1] as LPage, verId: m[2] } : null;
+  const go = (h: string, push: boolean) => { if (push) window.history.pushState({ pb: 1 }, '', h); else window.history.replaceState(window.history.state, '', h); setHash(h); };
+  return {
+    route,
+    open: (p: LPage, verId = 'new') => go(`#/console/design/${p}/${verId}`, true),
+    nav: (p: LPage, verId: string) => go(`#/console/design/${p}/${verId}`, false),
+    /** mở từ danh sách thì lùi lịch sử (Back không quay lại màn thiết kế), vào thẳng bằng link thì thay URL */
+    close: () => { if ((window.history.state as { pb?: number } | null)?.pb) window.history.back(); else go('#/console/design', false); },
+  };
+}
+
 export function ConsoleDesign() {
   const { platform, notify } = useApp();
   const who = usePlatformWho();
   const [view, setView] = useSticky<'pages' | 'cf'>('Platform.design53', 'pages');
   const [kind, setKind] = useState<'ALL' | 'SUMMARY' | 'BUSINESS'>('ALL');
   const [q, setQ] = useState('');
-  const [edit, setEdit] = useState<LPage | null>(null);
-  const [side, setSide] = useState<{ page: LPage; tab: 'pub' | 'hist' } | null>(null);
-  const vers = (p: LPage) => platform.layouts.filter((v) => v.page === p).sort((a, b) => b.version - a.version);
+  const dr = useDesignRoute();
+  const setEdit = (p: LPage) => dr.open(p, draftOf(p)?.id ?? 'new');
+  const [side, setSide] = useState<{ page: LPage; tab: 'pub' | 'hist'; owner?: string | null } | null>(null);
+  // bố cục chung của 3A (bố cục riêng doanh nghiệp từ mẫu ngành mở ở Doanh nghiệp › Ngành & mẫu ngành)
+  const vers = (p: LPage) => platform.layouts.filter((v) => v.page === p && !v.tenantId).sort((a, b) => b.version - a.version);
   const draftOf = (p: LPage) => vers(p).find((v) => v.status === 'DRAFT');
   const asg = (p: LPage) => platform.layoutAssigns.filter((a) => a.page === p);
   const verLabel = (id: string) => { const v = platform.layouts.find((x) => x.id === id); return v ? `v${v.version}` : '—'; };
@@ -69,7 +100,7 @@ export function ConsoleDesign() {
     return xs[0] ? verLabel(xs[0].verId) : lv === 'SYSTEM' ? <span className="text-[rgb(var(--muted))]">Giao diện gốc</span> : '—';
   };
   const list = L_PAGES.filter((p) => (kind === 'ALL' || p.kind === kind) && (!q.trim() || fold(p.label).includes(fold(q.trim()))));
-  const editor = edit ? portal(<LayoutEditor page={edit} onClose={(pub) => { const p = edit; setEdit(null); if (pub) setSide({ page: p, tab: 'pub' }); }} />) : null;
+  const editor = dr.route ? portal(<LayoutEditor key={dr.route.page} page={dr.route.page} verId={dr.route.verId} onNav={(v) => dr.nav(dr.route!.page, v)} onClose={(pub) => { const p = dr.route!.page; const ow = lOwnerOf(dr.route!.verId, platform.layouts); dr.close(); if (pub) setSide({ page: p, tab: 'pub', owner: ow }); }} />) : null;
   return (
     <div className="space-y-4">
       {editor}
@@ -106,7 +137,7 @@ export function ConsoleDesign() {
           </div>
           <p className="text-[12.5px] text-[rgb(var(--muted))]">Trang nghiệp vụ dùng chung một bố cục cho mọi vai trò, tự ẩn khối người xem không có quyền. Khối lõi của luồng (Duyệt, Xuất kho, Thu tiền, Hủy đơn, trường bắt buộc) di chuyển được, không xóa được. Chưa phát hành thì doanh nghiệp dùng giao diện gốc.</p>
         </div>
-        {side && <LayoutPublishPanel page={side.page} tab={side.tab} setTab={(t) => setSide({ ...side, tab: t })} onClose={() => setSide(null)} onEdit={() => setEdit(side.page)} notify={notify} who={who} />}
+        {side && <LayoutPublishPanel key={`${side.page}-${side.owner ?? ''}`} page={side.page} owner={side.owner ?? null} tab={side.tab} setTab={(t) => setSide({ ...side, tab: t })} onClose={() => setSide(null)} onEdit={() => (side.owner ? dr.open(side.page, platform.layouts.find((v) => v.page === side.page && v.tenantId === side.owner && v.status === 'DRAFT')?.id ?? `new@${side.owner}`) : setEdit(side.page))} notify={notify} who={who} />}
       </div>}
     </div>
   );
@@ -116,26 +147,44 @@ export function ConsoleDesign() {
 export function ConsoleCustomFields() {
   const { platform, notify } = useApp();
   const who = usePlatformWho();
-  const [scope, setScope] = useState<'HEAD' | 'LINE'>('HEAD');
+  // v55.3: trường tùy chỉnh theo đối tượng: đơn bán, khách hàng, lead, sản phẩm (dòng hàng chỉ có ở đơn bán)
+  const [entity, setEntity] = useSticky<CfEntity>('Platform.cfEntity553', 'sale');
+  const [scope0, setScope] = useState<'HEAD' | 'LINE'>('HEAD');
+  const scope = entity === 'sale' ? scope0 : 'HEAD';
+  const sale = entity === 'sale';
   const [q, setQ] = useState('');
   const [ed, setEd] = useState<CfDef | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [opt, setOpt] = useState('');
   const tenants = platform.tenants.filter((t) => t.status !== 'SUSPENDED');
-  const defs = platform.customFields.filter((d) => d.entity === 'sale' && d.scope === scope).sort((a, b) => a.order - b.order);
+  const defs = platform.customFields.filter((d) => d.entity === entity && d.scope === scope).sort((a, b) => a.order - b.order);
   const list = defs.filter((d) => !q.trim() || fold(`${d.label} ${d.key}`).includes(fold(q.trim())));
-  const blank = (): CfDef => ({ id: uid('cf'), entity: 'sale', scope, key: '', label: '', type: 'text', options: [], required: 'NONE', levels: { sys: true, tr: false, mfg: false, tenants: [] },
+  const blank = (): CfDef => ({ id: uid('cf'), entity, scope, key: '', label: '', type: 'text', options: [], required: 'NONE', levels: { sys: true, tr: false, mfg: false, tenants: [] },
     where: { form: true, info: true, list: scope === 'HEAD', filter: false }, status: 'ACTIVE', order: Math.max(0, ...platform.customFields.map((d) => d.order)) + 1, at: Date.now(), by: who });
   const lvText = (d: CfDef) => [d.levels.sys && 'Toàn hệ thống', d.levels.tr && 'Mô hình Thương mại', d.levels.mfg && 'Mô hình Xưởng', d.levels.tenants.length > 0 && `Riêng ${d.levels.tenants.map((t) => orgOf(t).shortName).join(', ')}`].filter(Boolean).join(' · ') || '—';
   const whereText = (d: CfDef) => (d.scope === 'LINE' ? [d.where.form && 'Nhập ở Cập nhật thông tin', d.where.info && 'Bảng hàng hóa'] : [d.where.form && 'Form', d.where.info && 'Thông tin', d.where.list && 'Danh sách', d.where.filter && 'Lọc']).filter(Boolean).join(' · ') || '—';
-  const REQ: Record<CfDef['required'], string> = { NONE: 'Không', SAVE: 'Khi lưu đơn', APPROVE: 'Khi duyệt đơn' };
-  const keyTaken = (k: string, id: string) => platform.customFields.some((d) => d.entity === 'sale' && d.key === k && d.id !== id);
+  const REQ: Record<CfDef['required'], string> = { NONE: 'Không', SAVE: sale ? 'Khi lưu đơn' : 'Khi lưu', APPROVE: 'Khi duyệt đơn' };
+  // v56: cùng mã được dùng lại khi phạm vi riêng từng doanh nghiệp tách biệt (bản sao mẫu ngành của mỗi doanh nghiệp)
+  const keyTaken = (k: string, id: string) => !!ed && platform.customFields.some((d) => d.entity === entity && d.key === k && d.id !== id && cfKeyClash(d, ed));
+  const resKinds = useMemo(() => { const m = new Map<string, string>(); industryProfilesEff(platform.industryProfiles).forEach((p) => p.resourceKinds.forEach((k) => m.set(k.id, `${k.label} (${p.label})`))); return [...m]; }, [platform.industryProfiles]);
+  const sameEnt = platform.customFields.filter((d) => d.entity === entity && d.scope === 'HEAD');
+  const optList = ed?.type === 'select' || ed?.type === 'checklist';
+  const W: Record<CfEntity, [string, string, string, string]> = {
+    sale: ['Form lên đơn và Cập nhật thông tin', 'Khối Thông tin đơn hàng', 'Cột trong Quản lý đơn hàng (ẩn sẵn, bật ở Cột hiển thị)', 'Bộ lọc trong Quản lý đơn hàng'],
+    customer: ['Form thêm / sửa khách hàng', 'Khối Chi tiết trong hồ sơ khách hàng', 'Cột trong Danh sách khách hàng', 'Bộ lọc (chưa dùng)'],
+    lead: ['Form thêm / sửa lead', 'Khối Chi tiết trong hồ sơ dự án / lead', 'Cột trong Data MKT', 'Bộ lọc (chưa dùng)'],
+    product: ['Form thêm / sửa sản phẩm', 'Chi tiết sản phẩm', 'Cột danh mục (chưa dùng)', 'Bộ lọc (chưa dùng)'],
+  };
   const errs: string[] = [];
   if (ed) {
     if (!ed.label.trim()) errs.push('Nhập tên trường');
     if (!/^[a-z][a-z0-9_]{1,31}$/.test(ed.key)) errs.push('Mã lưu trữ: chữ thường không dấu, số, gạch dưới, bắt đầu bằng chữ, 2–32 ký tự');
     else if (keyTaken(ed.key, ed.id)) errs.push(`Mã lưu trữ ${ed.key} đã dùng cho trường khác`);
     if (ed.type === 'select' && !(ed.options ?? []).length) errs.push('Danh sách chọn cần ít nhất 1 lựa chọn');
+    if (ed.type === 'checklist' && !(ed.options ?? []).length) errs.push('Danh sách công đoạn cần ít nhất 1 công đoạn');
+    if (ed.type === 'resource_picker' && !ed.resourceKind) errs.push('Chọn loại tài nguyên');
+    if (ed.type === 'formula') { const fi = formulaIssue(ed.formula ?? '', ed.key, sameEnt); if (fi) errs.push(fi); }
+    if (ed.scope === 'LINE' && ['datetime_range', 'resource_picker', 'formula', 'checklist', 'media_gallery', 'signature'].includes(ed.type)) errs.push('Kiểu chuyên ngành chỉ dùng ở đầu đơn');
     if (!ed.levels.sys && !ed.levels.tr && !ed.levels.mfg && !ed.levels.tenants.length) errs.push('Chọn nơi áp dụng');
   }
   const open = (d: CfDef | null) => { setEd(d); setIsNew(false); setOpt(''); };
@@ -143,10 +192,12 @@ export function ConsoleCustomFields() {
     if (!ed) return;
     if (errs.length) return notify(errs[0], 'red');
     const line = ed.scope === 'LINE';
-    const d: CfDef = { ...ed, label: ed.label.trim(), at: Date.now(), by: who, options: ed.type === 'select' ? ed.options : undefined, required: line ? 'NONE' : ed.required,
+    const d: CfDef = { ...ed, label: ed.label.trim(), at: Date.now(), by: who, options: ed.type === 'select' || ed.type === 'checklist' ? ed.options : undefined, required: line ? 'NONE' : ed.required,
+      resourceKind: ed.type === 'resource_picker' ? ed.resourceKind : undefined, rangeKey: ed.type === 'resource_picker' ? ed.rangeKey || undefined : undefined,
+      formula: ed.type === 'formula' ? ed.formula?.trim() : undefined, unit: ed.type === 'number' || ed.type === 'formula' ? ed.unit?.trim() || undefined : undefined,
       where: { form: ed.where.form, info: ed.where.info, list: line ? false : ed.where.list, filter: line || !CF_FILTERABLE.includes(ed.type) ? false : ed.where.filter } };
     platform.setCustomFields((all) => (all.some((x) => x.id === d.id) ? all.map((x) => (x.id === d.id ? d : x)) : [...all, d]));
-    platform.log(isNew ? 'CF_CREATE' : 'CF_UPDATE', `Đơn bán · ${line ? 'dòng hàng' : 'đầu đơn'}: ${d.label} (${d.key}, ${CF_TYPE[d.type]}) · ${lvText(d)}`);
+    platform.log(isNew ? 'CF_CREATE' : 'CF_UPDATE', `${CF_ENTITY[entity]} ·${line ? 'dòng hàng' : 'đầu đơn'}: ${d.label} (${d.key}, ${CF_TYPE[d.type]}) · ${lvText(d)}`);
     notify(`Đã lưu trường ${d.label}`, 'teal');
     setIsNew(false); setEd(d);
   };
@@ -167,8 +218,8 @@ export function ConsoleCustomFields() {
     <div className={cn('grid grid-cols-1 gap-4', ed && 'xl:grid-cols-[1fr_400px]')}>
       <div className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5 text-[13px]"><span className="rounded-md bg-[rgb(var(--fg))] px-3 py-1 text-[rgb(var(--surface))]">Đơn bán hàng</span>{['Khách hàng', 'Lead', 'Hồ sơ MDF'].map((x) => <span key={x} className="px-3 py-1 text-[rgb(var(--muted))]" title="Bản sau">{x}</span>)}</div>
-          <div className="w-[260px]"><CbSeg label="Vị trí trường" items={[['HEAD', 'Đầu đơn'], ['LINE', 'Dòng hàng']]} value={scope} onChange={(v) => { setScope(v); setEd(null); }} /></div>
+          <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5 text-[13px]" role="radiogroup" aria-label="Đối tượng">{(Object.keys(CF_ENTITY) as CfEntity[]).map((x) => <button key={x} role="radio" aria-checked={entity === x} className={cn('rounded-md px-3 py-1', entity === x ? 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')} onClick={() => { setEntity(x); setEd(null); }}>{CF_ENTITY[x]}</button>)}</div>
+          {sale && <div className="w-[260px]"><CbSeg label="Vị trí trường" items={[['HEAD', 'Đầu đơn'], ['LINE', 'Dòng hàng']]} value={scope} onChange={(v) => { setScope(v); setEd(null); }} /></div>}
           <div className="ml-auto w-[240px]"><SearchBox value={q} onChange={setQ} placeholder="Tìm trường" /></div>
           <button className={btnPrimary} onClick={() => { setEd(blank()); setIsNew(true); setOpt(''); }}><Plus className="h-4 w-4" aria-hidden />Thêm trường</button>
         </div>
@@ -203,8 +254,22 @@ export function ConsoleCustomFields() {
             <Field label="Kiểu"><select className={inputCls} value={ed.type} disabled={!isNew} onChange={(e) => setE({ type: e.target.value as CfType })}>{(Object.keys(CF_TYPE) as CfType[]).map((t) => <option key={t} value={t}>{CF_TYPE[t]}</option>)}</select></Field>
           </div>
           {!isNew && <p className="-mt-2 text-[12px] text-[rgb(var(--muted))]">Mã lưu trữ và kiểu cố định sau khi tạo để không lệch dữ liệu đã nhập</p>}
-          {ed.type === 'select' && (
-            <Field label="Lựa chọn">
+          {ed.type === 'resource_picker' && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Loại tài nguyên"><select className={inputCls} value={ed.resourceKind ?? ''} onChange={(e) => setE({ resourceKind: e.target.value || undefined })}><option value="">Chọn</option>{resKinds.map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select></Field>
+              <Field label="Kiểm tra trùng lịch theo" hint="Trường Khoảng thời gian cùng đối tượng"><select className={inputCls} value={ed.rangeKey ?? ''} onChange={(e) => setE({ rangeKey: e.target.value || undefined })}><option value="">Không kiểm tra</option>{sameEnt.filter((x) => x.type === 'datetime_range').map((x) => <option key={x.id} value={x.key}>{x.label}</option>)}</select></Field>
+            </div>
+          )}
+          {ed.type === 'formula' && (
+            <div className="grid grid-cols-[1fr_96px] gap-3">
+              <Field label="Công thức" hint={`Mã trường số / tiền: ${sameEnt.filter((x) => (x.type === 'number' || x.type === 'money' || x.type === 'formula') && x.key !== ed.key).map((x) => x.key).join(', ') || 'chưa có'}`}><input className={cn(inputCls, 'font-mono text-[13px]')} value={ed.formula ?? ''} onChange={(e) => setE({ formula: e.target.value })} placeholder="khoi_luong_m2 * don_gia_lap_dat" /></Field>
+              <Field label="Đơn vị"><input className={inputCls} value={ed.unit ?? ''} onChange={(e) => setE({ unit: e.target.value })} placeholder="đ" /></Field>
+            </div>
+          )}
+          {ed.type === 'number' && <Field label="Đơn vị"><input className={inputCls} value={ed.unit ?? ''} onChange={(e) => setE({ unit: e.target.value })} placeholder="VD: m², ngày, kg" /></Field>}
+          {(ed.type === 'media_gallery' || ed.type === 'signature') && <p className="-mt-1 text-[12px] text-[rgb(var(--muted))]">{ed.type === 'signature' ? 'Chữ ký vẽ trên màn hình, lưu ảnh ở kho tệp riêng của doanh nghiệp kèm mã SHA-256 để đối chiếu' : 'Ảnh nén và lưu ở kho tệp riêng của doanh nghiệp (tối đa 12 ảnh / bản ghi)'}</p>}
+          {optList && (
+            <Field label={ed.type === 'checklist' ? 'Công đoạn' : 'Lựa chọn'}>
               <div className="space-y-1.5">
                 {(ed.options ?? []).map((o, i) => <div key={o} className="flex items-center gap-2 rounded-lg border border-[rgb(var(--line))] px-2.5 py-1.5 text-[13.5px]"><span className="flex-1">{o}</span><button className="text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => setE({ options: (ed.options ?? []).filter((_, j) => j !== i) })} aria-label={`Bỏ ${o}`}><X className="h-3.5 w-3.5" aria-hidden /></button></div>)}
                 <div className="flex gap-2"><input className={inputCls} value={opt} onChange={(e) => setOpt(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && opt.trim() && !(ed.options ?? []).includes(opt.trim())) { setE({ options: [...(ed.options ?? []), opt.trim()] }); setOpt(''); } }} placeholder="Thêm lựa chọn" aria-label="Thêm lựa chọn" /><button className={btnGhost} disabled={!opt.trim() || (ed.options ?? []).includes(opt.trim())} onClick={() => { setE({ options: [...(ed.options ?? []), opt.trim()] }); setOpt(''); }}><Plus className="h-4 w-4" aria-hidden />Thêm</button></div>
@@ -212,7 +277,7 @@ export function ConsoleCustomFields() {
               </div>
             </Field>
           )}
-          {ed.scope === 'HEAD' && <Field label="Bắt buộc"><CbSeg label="Bắt buộc" items={[['NONE', 'Không'], ['SAVE', 'Khi lưu đơn'], ['APPROVE', 'Khi duyệt đơn']]} value={ed.required} onChange={(v) => setE({ required: v })} /></Field>}
+          {ed.scope === 'HEAD' && <Field label="Bắt buộc"><CbSeg label="Bắt buộc" items={sale ? [['NONE', 'Không'], ['SAVE', 'Khi lưu đơn'], ['APPROVE', 'Khi duyệt đơn']] : [['NONE', 'Không'], ['SAVE', 'Khi lưu']]} value={ed.required} onChange={(v) => setE({ required: v })} /></Field>}
           {ed.scope === 'HEAD' && ed.type === 'check' && ed.required !== 'NONE' && <p className="-mt-2 text-[12px] text-[rgb(var(--muted))]">Tích chọn bắt buộc: phải tích mới lưu / duyệt được</p>}
           <div className="border-t border-[rgb(var(--line))] pt-3">
             <p className="mb-1 text-[12px] text-[rgb(var(--muted))]">Áp dụng cho</p>
@@ -226,10 +291,10 @@ export function ConsoleCustomFields() {
             <p className="mb-1 text-[12px] text-[rgb(var(--muted))]">Hiện ở</p>
             {ed.scope === 'HEAD' ? (
               <>
-                {box(ed.where.form, 'Form lên đơn và Cập nhật thông tin', (v) => setE({ where: { ...ed.where, form: v } }))}
-                {box(ed.where.info, 'Khối Thông tin đơn hàng', (v) => setE({ where: { ...ed.where, info: v } }))}
-                {box(ed.where.list, 'Cột trong Quản lý đơn hàng (ẩn sẵn, bật ở Cột hiển thị)', (v) => setE({ where: { ...ed.where, list: v } }))}
-                {box(ed.where.filter && CF_FILTERABLE.includes(ed.type), 'Bộ lọc trong Quản lý đơn hàng', (v) => setE({ where: { ...ed.where, filter: v } }), !CF_FILTERABLE.includes(ed.type), CF_FILTERABLE.includes(ed.type) ? undefined : 'kiểu này chưa lọc')}
+                {box(ed.where.form, W[entity][0], (v) => setE({ where: { ...ed.where, form: v } }))}
+                {box(ed.where.info, W[entity][1], (v) => setE({ where: { ...ed.where, info: v } }))}
+                {box(ed.where.list, W[entity][2], (v) => setE({ where: { ...ed.where, list: v } }), entity === 'product')}
+                {box(ed.where.filter && CF_FILTERABLE.includes(ed.type), W[entity][3], (v) => setE({ where: { ...ed.where, filter: v } }), !sale || !CF_FILTERABLE.includes(ed.type), sale && !CF_FILTERABLE.includes(ed.type) ? 'kiểu này chưa lọc' : undefined)}
               </>
             ) : (
               <>
@@ -249,20 +314,20 @@ export function ConsoleCustomFields() {
   );
 }
 
-export function LayoutPublishPanel({ page, tab, setTab, onClose, onEdit, notify, who }: { page: LPage; tab: 'pub' | 'hist'; setTab: (t: 'pub' | 'hist') => void; onClose: () => void; onEdit: () => void; notify: AppCtx['notify']; who: string }) {
+export function LayoutPublishPanel({ page, tab, setTab, onClose, onEdit, notify, who, owner = null }: { page: LPage; tab: 'pub' | 'hist'; setTab: (t: 'pub' | 'hist') => void; onClose: () => void; onEdit: () => void; notify: AppCtx['notify']; who: string; /** v56 bố cục riêng của doanh nghiệp: chỉ phát hành cho chính doanh nghiệp đó */ owner?: string | null }) {
   const { platform } = useApp();
   const pg = L_PAGES.find((p) => p.id === page)!;
-  const vers = platform.layouts.filter((v) => v.page === page).sort((a, b) => b.version - a.version);
+  const vers = platform.layouts.filter((v) => v.page === page && (v.tenantId ?? null) === owner).sort((a, b) => b.version - a.version);
   const draft = vers.find((v) => v.status === 'DRAFT');
   const target = draft ?? vers[0];
-  const asg = platform.layoutAssigns.filter((a) => a.page === page);
+  const asg = platform.layoutAssigns.filter((a) => a.page === page && (!owner || (a.level === 'TENANT' && a.tenantId === owner)));
   const tenants = platform.tenants.filter((t) => t.status !== 'SUSPENDED');
   const profOf = (id: string) => (orgOf(id).profile === 'MANUFACTURING' ? 'MFG' : 'TRADING');
-  const [lv, setLv] = useState<{ sys: boolean; tr: boolean; mfg: boolean; ten: boolean }>({ sys: true, tr: false, mfg: false, ten: false });
+  const [lv, setLv] = useState<{ sys: boolean; tr: boolean; mfg: boolean; ten: boolean }>(owner ? { sys: false, tr: false, mfg: false, ten: true } : { sys: true, tr: false, mfg: false, ten: false });
   const [pilot, setPilot] = useState(false);
-  const [tenant, setTenant] = useState(tenants[0]?.id ?? '');
+  const [tenant, setTenant] = useState(owner ?? tenants[0]?.id ?? '');
   const [note, setNote] = useState(draft?.note ?? '');
-  const eff = pilot ? { sys: false, tr: false, mfg: false, ten: true } : lv;
+  const eff = owner ? { sys: false, tr: false, mfg: false, ten: true } : pilot ? { sys: false, tr: false, mfg: false, ten: true } : lv;
   const any = eff.sys || eff.tr || eff.mfg || (eff.ten && !!tenant);
   const publish = () => {
     if (!target || !any) return;
@@ -271,7 +336,7 @@ export function LayoutPublishPanel({ page, tab, setTab, onClose, onEdit, notify,
     const mk = (level: LayoutAssign['level'], profile: 'TRADING' | 'MFG' | null, tenantId: string | null): LayoutAssign => ({ id: `${page}|${level}|${profile ?? ''}|${tenantId ?? ''}|`, page, level, profile, tenantId, role: null, verId: target.id, at: now, by: who });
     const add = [...(eff.sys ? [mk('SYSTEM', null, null)] : []), ...(eff.tr ? [mk('PROFILE', 'TRADING', null)] : []), ...(eff.mfg ? [mk('PROFILE', 'MFG', null)] : []), ...(eff.ten && tenant ? [mk('TENANT', null, tenant)] : [])];
     platform.setLayoutAssigns((all) => [...all.filter((a) => !add.some((x) => x.id === a.id)), ...add]);
-    platform.log('LAYOUT_PUBLISH', `${pg.label} v${target.version} → ${add.map(lAssignLabel).join(', ')}${note.trim() ? `: ${note.trim()}` : ''}`);
+    platform.log('LAYOUT_PUBLISH', `${pg.label}${owner ? ' (bố cục riêng)' : ''} v${target.version} → ${add.map(lAssignLabel).join(', ')}${note.trim() ? `: ${note.trim()}` : ''}`, owner ?? undefined);
     notify(`Đã phát hành ${pg.label} v${target.version} cho ${add.map(lAssignLabel).join(', ')}`, 'teal');
     setNote('');
   };
@@ -279,7 +344,7 @@ export function LayoutPublishPanel({ page, tab, setTab, onClose, onEdit, notify,
   const restore = (v: LayoutVer) => {
     const max = Math.max(0, ...vers.map((x) => x.version));
     platform.setLayouts((all) => (draft ? all.map((x) => (x.id === draft.id ? { ...x, blocks: v.blocks, at: Date.now(), by: who, note: `Khôi phục từ v${v.version}` } : x))
-      : [{ id: uid('lv'), schema: 1, page, version: max + 1, status: 'DRAFT', role: null, blocks: v.blocks, by: who, at: Date.now(), note: `Khôi phục từ v${v.version}` }, ...all]));
+      : [{ id: uid('lv'), schema: 1, page, version: max + 1, status: 'DRAFT', role: null, blocks: v.blocks, by: who, at: Date.now(), note: `Khôi phục từ v${v.version}`, ...(owner ? { tenantId: owner, fromIndustry: v.fromIndustry } : {}) }, ...all]));
     platform.log('LAYOUT_RESTORE', `${pg.label}: khôi phục v${v.version} thành bản nháp`);
     notify(`Đã chép v${v.version} thành bản nháp, phát hành để áp dụng`, 'teal');
   };
@@ -299,6 +364,7 @@ export function LayoutPublishPanel({ page, tab, setTab, onClose, onEdit, notify,
       {tab === 'pub' ? (!target ? <p className="text-[13px] text-[rgb(var(--muted))]">Chưa có bản thiết kế. <button className="text-[rgb(var(--accent))] hover:underline" onClick={onEdit}>Thiết kế trang</button></p> : (
         <>
           <p className="text-[12px] text-[rgb(var(--muted))]">Phát hành v{target.version}{target.status === 'DRAFT' ? ' (bản nháp)' : ''} cho</p>
+          {owner ? <p className="rounded-lg border border-[rgb(var(--line))] px-3 py-2.5 text-[13.5px]"><span className="block font-medium">Riêng {orgOf(owner).name}</span><span className="block text-[12px] text-[rgb(var(--muted))]">Bố cục riêng (nhân bản từ mẫu ngành) chỉ áp dụng cho doanh nghiệp này</span></p> : <>
           <div className="space-y-2">
             {box(eff.sys, pilot, 'Toàn hệ thống', 'mọi doanh nghiệp chưa có bố cục riêng', () => setLv({ ...lv, sys: !lv.sys }))}
             {box(eff.tr, pilot, 'Mô hình Thương mại', `${tenants.filter((t) => profOf(t.id) === 'TRADING').length} doanh nghiệp`, () => setLv({ ...lv, tr: !lv.tr }))}
@@ -308,6 +374,7 @@ export function LayoutPublishPanel({ page, tab, setTab, onClose, onEdit, notify,
           <p className="text-[12px] text-[rgb(var(--muted))]">Cấp nhỏ đè cấp lớn: riêng doanh nghiệp → mô hình → toàn hệ thống</p>
           <label className="flex items-center gap-2 text-[13.5px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={pilot} onChange={(e) => setPilot(e.target.checked)} />Phát hành thử cho 1 doanh nghiệp trước</label>
           {(pilot || lv.ten) && <select className={inputCls} value={tenant} onChange={(e) => setTenant(e.target.value)} aria-label="Doanh nghiệp">{tenants.map((t) => <option key={t.id} value={t.id}>{orgOf(t.id).name}</option>)}</select>}
+          </>}
           <Field label="Ghi chú phiên bản"><input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="VD: thêm khối Còn phải thu" /></Field>
           <button className={cn(btnPrimary, 'w-full justify-center')} disabled={!any} onClick={publish}><Rocket className="h-4 w-4" aria-hidden />Phát hành v{target.version}</button>
           {asg.length > 0 && (
@@ -330,7 +397,7 @@ export function LayoutPublishPanel({ page, tab, setTab, onClose, onEdit, notify,
   );
 }
 
-export function LGridEditor({ blocks, commit, sel, setSel, page, stage, cf, etab }: { blocks: LBlock[]; commit: (b: LBlock[]) => void; sel: string | null; setSel: (id: string | null) => void; page: LPage; stage: LStage; cf: CfDef[]; etab: string }) {
+export function LGridEditor({ blocks, commit, sel, setSel, page, stage, cf, etab, health }: { health?: (b: LBlock) => LHealth[]; blocks: LBlock[]; commit: (b: LBlock[]) => void; sel: string | null; setSel: (id: string | null) => void; page: LPage; stage: LStage; cf: CfDef[]; etab: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [W, setW] = useState(1100);
   useEffect(() => { const el = ref.current; if (!el) return; const ro = new ResizeObserver(() => setW(el.clientWidth)); ro.observe(el); setW(el.clientWidth); return () => ro.disconnect(); }, []);
@@ -372,6 +439,7 @@ export function LGridEditor({ blocks, commit, sel, setSel, page, stage, cf, etab
               <div className="flex items-center gap-1.5 px-2 pt-2 text-[rgb(var(--muted))]">
                 <button className="cursor-grab touch-none rounded p-0.5 hover:bg-[rgb(var(--ink)/0.06)] active:cursor-grabbing" onPointerDown={(e) => start(e, b, 'move')} onPointerMove={move} onPointerUp={end} onPointerCancel={end} aria-label={`Kéo ${b.config.title}`}><GripVertical className="h-3.5 w-3.5" aria-hidden /></button>
                 <span className="min-w-0 truncate text-[12.5px] font-medium text-[rgb(var(--fg))]">{b.config.title || lType(b.type).label}</span>
+                {(health?.(b).length ?? 0) > 0 && <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-[rgb(var(--warn)/0.18)] px-1 text-[10.5px] text-[rgb(var(--warn))]" title={health!(b).map((h) => `${h.label}: ${h.msg}`).join('\n')} data-health={health!(b).length}><AlertTriangle className="h-2.5 w-2.5" aria-hidden />{health!(b).length} trường</span>}
                 {lIsCore(b.type) ? <span className="inline-flex shrink-0 items-center gap-0.5 rounded border border-[rgb(var(--line))] px-1 text-[10.5px]" title="Khối lõi: không xóa được"><Lock className="h-2.5 w-2.5" aria-hidden />lõi</span> : <span className="shrink-0 rounded border border-[rgb(var(--line))] px-1 font-mono text-[10.5px]">span {p.w}</span>}
                 {(b.config.stages?.length || b.config.roles?.length) ? <span className="shrink-0 text-[10.5px] text-[rgb(var(--accent))]" title="Có điều kiện hiện">có điều kiện</span> : null}
                 <span className="ml-auto flex shrink-0 gap-0.5">
@@ -497,7 +565,7 @@ export function LStyleEditor({ b, onCfg }: { b: LBlock; onCfg: (c: Partial<LBloc
   );
 }
 
-export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab, setEtab }: { b: LBlock; onCfg: (c: Partial<LBlockCfg>) => void; onBlock: (p: Partial<LBlock>) => void; onPos: (p: Partial<LPos>) => void; page: LPage; cf: CfDef[]; tabs: { id: string; label: string }[]; etab: string; setEtab: (t: string) => void }) {
+export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab, setEtab, onFields }: { onFields?: () => void; b: LBlock; onCfg: (c: Partial<LBlockCfg>) => void; onBlock: (p: Partial<LBlock>) => void; onPos: (p: Partial<LPos>) => void; page: LPage; cf: CfDef[]; tabs: { id: string; label: string }[]; etab: string; setEtab: (t: string) => void }) {
   const c = b.config; const ds = L_DS[c.ds];
   const core = lIsCore(b.type);
   const data = lHasData(b.type);
@@ -517,8 +585,7 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
   /** Chèn biến tự điền vào chỗ con trỏ trong ô nội dung */
   const insVar = (k: string) => { const el = taRef.current; const v = c.text ?? ''; const s = el?.selectionStart ?? v.length; onCfg({ text: `${v.slice(0, s)}{${k}}${v.slice(el?.selectionEnd ?? s)}` }); requestAnimationFrame(() => el?.focus()); };
   const L_BSTYLE: Record<LBtn['style'], string> = { icon: 'Chỉ icon', ghost: 'Viền', text: 'Chỉ chữ', primary: 'Nút chính' };
-  const cfInfo = cf.filter((d) => d.scope === 'HEAD' && d.status === 'ACTIVE' && d.where.info);
-  const cfLine = cf.filter((d) => d.scope === 'LINE' && d.status === 'ACTIVE' && d.where.info);
+  const cfLine = cf.filter((d) => d.entity === 'sale' && d.scope === 'LINE' && d.status === 'ACTIVE' && d.where.info);
   const chk = (on: boolean, t: string, set: () => void) => <label key={t} className="flex items-center gap-2 text-[13px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={on} onChange={set} />{t}</label>;
   const num = (k: keyof LPos, label: string, max: number) => <Field label={label}><input className={inputCls} type="number" min={k === 'w' || k === 'h' ? 1 : k === 'x' ? 1 : 1} max={max} value={k === 'x' || k === 'y' ? b.pos.lg[k] + 1 : b.pos.lg[k]} onChange={(e) => { const n = Number(e.target.value) || 1; onPos({ [k]: k === 'x' || k === 'y' ? n - 1 : n }); }} /></Field>;
   const fieldSel = (label: string, v: string | undefined, set: (x: string) => void, none?: boolean) => (
@@ -636,7 +703,7 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
       })()}
       {b.type === 'K-Divider' && chk(!c.hideTitle, 'Hiện tiêu đề làm nhãn trên đường kẻ', () => onCfg({ hideTitle: !c.hideTitle }))}
       {b.type === 'K-SaleList' && (() => {
-        const head = cf.filter((d) => d.scope === 'HEAD' && d.status === 'ACTIVE');
+        const head = cf.filter((d) => d.entity === 'sale' && d.scope === 'HEAD' && d.status === 'ACTIVE');
         const cfL = head.filter((d) => d.where.list);
         const all: SoColDef[] = [...SO_LIST_COLS, ...cfL.map((d): SoColDef => ({ id: `cf:${d.key}`, label: d.label, g: 'Trường tùy chỉnh', num: d.type === 'money' || d.type === 'number', sum: d.type === 'money' || d.type === 'number' }))];
         const cur = c.cols?.length ? c.cols : SO_LIST_COLS.filter((x) => x.def).map((x) => x.id);
@@ -684,12 +751,34 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
           </>
         );
       })()}
-      {b.type === 'K-Order-Info' && (
-        <>
-          <Field label="Trường hiển thị"><LFieldList all={[...SO_INFO_F, ...cfInfo.map((d) => ({ id: `cf:${d.key}`, label: d.label }))]} c={c} onCfg={onCfg} cfIds={cfInfo.map((d) => `cf:${d.key}`)} /></Field>
-          <Field label="Số cột trường trên máy tính"><CbSeg label="Số cột trường" items={[['2', '2'], ['3', '3'], ['4', '4']]} value={String(c.gridCols ?? 4) as '2' | '3' | '4'} onChange={(v) => onCfg({ gridCols: Number(v) as 2 | 3 | 4 })} /></Field>
-          <p className="-mt-2 text-[12px] text-[rgb(var(--muted))]">Điện thoại luôn 1–2 cột. Chấm cam: trường tùy chỉnh (tạo ở tab Trường tùy chỉnh)</p>
-        </>
+      {b.type === 'K-RecordList' && (() => {
+        // v55.3 khối Danh sách bản ghi: cột trường tùy chỉnh (chưa chỉnh: theo cờ "Danh sách"); cột gốc của bảng giữ nguyên
+        const defs = cf.filter((d) => d.entity === (c.entity ?? 'customer') && d.scope === 'HEAD' && d.status === 'ACTIVE');
+        const on = lListCols(defs, c).map((d) => `cf:${d.key}`);
+        const all = [...on, ...defs.map((d) => `cf:${d.key}`).filter((k) => !on.includes(k))];
+        const put = (ids: string[], vis: string[]) => onCfg({ fields: ids, off: ids.filter((k) => !vis.includes(k)) });
+        const mv = (k: string, d: -1 | 1) => { const i = all.indexOf(k); const j = i + d; if (j < 0 || j >= all.length) return; const n = [...all]; [n[i], n[j]] = [n[j], n[i]]; put(n, on); };
+        const lab = (k: string) => defs.find((d) => `cf:${d.key}` === k)?.label ?? k;
+        return (
+          <Field label="Cột trường tùy chỉnh trong bảng">
+            {all.length ? <div className="space-y-1">{all.map((k, i) => (
+              <div key={k} className="flex items-center gap-1.5 rounded-lg border border-[rgb(var(--line)/0.7)] px-2 py-1 text-[13px]" data-col={k}>
+                <span className="min-w-0 flex-1 truncate">{lab(k)}</span>
+                <button className="rounded p-0.5 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] disabled:opacity-30" disabled={i === 0} onClick={() => mv(k, -1)} aria-label={`Đưa cột ${lab(k)} lên`}><ArrowUp className="h-3.5 w-3.5" aria-hidden /></button>
+                <button className="rounded p-0.5 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))] disabled:opacity-30" disabled={i === all.length - 1} onClick={() => mv(k, 1)} aria-label={`Đưa cột ${lab(k)} xuống`}><ArrowDown className="h-3.5 w-3.5" aria-hidden /></button>
+                <label className="flex w-[60px] items-center justify-end gap-1.5 text-[11.5px] text-[rgb(var(--muted))]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={on.includes(k)} onChange={() => put(all, on.includes(k) ? on.filter((x) => x !== k) : [...on, k])} aria-label={`Hiện cột ${lab(k)}`} />hiện</label>
+              </div>
+            ))}</div> : <p className="text-[12.5px] text-[rgb(var(--muted))]">Chưa có trường tùy chỉnh cho {CF_ENTITY[c.entity ?? 'customer']}. Tạo ở tab Trường tùy chỉnh</p>}
+            <p className="mt-1.5 text-[12px] text-[rgb(var(--muted))]">Cột trường tùy chỉnh thêm vào bảng thật của phân hệ, trước cột Thao tác. Mỗi ô một giá trị, đúng quy tắc bảng</p>
+          </Field>
+        );
+      })()}
+      {(b.type === 'K-RecordDetail' || b.type === 'K-RecordForm') && (
+        <div className="space-y-2 rounded-lg border border-[rgb(var(--line))] p-3">
+          <p className="text-[13px] font-medium">Bố cục trường</p>
+          <p className="text-[12.5px] text-[rgb(var(--muted))]">{(c.sections ?? []).length} nhóm · {(c.sections ?? []).reduce((n, s) => n + s.fields.length, 0)} trường đã đặt. Kéo thả trường giữa các nhóm, chỉnh độ rộng, nhãn{b.type === 'K-RecordForm' ? ', gợi ý, chỉ đọc, bắt buộc' : ''} ở khung giữa</p>
+          <button className={cn(btnPrimary, 'w-full justify-center')} onClick={onFields}><LayoutTemplate className="h-4 w-4" aria-hidden />Thiết kế bố cục trường</button>
+        </div>
       )}
       {b.type === 'K-Order-Lines' && (
         <>
@@ -773,23 +862,47 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
   );
 }
 
-export function LayoutEditor({ page, onClose }: { page: LPage; onClose: (openPublish: boolean) => void }) {
+/**
+ * Màn thiết kế một trang (toàn màn hình, có URL riêng #/console/design/:page/:verId | new).
+ *  - verId = id bản nháp: sửa bản nháp đó; id bản đã phát hành / bản cũ: lấy làm điểm bắt đầu (lưu thành bản nháp của trang);
+ *    'new': mở bản nháp đang có, chưa có thì bắt đầu từ bản mới nhất (hoặc bố cục khởi tạo)
+ *  - Mỗi trang chỉ một bản nháp. Tự lưu nháp sau 2 giây không thao tác; đóng tab khi còn thay đổi chưa lưu thì trình duyệt hỏi lại
+ */
+export function LayoutEditor({ page, verId, onClose, onNav }: { page: LPage; verId: string; onClose: (openPublish: boolean) => void; onNav: (verId: string) => void }) {
   const { platform, notify } = useApp();
   const who = usePlatformWho();
   const pg = L_PAGES.find((p) => p.id === page)!;
-  const vers = platform.layouts.filter((v) => v.page === page).sort((a, b) => b.version - a.version);
+  // v56: bố cục riêng một doanh nghiệp (nhân bản mẫu ngành): bản nháp / lịch sử tách khỏi bố cục chung
+  const [owner] = useState(() => lOwnerOf(verId, platform.layouts));
+  const newId = owner ? `new@${owner}` : 'new';
+  const vers = platform.layouts.filter((v) => v.page === page && (v.tenantId ?? null) === owner).sort((a, b) => b.version - a.version);
   const draft = vers.find((v) => v.status === 'DRAFT');
-  const live = platform.layoutAssigns.find((a) => a.page === page && a.level === 'SYSTEM');
+  const target = verId !== newId ? vers.find((v) => v.id === verId) : undefined;
+  const live = platform.layoutAssigns.find((a) => a.page === page && (owner ? a.level === 'TENANT' && a.tenantId === owner : a.level === 'SYSTEM'));
   const liveVer = live ? platform.layouts.find((v) => v.id === live.verId) : undefined;
-  const init = lEnsureCore(page, lMigrate(page, draft?.blocks ?? vers[0]?.blocks ?? (page === 'sale-detail' ? lStarterSale() : page === 'sale-list' ? lStarterList() : lStarter())));
+  const starter = () => (page === 'sale-detail' ? lStarterSale() : page === 'sale-list' ? lStarterList() : page === 'sale-form' ? lStarterForm() : L_PAGE_ENTITY[page] ? lStarterEntity(page) : lStarter());
+  // Bản mở ra: bản nháp (đang có) ưu tiên — tránh ghi đè bản nháp bằng bản cũ; còn lại theo URL, rồi bản mới nhất
+  const base = draft ?? target ?? vers[0];
+  const init = lEnsureCore(page, lMigrate(page, base?.blocks ?? starter()));
+  // URL luôn trỏ đúng bản đang sửa: có bản nháp thì /:idNháp; mở bản khác khi đã có nháp thì báo
+  useEffect(() => {
+    if (draft && verId !== draft.id) {
+      if (target && target.id !== draft.id) notify(`${pg.label} đang có bản nháp v${draft.version}: mở bản nháp (Lịch sử phiên bản › Khôi phục để lấy bản cũ)`, 'orange');
+      onNav(draft.id);
+    } else if (!draft && verId !== newId && !target && verId !== draftRef.current) { notify('Không tìm thấy phiên bản này, mở bản mới nhất', 'orange'); onNav(newId); }
+  }, [draft?.id, verId]); // eslint-disable-line react-hooks/exhaustive-deps
   const biz = page === 'sale-detail';
   const bizPage = pg.kind === 'BUSINESS';
   const [etab0, setEtab] = useState('');
   const [eperiod, setEperiod] = useState<DashPeriod>('MONTH');
   const [stage, setStage] = useState<LStage>('ISSUE');
-  const cfAll = platform.customFields.filter((d) => d.entity === 'sale');
-  const [blocks, setBlocks] = useState<LBlock[]>(init);
-  const [saved, setSaved] = useState(JSON.stringify(draft ? init : null));
+  // v55.3: mọi đối tượng (khối bản ghi tự lọc theo entity của khối)
+  const cfAll = platform.customFields;
+  const [blocks, setBlocks0] = useState<LBlock[]>(init);
+  const [saved, setSaved] = useState(JSON.stringify(init));
+  /** đã có thao tác của người thiết kế (mở xem không tự tạo bản nháp) */
+  const [touched, setTouched] = useState(false);
+  const setBlocks = (n: LBlock[]) => { setTouched(true); setBlocks0(n); };
   const [past, setPast] = useState<LBlock[][]>([]);
   const [future, setFuture] = useState<LBlock[][]>([]);
   const [sel, setSel] = useState<string | null>(null);
@@ -802,20 +915,63 @@ export function LayoutEditor({ page, onClose }: { page: LPage; onClose: (openPub
   const commit = (n: LBlock[], manualSm = false) => { if (manualSm) setSmCustom(true); const v = manualSm || smCustom ? n : lOrderSm(n); setPast((p) => [...p.slice(-40), blocks]); setFuture([]); setBlocks(v); };
   const undo = () => { const p = past[past.length - 1]; if (!p) return; setFuture((f) => [blocks, ...f]); setPast(past.slice(0, -1)); setBlocks(p); };
   const redo = () => { const f = future[0]; if (!f) return; setPast((p) => [...p, blocks]); setFuture(future.slice(1)); setBlocks(f); };
-  const dirty = JSON.stringify(blocks) !== saved;
+  const dirty = touched && JSON.stringify(blocks) !== saved;
   const nextNo = Math.max(0, ...vers.map((v) => v.version)) + 1;
-  const saveDraft = (): number => {
+  /** id bản nháp vừa tạo trong phiên (state nền tảng chưa kịp cập nhật thì vẫn ghi vào đúng bản, không tạo bản thứ hai) */
+  const draftRef = useRef<string | null>(null);
+  const loggedRef = useRef(false);
+  const [autoAt, setAutoAt] = useState<number | null>(null);
+  /** Lưu nháp. quiet: tự lưu (nhật ký nền tảng chỉ ghi lần đầu trong phiên); stay: còn ở màn thiết kế (URL chuyển sang id bản nháp mới) */
+  const saveDraft = (quiet = false, stay = true): number => {
     const now = Date.now();
-    if (draft) platform.setLayouts((all) => all.map((v) => (v.id === draft.id ? { ...v, blocks, at: now, by: who } : v)));
-    else platform.setLayouts((all) => [{ id: uid('lv'), schema: 1, page, version: nextNo, status: 'DRAFT', role: null, blocks, by: who, at: now }, ...all]);
+    const id = draft?.id ?? draftRef.current;
+    if (id) platform.setLayouts((all) => all.map((v) => (v.id === id ? { ...v, blocks, at: now, by: who } : v)));
+    else { const nid = uid('lv'); draftRef.current = nid; platform.setLayouts((all) => [{ id: nid, schema: 1, page, version: nextNo, status: 'DRAFT', role: null, blocks, by: who, at: now, ...(owner ? { tenantId: owner, fromIndustry: base?.fromIndustry } : {}) }, ...all]); if (stay) onNav(nid); }
     const no = draft?.version ?? nextNo;
-    platform.log('LAYOUT_DRAFT', `${pg.label} v${no}: lưu nháp ${blocks.length} khối`);
+    if (!quiet || !loggedRef.current) platform.log('LAYOUT_DRAFT', `${pg.label}${owner ? ` (riêng ${orgOf(owner).shortName})` : ''} v${no}: ${quiet ? 'tự lưu' : 'lưu'} nháp ${blocks.length} khối`, owner ?? undefined);
+    loggedRef.current = true;
     setSaved(JSON.stringify(blocks));
+    if (quiet) setAutoAt(now);
     return no;
   };
+  // Tự lưu nháp sau 2 giây không thao tác
+  useEffect(() => {
+    if (!dirty) return;
+    const t = window.setTimeout(() => saveDraft(true), 2000);
+    return () => window.clearTimeout(t);
+  }, [blocks, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Đóng tab / tải lại khi còn thay đổi chưa lưu: trình duyệt hỏi lại
+  useEffect(() => {
+    if (!dirty) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [dirty]);
+  // Rời màn thiết kế bằng nút Back của trình duyệt (đổi URL): lưu nốt phần chưa lưu
+  const leaveRef = useRef<() => void>(() => undefined);
+  leaveRef.current = () => { if (dirty) saveDraft(true, false); };
+  useEffect(() => () => leaveRef.current(), []);
   const b = blocks.find((x) => x.id === sel);
   const setB = (patch: Partial<LBlock>) => b && setBlocks(blocks.map((x) => (x.id === b.id ? { ...x, ...patch } : x)));
-  const setCfg = (c: Partial<LBlockCfg>) => b && setB({ config: { ...b.config, ...c } });
+  // Bố cục trường (nhóm, thứ tự, trường bỏ) đi qua lịch sử Hoàn tác / Làm lại
+  const setCfg = (c: Partial<LBlockCfg>) => b && ('sections' in c || 'off' in c ? commit(blocks.map((x) => (x.id === b.id ? { ...x, config: { ...x.config, ...c } } : x))) : setB({ config: { ...b.config, ...c } }));
+  // v55.2.1 chế độ thiết kế bố cục trường: trái = trường chưa đặt, giữa = khung trường, phải = Field Inspector
+  const [fieldOf, setFieldOf] = useState<string | null>(null);
+  // v55.3 Health Check: đối chiếu trường trong bố cục với trường thực tế của các doanh nghiệp được phát hành trang này
+  // (riêng DN, theo mô hình, toàn hệ thống; chưa phát hành thì mọi DN đang hoạt động)
+  const hOrgs = useMemo(() => {
+    const as = platform.layoutAssigns.filter((a) => a.page === page);
+    const ts = platform.tenants.filter((t) => t.status !== 'SUSPENDED');
+    const prof = (id: string) => (orgOf(id).profile === 'MANUFACTURING' ? 'MFG' : 'TRADING');
+    if (owner) return [orgOf(owner)];
+    const ids = !as.length || as.some((a) => a.level === 'SYSTEM') ? ts.map((t) => t.id) : ts.filter((t) => as.some((a) => (a.level === 'TENANT' && a.tenantId === t.id) || (a.level === 'PROFILE' && a.profile === prof(t.id)))).map((t) => t.id);
+    return ids.map((id) => orgOf(id));
+  }, [platform.layoutAssigns, platform.tenants, page, owner]);
+  const healthOf = (x: LBlock) => lHealthFull(x, cfAll, hOrgs);
+  const fl = useFieldLayout(b, setCfg, cfAll, hOrgs);
+  const fieldMode = !preview && !!fl && fieldOf === b?.id;
+  const [blockPanel, setBlockPanel] = useState(false);
+  const enterFields = () => { if (b) { setFieldOf(b.id); setBlockPanel(false); fl?.setSel(null); } };
   const setPos = (p: Partial<LPos>) => b && commit(lSettle(blocks.map((x) => (x.id === b.id ? { ...x, pos: { ...x.pos, lg: { ...x.pos.lg, ...p } } } : x)), b.id));
   const add = (t: LBlockType) => {
     const has = blocks.find((x) => x.type === t);
@@ -830,14 +986,14 @@ export function LayoutEditor({ page, onClose }: { page: LPage; onClose: (openPub
   const dctx = lDesignCtx(page, etab, setEtab, eperiod, setEperiod);
   const er = dashRange(eperiod, Date.now());
   const erange: DateRange = { from: iso(new Date(er.from)), to: iso(new Date(er.to - 864e5)) };
-  const libIcon = (t: LBlockType) => ({ 'K-Stat-Simple': Hash, 'K-Chart-Line': TrendingUp, 'K-Table-Compact': Rows3, 'K-Text': StickyNote, 'K-Icons': LayoutGrid, 'K-Order-Info': FileText, 'K-Order-Lines': Rows3, 'K-Order-Flow': ListChecks, 'K-Order-Pay': Wallet, 'K-Order-Profit': TrendingUp, 'K-Order-Debt': Scale, 'K-Order-Log': MessageSquare, 'K-Order-Ship': Truck, 'K-Order-Files': Paperclip, 'K-Button': LayoutGrid, 'K-Filter': Filter, 'K-Tabs': Columns3, 'K-Target': Target, 'K-Divider': Minus, 'K-Spacer': ArrowUpDown, 'K-SaleList': ShoppingBag } as Record<LBlockType, typeof Hash>)[t] ?? Info;
+  const libIcon = (t: LBlockType) => ({ 'K-Stat-Simple': Hash, 'K-Chart-Line': TrendingUp, 'K-Table-Compact': Rows3, 'K-Text': StickyNote, 'K-Icons': LayoutGrid, 'K-Order-Info': FileText, 'K-RecordDetail': FileText, 'K-RecordForm': ListChecks, 'K-Order-Lines': Rows3, 'K-Order-Flow': ListChecks, 'K-Order-Pay': Wallet, 'K-Order-Profit': TrendingUp, 'K-Order-Debt': Scale, 'K-Order-Log': MessageSquare, 'K-Order-Ship': Truck, 'K-Order-Files': Paperclip, 'K-Button': LayoutGrid, 'K-Filter': Filter, 'K-Tabs': Columns3, 'K-Target': Target, 'K-Divider': Minus, 'K-Spacer': ArrowUpDown, 'K-SaleList': ShoppingBag } as Record<LBlockType, typeof Hash>)[t] ?? Info;
   const sample = useMemo(() => new Map<LDataset, LRow[]>(), []);
   const rowsAs = (r: Role) => (ds: LDataset) => { if (!lRoleSees(r, ds)) return null; if (!sample.has(ds)) sample.set(ds, lRowsSample(ds)); return sample.get(ds)!; };
   const hiddenFor = (r: Role) => blocks.filter((x) => (bizPage ? !lSaleSampleShows(x, stage, r) : (lHasData(x.type) && !lRoleSees(r, x.config.ds)) || !lCondOk(x.config, null, r)));
   const sm = [...blocks].sort((p, q) => (p.pos.sm.order || 99) - (q.pos.sm.order || 99));
   const [dragSm, setDragSm] = useState<string | null>(null);
   const reorder = (from: string, to: string) => { if (from === to) return; const ids = sm.map((x) => x.id).filter((x) => x !== from); ids.splice(ids.indexOf(to), 0, from); commit(blocks.map((x) => ({ ...x, pos: { ...x.pos, sm: { ...x.pos.sm, order: ids.indexOf(x.id) + 1 } } })), true); };
-  const back = () => { if (dirty) { const no = saveDraft(); notify(`Đã lưu nháp ${pg.label} v${no}`, 'teal'); } onClose(false); };
+  const back = () => { if (dirty) { const no = saveDraft(false, false); notify(`Đã lưu nháp ${pg.label} v${no}`, 'teal'); } onClose(false); };
   const iconBtn = 'grid h-9 w-9 place-items-center rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))] disabled:opacity-40';
   const devs: [LDevice, typeof Monitor, string][] = [['lg', Monitor, 'Máy tính'], ['md', Tablet, 'Máy tính bảng'], ['sm', Smartphone, 'Điện thoại']];
   const frameW = dev === 'sm' ? 390 : dev === 'md' ? 768 : undefined;
@@ -846,6 +1002,7 @@ export function LayoutEditor({ page, onClose }: { page: LPage; onClose: (openPub
     { tone: blocks.every((x) => x.config.title.trim()) ? 'ok' : 'warn', t: blocks.every((x) => x.config.title.trim()) ? 'Mọi khối đã có tiêu đề và nguồn dữ liệu' : 'Có khối chưa đặt tiêu đề' },
     { tone: 'ok', t: `Điện thoại: ${blocks.filter((x) => x.show.sm).length} khối, ${blocks.filter((x) => x.show.sm && (x.pos.sm.w || 12) < 12).length} khối xếp chung hàng` },
     { tone: 'ok', t: 'Máy tính bảng: lưới 6 cột, khối rộng hơn 6 tự co về 6' },
+    ...blocks.flatMap((x) => healthOf(x).map((h) => ({ tone: 'warn' as const, t: `${x.config.title}: ${h.label} (${h.key}) — ${h.msg}` }))),
     ...(hiddenFor(role).length ? [{ tone: 'warn' as const, t: `${ROLE_LABEL[role]} không thấy ${hiddenFor(role).length} khối: ${hiddenFor(role).map((x) => x.config.title).join(', ')}` }] : []),
     bizPage ? { tone: 'ok' as const, t: `Đủ ${blocks.filter((x) => lIsCore(x.type)).length} khối lõi: ${L_TYPES.filter((x) => x.core && x.pages.includes(page)).map((x) => x.label).join(', ')}` } : { tone: 'info' as const, t: 'Khối lõi luồng nghiệp vụ: không áp dụng cho trang tổng hợp' },
     ...(biz ? [{ tone: 'ok' as const, t: 'Nút theo trạng thái đơn (Duyệt, Xuất kho, Thu tiền, Hóa đơn) giữ ở thanh trên, hiện theo quyền' }, { tone: 'info' as const, t: `Đơn mẫu ${L_STAGE[stage]}${stage === 'CANCEL' ? ': tự ẩn Trao đổi, Lãi, Công nợ và hiện Quy trình hủy' : ''}` }] : []),
@@ -856,12 +1013,14 @@ export function LayoutEditor({ page, onClose }: { page: LPage; onClose: (openPub
         <button className={btnGhost} onClick={back}><ChevronLeft className="h-4 w-4" aria-hidden />Quay lại</button>
         {!preview && <span className="text-[13px] text-[rgb(var(--muted))] max-lg:hidden">Thiết kế giao diện ›</span>}
         <span className="whitespace-nowrap font-medium">{pg.label}</span>
+        {owner && <Chip tone="blue">Riêng {orgOf(owner).shortName}</Chip>}
         {preview && !biz ? (
           <div className="ml-2 flex items-center gap-2"><span className="whitespace-nowrap text-[12.5px] text-[rgb(var(--muted))]">Xem với vai trò</span>
             <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Vai trò xem trước">{L_ROLES.map((r) => <button key={r} role="radio" aria-checked={role === r} className={cn('whitespace-nowrap rounded-md px-2.5 py-1 text-[12.5px]', role === r ? 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))]')} onClick={() => setRole(r)}>{ROLE_LABEL[r].split(' ')[0] === 'Nhân' ? 'Sales' : ROLE_LABEL[r].replace(' BOD', '')}</button>)}</div>
           </div>
         ) : preview ? null : <span className="whitespace-nowrap rounded-lg border border-[rgb(var(--line))] px-2.5 py-1 text-[12.5px] text-[rgb(var(--muted))]" title="Bản 1 dùng chung một bố cục cho mọi vai trò">Vai trò: Tất cả</span>}
         <Chip tone="orange">{preview ? 'Xem trước · dữ liệu mẫu' : draft || dirty ? `Nháp v${draft?.version ?? nextNo}${dirty ? ' · chưa lưu' : ''}` : `v${vers[0]?.version ?? 1}`}</Chip>
+        {!preview && <span className="whitespace-nowrap text-[12px] text-[rgb(var(--muted))] max-xl:hidden" role="status" aria-live="polite">{dirty ? 'Tự lưu sau 2 giây' : autoAt ? `Đã tự lưu ${new Date(autoAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}</span>}
 
         {liveVer && <span className="text-[12px] text-[rgb(var(--muted))] max-xl:hidden">đang phát hành v{liveVer.version}</span>}
         <div className="ml-auto flex items-center gap-2">
@@ -869,7 +1028,7 @@ export function LayoutEditor({ page, onClose }: { page: LPage; onClose: (openPub
           <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Thiết bị">{devs.map(([k, I, l]) => <button key={k} role="radio" aria-checked={dev === k} aria-label={l} title={l} className={cn('grid h-7 w-8 place-items-center rounded-md', dev === k ? 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))]')} onClick={() => { setDev(k); if (k !== 'lg') setPreview(true); }}><I className="h-4 w-4" aria-hidden /></button>)}</div>
           <button className={preview ? cn(btnPrimary, 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]') : btnGhost} onClick={() => { setPreview(!preview); if (preview) setDev('lg'); }}><Eye className="h-4 w-4" aria-hidden />{preview ? 'Thoát xem trước' : 'Xem trước'}</button>
           <button className={btnGhost} disabled={!dirty} onClick={() => { const no = saveDraft(); notify(`Đã lưu nháp ${pg.label} v${no}`, 'teal'); }}>Lưu nháp</button>
-          <button className={btnPrimary} onClick={() => { if (dirty || !draft) saveDraft(); onClose(true); }}><Rocket className="h-4 w-4" aria-hidden />Phát hành</button>
+          <button className={btnPrimary} onClick={() => { if (dirty || !(draft ?? draftRef.current)) saveDraft(false, false); onClose(true); }}><Rocket className="h-4 w-4" aria-hidden />Phát hành</button>
         </div>
       </header>
       {biz && (
@@ -880,7 +1039,12 @@ export function LayoutEditor({ page, onClose }: { page: LPage; onClose: (openPub
         </div>
       )}
       <div className={cn('grid min-h-0 flex-1', preview ? 'grid-cols-[1fr_380px]' : 'grid-cols-[260px_1fr_340px]')}>
-        {!preview && (
+        {fieldMode && fl && (
+          <aside className="overflow-y-auto border-r border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4" aria-label="Trường dữ liệu">
+            <LFieldPalette fl={fl} />
+          </aside>
+        )}
+        {!preview && !fieldMode && (
           <aside className="overflow-y-auto border-r border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4" aria-label="Thư viện khối">
             <div className="mb-3 flex items-center"><h3 className="font-medium">Thư viện khối</h3><span className="ml-auto text-[12px] text-[rgb(var(--muted))]">{pg.label}</span></div>
             {([
@@ -915,19 +1079,28 @@ export function LayoutEditor({ page, onClose }: { page: LPage; onClose: (openPub
                   <div className={cn(dev !== 'lg' && 'text-[13px]')}>
                     {biz && <div className="mb-3 flex flex-wrap items-center gap-2"><span className="text-[12.5px] text-[rgb(var(--muted))]">Quản lý đơn hàng ›</span><span className="font-medium">DH201126-02</span><Chip tone={stage === 'DONE' ? 'teal' : stage === 'CANCEL' ? 'muted' : 'orange'}>{L_STAGE[stage]}</Chip>
                       <span className="ml-auto flex gap-1.5">{stage === 'APPROVAL' && <span className={cn(btnPrimary, 'pointer-events-none')}>Duyệt đơn</span>}{stage === 'ISSUE' && role === 'SALES_REP' && <span className={cn(btnPrimary, 'pointer-events-none')}>Yêu cầu xuất kho</span>}{(stage === 'ISSUE' || stage === 'PAY') && <span className={cn(btnGhost, 'pointer-events-none')}>{lRoleProfit(role) && role !== 'SALES_REP' ? 'Lập phiếu thu' : 'Báo đã nhận tiền'}</span>}</span></div>}
-                    <LBusinessView blocks={blocks} narrow={dev !== 'lg'} dev={dev} node={(x) => (!lSaleSampleShows(x, stage, role) ? null : x.type === 'K-Text' ? <LTextBlock c={x.config} /> : lType(x.type).tier === 'show' ? lSaleSample({ b: x, stage, cf: cfAll }) : (
-                      <section className="glass-card rounded-xl px-4 py-3"><h3 className="mb-2 text-[14px] font-medium">{x.type === 'K-Order-Flow' && stage === 'CANCEL' ? 'Quy trình hủy' : x.type === 'K-Order-Info' && stage === 'CANCEL' ? 'Hủy đơn' : x.config.title}</h3>{lSaleSample({ b: x, stage, cf: cfAll, narrow: dev === 'sm' })}</section>
+                    <LBusinessView blocks={blocks} narrow={dev !== 'lg'} dev={dev} node={(x) => (!lSaleSampleShows(x, stage, role) ? null : x.type === 'K-Text' ? <LTextBlock c={x.config} /> : lType(x.type).tier === 'show' || x.type === 'K-SaleList' || x.type === 'K-RecordList' ? lSaleSample({ b: x, stage, cf: cfAll }) : (
+                      <section className="glass-card rounded-xl px-4 py-3"><h3 className="mb-2 text-[14px] font-medium">{x.type === 'K-Order-Flow' && stage === 'CANCEL' ? 'Quy trình hủy' : x.type === 'K-RecordDetail' && stage === 'CANCEL' ? 'Hủy đơn' : x.config.title}</h3>{lSaleSample({ b: x, stage, cf: cfAll, narrow: dev === 'sm' })}</section>
                     ))} />
                   </div>
                 ) : <LayoutView blocks={blocks} rowsOf={rowsAs(role)} device={dev} role={role} range={erange} />}
               </div>
               {hiddenFor(role).length > 0 && <p className="mt-3 text-center text-[12px] text-[rgb(var(--muted))]">Đang xem như {ROLE_LABEL[role]}: {hiddenFor(role).length} khối không có quyền đã tự ẩn</p>}
             </div>
+          ) : fieldMode && fl ? (
+            <div className="mx-auto max-w-[1100px]">
+              <div className="mb-3 flex items-center gap-2 text-[12.5px]">
+                <button className={cn(btnGhost, btnSm)} onClick={() => setFieldOf(null)}><ChevronLeft className="h-3.5 w-3.5" aria-hidden />Về lưới trang</button>
+                <span className="text-[rgb(var(--muted))]">Bố cục trường › {fl.c.title}</span>
+                <span className="ml-auto text-[rgb(var(--muted))]">Kéo trường giữa các nhóm · bấm trường để chỉnh ở cột phải · lưới 12 cột</span>
+              </div>
+              <LFieldCanvas fl={fl} />
+            </div>
           ) : (
             <>
               <p className="mb-3 flex items-center gap-1.5 text-[12.5px] text-[rgb(var(--muted))]"><Info className="h-3.5 w-3.5" aria-hidden />{biz ? `Trang nghiệp vụ dùng chung cho mọi vai trò. Đơn mẫu ở trạng thái ${L_STAGE[stage]}; chiều cao thật theo nội dung` : 'Kéo khối bằng tay nắm, kéo góc phải dưới để đổi độ rộng 1–12 cột. Đang hiển thị dữ liệu mẫu'}<span className="ml-auto">Lưới 12 cột · {blocks.length} khối{biz ? ` · ${blocks.filter((x) => lIsCore(x.type)).length} lõi` : ''}</span></p>
               {tabsCfg.length > 0 && <div className="mb-3 flex flex-wrap items-center gap-2 text-[12.5px]"><span className="text-[rgb(var(--muted))]">Đang thiết kế tab</span><div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Tab đang thiết kế">{tabsCfg.map((t) => <button key={t.id} role="radio" aria-checked={etab === t.id} className={cn('rounded-md px-2.5 py-1', etab === t.id ? 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))]')} onClick={() => setEtab(t.id)}>{t.label}</button>)}</div><span className="text-[rgb(var(--muted))]">khối của tab khác mờ đi; khối "Mọi tab" luôn hiện</span></div>}
-              <LGridEditor blocks={blocks} commit={commit} sel={sel} setSel={setSel} page={page} stage={stage} cf={cfAll} etab={etab} />
+              <LGridEditor blocks={blocks} commit={commit} sel={sel} setSel={setSel} page={page} stage={stage} cf={cfAll} etab={etab} health={healthOf} />
             </>
           )}
         </LPageC.Provider></main>
@@ -949,7 +1122,8 @@ export function LayoutEditor({ page, onClose }: { page: LPage; onClose: (openPub
                 ); })}
               </div>
             </div>
-          ) : b ? <LBlockSettings b={b} onCfg={setCfg} onBlock={setB} onPos={setPos} page={page} cf={cfAll} tabs={tabsCfg} etab={etab} setEtab={setEtab} /> : (
+          ) : fieldMode && fl && !blockPanel ? <LFieldInspector fl={fl} onBack={() => setBlockPanel(true)} />
+          : b ? <LBlockSettings b={b} onCfg={setCfg} onBlock={setB} onPos={setPos} page={page} cf={cfAll} tabs={tabsCfg} etab={etab} setEtab={setEtab} onFields={enterFields} /> : (
             <div className="space-y-2 text-[13px] text-[rgb(var(--fg2))]"><h3 className="font-medium text-[rgb(var(--fg))]">Cài đặt khối</h3><p>Bấm vào một khối để đổi tiêu đề, nguồn dữ liệu, cách hiển thị trên từng thiết bị.</p><p className="text-[rgb(var(--muted))]">{blocks.length} khối · {blocks.filter((x) => x.show.sm).length} khối hiện trên điện thoại</p></div>
           )}
         </aside>
@@ -1127,6 +1301,10 @@ export function ConsoleTenants() {
   const [edit, setEdit] = useState<TenantReg | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [adding, setAdding] = useState(false);
+  // v56: ngành & bộ mẫu ngành của doanh nghiệp (bảng trượt bên phải)
+  const [ind, setInd] = useState<string | null>(null);
+  const who = usePlatformWho();
+  const indLabel = (r: TenantReg, o: Org) => industryProfilesEff(platform.industryProfiles).find((p) => p.id === tenantIndustry(r, o))?.label ?? '—';
   const linkOf = (id: string) => (typeof window !== 'undefined' ? `${window.location.origin}/${id}` : `/${id}`);
   return (
     <div className="space-y-4">
@@ -1135,7 +1313,7 @@ export function ConsoleTenants() {
         <button className={cn(btnPrimary, btnSm, 'lg:ml-auto')} onClick={() => setAdding(true)}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm doanh nghiệp</button>
       </div>
       <Panel>
-        <Table minW={1100} head={['Mã', 'Doanh nghiệp', 'Đường dẫn', 'Gói', <span key="u" className="block text-right">Người dùng</span>, 'Hết hạn', 'Còn', <span key="m" className="block text-right">Module</span>, 'Dữ liệu', 'Trạng thái', '']}>
+        <Table minW={1180} head={['Mã', 'Doanh nghiệp', 'Đường dẫn', 'Gói', 'Ngành', <span key="u" className="block text-right">Người dùng</span>, 'Hết hạn', 'Còn', <span key="m" className="block text-right">Module</span>, 'Dữ liệu', 'Trạng thái', '']}>
           {ORGS.map((o) => {
             const r = platform.tenants.find((x) => x.id === o.id) ?? defaultTenantReg(o);
             const st = tenantStats(o.id);
@@ -1147,6 +1325,7 @@ export function ConsoleTenants() {
                 <td className={tdCls}><span className="flex items-center gap-2"><OrgMark o={o} size={22} /><span className="font-medium">{o.shortName}</span></span></td>
                 <td className={cn(tdCls, 'font-mono text-xs')}><a className="hover:underline" href={linkOf(o.id)} target="_blank" rel="noreferrer">/{o.id}</a></td>
                 <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{TENANT_PLAN[r.plan].label}</td>
+                <td className={tdCls}><button className="max-w-[170px] truncate text-left hover:underline" onClick={() => setInd(o.id)} title={r.industryApplied ? 'Đã áp dụng bộ mẫu ngành' : 'Chưa áp dụng bộ mẫu ngành'}>{indLabel(r, o)}{r.industryApplied ? '' : <span className="ml-1 text-[12px] text-[rgb(var(--muted))]">· chưa áp mẫu</span>}</button></td>
                 <td className={cn(tdCls, 'text-right font-mono text-xs', st.activeUsers > r.seats && 'text-[rgb(var(--danger-fg))]')}>{st.activeUsers} / {r.seats}</td>
                 <td className={cn(tdCls, 'font-mono text-xs text-[rgb(var(--fg2))]')}>{fmtDate(r.contractEnd)}</td>
                 <td className={cn(tdCls, left < 0 ? 'text-[rgb(var(--danger-fg))]' : left <= 60 ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--fg2))]')}>{left < 0 ? `Quá ${-left} ngày` : `Còn ${left} ngày`}</td>
@@ -1157,6 +1336,7 @@ export function ConsoleTenants() {
                   <button className={cn(btnGhost, btnSm)} onClick={() => platform.switchTenant(o.id)}><LogIn className="h-3.5 w-3.5" aria-hidden />{org.id === o.id ? 'Đang mở' : 'Truy cập'}</button>
                   <RowMenu label={`Thao tác ${o.shortName}`} items={[
                     { label: 'Hợp đồng & gói', icon: Pencil, onClick: () => setEdit(r) },
+                    { label: 'Ngành & mẫu ngành', icon: LayoutTemplate, onClick: () => setInd(o.id) },
                     { label: 'Cấp phép module', icon: SlidersHorizontal, onClick: () => platform.setConsoleTab('modules') },
                     { label: 'Sao chép đường dẫn', icon: Link2, onClick: () => navigator.clipboard?.writeText(linkOf(o.id)).then(() => notify('Đã sao chép đường dẫn', 'teal'), () => notify('Trình duyệt chặn sao chép', 'red')) },
                     { label: r.status === 'ACTIVE' ? 'Tạm dừng' : 'Kích hoạt lại', icon: r.status === 'ACTIVE' ? XCircle : CheckCircle2, danger: r.status === 'ACTIVE', onClick: () => setConfirm({ title: r.status === 'ACTIVE' ? `Tạm dừng ${o.shortName}` : `Kích hoạt lại ${o.shortName}`, confirmLabel: r.status === 'ACTIVE' ? 'Tạm dừng' : 'Kích hoạt', message: r.status === 'ACTIVE' ? `Người dùng ${o.shortName} sẽ không đăng nhập được cho tới khi kích hoạt lại. Dữ liệu giữ nguyên; kỹ thuật 3A vẫn truy cập hỗ trợ được.` : `Cho phép người dùng ${o.shortName} đăng nhập lại.`, onConfirm: () => platform.setTenantReg(o.id, { status: r.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' }, r.status === 'ACTIVE' ? 'Tạm dừng doanh nghiệp' : 'Kích hoạt lại doanh nghiệp') }) },
@@ -1178,7 +1358,8 @@ export function ConsoleTenants() {
           </div>
         </Modal>
       )}
-      {adding && <AddTenantModal onClose={() => setAdding(false)} />}
+      {adding && <AddTenantModal onClose={() => setAdding(false)} onCreated={(id) => setInd(id)} />}
+      {ind && <IndustrySheet key={ind} tenantId={ind} who={who} onClose={() => setInd(null)} />}
       {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
     </div>
   );

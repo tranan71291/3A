@@ -1,4 +1,313 @@
-# 3A CRM v54.1 (Page Builder bản 3.1: kiểu dáng cho mọi khối, khối Bảng Quản lý đơn hàng — dựa trên v54, vẫn nhánh v54)
+# 3A CRM v56 (Chặng 4: động cơ đa ngành — ngành nghề, nhân bản bộ mẫu ngành, từ điển thuật ngữ, tài nguyên, kiểu trường chuyên ngành; nhánh mới v56, dựa trên v55.3)
+
+## Cập nhật v56 (24/11)
+
+**Triển khai theo thứ tự**
+1. Supabase › SQL Editor: chạy `supabase-v56.sql` (sau v55.1 và v55.3). Chạy lại nhiều lần vẫn an toàn, không sửa dữ liệu doanh nghiệp. Cách hoàn tác ghi ở cuối file.
+2. Chạy `scripts/cai-dat-v56.ps1`: tạo nhánh `v56` (từ `v55` nếu `v55` chưa gộp vào main), build thử, đẩy lên GitHub. Mở Pull Request, xem bản Vercel Preview rồi gộp.
+3. Báo mọi người tải lại trang. Dữ liệu trên máy tự nâng lên phiên bản 32 (thêm nhóm `resources`, không đổi dữ liệu cũ).
+
+**1. Ngành nghề và bộ mẫu ngành (`IndustryProfile`, lưu ở `_platform/industryProfiles`)**
+- 6 ngành chuẩn:
+  - đủ bộ mẫu: `trade` (Phân phối thương mại), `mfg_install` (Sản xuất & lắp đặt);
+  - mới có hạ tầng (thuật ngữ, trạng thái, loại tài nguyên): `studio`, `car_rental`, `booking`, `canteen`.
+- Mỗi hồ sơ ngành gồm: từ điển thuật ngữ, quy trình trạng thái (`workflowStates`, dùng cho các khối V56.1), loại tài nguyên, trường mẫu, bố cục mẫu.
+- Bản có sẵn trong code: `src/crm/lib/industry.ts`. `supabase-v56.sql` nạp đúng bản này vào `_platform` (chỉ thêm khi chưa có). 3A sửa thuật ngữ trong Console thì bản 3A thắng.
+- Ngành của doanh nghiệp: `TenantReg.industry`. Chưa đặt thì theo mô hình: Xưởng = Sản xuất & lắp đặt, còn lại = Thương mại.
+
+**2. Bộ mẫu 2 ngành trọng điểm**
+- **Thương mại** — trường:
+  - Tuyến giao (danh sách chọn);
+  - Xe giao hàng (chọn tài nguyên, chống trùng theo Khung giờ giao);
+  - Khung giờ giao (khoảng thời gian);
+  - Thời hạn nợ (khách hàng, số ngày).
+
+  "Kho xuất" và "Hạn mức nợ" dùng **trường gốc** (`wh`, `creditLimit`) đặt sẵn trong bố cục, nhãn "Hạn mức nợ". Không tạo trường trùng: kiểm tra công nợ và kế toán vẫn đọc trường gốc.
+
+  Bố cục: Quản lý đơn hàng, Chi tiết đơn, Form lên đơn, Danh sách khách hàng, Chi tiết / form khách hàng.
+- **Sản xuất & lắp đặt (ALUX)** — trường:
+  - Địa chỉ công trình (bắt buộc khi lưu);
+  - Khối lượng (m²);
+  - Đơn giá lắp đặt / m²;
+  - Giá trị lắp đặt (công thức = Khối lượng × Đơn giá);
+  - Lịch lắp đặt (khoảng thời gian);
+  - Đội lắp đặt (chọn tài nguyên, chống trùng lịch);
+  - Checklist kỹ thuật (7 công đoạn);
+  - Ảnh nghiệm thu;
+  - Chữ ký nghiệm thu.
+
+  Bố cục: Quản lý lệnh, Chi tiết lệnh (nhóm Công trình / Lắp đặt / Nghiệm thu), Form tạo lệnh.
+
+  Thuật ngữ: "Lệnh sản xuất & lắp đặt", menu "Lệnh SX & lắp đặt", nút "Tạo lệnh". Theo phương án đã chốt, lệnh dùng luồng đơn bán; không đụng module Xưởng.
+
+**3. Nhân bản mẫu ngành cho doanh nghiệp (3A Console › Doanh nghiệp)**
+- Cột **Ngành** và mục **Ngành & mẫu ngành** mở bảng trượt bên phải, gồm: chọn ngành, xem thuật ngữ, quy trình, loại tài nguyên, danh sách trường mẫu (Mới / Bỏ qua) và bố cục mẫu.
+- **Áp dụng bộ mẫu ngành** sao chép thành **bản riêng** của doanh nghiệp:
+  - trường: `levels.tenants = [mã DN]`, `fromIndustry`;
+  - bố cục: `tenantId = mã DN`, đã phát hành, nơi áp dụng "Riêng doanh nghiệp";
+  - ghi `industryApplied` và nhật ký nền tảng.
+- Không xóa gì. Trường cùng mã đã có thì bỏ qua. Áp dụng lại phải tích "Thay N bố cục riêng".
+- Cùng mã trường được dùng cho nhiều doanh nghiệp khi phạm vi riêng tách biệt (mỗi DN một bản sao).
+- **Thêm doanh nghiệp** có ô chọn Ngành nghề; tạo xong mở luôn bảng Ngành & mẫu ngành.
+- **Studio bố cục riêng**: nút "Mở Studio" ở bảng trượt mở `#/console/design/<trang>/<id bản riêng>` (bản nháp mới: `new@<mã DN>`). Nhân sự 3A kéo thả tinh chỉnh riêng cho doanh nghiệp đó:
+  - bản nháp, lịch sử, phát hành tách khỏi bố cục chung;
+  - phát hành chỉ cho chính doanh nghiệp;
+  - Health Check đối chiếu với đúng doanh nghiệp đó.
+
+**4. Từ điển thuật ngữ `useTerminology()`**
+- `const { t, code, profile } = useTerminology(); t('saleList')`.
+- Các khóa: `module.sales`, `sale`, `saleShort`, `saleList`, `newSale`, `createSale`, `editSale`, `customer`, `resource`.
+- Đã áp vào: menu trái và tiêu đề trang (phân hệ Bán hàng), tiêu đề Quản lý đơn, nút tạo mới, tiêu đề form tạo / sửa, đường dẫn quay lại ở chi tiết / duyệt / thu tiền.
+- 3A sửa thuật ngữ ngay trong bảng Ngành & mẫu ngành.
+
+**5. Tài nguyên doanh nghiệp (Cài đặt › Tài nguyên)**
+- Doanh nghiệp tự thêm / sửa / ngừng dùng đội thợ, xe, phòng chụp… Loại tài nguyên theo ngành.
+- Cột "Lịch sắp tới" lấy từ các đơn đang giữ tài nguyên.
+- Lưu từng bản ghi (`resources` trong `KEYED_COLLS`). Tài nguyên ngừng dùng vẫn giữ lịch cũ.
+
+**6. Kiểu trường chuyên ngành (`CfDef.type`, `DynamicFieldRenderer`, `CfInput`)**
+- `datetime_range`: 2 ô bắt đầu / kết thúc, tự tính thời lượng (giờ, ngày + giờ). Lưu dạng `"YYYY-MM-DDTHH:mm/YYYY-MM-DDTHH:mm"`.
+- `resource_picker`: chọn tài nguyên theo `resourceKind`, kiểm tra trùng lịch theo trường thời gian `rangeKey` (`checkResourceAvailability`).
+  - Đội / xe đã kín giờ đánh dấu "trùng lịch" và báo ngay dưới ô.
+  - Lưu đơn / cập nhật thông tin bị chặn; đơn đã hủy không giữ lịch.
+- `formula`: biểu thức `+ - * / ( )` trên mã trường số / tiền. Bộ tính riêng, không dùng `eval`. Console báo lỗi mã trường không có. Giá trị tự tính khi nhập và tính lại khi lưu.
+- `checklist`: danh sách công đoạn (3A khai báo), thanh tiến độ. Chi tiết hiện "2/7".
+- `media_gallery`: ảnh nén, tải lên kho tệp riêng `crm-attach/<DN>/cf/...` (không nhúng base64), tối đa 12 ảnh.
+- `signature`: ký trên màn hình, lưu ảnh ở kho riêng kèm mã SHA-256, người ký, thời điểm.
+- Ô nhiều điều khiển không bọc trong `<label>`, tránh bấm nhầm kích hoạt ô đầu tiên.
+- Console › Trường tùy chỉnh có ô cấu hình cho từng kiểu: loại tài nguyên, trường thời gian, công thức + đơn vị, danh sách công đoạn.
+
+**7. Phía máy chủ (`supabase-v56.sql`)**
+- `validate_custom_fields` kiểm tra kiểu 6 trường mới:
+  - khoảng thời gian hợp lệ, kết thúc sau bắt đầu;
+  - công thức là số;
+  - checklist / ảnh là JSON đúng dạng;
+  - chữ ký phải có SHA-256 64 ký tự.
+- Kiểu chỉ xét khi giá trị đổi, nên 3A sửa định nghĩa không chặn bản ghi cũ.
+- `cf_resource_conflict` + trigger `records_cf_guard` chặn trùng lịch tài nguyên kể cả khi gọi thẳng REST API.
+  - Khóa giao dịch theo tài nguyên, nên 2 người lưu cùng lúc không cùng chiếm một lịch.
+  - Không đổi tài nguyên / giờ thì sửa thông tin khác bình thường.
+  - Lỗi trả `CF_INVALID: …`: app giữ bản ghi chờ gửi và báo như v55.3.
+- Quyền đọc hồ sơ ngành dùng quy tắc đã mở ở v55.1: người dùng doanh nghiệp đọc được, không đọc `tenants` / `logs`.
+
+**Không đổi**: định khoản (`SALE_REVENUE`, `IN_SALE`), quy tắc không tự duyệt, duyệt lãi gộp xưởng < 25%, luồng duyệt / xuất kho / thu tiền. Trường chuyên ngành nằm trong `cf`, không cộng vào tiền đơn.
+
+**Để V56.1**: 5 khối `K-WorkflowHeader`, `K-StageBoard`, `K-ResourceCalendar`, `K-ChecklistTracker`, `K-QuickPOS` (dữ liệu nền đã có: `workflowStates`, tài nguyên, khoảng thời gian, checklist).
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict).
+- **Chạy thử 41 / 41 mục đạt** (`anh-v56/ket-qua-chay-thu.txt`):
+  - Console: cột Ngành, bảng Ngành & mẫu ngành, áp dụng 9 trường + 3 bố cục riêng ALUX, áp dụng lại an toàn;
+  - Studio bố cục riêng: tự lưu nháp mang `tenantId`, phát hành chỉ cho ALUX, bố cục chung không bị lẫn;
+  - công thức báo lỗi mã trường;
+  - ALUX: menu / tiêu đề / nút theo thuật ngữ; thêm 2 đội thợ;
+  - tạo lệnh với địa chỉ, khối lượng, công thức tự tính 54.000.000 đ, lịch 1 ngày 4 giờ, đội, 2 công đoạn, 2 ảnh, chữ ký SHA-256;
+  - chi tiết lệnh hiện đủ; lệnh thứ 2 trùng giờ đội 1 bị chặn, đổi đội 2 thì lưu được; cột lịch sắp tới;
+  - VASSH giữ thuật ngữ gốc, không thấy trường riêng ALUX.
+- **Phía máy chủ**: tài nguyên lưu từng dòng; chữ ký lên `crm-attach` (không base64); gọi thẳng API trùng lịch xe bị chặn, khung giờ nối tiếp được ghi, chữ ký thiếu SHA-256 bị chặn.
+- **SQL** (`anh-v56/kiem-tra-sql.sql` / `.txt`): 10 tình huống.
+- **Hồi quy**: v55.3 (22 + 7 máy chủ), v55.2.1 (41), v55.1 máy chủ (27; mục "phiên bản 31" nay là 32 đúng thiết kế).
+
+
+## Cập nhật v55.3 (24/11)
+
+**Triển khai theo thứ tự**
+1. Supabase › SQL Editor: chạy `supabase-v55.3.sql` (sau v55.1). Chạy lại nhiều lần vẫn an toàn, không sửa dữ liệu đang có. Cách hoàn tác ghi ở cuối file.
+2. Chạy `scripts/cai-dat-v55.3.ps1` (nhánh `v55`), gộp vào main.
+3. Báo mọi người tải lại trang.
+
+**1. Trường tùy chỉnh theo đối tượng**
+- `CfDef.entity`: `'sale' | 'customer' | 'lead' | 'product'`.
+- Tab mới trong 3A Studio › Trường tùy chỉnh: Đơn bán hàng · Khách hàng · Lead · Sản phẩm. Mỗi tab có cờ Form / Thông tin / Danh sách riêng. Dòng hàng và "Bắt buộc khi duyệt" chỉ có ở đơn bán.
+- Giá trị lưu ở `cf` của từng bản ghi: `Customer.cf`, `Lead.cf`, `SkuItem.cf`.
+- `customers`, `leads` đã nằm trong `KEYED_COLLS` từ trước; sản phẩm lưu theo `skus` (khóa `sku`). Không cần chuyển dữ liệu.
+
+**2. Trang thiết kế mới cho từng doanh nghiệp, cùng bộ Studio và `DynamicFieldRenderer`**
+- **Danh sách khách hàng** (`customer-list`) và **Danh sách lead · Data MKT** (`lead-list`): khối **Danh sách bản ghi** (`K-RecordList`) chính là bảng thật của phân hệ. 3A chọn cột trường tùy chỉnh và thứ tự cột (mỗi trường một cột, trước cột Thao tác); thêm được khối text / nút / đường kẻ. Xem trước bằng bảng thật với dữ liệu mẫu.
+- **Chi tiết / form khách hàng** (`customer-detail`) và **Chi tiết / form lead** (`lead-detail`):
+  - khối **Chi tiết bản ghi**, hiện trong hồ sơ khách hàng và hồ sơ dự án / lead, gồm trường tùy chỉnh và trường gốc 3A kéo thêm (MST, người liên hệ, điện thoại…);
+  - khối **Form bản ghi**: phần "Thông tin thêm" trong form thêm / sửa khách hàng, thêm / sửa lead.
+  - Kéo thả trường, độ rộng, nhãn, gợi ý, chỉ đọc, bắt buộc như trang đơn bán.
+- **Sản phẩm**: trường tùy chỉnh hiện trong form thêm / sửa sản phẩm (cờ Form) và chi tiết sản phẩm (cờ Thông tin). Chưa có trang thiết kế riêng (theo phạm vi đã chốt).
+- Chưa phát hành bố cục: các trang giữ giao diện gốc, chỉ thêm phần trường tùy chỉnh theo cờ.
+
+**3. Kiểm tra trạng thái hợp lệ (Health Check) trong 3A Studio**
+- Khi mở một bản thiết kế, Studio đối chiếu từng `fieldKey` trong khối Chi tiết / Form / Danh sách với trường thực tế:
+  - trường **đã bị xóa**;
+  - trường **đã ngừng dùng (OFF)**;
+  - trường **không áp dụng cho doanh nghiệp** đang nhận trang này (theo các cấp đã phát hành: riêng DN, mô hình, toàn hệ thống).
+- Cảnh báo màu vàng hiện:
+  - trên thẻ khối ở lưới trang (số trường lỗi);
+  - trên từng ô trường ở khung bố cục trường, kèm lý do; ô vẫn giữ để 3A bấm và bỏ;
+  - trong ngăn "Kiểm tra trước khi phát hành".
+
+**4. Kiểm tra trường tùy chỉnh phía máy chủ (`supabase-v55.3.sql`)**
+- **`validate_custom_fields(p_tenant_id, p_entity, p_stage, p_cf [, p_old_cf])`** trả danh sách lỗi:
+  - đọc định nghĩa từ `customFields` của `_platform`, đúng đối tượng, áp dụng cho doanh nghiệp;
+  - **bắt buộc**: `SAVE` = bắt buộc khi lưu (trường có cờ Form, không chỉ đọc); `APPROVE` = bắt buộc khi lưu hoặc khi duyệt. Áp `requiredOverride` / `readOnly` theo bố cục form 3A đã phát hành, giống hệt app;
+  - **kiểu dữ liệu**: số, số tiền, ngày `YYYY-MM-DD` hợp lệ, true/false, chữ; giá trị danh sách chọn phải nằm trong lựa chọn (chỉ xét khi giá trị đổi, vì 3A bỏ lựa chọn không xóa giá trị cũ).
+- **Trigger `records_cf_guard`** trên `records` chặn ghi (mã `P0001`, thông điệp `CF_INVALID: …`) kể cả khi gọi thẳng REST API.
+  - Chỉ xét khi tạo bản ghi mới, khi sửa `cf`, hoặc khi đơn bán chuyển sang Đã duyệt.
+  - Bản ghi cũ thiếu trường mới đặt bắt buộc vẫn ghi thu tiền / xuất kho / sửa thông tin khác bình thường.
+  - Bỏ qua dòng đánh dấu xóa, dữ liệu nền tảng, thao tác của quản trị 3A (khôi phục sao lưu, hỗ trợ).
+  - Đơn còn trong dòng gộp cũ (chuyển đổi v55.1) không bị coi là đơn mới.
+- **App**:
+  - lần gửi bị chặn thì gửi lại từng bản ghi: bản ghi hợp lệ vẫn lưu, bản ghi bị chặn giữ chờ gửi trên máy (không mất) và báo lỗi đồng bộ "Máy chủ từ chối lưu: …";
+  - khi 3A sửa cấu hình hoặc người dùng bổ sung, bản ghi tự lưu lên.
+- Kiểm tra trước khi lưu trên app (form khách hàng / lead / sản phẩm, form và duyệt đơn) dùng đúng quy tắc này nên bình thường không chạm tới máy chủ.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict).
+- **Chạy thử 29 / 29 mục đạt** (`anh-v55.3/ket-qua-chay-thu.txt`):
+  - tab trường theo đối tượng, tạo trường khách hàng;
+  - Health Check: 3 trường lỗi trên khối (đã xóa, OFF, chỉ áp dụng ALUX), ô vàng có lý do, bỏ trường lỗi, ngăn kiểm tra;
+  - xem trước Danh sách khách hàng bằng bảng thật, đổi thứ tự cột;
+  - thiết kế Chi tiết / form khách hàng: thêm trường gốc, đặt gợi ý; phát hành;
+  - Giám đốc: cột trường tùy chỉnh đúng thứ tự, form chặn thiếu trường bắt buộc, lưu `cf`, hồ sơ hiện khối Chi tiết; Data MKT có cột Ngân sách; form lead và form sản phẩm có Thông tin thêm.
+- **Phía máy chủ** (PostgreSQL thật qua máy chủ giả lập):
+  - gọi thẳng API với giá trị sai hoặc thiếu trường bắt buộc: bị chặn; app lưu khách hàng hợp lệ: lên máy chủ;
+  - 3A vừa đặt trường bắt buộc mà máy người dùng chưa nhận: máy chủ chặn đúng bản ghi đó, bản ghi vẫn còn trên máy;
+  - 3A hạ yêu cầu bằng bố cục form: máy chủ nhận ngay và bản ghi đang chờ tự lưu lên.
+- **10 tình huống SQL** (`anh-v55.3/kiem-tra-sql.txt`): sai kiểu số / ngày / lựa chọn; trường chỉ áp dụng mô hình Xưởng; bản ghi cũ sửa thông tin khác; upsert như app; duyệt đơn thiếu trường; xóa mềm; quản trị 3A.
+- **Hồi quy** trên bản này: kịch bản v55.2.1 (41 / 41), v55.1 có trigger (28 / 28), v54.1: không lỗi.
+
+**Lưu ý**
+- Lead chưa có trang danh sách riêng ngoài Data MKT (tab Điều phối dạng thẻ giữ nguyên). Khối Chi tiết lead hiện trong hồ sơ dự án / lead.
+- Bộ lọc theo trường tùy chỉnh mới có ở Quản lý đơn hàng; khách hàng / lead để chặng sau.
+- Quản trị 3A không bị trigger kiểm tra (để khôi phục sao lưu, hỗ trợ dữ liệu).
+
+## (v55.2.1) 3A CRM v55.2.1 (bổ sung Chặng 2: khung trường giữa màn, Field Inspector, độ rộng nhanh, xem trước bằng bảng thật — vẫn nhánh v55)
+
+## Cập nhật v55.2.1 (24/11)
+
+**Cài đặt**: chạy `scripts/cai-dat-v55.2.1.ps1` (nhánh `v55`). Không có SQL mới, không thêm thư viện, không đổi dữ liệu.
+
+**1. Studio Cấp 2 chia 3 cột**
+- Chọn khối Thông tin đơn hàng (`K-RecordDetail`) hoặc Thông tin thêm (`K-RecordForm`), bấm **Thiết kế bố cục trường**:
+  - **Trái — Trường dữ liệu**: trường chưa đặt. Kéo vào khung giữa, hoặc bấm + để thêm vào nhóm đang chọn.
+  - **Giữa — khung trường**, vẽ bằng chính `DynamicFieldRenderer` (cùng component với SaleDetail / SaleForm), có thêm chế độ thiết kế:
+    - tạo nhóm, đặt tiêu đề nhóm ngay trên khung;
+    - kéo thả trường trong một nhóm và giữa các nhóm;
+    - trường đang chọn có nút độ rộng nhanh **1/3 · 1/2 · Cả dòng** và nút bỏ trường.
+  - **Phải — Field Inspector**:
+    - trường đang chọn: nhãn hiển thị (`labelOverride`), độ rộng (nút nhanh và đủ 1–12 cột), gợi ý trong ô (`placeholder`), chú thích, chỉ đọc (`readOnly`), bắt buộc riêng (`requiredOverride`), chuyển nhóm, lên / xuống, bỏ khỏi bố cục;
+    - bấm vào nhóm thì chỉnh tiêu đề, số cột, thu gọn sẵn, thứ tự, xóa nhóm.
+- "Về lưới trang" quay lại lưới khối; "Cài đặt khối" mở cài đặt chung của khối. Hoàn tác / Làm lại, tự lưu nháp 2 giây vẫn áp dụng.
+
+**2. Xem trước bằng component thật, không còn HTML mẫu vẽ tay**
+- Khối Danh sách đơn hàng trong Studio (khung lưới và Xem trước) dùng chính bảng `SaleList` của doanh nghiệp với 4 đơn mẫu. Cột, tab trạng thái, dòng tổng, nút đầu bảng, bộ lọc, số dòng đều là bảng thật.
+- Dữ liệu mẫu nằm trong ngữ cảnh riêng: không đọc dữ liệu doanh nghiệp, mọi thao tác ghi bị vô hiệu, vùng xem trước đặt `inert`.
+- Khối Chi tiết / Form đã dùng `DynamicFieldRenderer` từ v55.2. Các khối Hàng hóa, Thanh toán, Quy trình vẫn dùng mẫu như trước (theo phạm vi đã chốt).
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict). Chạy thử 41 / 41 mục đạt (`anh-v55.2.1/ket-qua-chay-thu.txt`):
+- xem trước Quản lý đơn hàng ra bảng thật, đủ 4 đơn mẫu và dòng tổng;
+- chế độ 3 cột; thêm nhóm "Vận chuyển"; kéo trường giữa các nhóm và trong nhóm bằng chuột;
+- nút "Cả dòng" trên trường; Inspector đổi nhãn "Kênh bán" và chọn 1/2 dòng;
+- trường khóa không bỏ được; bỏ Số PO thì trường về cột trái; Hoàn tác / Làm lại;
+- Form: bắt buộc khi lưu, gợi ý trong ô, chỉ đọc hiện ngay trên khung giữa;
+- toàn bộ kịch bản v55.2 (tự lưu, URL, Back, phát hành, form và chi tiết phía doanh nghiệp, giữ giá trị trường bị bỏ, hỏi lại khi đóng tab).
+
+Chạy lại kịch bản v54.1 và v55.1 trên bản này: không lỗi.
+
+## (v55.2) 3A CRM v55.2 (Chặng 2: tái cấu trúc Page Builder, URL màn thiết kế, kéo thả từng trường dữ liệu — dựa trên v55.1, vẫn nhánh v55)
+
+## Cập nhật v55.2 (24/11)
+
+**Cài đặt**: chạy `scripts/cai-dat-v55.2.ps1` (nhánh `v55`). Không có SQL mới; cần đã chạy `supabase-v55.1.sql`. Gộp vào main xong báo mọi người tải lại trang.
+
+**1. Tách bộ vẽ trang ra `src/crm/modules/page-builder/`** (trước nằm lẫn trong `modules/messages/messenger.tsx`)
+- `engine.tsx`: cấu hình mặc định khối, xếp lưới, dữ liệu thật / mẫu, kỳ, biến, kiểu dáng, xuất Excel.
+- `blocks.tsx`: khối hiển thị (chỉ số, biểu đồ, text, nút, bộ lọc, tab, mục tiêu, đường kẻ, bảng).
+- `views.tsx`: `LayoutView`, `LBusinessView`, nội dung mẫu trang đơn hàng.
+- `tenant.tsx`: `useTenantLayout`, `TenantLayoutPage`.
+- `fields.tsx`: `CfInput`, `cfText`, `DynamicFieldRenderer`.
+- `index.ts`: xuất chung.
+- `messenger.tsx` chỉ còn Tin nhắn và các trang Tổng quan. `core.tsx` hết import ngược từ `messenger.tsx`.
+- Màn Xem trước của 3A và màn hình doanh nghiệp dùng cùng `DynamicFieldRenderer`.
+
+**2. Màn thiết kế có URL riêng**
+- `#/console/design/<trang>/<id phiên bản>`, hoặc `/new` khi trang chưa có bản nháp. Tải lại trang, gửi link, nút Back của trình duyệt đều giữ đúng màn hình; Back đóng màn thiết kế.
+- **Tự lưu nháp** sau 2 giây không thao tác; thanh trên ghi "Đã tự lưu hh:mm:ss". Bản nháp đầu tiên tạo ra thì URL tự chuyển sang id bản nháp. Nhật ký nền tảng chỉ ghi lần tự lưu đầu tiên trong mỗi phiên.
+- Đóng tab hoặc tải lại khi còn thay đổi chưa lưu: trình duyệt hỏi lại.
+- Mở trang chỉ để xem không tự tạo bản nháp. Mỗi trang vẫn chỉ có một bản nháp: mở link phiên bản cũ khi đang có bản nháp thì vào bản nháp và báo cách lấy bản cũ (Lịch sử phiên bản › Khôi phục).
+
+**3. Kéo thả từng trường (Cấp 2)**
+- Kiểu mới trong `types.ts`:
+  - `LSection { id, title, cols, collapsedByDefault, fields }`;
+  - `LFieldItem { id, fieldKey, colSpan 1..12, labelOverride, placeholder, readOnly, requiredOverride, helpText }`;
+  - `LBlockCfg.sections`.
+- Khối **Chi tiết bản ghi `K-RecordDetail`** thay khối Thông tin đơn hàng (trang Chi tiết đơn hàng). Đặt được trường gốc (khách hàng, mã đơn, nguồn đơn, người thực hiện, kho, chứng từ, số hóa đơn) và trường tùy chỉnh đầu đơn.
+- Trang thiết kế mới **Form lên đơn bán**, khối **`K-RecordForm`**: điều khiển phần "Thông tin thêm" của form Lên đơn bán và của "Cập nhật thông tin" trên đơn. Có gợi ý trong ô, chú thích, chỉ đọc, bắt buộc riêng (khi lưu / trước khi duyệt).
+- Trong Cài đặt khối:
+  - thêm, xóa, đổi tên, đổi thứ tự nhóm; số cột của nhóm; thu gọn sẵn;
+  - kéo trường bằng tay nắm để đổi thứ tự hoặc chuyển nhóm; kéo từ "Trường chưa đặt" vào nhóm (có cả nút ↑ ↓, + và ô chọn Nhóm cho bàn phím);
+  - độ rộng: Cả hàng, 3/4, 2/3, 1/2, 1/3, 1/4, 1/6;
+  - Hoàn tác / Làm lại áp dụng cho bố cục trường.
+- **Bỏ trường khỏi bố cục chỉ ẩn hiển thị**, giá trị `cf[...]` trong đơn giữ nguyên. Không bỏ được trường gốc bắt buộc (khách hàng, mã đơn, người thực hiện, kho) và trường bắt buộc của form.
+- Trường mới tạo (cờ "Form" / "Thông tin") tự vào nhóm cuối, như trước.
+- Màn hẹp: trường giãn tối thiểu nửa hàng (máy tính bảng), cả hàng (điện thoại).
+- **Kiểm tra khi duyệt** (Duyệt đơn tự duyệt, Hàng đợi duyệt, nhãn "Thiếu … để duyệt") theo định nghĩa trường cộng phần bắt buộc đặt riêng trong bố cục Form. Quy tắc không tự duyệt, định khoản `SALE_REVENUE` / `IN_SALE` và quy định lãi gộp không đổi.
+
+**4. Tự chuyển bố cục cũ (`lMigrate`)**
+- Khối `K-Order-Info` của bố cục V53 → V55.1 đã phát hành tự đọc thành `K-RecordDetail`: một nhóm không tiêu đề, giữ đúng thứ tự `fields`, trường tắt `off`, số cột `gridCols` (Khách hàng rộng gấp đôi). Trường tùy chỉnh có cờ "Thông tin" chưa có trong thứ tự cũ thêm cuối như trước.
+- Kết quả cố định (id theo khóa), đọc lại nhiều lần vẫn như nhau. Không cần phát hành lại; lần lưu kế tiếp trong Studio mới ghi dạng mới.
+- Form lên đơn chưa thiết kế: trường theo cờ "Form" như cũ (2 cột).
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict). Chạy thử 33 / 33 mục đạt (`anh-v55.2/ket-qua-chay-thu.txt`):
+- bố cục V54.1 đã phát hành (3 cột, tắt Nguồn chứng từ) hiển thị đúng thứ tự, đúng độ rộng;
+- 3A mở thiết kế bằng URL, thêm nhóm "Vận chuyển", kéo trường sang nhóm, kéo đổi thứ tự, đổi nhãn "Kênh bán", bỏ "Số PO khách", Hoàn tác / Làm lại;
+- tự lưu sau 2 giây, URL chuyển sang id bản nháp; tải lại vào đúng bản nháp; Back đóng màn thiết kế; phát hành;
+- Form lên đơn: Biển số xe bắt buộc khi lưu, có gợi ý trong ô và chú thích; Số PO chỉ đọc; thiếu trường thì chặn lưu, đủ thì lưu được;
+- chi tiết đơn theo bố cục mới; đơn cũ vẫn còn giá trị Số PO; báo thiếu trường để duyệt;
+- đóng tab khi chưa lưu thì trình duyệt hỏi lại.
+
+Chạy lại kịch bản V54.1 (thiết kế Quản lý đơn hàng, Tổng quan) và V55.1 (RLS, chuyển đơn, kho tệp, Lưu cho tôi) trên bản này: không lỗi.
+
+**Lưu ý**
+- Máy còn chạy bản v55.1 khi 3A phát hành bố cục mới: khối Thông tin đơn hàng hiện theo giao diện mặc định cho tới khi tải lại trang. Không mất dữ liệu.
+- Trong khung thiết kế, khối giữ chiều cao đặt trên lưới nên nhóm trường dài có thể bị cắt; Xem trước và màn hình thật hiện đủ.
+- Các trang Tổng quan (`TradingOverview`, `MktOverview`…) vẫn nằm trong `messenger.tsx`; tách ở chặng sau.
+
+## (v55.1) 3A CRM v55.1 (Chặng 1: vá bảo mật nền tảng, lưu đơn bán từng bản ghi, kho tệp riêng tư, "Lưu cho tôi" theo người dùng — dựa trên v54.1, nhánh mới v55)
+
+## Cập nhật v55.1 (22/11)
+
+**Triển khai theo thứ tự**
+1. Supabase › SQL Editor: chạy `supabase-v55.1.sql` (chạy lại nhiều lần vẫn an toàn, không sửa dữ liệu nghiệp vụ).
+2. Deploy code v55.1 ngay sau đó (gộp nhánh `v55` vào `main`).
+3. Báo mọi người **tải lại trang trên tất cả máy** (kể cả tab đang mở). Dữ liệu lên phiên bản 31: máy còn chạy bản cũ sẽ tự chuyển sang chỉ đọc, không ghi đè được.
+4. Lần đầu sau khi deploy nên để Giám đốc / quản trị doanh nghiệp đăng nhập trước (chuyển đổi dữ liệu chạy ở máy người mở đầu tiên).
+
+**1. Siết quyền đọc dữ liệu nền tảng (`_platform`)**
+- Tài khoản doanh nghiệp chỉ đọc được 4 nhóm `layouts`, `layoutAssigns`, `customFields`, `industryProfiles`, và chỉ phần thuộc phạm vi của mình: cấp Toàn hệ thống, đúng mô hình (Thương mại / Xưởng) hoặc đúng mã doanh nghiệp. Bố cục bản nháp, bố cục / trường riêng của doanh nghiệp khác không còn đọc được.
+- Chặn hoàn toàn `tenants` (danh sách doanh nghiệp, ghi chú nội bộ 3A) và `logs` (nhật ký nền tảng).
+- RPC mới `get_my_tenant_info()`: trả hồ sơ các doanh nghiệp của chính tài khoản (module được bật, tạm dừng…), bỏ ghi chú nội bộ. App dùng RPC này khi đăng nhập và hỏi lại mỗi 60 giây, nên 3A bật / tắt module thì doanh nghiệp vẫn nhận được không cần tải lại trang.
+- Quản trị 3A đọc / ghi như cũ.
+
+**2. Đơn bán lưu từng bản ghi**
+- `salesOrders` vào `KEYED_COLLS`: mỗi đơn một dòng theo `id` (trước đây cả danh sách đơn là một dòng JSON).
+- Tự chuyển dữ liệu cũ khi mở: đọc dòng gộp cũ, ghi đủ từng đơn rồi mới đánh dấu xóa dòng gộp. Nếu một đơn đã có dòng riêng (bản mới hơn) thì giữ dòng riêng. Không mất đơn nào.
+
+**3. Tệp đính kèm đơn hàng lên kho riêng tư `crm-attach`**
+- Tệp mới tải lên Supabase Storage, thư mục `<mã doanh nghiệp>/sales/<mã đơn>/`; trong đơn chỉ lưu `{ id, name, url, size, mimeType }` (url dạng `attach:<đường dẫn>`), không còn base64 trong JSON. Tối đa 10 MB mỗi tệp (ảnh vẫn tự nén).
+- Kho riêng tư: chỉ thành viên đúng doanh nghiệp (và quản trị 3A) mở / tải lên / xóa được; không có đường link công khai. Mở tệp: app tải bằng phiên đăng nhập rồi mở trong tab mới; nút tải về giữ đúng tên tệp.
+- Bỏ tệp khỏi đơn thì xóa luôn tệp trong kho (nếu không còn dòng nào khác dùng chung).
+- Tệp cũ đã nhúng base64 trong đơn vẫn mở / tải được như trước.
+
+**4. "Lưu cho tôi" theo người dùng (làm trước cho Quản lý đơn hàng)**
+- Kỳ xem, số đơn mỗi trang, bộ cột lưu vào dữ liệu doanh nghiệp, nhóm `userPrefs`, mỗi người một dòng theo mã nhân sự → đăng nhập máy khác vẫn giữ nguyên. Lựa chọn cũ trong trình duyệt được tự chép sang lần đầu.
+- Mỗi người chỉ ghi được dòng của chính mình (quản trị doanh nghiệp ghi được mọi dòng). Các danh sách khác áp dụng ở Chặng 3.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict). SQL chạy thật trên PostgreSQL 16 với RLS. Chạy thử giao diện qua máy chủ giả lập Supabase dùng PostgreSQL thật (RLS, RPC, chính sách kho tệp đều thật): dữ liệu VASSH kiểu v54.1 (3 đơn trong một dòng gộp, một đơn đã có dòng riêng mới hơn, một đơn có tệp base64 cũ). Sales Bảo đăng nhập → 3 đơn thành 3 dòng, dòng gộp đánh dấu xóa, phiên bản 31, đơn -01 giữ bản mới hơn; Bảo không đọc được `tenants`, `logs`, bố cục ALUX, bản nháp; RPC chỉ trả VASSH, không có ghi chú; Bảo chọn Quý này, 50 / trang, bỏ cột Ghi chú → máy thứ hai nhận đúng; tài khoản ALUX không ghi được tùy chọn của Bảo. Tải lên PDF và tệp chữ: đơn chỉ lưu thông tin tệp, tệp nằm đúng thư mục, mở / tải về được; tệp base64 cũ vẫn mở được; ALUX không đọc / không tải lên được vào thư mục VASSH; không có link công khai; bỏ tệp thì xóa trong kho. Chạy lại kịch bản v54.1 ở chế độ máy đơn: không lỗi. Kết quả và ảnh ở thư mục `anh-v55.1`.
+
+**Lưu ý còn lại (để các chặng sau)**
+- Tài khoản là thành viên nhiều doanh nghiệp thấy phạm vi nền tảng của tất cả doanh nghiệp đó (theo tài khoản, chưa theo doanh nghiệp đang mở).
+- Thành viên chưa gắn mã nhân sự (`app_user_id` trống) vẫn ghi được mọi dòng `userPrefs` để không gãy tài khoản cũ; nên gắn mã nhân sự cho đủ.
+- Tệp đã lên bucket công khai `crm-files` từ các bản trước (ảnh nhúng lớn) vẫn công khai; chưa chuyển.
+- Nếu một máy còn mở bản cũ và ghi đơn đúng lúc chuyển đổi, dòng gộp cũ có thể bị ghi lại; app vẫn ưu tiên dòng riêng, nhưng đơn đã xóa ở bản mới có thể hiện lại — vì vậy cần tải lại trang trên mọi máy (bước 3).
+- Chuyển engine Page Builder sang `src/crm/modules/page-builder/` thuộc Chặng 2.
+
+> Có SQL mới (`supabase-v55.1.sql`), không thêm bảng, không thêm thư viện. Cách hoàn tác ghi ở cuối file SQL.
+
+## (v54.1) 3A CRM v54.1 (Page Builder bản 3.1: kiểu dáng cho mọi khối, khối Bảng Quản lý đơn hàng — dựa trên v54, vẫn nhánh v54)
 
 ## Cập nhật v54.1 (21/11)
 

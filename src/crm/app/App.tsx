@@ -9,13 +9,14 @@ import { periodRange } from '../components/filters';
 import { Skeleton } from '../components/ui';
 import { fundUsage, scoreLead, shipmentAllocation } from '../lib/business';
 import { canon, cloudMessage, statsOf } from '../lib/cloud';
+import { industryProfilesEff, tenantIndustry, termsOf } from '../lib/industry';
 import { addDaysISO, AVATARS, bizMode, blockersOf, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, fmtN, fold, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MAIN_WH, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, nextVoucherCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, salePaid, saleResOf, saleRetQ, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, WF_POLICY, wfAmountOf, wfFormVals, wfNeeds, wfReasons, znsPhone } from '../lib/core';
 import { buildGetflyPayload, financialsFromOrders, salePendingQ, saleReturned, saleStock, saleTotals } from '../lib/getfly';
 import { LoginScreen, orgDefaults, pathOrgOf, registerOrgs, regsFromStored, setPathOrg } from '../lib/modules';
 import { initialNotices } from '../lib/notify';
 import { encryptBackup, hashPassword, verifyPassword } from '../lib/security';
 import { listSnapshots, migrateData, takeSnapshot, withDefaults } from '../lib/storage';
-import type { Action, Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, CfDef, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, InvMoveType, Job, KbItem, KpiTarget, LayoutAssign, LayoutVer, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SaleDelivery, SaleInvReq, SaleLine, SalePay, SalePayExtra, SalePayment, SalesOrder, SaleStatus, SaleStockData, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WfCtx, WfDecideArgs, WfDecision, WfDef, WfDelegation, WfPolicy, WfRun, WfRunStatus, WfSubject, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
+import type { UserPrefs, Action, Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, CfDef, IndustryProfile, Resource, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, InvMoveType, Job, KbItem, KpiTarget, LayoutAssign, LayoutVer, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SaleDelivery, SaleInvReq, SaleLine, SalePay, SalePayExtra, SalePayment, SalesOrder, SaleStatus, SaleStockData, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WfCtx, WfDecideArgs, WfDecision, WfDef, WfDelegation, WfPolicy, WfRun, WfRunStatus, WfSubject, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
 import { cn, initialLeads, initialMoves, initialPOs, initialQuotes, initialReservations, syncCatalog, wfApprovers, wfMerge, wfPath } from '../lib/utils';
 import { stockOf } from '../lib/workshop';
 import { AiChatBot } from '../modules/ai/copilot-plus';
@@ -62,6 +63,7 @@ export default function DashboardApp() {
   const [platformLayouts, setPlatformLayouts] = useState<LayoutVer[]>([]);
   const [platformAssigns, setPlatformAssigns] = useState<LayoutAssign[]>([]);
   const [platformCf, setPlatformCf] = useState<CfDef[]>([]);
+  const [platformIp, setPlatformIp] = useState<IndustryProfile[]>([]);
   const [consoleView, setConsoleView] = useState(false);
   const [consoleTab, setConsoleTab] = useState<ConsoleTab>('overview');
   const [platformId, setPlatformId] = useState<string | null>(null);
@@ -75,6 +77,7 @@ export default function DashboardApp() {
   const [page, setPage] = useState<Module>('home');
   const [presetQuery, setPresetQuery] = useState('');
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
+  const [resources, setResources] = useState<Resource[]>([]);
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);
@@ -183,6 +186,8 @@ export default function DashboardApp() {
   const [comments, setComments] = useState<RowComment[]>([]);
   const [channels, setChannels] = useState<ChatChannel[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  /** v55.1: tùy chọn cá nhân "Lưu cho tôi" — mỗi người 1 bản ghi (id = mã nhân sự), lưu cùng dữ liệu doanh nghiệp */
+  const [userPrefs, setUserPrefs] = useState<UserPrefs[]>([]);
   const [openClaimId, setOpenClaimId] = useState<string | null>(null);
   const [openCustomerId, setOpenCustomerId] = useState<string | null>(null);
   const [programForm, setProgramForm] = useState<{ customerId?: string; programId?: string } | null>(null);
@@ -193,7 +198,7 @@ export default function DashboardApp() {
 
   // ---- Dữ liệu được lưu trên máy (có phiên bản). Khóa bí mật tích hợp không lưu. ----
   const persisted: Record<string, [unknown, (v: never) => void, unknown]> = {
-    leads: [leads, setLeads, initialLeads], customers: [customers, setCustomers, INITIAL_CUSTOMERS], users: [users, setUsers, INITIAL_USERS],
+    leads: [leads, setLeads, initialLeads], resources: [resources, setResources, []], customers: [customers, setCustomers, INITIAL_CUSTOMERS], users: [users, setUsers, INITIAL_USERS],
     departments: [departments, setDepartments, INITIAL_DEPARTMENTS], budgets: [budgets, setBudgets, [INITIAL_BUDGET]], activities: [activities, setActivities, []],
     policy: [policy, setPolicy, INITIAL_POLICY], programs: [programs, setPrograms, INITIAL_PROGRAMS], claims: [claims, setClaims, INITIAL_CLAIMS],
     perms: [perms, setPerms, INITIAL_PERMS], segments: [segments, setSegments, INITIAL_SEGMENTS], categories: [categories, setCategories, INITIAL_CATEGORIES],
@@ -202,6 +207,7 @@ export default function DashboardApp() {
     reservations: [reservations, setReservations, initialReservations], moves: [moves, setMoves, initialMoves], warehouses: [warehouses, setWarehouses, INITIAL_WAREHOUSES], stockVouchers: [stockVouchers, setStockVouchers, []], zaloConvs: [zaloConvs, setZaloConvs, []], zaloMsgs: [zaloMsgs, setZaloMsgs, []], campaigns: [campaigns, setCampaigns, []], contents: [contents, setContents, []], banners: [banners, setBanners, []], audiences: [audiences, setAudiences, []], automations: [automations, setAutomations, []], autoRuns: [autoRuns, setAutoRuns, []], kb: [kb, setKb, []], mktTasks: [mktTasks, setMktTasks, []], briefs: [briefs, setBriefs, []], draftProducts: [draftProducts, setDraftProducts, []], socialPosts: [socialPosts, setSocialPosts, []], kpiTargets: [kpiTargets, setKpiTargets, []], contentVersions: [contentVersions, setContentVersions, []], mktImages: [mktImages, setMktImages, []], aiQuota: [aiQuota, setAiQuota, INITIAL_AI_QUOTA], hubCfg: [hubCfg, setHubCfg, INITIAL_HUB_CFG], docTemplates: [docTemplates, setDocTemplates, []],
     genDocs: [genDocs, setGenDocs, []], salesOrders: [salesOrders, setSalesOrders, []], wfDefs: [wfDefs, setWfDefs, []], wfRuns: [wfRuns, setWfRuns, []], wfPolicy: [wfPolicy, setWfPolicy, WF_POLICY], wfDelegations: [wfDelegations, setWfDelegations, []], tierRules: [tierRules, setTierRules, INITIAL_TIER_RULES], getflyOrders: [getflyOrders, setGetflyOrders, INITIAL_GETFLY_ORDERS],
     getfly: [getfly, setGetfly, INITIAL_GETFLY], notices: [notices, setNotices, initialNotices], emailCfg: [emailCfg, setEmailCfg, INITIAL_EMAIL], zns: [zns, setZns, INITIAL_ZNS],
+    userPrefs: [userPrefs, setUserPrefs, []],
     notifyRules: [notifyRules, setNotifyRules, INITIAL_NOTIFY_RULES], docs: [docs, setDocs, INITIAL_DOCS], comments: [comments, setComments, []], channels: [channels, setChannels, []], posts: [posts, setPosts, []], approvalLogs: [approvalLogs, setApprovalLogs, []],
     auditLogs: [auditLogs, setAuditLogs, []], security: [security, setSecurity, INITIAL_SECURITY], workOrders: [workOrders, setWorkOrders, []], installJobs: [installJobs, setInstallJobs, []],
     jobs: [jobs, setJobs, []], receipts: [receipts, setReceipts, []], stockItems: [stockItems, setStockItems, []], stockMoves: [stockMoves, setStockMoves, []], cashEntries: [cashEntries, setCashEntries, []], priceItems: [priceItems, setPriceItems, []], mfgConfig: [mfgConfig, setMfgConfig, DEFAULT_MFG_CONFIG],
@@ -293,8 +299,9 @@ export default function DashboardApp() {
     try {
       const p = storage.get(PLATFORM_KEY);
       if (p) {
-        const pl = JSON.parse(p) as { admins?: User[]; tenants?: TenantReg[]; logs?: PlatformLog[]; layouts?: LayoutVer[]; layoutAssigns?: LayoutAssign[]; customFields?: CfDef[] };
+        const pl = JSON.parse(p) as { admins?: User[]; tenants?: TenantReg[]; logs?: PlatformLog[]; layouts?: LayoutVer[]; layoutAssigns?: LayoutAssign[]; customFields?: CfDef[]; industryProfiles?: IndustryProfile[] };
         if (Array.isArray(pl.customFields)) setPlatformCf(pl.customFields);
+        if (Array.isArray(pl.industryProfiles)) setPlatformIp(pl.industryProfiles);
         if (Array.isArray(pl.layouts)) setPlatformLayouts(pl.layouts);
         if (Array.isArray(pl.layoutAssigns)) setPlatformAssigns(pl.layoutAssigns);
         if (Array.isArray(pl.admins) && pl.admins.length) admins = [...pl.admins, ...INITIAL_PLATFORM_ADMINS.filter((d) => !pl.admins!.some((a) => a.email === d.email))];
@@ -347,10 +354,10 @@ export default function DashboardApp() {
   // ---- Lưu tài khoản quản trị nền tảng (tách khỏi dữ liệu doanh nghiệp) ----
   useEffect(() => {
     if (!hydrated) return;
-    storage.set(PLATFORM_KEY, JSON.stringify({ admins: CLOUD_ON ? [] : platformAdmins, tenants: platformTenants, logs: CLOUD_ON ? [] : platformLogs.slice(0, 300), layouts: platformLayouts, layoutAssigns: platformAssigns, customFields: platformCf }));
-    if (CLOUD_ON && platformId && platSyncRef.current) platSyncRef.current.schedule({ tenants: platformTenants, logs: platformLogs.slice(0, 300), layouts: platformLayouts, layoutAssigns: platformAssigns, customFields: platformCf });
+    storage.set(PLATFORM_KEY, JSON.stringify({ admins: CLOUD_ON ? [] : platformAdmins, tenants: platformTenants, logs: CLOUD_ON ? [] : platformLogs.slice(0, 300), layouts: platformLayouts, layoutAssigns: platformAssigns, customFields: platformCf, industryProfiles: platformIp }));
+    if (CLOUD_ON && platformId && platSyncRef.current) platSyncRef.current.schedule({ tenants: platformTenants, logs: platformLogs.slice(0, 300), layouts: platformLayouts, layoutAssigns: platformAssigns, customFields: platformCf, industryProfiles: platformIp });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, platformAdmins, platformTenants, platformLogs, platformLayouts, platformAssigns, platformCf]);
+  }, [hydrated, platformAdmins, platformTenants, platformLogs, platformLayouts, platformAssigns, platformCf, platformIp]);
 
   // ---- Tự lưu (sau 0,6 giây không đổi) ----
   useEffect(() => {
@@ -496,6 +503,17 @@ export default function DashboardApp() {
   const mySales = !me ? [] : saleScope === 'OWN' ? salesOrders.filter((o) => o.by === me.id)
     : saleScope === 'DEPT' ? salesOrders.filter((o) => o.by === me.id || (!!me.dept && users.find((u) => u.id === o.by)?.dept === me.dept))
     : salesOrders;
+  /** v55.1: tùy chọn cá nhân của người đang đăng nhập; ghi một khóa = cập nhật bản ghi của chính mình (RLS chỉ cho ghi hàng của mình) */
+  const myPrefs = (me ? userPrefs.find((p) => p.id === me.id)?.prefs : undefined) ?? {};
+  const setMyPref = (key: string, value: unknown) => {
+    if (!me) return;
+    setUserPrefs((all) => {
+      const cur = all.find((p) => p.id === me.id);
+      if (cur && JSON.stringify(cur.prefs[key]) === JSON.stringify(value)) return all;
+      const next: UserPrefs = { id: me.id, prefs: { ...(cur?.prefs ?? {}), [key]: value }, at: Date.now() };
+      return cur ? all.map((p) => (p.id === me.id ? next : p)) : [...all, next];
+    });
+  };
   const myCustomersF = myCustomers.filter((c) => (gf.region === 'ALL' || c.region === gf.region) && (gf.dept === 'ALL' || c.dept === gf.dept));
   /** Trạng thái hoạt động: ghi lastActiveAt mỗi phút khi người dùng còn thao tác (đồng bộ cho đồng nghiệp thấy online / vắng) */
   const lastInput = useRef(Date.now());
@@ -1525,7 +1543,24 @@ export default function DashboardApp() {
     if (b.keyed.layouts) setPlatformLayouts((prev) => ps.mergeList(prev as AnyRec[], 'layouts', b.keyed.layouts) as LayoutVer[]);
     if (b.keyed.layoutAssigns) setPlatformAssigns((prev) => ps.mergeList(prev as AnyRec[], 'layoutAssigns', b.keyed.layoutAssigns) as LayoutAssign[]);
     if (b.keyed.customFields) setPlatformCf((prev) => ps.mergeList(prev as AnyRec[], 'customFields', b.keyed.customFields) as CfDef[]);
+    if (b.keyed.industryProfiles) setPlatformIp((prev) => ps.mergeList(prev as AnyRec[], 'industryProfiles', b.keyed.industryProfiles) as IndustryProfile[]);
   };
+  // v55.1: người dùng doanh nghiệp không nhận danh mục 'tenants' qua đồng bộ nền tảng nữa -> hỏi RPC mỗi 60 giây
+  // để 3A bật / tắt module, tạm dừng doanh nghiệp là doanh nghiệp nhận được mà không cần tải lại trang
+  const meId = me?.id;
+  useEffect(() => {
+    if (!CLOUD_ON || platformId || !meId) return;
+    const t = window.setInterval(() => {
+      void cloud.myTenants().then((mine) => {
+        if (!mine) return;
+        registerOrgs(mine);
+        setPlatformTenants((prev) => { const next = regsFromStored(mine); return JSON.stringify(next) === JSON.stringify(prev) ? prev : next; });
+        const m = mine.find((r) => r.id === orgRef.current);
+        if (m?.modules) setCompany((c) => (JSON.stringify(c.enabledModules) === JSON.stringify(m.modules) ? c : { ...c, enabledModules: m.modules }));
+      }).catch(() => undefined);
+    }, 60_000);
+    return () => window.clearInterval(t);
+  }, [platformId, meId]); // eslint-disable-line react-hooks/exhaustive-deps
   const attachSync = (ts: TenantSync, ps?: TenantSync) => {
     syncRef.current = ts;
     ts.onInfo = (i) => setSyncInfo({ ...i });
@@ -1551,7 +1586,10 @@ export default function DashboardApp() {
       const ps = new TenantSync(PLATFORM_TENANT);
       const pl = await ps.load();
       ps.readOnly = !isPlat;
-      const stored = Array.isArray(pl.data.tenants) ? (pl.data.tenants as TenantReg[]) : [];
+      // v55.1: người dùng doanh nghiệp không đọc được danh mục 'tenants' -> lấy hồ sơ doanh nghiệp của mình qua RPC
+      // (máy chủ chưa chạy SQL v55.1 thì RPC chưa có: đọc như cũ)
+      const mine = isPlat ? null : await cloud.myTenants();
+      const stored = mine ?? (Array.isArray(pl.data.tenants) ? (pl.data.tenants as TenantReg[]) : []);
       const regs = regsFromStored(stored);
       const tenants = tenants0.filter((t) => ORGS.some((o) => o.id === t));
       const last = storage.get(LAST_ORG_KEY);
@@ -1567,6 +1605,7 @@ export default function DashboardApp() {
       setPlatformLayouts(Array.isArray(pl.data.layouts) ? (pl.data.layouts as LayoutVer[]) : []);
       setPlatformAssigns(Array.isArray(pl.data.layoutAssigns) ? (pl.data.layoutAssigns as LayoutAssign[]) : []);
       setPlatformCf(Array.isArray(pl.data.customFields) ? (pl.data.customFields as CfDef[]) : []);
+      setPlatformIp(Array.isArray(pl.data.industryProfiles) ? (pl.data.industryProfiles as IndustryProfile[]) : []);
       const users = loadOrg(org, regs, td);
       if (td.version > DATA_VERSION) ts.readOnly = true;
       tenantCloudStats[org] = { ...statsOf(td.data), version: td.version || DATA_VERSION };
@@ -1624,8 +1663,13 @@ export default function DashboardApp() {
     try {
       const access = await cloud.access();
       const isPlat = access.some((a) => a.platform);
-      const pl = await new TenantSync(PLATFORM_TENANT).load();
-      registerOrgs(Array.isArray(pl.data.tenants) ? (pl.data.tenants as TenantReg[]) : []);
+      // v55.1: quản trị 3A đọc danh mục doanh nghiệp; người dùng doanh nghiệp chỉ lấy hồ sơ của mình qua RPC
+      const mine = isPlat ? null : await cloud.myTenants();
+      if (mine) registerOrgs(mine);
+      else {
+        const pl = await new TenantSync(PLATFORM_TENANT).load();
+        registerOrgs(Array.isArray(pl.data.tenants) ? (pl.data.tenants as TenantReg[]) : []);
+      }
       const ids = (isPlat ? ORGS.map((o) => o.id) : access.filter((a) => !a.platform).map((a) => a.tenant_id)).filter((t) => ORGS.some((o) => o.id === t));
       const want = pathOrgId;
       const last = storage.get(LAST_ORG_KEY);
@@ -1996,13 +2040,13 @@ export default function DashboardApp() {
       userId: platformId, admins: platformAdmins, setAdmins: setPlatformAdmins, switchTenant, tenants: platformTenants, setTenantReg, logs: platformLogs, addTenant,
       consoleView, openConsole: (t) => { setConsoleView(true); if (t) setConsoleTab(t); }, consoleTab, setConsoleTab, runMigration: runTenantMigration, backupTenant, restoreTenantSnapshot, log: platformLog,
       layouts: platformLayouts, setLayouts: setPlatformLayouts, layoutAssigns: platformAssigns, setLayoutAssigns: setPlatformAssigns,
-      customFields: platformCf, setCustomFields: setPlatformCf,
-    }, postCash,
+      customFields: platformCf, setCustomFields: setPlatformCf, industryProfiles: platformIp, setIndustryProfiles: setPlatformIp,
+    }, postCash, resources, setResources,
     me, role, loginAt, switchRole, logout, now,
     leads, setLeads, customers, setCustomers, users, setUsers, departments, setDepartments,
     budget, setBudget, budgets, setBudgets, setFiscalYear, activities, setActivities, policy, setPolicy, programs, setPrograms, claims, setClaims, perms, setPerms,
     segRules, segments, setSegments, tierRules, setTierRules, categories, setCategories, popDocs, setPopDocs, sources, setSources,
-    mktItems, setMktItems, company, setCompany, quotes, setQuotes, myLeads, myCustomers: myCustomersF, mySales, gf, setGf,
+    mktItems, setMktItems, company, setCompany, quotes, setQuotes, myLeads, myCustomers: myCustomersF, mySales, myPrefs, setMyPref, gf, setGf,
     range, setRange, skus, setSkus, pos, setPos,
     docTemplates, setDocTemplates, genDocs, setGenDocs, openComposer: (o) => setComposer(o), openWin: (id) => setWinFor(id),
     reservations, moves, receiveShipment, deliverReservation, requestRelease, decideRelease, reserveFromStock, canRelease, reopenLead,
@@ -2070,6 +2114,10 @@ export default function DashboardApp() {
       if (to.length) setNotices((n) => [{ id: uid('n'), at: Date.now(), kind: 'MENTION' as NoticeKind, title: c.entityId.startsWith('dm:') ? `${me.name} nhắn tin cho bạn` : `${me.name} nhắc bạn: ${title}`, body: c.text.slice(0, 160), read: false, module: c.module, to: to.map((u) => u.name).join(', ') }, ...n].slice(0, 80));
     },
   };
+
+  // v56: tên phân hệ theo từ điển thuật ngữ ngành của doanh nghiệp (VD ALUX: "Lệnh SX & lắp đặt")
+  const termT = termsOf(industryProfilesEff(platformIp).find((p) => p.id === tenantIndustry(platformTenants.find((t) => t.id === orgId), orgOf(orgId))));
+  const modName = (m: Module) => (m === 'sales' && !consoleView ? termT('module.sales', MODULE_SHORT[m] ?? MODULE_LABEL[m]) : MODULE_SHORT[m] ?? MODULE_LABEL[m]);
 
   // ---- Badge trên menu ----
   const waiting = myLeads.filter((l) => l.status === 'NEW' || l.status === 'ROUTED').length;
@@ -2151,7 +2199,7 @@ export default function DashboardApp() {
             {groupHead(g.id, g.title, mini, gi === 0, folded, () => toggleGroup(g.id))}
             {!folded && (
               <div id={`nav-${g.id}`} className="space-y-px">
-                {g.list.map((m) => navBtn({ id: m, label: MODULE_SHORT[m] ?? MODULE_LABEL[m], icon: MODULE_ICON[m], active: page === m, mini, badge: badges[m], onClick: () => { ctx.go(m); onPick?.(); }, extra: m === 'tasks' ? <TaskBadge /> : undefined }))}
+                {g.list.map((m) => navBtn({ id: m, label: modName(m), icon: MODULE_ICON[m], active: page === m, mini, badge: badges[m], onClick: () => { ctx.go(m); onPick?.(); }, extra: m === 'tasks' ? <TaskBadge /> : undefined }))}
               </div>
             )}
           </div>
@@ -2241,7 +2289,7 @@ export default function DashboardApp() {
             <button className={cn(btnGhost, 'p-2 lg:hidden')} onClick={() => setDrawerOpen(true)} aria-label="Mở menu"><Menu className="h-5 w-5" /></button>
             <div className="flex min-w-0 shrink items-center gap-2">
               {switcher && <div className="lg:hidden">{switcher}</div>}
-              <h1 className="truncate text-base font-medium leading-tight lg:text-lg">{consoleMode ? (consoleTab === 'overview' ? 'Tổng quan nền tảng' : CONSOLE_TABS.find((t) => t.id === consoleTab)?.label ?? '3A Platform Console') : (MODULE_SHORT[page] ?? MODULE_LABEL[page])}</h1>
+              <h1 className="truncate text-base font-medium leading-tight lg:text-lg">{consoleMode ? (consoleTab === 'overview' ? 'Tổng quan nền tảng' : CONSOLE_TABS.find((t) => t.id === consoleTab)?.label ?? '3A Platform Console') : modName(page)}</h1>
             </div>
             <div className="hidden min-w-0 flex-1 justify-end px-2 lg:flex">
 {page === 'home' && !consoleMode ? <AssistantCommandBar variant="header" /> : <>
@@ -2358,7 +2406,7 @@ export default function DashboardApp() {
               return (
                 <button key={m} onClick={() => ctx.go(m)} className={cn('relative flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px] font-medium', page === m ? 'text-[rgb(var(--accent))]' : 'text-[rgb(var(--muted))]')} aria-current={page === m ? 'page' : undefined}>
                   <Icon className="h-5 w-5" aria-hidden />
-                  <span className="block w-full truncate px-0.5 text-center">{MODULE_SHORT[m] ?? MODULE_LABEL[m]}</span>
+                  <span className="block w-full truncate px-0.5 text-center">{modName(m)}</span>
                   {b && <span className={cn('absolute right-[22%] top-2 h-2 w-2 rounded-full', b.tone === 'red' ? 'bg-[rgb(var(--danger))]' : 'bg-[rgb(var(--accent))]')} aria-label={`${b.n} việc cần xử lý`} />}
                   {m === 'tasks' && <TaskBadge dot />}
                 </button>

@@ -11,9 +11,9 @@ import { ChipFilter, FilterBar } from '../../components/filters';
 import { ImportModal } from '../../components/import-csv';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, ProgressBar, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { claimState, roiRating } from '../../lib/business';
-import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, compact, CUSTOMER_SOURCE, CUSTOMER_STATUS, digits, EMAIL_RE, EMPTY_CUSTOMER, inputBase, inputCls, LEAD_STATUS, mdfOfCustomer, MST_RE, nextCode, progName, PROGRAM_STATUS, quotesOfCustomer, REGION_LABEL, REVENUE_BAND, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, tierFor, tierInfo, TIERS, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, cfMissing, cfSet, compact, CUSTOMER_SOURCE, CUSTOMER_STATUS, digits, EMAIL_RE, EMPTY_CUSTOMER, inputBase, inputCls, LEAD_STATUS, lListCols, mdfOfCustomer, MST_RE, nextCode, progName, PROGRAM_STATUS, quotesOfCustomer, REGION_LABEL, REVENUE_BAND, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, tierFor, tierInfo, TIERS, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv, matchEnum } from '../../lib/csv';
-import type { ConfirmState, Customer, CustomerForm, CustomerStatus, DeptCode, ImportSpec, MenuItem, Region, RevenueBand, Segment, Tier } from '../../lib/types';
+import type { ConfirmState, Customer, CustomerForm, CustomerStatus, DeptCode, ImportSpec, LBlockCfg, MenuItem, Region, RevenueBand, Segment, Tier } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { GetflyOrdersPanel } from './getfly-history';
 import { SourceManagerModal } from './sources';
@@ -21,6 +21,7 @@ import { QuoteHistory } from '../projects/projects';
 import { GeneratedDocList } from '../sales/quote';
 import { ActivityList } from '../staff/staff';
 import { ReservedGoodsPanel } from '../supply/inventory';
+import { cfText, EntityCfDetail, EntityCfForm, EntityListPage, useEntityCf, useEntityFormLayout } from '../page-builder';
 
 export function validateCustomer(f: CustomerForm, customers: Customer[], selfId?: string) {
   const e: Partial<Record<keyof CustomerForm, string>> = {};
@@ -51,11 +52,15 @@ export function CustomerFormModal({ id, onClose }: { id?: string; onClose: () =>
   const set = <K extends keyof CustomerForm>(k: K, v: CustomerForm[K]) => setF((p) => ({ ...p, [k]: v }));
   const reps = users.filter((u) => u.active && u.dept === f.dept && (u.role === 'SALES_REP' || u.role === 'DEPT_HEAD'));
   const suggested = tierFor(f.ytdRevenue, tierRules);
+  // v55.3: trường tùy chỉnh khách hàng theo bố cục form 3A (cùng quy tắc kiểm tra với máy chủ)
+  const fl = useEntityFormLayout('customer');
+  const cfMiss = cfMissing(fl.formDefs, f.cf, 'SAVE');
 
   const save = () => {
     setTouched(true);
     if (Object.keys(errors).length) return;
-    const clean = { ...f, name: f.name.trim(), taxCode: f.taxCode.trim() };
+    if (cfMiss.length) return notify(`${cfMiss[0].type === 'check' ? 'Cần tích' : 'Nhập'} ${cfMiss[0].label}`, 'red');
+    const clean = { ...f, name: f.name.trim(), taxCode: f.taxCode.trim(), cf: f.cf && Object.keys(f.cf).length ? f.cf : undefined };
     if (existing) {
       setCustomers((p) => p.map((c) => (c.id === existing.id ? { ...c, ...clean } : c)));
       notify(`Đã cập nhật ${clean.name}`, 'teal');
@@ -128,6 +133,7 @@ export function CustomerFormModal({ id, onClose }: { id?: string; onClose: () =>
         </Field>
 
       </div>
+      <div className="mt-4"><EntityCfForm entity="customer" vals={f.cf} onChange={(k, v) => set('cf', cfSet(f.cf, k, v))} /></div>
       {manageSources && <SourceManagerModal onClose={() => setManageSources(false)} />}
     </Modal>
   );
@@ -135,10 +141,13 @@ export function CustomerFormModal({ id, onClose }: { id?: string; onClose: () =>
 
 export function CustomersPage() {
   // Công nợ & tuổi nợ xem ở phân hệ Tài chính; Khách hàng chỉ còn danh sách (cột Công nợ vẫn hiện theo từng khách)
-  return <TradingCustomersList />;
+  // v55.3: 3A phát hành bố cục "Danh sách khách hàng" thì dựng theo khối (khối Danh sách bản ghi = bảng này)
+  return <EntityListPage page="customer-list" render={(cfg) => <TradingCustomersList cfg={cfg} />} />;
 }
 
-export function TradingCustomersList() {
+export function TradingCustomersList({ cfg }: { cfg?: LBlockCfg } = {}) {
+  // v55.3: cột trường tùy chỉnh khách hàng (theo khối Danh sách bản ghi; chưa có bố cục thì theo cờ "Danh sách")
+  const cfCols = lListCols(useEntityCf('customer'), cfg);
   const { customers: allCustomers, myCustomers: customers, setCustomers, claims, programs, departments, notify, canDo, userName, dept, openCustomer, openCustomerForm, openProgramForm, presetQuery, getflyOrders, leads, sources, users } = useApp();
   const [q, setQ] = useSticky('TradingCustomersList.q', presetQuery, !!presetQuery);
   const [dp, setDp] = useState<'ALL' | DeptCode>('ALL');
@@ -295,7 +304,7 @@ export function TradingCustomersList() {
         </div>
         {/* Desktop / tablet: bảng */}
         <div className="hidden md:block">
-          <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Mã KH', 'Khách hàng', 'Điện thoại', 'Ngành hàng', 'AM', <span key="r" className="block text-right">Doanh số</span>, <span key="d" className="block text-right">Công nợ</span>, <span key="l" className="block text-right">Hạn mức</span>, 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>]} minW={1000} sort={srt.th}>
+          <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Mã KH', 'Khách hàng', 'Điện thoại', 'Ngành hàng', 'AM', <span key="r" className="block text-right">Doanh số</span>, <span key="d" className="block text-right">Công nợ</span>, <span key="l" className="block text-right">Hạn mức</span>, 'Trạng thái', ...cfCols.map((d) => d.label), <span key="a" className="block text-right">Thao tác</span>]} minW={1000 + cfCols.length * 140} sort={srt.th}>
             {paged.slice.map((c) => {
               return (
                 <tr key={c.id} className={cn(rowCls, 'cursor-pointer', sel.has(c.id) && 'bg-[rgb(var(--accent)/0.05)]')} onClick={() => openCustomer(c.id)}>
@@ -309,6 +318,7 @@ export function TradingCustomersList() {
                   <td className={cn(tdCls, 'text-right tabular-nums', over(c) && 'text-[rgb(var(--danger-fg))]')} title={over(c) ? 'Gần / vượt hạn mức công nợ' : undefined}>{compact(c.debt)}</td>
                   <td className={cn(tdCls, 'text-right tabular-nums text-[rgb(var(--fg2))]')}>{c.creditLimit ? compact(c.creditLimit) : '—'}</td>
                   <td className={tdCls}><Chip tone={CUSTOMER_STATUS[c.status].tone}>{CUSTOMER_STATUS[c.status].label}</Chip></td>
+                  {cfCols.map((d) => { const tx = cfText(d, c.cf?.[d.key], userName); return <td key={d.id} className={cn(tdCls, (d.type === 'money' || d.type === 'number') && 'text-right tabular-nums')} data-cf={d.key}><span className="block max-w-[180px] truncate" title={tx}>{tx || <span className="text-[rgb(var(--faint))]">—</span>}</span></td>; })}
                   <td className={cn(tdLast, 'whitespace-nowrap text-right')} onClick={(e) => e.stopPropagation()}>
                     <span className="mr-1 inline-block align-middle"><CommentButton entity="customer" entityId={c.id} title={c.name} module="customers" /></span>
                     <RowMenu items={[{ label: 'Sửa', icon: Pencil, disabled: !canEdit, onClick: () => openCustomerForm(c.id) }, ...menuFor(c)]} />
@@ -399,6 +409,9 @@ export function CustomerDrawer({ id, onClose }: { id: string; onClose: () => voi
         </div>
         <p className="mt-2 text-sm tabular-nums text-[rgb(var(--muted))]">{vnd(c.ytdRevenue)} / {mdf ? vnd(mdf) : '0 ₫'}</p>
       </section>
+
+      {/* v55.3 khối Chi tiết bản ghi do 3A thiết kế (trường tùy chỉnh + trường gốc đặt thêm) */}
+      <EntityCfDetail entity="customer" vals={c.cf} builtin={(k) => ({ code: c.code, name: c.name, taxCode: c.taxCode, segment: segName(c.segment), tier: tierInfo(c.tier).label, region: REGION_LABEL[c.region], dept: dept(c.dept)?.short ?? '—', amId: userName(c.amId) || '—', contactName: c.contactName || '—', contactPhone: c.contactPhone || '—', contactEmail: c.contactEmail || '—', address: c.address || '—', creditLimit: c.creditLimit ? vnd(c.creditLimit) : '—', debt: vnd(c.debt) } as Record<string, string>)[k] ?? '—'} />
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded bg-[rgb(var(--raised))] p-4">
