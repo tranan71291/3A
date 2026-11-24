@@ -2,7 +2,7 @@
 
 import { Children, Fragment, cloneElement, isValidElement, type Dispatch, type DragEvent, type ReactElement, type ReactNode, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, Copy, Download, Plus, Printer, Sparkles, Wallet, X } from 'lucide-react';
-import { BRAND, btnGhost, btnPrimary, btnSm, C, digits, esc, GRAD, inputCls, overlaySeq, overlayStack, overlaySubs, overlayTop, portal, stickySave, stickyStore, strHash, todayISO, VIEW_META } from '../lib/core';
+import { BRAND, btnGhost, btnPrimary, btnSm, C, digits, esc, GRAD, inputCls, overlaySeq, overlayStack, overlaySubs, overlayTop, portal, stickySave, stickyStore, strHash, todayISO, useApp, VIEW_META } from '../lib/core';
 import { downloadCsv } from '../lib/csv';
 import type { SortState, SortVal, TableBulk, TableSort, Tone, ViewKind } from '../lib/types';
 import { cn } from '../lib/utils';
@@ -211,6 +211,23 @@ export function useSticky<T>(key: string, init: T, force = false): [T, Dispatch<
   const [v, setV] = useState<T>(() => (!force && stickyStore.has(key) ? (stickyStore.get(key) as T) : init));
   useEffect(() => { stickyStore.set(key, v); stickySave(); }, [key, v]);
   return [v, setV];
+}
+
+/**
+ * v55.1: tùy chọn "Lưu cho tôi" (cột, kỳ, số dòng…) lưu theo người dùng trong dữ liệu doanh nghiệp -> đồng bộ nhiều thiết bị.
+ * Lần đầu dùng: lấy giá trị đang nhớ trong phiên (useSticky cũ, sessionStorage) chép sang để người dùng không mất lựa chọn.
+ */
+export function useUserPref<T>(key: string, init: T): [T, (x: T | ((prev: T) => T)) => void] {
+  const { myPrefs, setMyPref, me } = useApp();
+  const has = Object.prototype.hasOwnProperty.call(myPrefs, key);
+  const legacy = stickyStore.has(key) ? (stickyStore.get(key) as T) : undefined;
+  // giữ nguyên tham chiếu giá trị mặc định giữa các lần render (mảng / đối tượng mới mỗi lần làm hiệu ứng phụ chạy vòng lặp)
+  const initRef = useRef(init);
+  const v = has ? (myPrefs[key] as T) : legacy !== undefined ? legacy : initRef.current;
+  const meId = me?.id;
+  useEffect(() => { if (meId && !has && legacy !== undefined) setMyPref(key, legacy); }, [meId, has]); // eslint-disable-line react-hooks/exhaustive-deps
+  const set = (x: T | ((prev: T) => T)) => setMyPref(key, typeof x === 'function' ? (x as (prev: T) => T)(v) : x);
+  return [v, set];
 }
 
 /** Trạng thái đang tải (khung xương) */

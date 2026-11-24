@@ -75,6 +75,8 @@ export type SkuItem = { sku: string; name: string; brand: string; category: stri
   whStock?: Record<string, number>;
   /** v28: ngừng kinh doanh (ẩn khỏi danh mục, giữ lịch sử) */
   archived?: boolean;
+  /** v55.3: trường tùy chỉnh do 3A định nghĩa (entity 'product') */
+  cf?: Record<string, CfVal>;
   /** v28b: thông tin bổ sung (tùy chọn) */
   vatPct?: number; supplier?: string; origin?: string; image?: string;
   /** v29: tài liệu sản phẩm (catalogue, datasheet, CO/CQ) */
@@ -280,11 +282,40 @@ export type DateRange = { from: string; to: string };
 
 // ---------------- v52: Thiết kế giao diện (Page Builder) ----------------
 /** Trang dựng được bằng khối. Bản 1: Tổng quan */
-export type LPage = 'home' | 'desk' | 'reports' | 'sale-detail' | 'sale-list' | 'customer' | 'claim';
+export type LPage = 'home' | 'desk' | 'reports' | 'sale-detail' | 'sale-list' | 'sale-form' | 'customer-list' | 'customer-detail' | 'lead-list' | 'lead-detail' | 'customer' | 'claim';
 
+/** v55.3 Đối tượng CRM có trường tùy chỉnh / trang thiết kế: đơn bán, khách hàng, lead, sản phẩm */
+export type CfEntity = 'sale' | 'customer' | 'lead' | 'product';
+
+/**
+ * Loại khối. 'K-Order-Info' là tên cũ (v53–v55.1) của khối Chi tiết bản ghi: chỉ còn để đọc bố cục cũ,
+ * lMigrate tự đổi thành 'K-RecordDetail'.
+ */
 export type LBlockType = 'K-Stat-Simple' | 'K-Chart-Line' | 'K-Table-Compact' | 'K-Text' | 'K-Icons'
   | 'K-Order-Info' | 'K-Order-Lines' | 'K-Order-Flow' | 'K-Order-Pay' | 'K-Order-Profit' | 'K-Order-Debt' | 'K-Order-Log' | 'K-Order-Ship' | 'K-Order-Files'
-  | 'K-Button' | 'K-Filter' | 'K-Tabs' | 'K-Target' | 'K-Divider' | 'K-Spacer' | 'K-SaleList';
+  | 'K-Button' | 'K-Filter' | 'K-Tabs' | 'K-Target' | 'K-Divider' | 'K-Spacer' | 'K-SaleList'
+  | 'K-RecordDetail' | 'K-RecordForm' | 'K-RecordList';
+
+/**
+ * v55.2 Cấp 2 — vị trí một trường trong khối Form / Chi tiết bản ghi. Định nghĩa trường (CfDef hoặc trường gốc) tách riêng;
+ * bỏ trường khỏi bố cục chỉ ẩn hiển thị, không xóa giá trị cf[fieldKey] trong bản ghi.
+ */
+export type LFieldItem = {
+  id: string;
+  /** Trường gốc ('customer', 'code'…) hoặc trường tùy chỉnh 'cf:<key>' */
+  fieldKey: string;
+  /** Độ rộng trên lưới 12 cột (màn rộng); màn hẹp tự giãn */
+  colSpan: number;
+  labelOverride?: string;
+  placeholder?: string;
+  readOnly?: boolean;
+  /** Bỏ trống = theo định nghĩa trường */
+  requiredOverride?: 'NONE' | 'SAVE' | 'APPROVE';
+  helpText?: string;
+};
+
+/** v55.2 Nhóm trường trong khối Form / Chi tiết bản ghi */
+export type LSection = { id: string; title: string; /** số cột gợi ý: trường mới thả vào nhận độ rộng 12 / cols */ cols: 1 | 2 | 3 | 4; collapsedByDefault?: boolean; fields: LFieldItem[] };
 
 /** v54: kiểu khối text */
 export type LTextKind = 'title' | 'heading' | 'para' | 'label' | 'info' | 'note' | 'warn' | 'quote';
@@ -350,12 +381,14 @@ export type LBlockCfg = {
   fields?: string[]; off?: string[]; gridCols?: 2 | 3 | 4;
   /** v53: chỉ hiện khi đơn ở các trạng thái / với các vai trò (rỗng = luôn hiện) */
   stages?: LStage[]; roles?: Role[];
+  /** v55.2 khối Form / Chi tiết bản ghi: loại bản ghi, các nhóm trường. Trường bị bỏ khỏi bố cục ghi ở `off` (không tự thêm lại) */
+  entity?: CfEntity; sections?: LSection[];
 };
 
 export type LBlock = { id: string; type: LBlockType; pos: { lg: LPos; sm: { w: number; order: number } }; show: Record<LDevice, boolean>; config: LBlockCfg };
 
 /** Một phiên bản bố cục của một trang (role = null: dùng chung mọi vai trò) */
-export type LayoutVer = { id: string; schema: 1; page: LPage; version: number; status: 'DRAFT' | 'PUBLISHED'; role: Role | null; blocks: LBlock[]; note?: string; by: string; at: number; publishedAt?: number; publishedBy?: string };
+export type LayoutVer = { id: string; schema: 1; page: LPage; version: number; status: 'DRAFT' | 'PUBLISHED'; role: Role | null; blocks: LBlock[]; note?: string; by: string; at: number; publishedAt?: number; publishedBy?: string; /** v56 bố cục riêng của một doanh nghiệp (nhân bản từ mẫu ngành): bản nháp / phát hành tách khỏi bản chung */ tenantId?: string; fromIndustry?: IndustryCode };
 
 /** Áp dụng một phiên bản cho một cấp: toàn hệ thống / mô hình doanh nghiệp / riêng một doanh nghiệp */
 export type LayoutAssign = { id: string; page: LPage; level: 'SYSTEM' | 'PROFILE' | 'TENANT'; profile: 'TRADING' | 'MFG' | null; tenantId: string | null; role: Role | null; verId: string; at: number; by: string };
@@ -363,20 +396,68 @@ export type LayoutAssign = { id: string; page: LPage; level: 'SYSTEM' | 'PROFILE
 export type LRow = { date: string; v: Record<string, number>; d: Record<string, string>; f: string[]; /** v54: phòng ban (lọc theo Bộ lọc chung) */ dp?: string };
 
 // ---------------- v53: Trường tùy chỉnh ----------------
-export type CfType = 'text' | 'number' | 'money' | 'date' | 'select' | 'user' | 'check';
+/**
+ * Kiểu trường. v56 thêm kiểu chuyên ngành (giá trị lưu là chuỗi / số để dùng chung kho cf):
+ *  - datetime_range: "YYYY-MM-DDTHH:mm/YYYY-MM-DDTHH:mm" (tự tính số giờ / ngày)
+ *  - resource_picker: mã tài nguyên (xe, đội thợ, phòng chụp…), kiểm tra trùng lịch theo trường thời gian `rangeKey`
+ *  - formula: số, tính từ các trường số theo `formula` (VD "dien_tich * don_gia")
+ *  - checklist: JSON mảng các công đoạn đã xong (danh sách công đoạn trong `options`)
+ *  - media_gallery: JSON mảng ảnh [{ name, url, path?, size }] (kho tệp riêng crm-attach)
+ *  - signature: JSON { url, path?, sha256, at, by } (ảnh chữ ký + mã SHA-256)
+ */
+export type CfType = 'text' | 'number' | 'money' | 'date' | 'select' | 'user' | 'check'
+  | 'datetime_range' | 'resource_picker' | 'formula' | 'checklist' | 'media_gallery' | 'signature';
 
 /** Định nghĩa trường do 3A tạo. scope HEAD: đầu đơn; LINE: dòng hàng (chỉ ghi chú). key cố định sau khi tạo */
 export type CfDef = {
-  id: string; entity: 'sale'; scope: 'HEAD' | 'LINE'; key: string; label: string; type: CfType; options?: string[];
+  id: string; entity: CfEntity; scope: 'HEAD' | 'LINE'; key: string; label: string; type: CfType; options?: string[];
   required: 'NONE' | 'SAVE' | 'APPROVE';
   levels: { sys: boolean; tr: boolean; mfg: boolean; tenants: string[] };
   where: { form: boolean; info: boolean; list: boolean; filter: boolean };
   status: 'ACTIVE' | 'OFF'; order: number; at: number; by: string;
+  /** v56 resource_picker: loại tài nguyên; trường datetime_range dùng để kiểm tra trùng lịch */
+  resourceKind?: string; rangeKey?: string;
+  /** v56 formula: biểu thức + - * / ( ) trên mã các trường số; đơn vị hiển thị */
+  formula?: string; unit?: string;
+  /** v56 trường sinh ra khi nhân bản mẫu ngành */
+  fromIndustry?: IndustryCode;
 };
+
+/** v56 Mã ngành (mẫu ngành) */
+export type IndustryCode = 'trade' | 'mfg_install' | 'studio' | 'car_rental' | 'booking' | 'canteen';
+
+/** v56 Trường mẫu trong bộ mẫu ngành (chưa gắn doanh nghiệp) */
+export type CfTemplate = Omit<CfDef, 'id' | 'levels' | 'status' | 'order' | 'at' | 'by' | 'fromIndustry'>;
+
+/**
+ * v56 Hồ sơ ngành (bộ mẫu ngành) lưu ở _platform/industryProfiles: từ điển thuật ngữ, trạng thái quy trình,
+ * loại tài nguyên, trường mẫu, bố cục mẫu. "Áp dụng bộ mẫu ngành" sao chép trường + bố cục thành bản riêng của doanh nghiệp.
+ */
+export type IndustryProfile = {
+  id: IndustryCode; label: string; desc: string;
+  /** bộ mẫu đầy đủ (trade, mfg_install); ngành khác mới có hạ tầng: thuật ngữ, trạng thái, loại tài nguyên */
+  ready: boolean;
+  terms: Record<string, string>;
+  workflowStates: { id: string; label: string; tone: Tone }[];
+  resourceKinds: { id: string; label: string }[];
+  cfTemplates: CfTemplate[];
+  layoutTemplates: { page: LPage; blocks: LBlock[] }[];
+  at?: number; by?: string;
+};
+
+/** v56 Tài nguyên của doanh nghiệp (xe, đội thợ, phòng chụp…): doanh nghiệp tự quản lý, lưu từng bản ghi */
+export type Resource = { id: string; kind: string; name: string; code?: string; note?: string; active: boolean; at: number; by?: string };
 
 export type CfVal = string | number | boolean;
 
-export type SaleFile = { id: string; name: string; url: string; size: number; type: string; at: number; by?: string };
+/**
+ * Tệp đính kèm đơn bán.
+ * v55.1: tệp mới nằm ở kho riêng tư 'crm-attach' — `path` = đường dẫn trong kho, `url` = 'attach:<path>'.
+ * Tệp cũ (trước v55.1) giữ nguyên: `url` là data: base64 hoặc link công khai của 'crm-files'; vẫn mở được.
+ */
+export type SaleFile = { id: string; name: string; url: string; size: number; type: string; at: number; by?: string; mimeType?: string; path?: string };
+/** v55.1: tùy chọn cá nhân "Lưu cho tôi" — 1 bản ghi / người (id = mã nhân sự), đồng bộ theo doanh nghiệp */
+export type UserPrefs = { id: string; prefs: Record<string, unknown>; at: number };
 
 export type Department = { code: DeptCode; name: string; short: string; slaMinutes: number; headId?: string; receivesLeads: boolean; active: boolean };
 
@@ -449,6 +530,8 @@ export type Lead = {
   customerId?: string;
   /** Đơn hàng công trình tạo từ lead (mô hình sản xuất) */
   jobId?: string;
+  /** v55.3: trường tùy chỉnh do 3A định nghĩa (entity 'lead') */
+  cf?: Record<string, CfVal>;
 };
 
 export type Customer = {
@@ -480,6 +563,8 @@ export type Customer = {
   getflyAccountId?: number;
   getflyAccountCode?: string;
   baseline?: { revenue: number; debt: number };
+  /** v55.3: trường tùy chỉnh do 3A định nghĩa (entity 'customer') */
+  cf?: Record<string, CfVal>;
 };
 
 /** Dòng báo giá: giá niêm yết theo bảng giá, chiết khấu dòng, đơn giá chốt = niêm yết x (1 - CK) */
@@ -1024,6 +1109,8 @@ export type AppCtx = {
     layouts: LayoutVer[]; setLayouts: Dispatch<SetStateAction<LayoutVer[]>>; layoutAssigns: LayoutAssign[]; setLayoutAssigns: Dispatch<SetStateAction<LayoutAssign[]>>;
     /** v53: trường tùy chỉnh do 3A định nghĩa */
     customFields: CfDef[]; setCustomFields: Dispatch<SetStateAction<CfDef[]>>;
+    /** v56: hồ sơ ngành (thuật ngữ, quy trình, mẫu trường / bố cục) do 3A quản lý */
+    industryProfiles: IndustryProfile[]; setIndustryProfiles: Dispatch<SetStateAction<IndustryProfile[]>>;
   };
   me: User;
   role: Role;
@@ -1033,6 +1120,9 @@ export type AppCtx = {
   now: number | null;
   leads: Lead[];
   setLeads: Dispatch<SetStateAction<Lead[]>>;
+  /** v56: tài nguyên của doanh nghiệp (đội thợ, xe, phòng chụp…) dùng cho trường chọn tài nguyên */
+  resources: Resource[];
+  setResources: Dispatch<SetStateAction<Resource[]>>;
   customers: Customer[];
   setCustomers: Dispatch<SetStateAction<Customer[]>>;
   users: User[];
@@ -1081,6 +1171,9 @@ export type AppCtx = {
   myCustomers: Customer[];
   /** v50.2: đơn bán theo phạm vi dữ liệu của người đang đăng nhập */
   mySales: SalesOrder[];
+  /** v55.1: tùy chọn cá nhân của người đang đăng nhập (đồng bộ nhiều thiết bị) và hàm ghi một khóa */
+  myPrefs: Record<string, unknown>;
+  setMyPref: (key: string, value: unknown) => void;
   skus: SkuItem[];
   setSkus: Dispatch<SetStateAction<SkuItem[]>>;
   warehouses: WarehouseInfo[];
@@ -2176,7 +2269,7 @@ export type SoStep = { label: string; at?: string; sub?: ReactNode; state: 'done
 
 export type SalePick = { kind: SaleLineKind; ref?: string; name: string; unit: string; price: number; sub: string; vat: number };
 
-export type SettingsTab = 'coa' | 'overview' | 'ai' | 'zalo' | 'perms' | 'workflow' | 'hub' | 'platform' | 'company' | 'org' | 'fund' | 'mkt' | 'segments' | 'pricing' | 'accounting' | 'getfly' | 'email' | 'zns' | 'security' | 'warehouses';
+export type SettingsTab = 'coa' | 'overview' | 'ai' | 'zalo' | 'perms' | 'workflow' | 'hub' | 'platform' | 'company' | 'org' | 'fund' | 'mkt' | 'segments' | 'pricing' | 'accounting' | 'getfly' | 'email' | 'zns' | 'security' | 'warehouses' | 'resources';
 
 // =====================================================================
 //  3A PLATFORM CONSOLE — quản trị nền tảng: doanh nghiệp, cấp phép module, dữ liệu & nâng cấp an toàn
@@ -2262,6 +2355,10 @@ export type TenantReg = {
   lastBackupAt?: number; lastMigrationAt?: number; note?: string;
   /** v39: hồ sơ nhận diện doanh nghiệp (tên, mã đường dẫn, tên miền, loại hình, màu, logo) — danh mục doanh nghiệp không ghi cứng trong code */
   org?: Org;
+  /** v56 mã ngành (bộ mẫu ngành, từ điển thuật ngữ); chưa đặt thì theo mô hình: Xưởng = mfg_install, còn lại = trade */
+  industry?: IndustryCode;
+  /** v56 lần áp dụng bộ mẫu ngành gần nhất */
+  industryApplied?: { code: IndustryCode; at: number; by: string; fields: number; layouts: number };
 };
 
 export type PlatformLog = { id: string; at: number; by: string; tenant?: string; action: string; detail: string };

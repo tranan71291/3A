@@ -26,6 +26,7 @@ import { PermissionsSettings } from './permissions';
 import { LegacyDemoPanel } from './sample-data';
 import { BusinessModulesPanel } from './settings';
 import { WorkflowSettings } from './workflow';
+import { ResourceSettings } from './resources';
 
 /** Phát hiện bất thường từ nhật ký: đăng nhập lỗi dồn dập, khóa tài khoản, đổi quyền ngoài giờ (22h–6h) trong 7 ngày */
 export function AnomalyCard() {
@@ -337,6 +338,7 @@ export function SettingsModule() {
     { id: 'coa', label: 'Hệ thống tài khoản', show: true, group: 'Nghiệp vụ' },
     { id: 'pricing', label: 'Bảng đơn giá & thanh toán', show: mode !== 'TRADING', group: 'Nghiệp vụ' },
     { id: 'warehouses', label: 'Kho hàng', show: mode !== 'MFG', group: 'Nghiệp vụ' },
+    { id: 'resources', label: 'Tài nguyên', show: true, group: 'Nghiệp vụ' },
     { id: 'segments', label: mode === 'MFG' ? 'Loại & nguồn khách' : 'Phân loại khách', show: true, group: 'Nghiệp vụ' },
     { id: 'fund', label: 'Quỹ Hãng 3M', show: mode !== 'MFG', group: 'Marketing & quỹ' },
     { id: 'mkt', label: 'Ngân sách Marketing', show: true, group: 'Marketing & quỹ' },
@@ -382,6 +384,7 @@ export function SettingsModule() {
       {cur === 'coa' && <CoaSettings />}
 
       {cur === 'warehouses' && <WarehouseSettings />}
+      {cur === 'resources' && <ResourceSettings />}
       {cur === 'fund' && <FundSettings />}
       {cur === 'mkt' && <MarketingBudgetSettings />}
       {cur === 'segments' && <SegmentSettings />}

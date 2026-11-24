@@ -9,17 +9,25 @@ import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
 import { ImportModal } from '../../components/import-csv';
 import { Chip, Code, EmptyState, Panel, Table, useSort, useSticky } from '../../components/ui';
 import { scoreLead } from '../../lib/business';
-import { boqIsEstimate, boqTotal, btnGhost, btnSm, compact, digits, findByTax, inputBase, inputCls, LEAD_STATUS, leadDate, LOST_REASON, nextCode, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, SOURCE_LABEL, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
+import { boqIsEstimate, boqTotal, btnGhost, btnSm, compact, digits, findByTax, inputBase, inputCls, LEAD_STATUS, leadDate, lListCols, LOST_REASON, nextCode, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, SOURCE_LABEL, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
 import { downloadCsv, matchEnum } from '../../lib/csv';
-import type { ConfirmState, ImportSpec, Lead, LeadForm, LeadStatus, Source } from '../../lib/types';
+import type { ConfirmState, ImportSpec, LBlockCfg, Lead, LeadForm, LeadStatus, Source } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { formToLead, LeadFormModal, validateLead } from './lead-form';
+import { cfText, EntityListPage, useEntityCf } from '../page-builder';
 
 // =====================================================================
 //  DATA MKT — danh sách lead, thêm mới, nhập từ CSV
 // =====================================================================
 
-export function DataMktPage() {
+/** v55.3: trang Data MKT theo bố cục 3A phát hành ("Danh sách lead"), chưa phát hành thì giao diện gốc */
+export function DataMktLayoutPage() {
+  return <EntityListPage page="lead-list" render={(cfg) => <DataMktPage cfg={cfg} />} />;
+}
+
+export function DataMktPage({ cfg }: { cfg?: LBlockCfg } = {}) {
+  // v55.3: cột trường tùy chỉnh lead (theo khối Danh sách bản ghi; chưa có bố cục thì theo cờ "Danh sách")
+  const cfCols = lListCols(useEntityCf('lead'), cfg);
   const { leads: allLeads, myLeads: leads, setLeads, customers, notify, presetQuery, canDo, userName, dept, openWin } = useApp();
   const [q, setQ] = useSticky('DataMktPage.q', presetQuery, !!presetQuery);
   const [status, setStatus] = useState<string>('ALL');
@@ -117,7 +125,7 @@ export function DataMktPage() {
           ))}
         </div>
         <div className="hidden md:block">
-        <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Mã', 'Công ty', 'Liên hệ', 'Điện thoại', 'MST', 'Nhóm khách', 'Nguồn', <span key="v" className="block text-right">Giá trị</span>, <span key="s" className="block text-right">Điểm</span>, 'Trạng thái', 'Phụ trách', '']} minW={1080} sort={srt.th}>
+        <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Mã', 'Công ty', 'Liên hệ', 'Điện thoại', 'MST', 'Nhóm khách', 'Nguồn', <span key="v" className="block text-right">Giá trị</span>, <span key="s" className="block text-right">Điểm</span>, 'Trạng thái', 'Phụ trách', ...cfCols.map((d) => d.label), '']} minW={1080 + cfCols.length * 140} sort={srt.th}>
           {paged.slice.map((l) => {
             const score = l.score ?? scoreLead(l, customers);
             const v = boqTotal(l);
@@ -135,6 +143,7 @@ export function DataMktPage() {
                 <td className={cn(tdCls, 'text-right tabular-nums', score >= 80 ? 'font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))]')}>{score}</td>
                 <td className={tdCls} title={l.status === 'LOST' && l.lostReason ? LOST_REASON[l.lostReason] : l.getflySync?.status === 'SYNCED' ? `Getfly ${l.getflySync.orderCode}` : undefined}><Chip tone={LEAD_STATUS[l.status].tone}>{LEAD_STATUS[l.status].label}</Chip></td>
                 <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')} title={l.dept ? dept(l.dept)?.short : 'Chưa phân bổ'}><span className="block max-w-[150px] truncate">{l.assignee ? userName(l.assignee) : l.dept ? dept(l.dept)?.short : <span className="text-[rgb(var(--faint))]">Chưa phân bổ</span>}</span></td>
+                {cfCols.map((d) => { const tx = cfText(d, l.cf?.[d.key], userName); return <td key={d.id} className={cn(tdCls, (d.type === 'money' || d.type === 'number') && 'text-right tabular-nums')} data-cf={d.key}><span className="block max-w-[180px] truncate" title={tx}>{tx || <span className="text-[rgb(var(--faint))]">—</span>}</span></td>; })}
                 <td className={cn(tdLast, 'whitespace-nowrap text-right')}>
                   <RowMenu label={`Thao tác ${l.code}`} items={[
                     ...(l.status === 'QUOTED' ? [{ label: 'Chốt đơn', icon: CheckCircle2, disabled: !canDo('project.update'), onClick: () => openWin(l.id) }] : []),

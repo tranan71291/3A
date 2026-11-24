@@ -4,8 +4,9 @@ import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from
 import { AlertTriangle, Banknote, Building2, CalendarDays, Check as CheckIcon, ChevronDown, ChevronLeft, ChevronRight, Coins, Columns3, Download, Eye, FileText, Filter, Lock, MoreVertical, PackageMinus, Paperclip, Pencil, Plus, Printer, Receipt as ReceiptIcon, Search, Send, Trash2, Truck, Undo2, Upload, Users, Wallet, Warehouse, X, XCircle } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { RowMenu } from '../../components/controls';
-import { Chip, Code, EmptyState, Field, Modal, MoneyInput, useSticky } from '../../components/ui';
-import { addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, CF_FILTERABLE, cfDefsFor, cfEmpty, cfMissing, cfSet, compact, DECISION_LABEL, digits, downloadBlob, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, lCondOk, lFieldOrder, lFill, lIsCore, LPageC, lStageOf, lStarterSale, MAIN_WH, nextCode, overdueDays, PRICE_TIER, readAsDataUrl, REGION_LABEL, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleCashOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, SEGMENT_LABEL, SO_INFO_F, SO_LINE_F, SO_LIST_TABS, SO_SEARCH, SO_SEARCH_DEF, soGrid, soIco, soTd, soTh, soTime, TIER, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
+import { Chip, Code, EmptyState, Field, Modal, MoneyInput, useSticky, useUserPref } from '../../components/ui';
+import { cloudMessage } from '../../lib/cloud';
+import { ATTACH_PREFIX, attachPath, cloud, CLOUD_ON, CloudError, openAttachment, addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, CF_FILTERABLE, cfEmpty, cfMissing, cfSet, compact, DECISION_LABEL, digits, downloadBlob, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, lCondOk, lFieldOrder, lSaleAvail, lSaleSections, lFill, lIsCore, LPageC, lStageOf, lStarterSale, MAIN_WH, nextCode, overdueDays, PRICE_TIER, readAsDataUrl, REGION_LABEL, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleCashOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, SEGMENT_LABEL, SO_LINE_F, SO_LIST_TABS, SO_SEARCH, SO_SEARCH_DEF, soGrid, soIco, soTd, soTh, soTime, TIER, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
 import { downloadCsv, xlsxBlob } from '../../lib/csv';
 import { saleCostEst, saleDirectCost, saleHeld, saleNetRevenue, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
 import type { ApprovalDecision, CfVal, CompanyInfo, Customer, LBlock, LBlockCfg, LBlockType, LDevice, LIconAct, LPageCtx, PriceTier, SaleDelivery, SaleFile, SaleFilter, SaleInvBuyer, SaleInvItem, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
@@ -13,8 +14,9 @@ import { cn, wfApprovers, wfPath } from '../../lib/utils';
 import { compressImage, stockOf } from '../../lib/workshop';
 import { SearchBox } from '../alux/orders';
 import { useArItems } from '../finance/ar-aging';
-import { CfInput, cfText, lActCommonRun, LBusinessView, lCommonNode, lVars, useMinW, useSaleCf, useTenantLayout } from '../messages/messenger';
+import { CfInput, cfText, DynamicFieldRenderer, lActCommonRun, LBusinessView, lCommonNode, lVars, useMinW, useSaleCf, useSaleFormLayout, useNameOf, useSaleHeadDefs, useTenantLayout } from '../page-builder';
 import { docShell, moneyToWordsVN, printHtml } from './templates';
+import { cfCompute, resourceConflicts, useTerminology } from '../../lib/industry';
 import { useApprovalQueue } from '../tasks/tasks';
 
 /** Bản in phiếu bán hàng */
@@ -50,7 +52,10 @@ export function useOutside(open: boolean, close: () => void) {
 }
 
 /** Thanh tiêu đề trang đơn hàng: đường dẫn + nút thao tác */
-export function SoTop({ crumb, title, onCrumb, chips, children }: { crumb?: string; title: ReactNode; onCrumb?: () => void; chips?: ReactNode; children?: ReactNode }) {
+export function SoTop({ crumb: crumb0, title, onCrumb, chips, children }: { crumb?: string; title: ReactNode; onCrumb?: () => void; chips?: ReactNode; children?: ReactNode }) {
+  // v56: đường dẫn "Quản lý đơn hàng" đổi theo thuật ngữ ngành (VD "Quản lý lệnh sản xuất & lắp đặt")
+  const { t } = useTerminology();
+  const crumb = crumb0?.replace(/^Quản lý đơn hàng/, t('saleList'));
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
       {crumb && <button className="text-[14px] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={onCrumb}>{crumb} ›</button>}
@@ -179,8 +184,10 @@ export function soSteps(o: SalesOrder, stage: SaleStage, vs: StockVoucher[], use
 
 /** v50: quyền thao tác trên đơn: người lên đơn với đơn của mình; Giám đốc / người có quyền "Bán hàng: sửa, hủy, xóa đơn" với mọi đơn */
 export function useSaleRights() {
-  const { me, canDo, stockVouchers, setStockVouchers, setSalesOrders, setSaleStatus, notify, postCash, users, dispatch, cashEntries, platform, org } = useApp();
+  const { me, canDo, stockVouchers, setStockVouchers, setSalesOrders, setSaleStatus, notify, postCash, users, dispatch, cashEntries } = useApp();
   const mgr = canDo('sale.manage');
+  // v55.2: bắt buộc khi duyệt theo định nghĩa trường + yêu cầu đặt riêng trong bố cục Form lên đơn
+  const headDefs = useSaleHeadDefs();
   const del = canDo('sale.delete');
   const docs = canDo('sale.docs');
   const own = (o: SalesOrder) => !!me && o.by === me.id;
@@ -199,7 +206,7 @@ export function useSaleRights() {
     canDocs: () => docs,
     canSelf: (o: SalesOrder) => !!o.approval?.self && o.approval.status === 'PENDING' && o.status === 'PENDING' && ((own(o) && canDo('sale.approve')) || mgr),
     canVoidPay: () => docs,
-    selfApprove: (o: SalesOrder) => { const miss = cfMissing(cfDefsFor(platform.customFields, org), o.cf, 'APPROVE'); if (miss.length) { notify(`${o.code} thiếu ${miss.map((d) => d.label).join(', ')}: cập nhật thông tin đơn trước khi duyệt`, 'red'); return; } decide(o, 'APPROVED'); notify(`Đã duyệt ${o.code}. Bấm Yêu cầu xuất kho khi cần giao hàng`, 'teal'); },
+    selfApprove: (o: SalesOrder) => { const miss = cfMissing(headDefs, o.cf, 'APPROVE'); if (miss.length) { notify(`${o.code} thiếu ${miss.map((d) => d.label).join(', ')}: cập nhật thông tin đơn trước khi duyệt`, 'red'); return; } decide(o, 'APPROVED'); notify(`Đã duyệt ${o.code}. Bấm Yêu cầu xuất kho khi cần giao hàng`, 'teal'); },
     selfReject: (o: SalesOrder, note: string) => { decide(o, 'REJECTED', note); setSaleStatus(o.id, 'CANCELLED', `Không duyệt: ${note}`); },
     cancelOrder: (o: SalesOrder, why: string) => {
       const ps = pendOut(o);
@@ -273,21 +280,23 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
   const R = useSaleRights();
   const { mySales: salesOrders, setOpenSale, users, quotes, warehouses, stockVouchers, customers, departments } = useApp();
   const pctx = useContext(LPageC);
+  const { t: term } = useTerminology();
   /** v54.1: nút đầu bảng, trường lọc 3A cho hiện */
   const hb = (k: string) => !(cfg?.hbOff ?? []).includes(k);
   const fOff = cfg?.fltOff ?? [];
   const fo = (k: string) => !fOff.includes(k);
   const onNewB = hb('new') ? onNew : undefined;
   const [tab0, setTab] = useSticky<SaleTab>('Sales.tab50', 'ALL');
-  const [perU, setPer] = useSticky<SalePer>('Sales.per50', (cfg?.per0 as SalePer | undefined) ?? 'M');
+  // v55.1: kỳ, khoảng ngày, cột, số dòng là tùy chọn "Lưu cho tôi" -> lưu theo người dùng, đồng bộ nhiều thiết bị
+  const [perU, setPer] = useUserPref<SalePer>('Sales.per50', (cfg?.per0 as SalePer | undefined) ?? 'M');
   const per: SalePer = cfg?.hidePer ? (cfg.per0 as SalePer | undefined) ?? 'M' : perU;
-  const [range, setRange] = useSticky<{ from: string; to: string }>('Sales.range50', { from: addDaysISO(todayISO(), -14), to: todayISO() });
+  const [range, setRange] = useUserPref<{ from: string; to: string }>('Sales.range50', { from: addDaysISO(todayISO(), -14), to: todayISO() });
   const [fU, setF] = useSticky<SaleFilter>('Sales.f50', SALE_F0);
   // trường lọc 3A tắt thì không áp điều kiện cũ người dùng đã lưu
   const fKey = fOff.join('|');
   const f: SaleFilter = useMemo(() => (fOff.length ? { ...fU, ...Object.fromEntries(fOff.filter((k) => k in SALE_F0).map((k) => [k, SALE_F0[k as keyof SaleFilter]])), ...(fOff.includes('rev') ? { revOp: SALE_F0.revOp } : {}) } : fU), [fU, fKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [cols, setCols] = useSticky<string[]>('Sales.cols50', []);
-  const [size, setSize] = useSticky('Sales.size50', cfg?.size0 ?? 20);
+  const [cols, setCols] = useUserPref<string[]>('Sales.cols50', []);
+  const [size, setSize] = useUserPref<number>('Sales.size50', cfg?.size0 ?? 20);
   const [page, setPage] = useState(0);
   const [q, setQ] = useState('');
   const [pop, setPop] = useState<'' | 'per' | 'filter' | 'cols' | 'size'>('');
@@ -316,8 +325,9 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
   const due = (o: SalesOrder) => saleTotals(o).grand - saleReturned(o);
   const leftOf = (o: SalesOrder) => (o.status === 'CANCELLED' ? 0 : due(o) - salePaid(o));
   const unitsOf = (o: SalesOrder) => { const ls = o.lines.filter((l) => l.kind !== 'FREE'); return { done: ls.reduce((s, l) => s + saleIssQ(o, l), 0), all: ls.reduce((s, l) => s + l.qty, 0) }; };
-  const nm = (id?: string) => users.find((u) => u.id === id)?.name ?? '';
-  const short = (id?: string) => nm(id).split(' ').slice(-1)[0] || '—';
+  const nameOf = useNameOf();
+  const nm = (id?: string) => (id ? nameOf(id) : '');
+  const short = (id?: string) => (users.find((u) => u.id === id)?.name ?? '').split(' ').slice(-1)[0] || '—';
   const inTab = (o: SalesOrder, t: SaleTab) => {
     const s = stage(o);
     switch (t) {
@@ -433,7 +443,7 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2" ref={popRef}>
-        {!cfg?.hideHead && <h1 className="mr-2 text-[20px] font-medium">{lFill(cfg?.head || 'Quản lý đơn hàng', pctx?.vars)}</h1>}
+        {!cfg?.hideHead && <h1 className="mr-2 text-[20px] font-medium">{lFill(cfg?.head || term('saleList'), pctx?.vars)}</h1>}
         {cfg?.search !== false ? <div className="order-last w-full min-w-0 lg:order-none lg:mx-auto lg:w-auto lg:max-w-[640px] lg:flex-1"><SearchBox value={q} onChange={setQ} placeholder={ph} /></div> : <div className="hidden flex-1 lg:block" />}
         {!cfg?.hidePer && <div className="relative ml-auto lg:ml-0">
           <button className={cn(btnGhost, 'h-9 min-w-[150px] justify-between gap-2', per === 'C' && 'border-[rgb(var(--accent))]')} onClick={() => { setDraftR(range); setPerC(per === 'C'); setPop(pop === 'per' ? '' : 'per'); }} aria-expanded={pop === 'per'}><CalendarDays className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /><span className="flex-1 text-left">{perLabel}</span><ChevronDown className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden /></button>
@@ -523,7 +533,7 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
           {hb('excel') && <button className={cn(soIco, hb('print') && 'rounded-r-none')} onClick={csv} disabled={!rows.length} aria-label="Xuất Excel (CSV)" title={chosen.length ? `Xuất ${chosen.length} đơn đã chọn` : 'Xuất Excel (CSV)'}><Download className="h-4 w-4" aria-hidden /></button>}
           {hb('print') && <button className={cn(soIco, hb('excel') && '-ml-px rounded-l-none')} onClick={print} disabled={!rows.length} aria-label="In danh sách" title={chosen.length ? `In ${chosen.length} đơn đã chọn` : 'In danh sách'}><Printer className="h-4 w-4" aria-hidden /></button>}
         </div>
-        {onNewB && <button className={cn(btnPrimary, 'h-9')} onClick={onNewB} title="Phím tắt N"><Plus className="h-4 w-4" aria-hidden />Lên đơn bán<kbd className="ml-1 rounded border border-current/40 px-1 font-mono text-[10px] opacity-70">N</kbd></button>}
+        {onNewB && <button className={cn(btnPrimary, 'h-9')} onClick={onNewB} title="Phím tắt N"><Plus className="h-4 w-4" aria-hidden />{term('newSale')}<kbd className="ml-1 rounded border border-current/40 px-1 font-mono text-[10px] opacity-70">N</kbd></button>}
         <datalist id="so-origins">{Array.from(new Set(['Tại quầy', 'Từ báo giá', ...salesOrders.map((o) => o.origin).filter((x): x is string => !!x)])).map((x) => <option key={x} value={x} />)}</datalist>
         <datalist id="so-custs">{customers.slice(0, 300).map((c) => <option key={c.id} value={c.name} />)}</datalist>
       </div>
@@ -570,7 +580,7 @@ export function SaleList({ onNew, onEdit, onCancel, cfg }: { onNew?: () => void;
               </tbody>
             </table>
           </div>
-        ) : <EmptyState text={salesOrders.length ? 'Không có đơn khớp bộ lọc' : 'Chưa có đơn hàng'} art="box" action={!salesOrders.length && onNewB ? 'Lên đơn bán' : undefined} onAction={onNewB} />}
+        ) : <EmptyState text={salesOrders.length ? 'Không có đơn khớp bộ lọc' : 'Chưa có đơn hàng'} art="box" action={!salesOrders.length && onNewB ? term('newSale') : undefined} onAction={onNewB} />}
       </section>
     </div>
   );
@@ -598,9 +608,16 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   const [note, setNote] = useState(edit?.note ?? '');
   const { users, wfDef, openCustomerForm, wfFirstApprovers, dispatch } = useApp();
   const [code, setCode] = useState(edit?.code ?? '');
+  // v55.2: trường "Thông tin thêm" theo bố cục Form lên đơn bán (3A thiết kế), mặc định theo cờ "Form" của trường
+  const fl = useSaleFormLayout();
   const cfd = useSaleCf();
-  const cfForm = cfd.head.filter((d) => d.status === 'ACTIVE' && d.where.form);
+  const cfForm = fl.formDefs;
   const [cfv, setCfv] = useState<Record<string, CfVal>>(edit?.cf ?? {});
+  // v56: thuật ngữ ngành, tên người dùng / tài nguyên, kiểm tra trùng lịch tài nguyên trước khi lưu
+  const { t: term } = useTerminology();
+  const nameOf = useNameOf();
+  const { resources } = useApp();
+  const resErrs = resourceConflicts(cfd.head, cfv, salesOrders.map((x) => ({ id: x.id, code: x.code, cf: x.cf, cancelled: x.status === 'CANCELLED' })), resources, edit?.id);
   const [origin, setOrigin] = useState(edit ? edit.origin ?? (edit.source === 'QUOTE' ? 'Từ báo giá' : 'Tại quầy') : 'Tại quầy');
   const [docRef, setDocRef] = useState(edit?.docRef ?? '');
   const [receiver, setReceiver] = useState(edit?.receiver ?? '');
@@ -656,13 +673,14 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   if (delivery !== 'PICKUP' && !address.trim()) errs.push('Nhập địa chỉ giao hàng');
   if (code.trim() && salesOrders.some((x) => x.code === code.trim() && x.id !== edit?.id)) errs.push(`Mã đơn ${code.trim()} đã có`);
   cfMissing(cfForm, cfv, 'SAVE').forEach((d) => errs.push(`${d.type === 'check' ? 'Cần tích' : 'Nhập'} ${d.label}`));
+  errs.push(...resErrs);
   const short = stock.filter((x) => x.short > 0);
   const finish = () => {
     if (errs.length) return notify(errs[0], 'red');
     const base = { date: todayISO(), source: 'COUNTER' as const, customerId: cust?.id, customer: name, phone: phone.trim() || undefined, taxCode: cust?.taxCode || undefined, address: address.trim() || undefined,
       lines, pay, creditDays: pay === 'CREDIT' || pay === 'PARTIAL' ? creditDays : 0, payments: [], delivery, whId, deliverAt: delivery === 'PICKUP' ? undefined : deliverAt, invoice, shipFee: shipFee || undefined, note: note.trim() || undefined, status: 'PENDING' as SaleStatus, by: byId || me?.id,
       origin: origin.trim() || undefined, docRef: docRef.trim() || undefined, receiver: receiver.trim() || undefined, ...(code.trim() ? { code: code.trim() } : {}),
-      cf: Object.keys(cfv).length ? cfv : undefined };
+      cf: (() => { const c = cfCompute(cfd.head, cfv); return Object.keys(c).length ? c : undefined; })() };
     const now0 = Date.now();
     const approval: SalesOrder['approval'] = needs ? { status: 'PENDING', reasons, requestedAt: now0, requestedBy: me?.id } : { status: 'PENDING', reasons: ['Người lên đơn tự duyệt'], requestedAt: now0, requestedBy: me?.id, self: true };
     let rec = edit ? saveSale({ ...edit, ...base, source: edit.source, date: edit.date, payments: edit.payments, code: edit.code, approval }) : saveSale({ ...base, approval });
@@ -707,7 +725,7 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   const draftO: SalesOrder = { ...draft, by: byId || me?.id };
   return (
     <div>
-      <SoTop crumb="Quản lý đơn hàng" onCrumb={() => onDone(edit?.id)} title={edit ? 'Sửa đơn hàng' : 'Tạo đơn hàng'} chips={<><Code>{code.trim() || autoCode}</Code><Chip>{edit ? 'Sửa xong phải duyệt lại' : 'Mới'}</Chip></>}>
+      <SoTop crumb="Quản lý đơn hàng" onCrumb={() => onDone(edit?.id)} title={edit ? term('editSale') : term('createSale')} chips={<><Code>{code.trim() || autoCode}</Code><Chip>{edit ? 'Sửa xong phải duyệt lại' : 'Mới'}</Chip></>}>
         <button className={btnGhost} onClick={() => onDone(edit?.id)}>Hủy</button>
         <button className={btnPrimary} onClick={finish} title="Phím tắt F9"><Send className="h-4 w-4" aria-hidden />{edit ? 'Lưu thay đổi' : needs ? 'Lưu & gửi duyệt' : 'Lưu đơn'}<kbd className="ml-1 rounded border border-current/40 px-1 font-mono text-[10px] opacity-70">F9</kbd></button>
       </SoTop>
@@ -807,10 +825,9 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
             {delivery !== 'PICKUP' && <input className={cn(inputCls, 'mt-2')} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Địa chỉ giao hàng" aria-label="Địa chỉ giao hàng" />}
             <input className={cn(inputCls, 'mt-2')} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú cho kho / giao vận" aria-label="Ghi chú" />
           </SoCard>
-          {cfForm.length > 0 && (
-            <SoCard title="Thông tin thêm">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{cfForm.map((d) => <Field key={d.id} label={`${d.label}${d.required !== 'NONE' ? ' *' : ''}`}><CfInput d={d} v={cfv[d.key]} set={(v) => setCfv((p) => cfSet(p, d.key, v))} users={users} /></Field>)}</div>
-              {cfForm.some((d) => d.required === 'APPROVE') && <p className="mt-2 text-[12.5px] text-[rgb(var(--muted))]">* {cfForm.filter((d) => d.required === 'APPROVE').map((d) => d.label).join(', ')}: bắt buộc trước khi duyệt đơn</p>}
+          {fl.sections.length > 0 && (
+            <SoCard title={fl.title || 'Thông tin thêm'}>
+              <DynamicFieldRenderer mode="edit" sections={fl.sections} avail={lSaleAvail('form', cfd.head)} required={fl.defs} vals={cfv} onChange={(k, v) => setCfv((p) => cfSet(p, k, v))} users={users} nameOf={nameOf} recordId={edit?.id} />
             </SoCard>
           )}
         </div>
@@ -1419,14 +1436,16 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const invDone = (o.invReqs ?? []).filter((r) => r.status === 'DONE');
   const canReq = o.status === 'PENDING' && stage !== 'APPROVAL' && stage !== 'REJECTED' && remain > 0;
   const canInv = o.status !== 'CANCELLED' && due - invAsked > 0 && stage !== 'APPROVAL' && stage !== 'REJECTED';
-  const nm = (id?: string) => users.find((u) => u.id === id)?.name ?? '';
+  const nameOf = useNameOf();
+  const nm = (id?: string) => (id ? nameOf(id) : '');
   const { skus } = useApp();
   const [view, setView] = useState<string | null>(null);
   type Info = { origin: string; docRef: string; by: string; receiver: string; phone: string; address: string; deliverAt: string; note: string; invoice: boolean; cf: Record<string, CfVal>; lcf: Record<string, Record<string, CfVal>> };
   const [info, setInfo] = useState<Info | null>(null);
-  const { notify, mySales, setOpenSale, org } = useApp();
+  const { notify, mySales, setOpenSale, org, resources, salesOrders: salesOrdersAll } = useApp();
   const cfd = useSaleCf();
-  const cfHeadForm = cfd.head.filter((d) => d.status === 'ACTIVE' && d.where.form);
+  const fl = useSaleFormLayout();
+  const cfHeadForm = fl.formDefs;
   const cfLineForm = cfd.line.filter((d) => d.status === 'ACTIVE' && d.where.form);
   const startInfo = () => setInfo({ origin: o.origin ?? (o.source === 'QUOTE' ? 'Từ báo giá' : 'Tại quầy'), docRef: o.docRef ?? '', by: o.by ?? '', receiver: o.receiver ?? '', phone: o.phone ?? '', address: o.address ?? '', deliverAt: o.deliverAt ?? '', note: o.note ?? '', invoice: o.invoice,
     cf: o.cf ?? {}, lcf: Object.fromEntries(o.lines.map((l) => [l.id, l.cf ?? {}])) });
@@ -1434,8 +1453,12 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
     if (!info) return;
     const miss = cfMissing(cfHeadForm, info.cf, 'SAVE');
     if (miss.length) return notify(`${miss[0].type === 'check' ? 'Cần tích' : 'Nhập'} ${miss[0].label}`, 'red');
+    // v56: chặn chọn tài nguyên (đội thợ, xe…) đã có lịch trùng giờ ở bản ghi khác; trường công thức tính lại
+    const clash = resourceConflicts(cfd.head, info.cf, salesOrdersAll.map((x) => ({ id: x.id, code: x.code, cf: x.cf, cancelled: x.status === 'CANCELLED' })), resources, o.id);
+    if (clash.length) return notify(clash[0], 'red');
+    const cfNew = cfCompute(cfd.head, info.cf);
     setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, origin: info.origin.trim() || undefined, docRef: info.docRef.trim() || undefined, by: info.by || x.by, receiver: info.receiver.trim() || undefined, phone: info.phone.trim() || undefined, address: info.address.trim() || undefined, deliverAt: info.deliverAt || undefined, note: info.note.trim() || undefined, invoice: info.invoice,
-      cf: Object.keys(info.cf).length ? info.cf : undefined, lines: x.lines.map((l) => { const v = info.lcf[l.id]; return v ? { ...l, cf: Object.keys(v).length ? v : undefined } : l; }),
+      cf: Object.keys(cfNew).length ? cfNew : undefined, lines: x.lines.map((l) => { const v = info.lcf[l.id]; return v ? { ...l, cf: Object.keys(v).length ? v : undefined } : l; }),
       notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: 'Cập nhật thông tin đơn (không đổi hàng hóa, giá)' }] } : x)));
     setInfo(null);
   };
@@ -1479,7 +1502,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const iconOn = (a: LIconAct) => blocks.some((b) => (b.type === 'K-Icons' || b.type === 'K-Button') && b.show[dev] && lCondOk(b.config, lstage, myRole) && (b.type === 'K-Icons' ? b.config.icons ?? [] : (b.config.buttons ?? []).map((x) => x.act)).includes(a));
   const cfHeadInfo = cfd.head.filter((d) => d.where.info && (d.status === 'ACTIVE' || !cfEmpty(o.cf?.[d.key])));
   const cfLineCols = cfd.line.filter((d) => d.where.info && (d.status === 'ACTIVE' || o.lines.some((l) => !cfEmpty(l.cf?.[d.key]))));
-  const needAp = stage === 'APPROVAL' ? cfMissing(cfd.head, o.cf, 'APPROVE') : [];
+  const needAp = stage === 'APPROVAL' ? cfMissing(fl.defs, o.cf, 'APPROVE') : [];
   const seq = [...mySales].sort((a, b) => b.createdAt - a.createdAt);
   const at = seq.findIndex((x) => x.id === o.id);
   const prevO = at > 0 ? seq[at - 1] : undefined;
@@ -1494,9 +1517,18 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
     setUpBusy(true);
     try {
       const out: SaleFile[] = [];
+      // v55.1: có máy chủ -> tải ngay lên kho riêng tư 'crm-attach' (<doanh nghiệp>/sales/<mã đơn>/...), đơn chỉ giữ
+      // { id, name, url: 'attach:<đường dẫn>', path, size, mimeType }. Chạy không máy chủ (dữ liệu trên máy) giữ cách cũ: base64 trong đơn
+      const maxMb = CLOUD_ON ? 10 : 2;
       for (const f of Array.from(list).slice(0, room)) {
         const img = f.type.startsWith('image/');
-        if (!img && f.size > 2 * 1024 * 1024) { notify(`${f.name} lớn hơn 2 MB, chưa tải lên`, 'orange'); continue; }
+        if (!img && f.size > maxMb * 1024 * 1024) { notify(`${f.name} lớn hơn ${maxMb} MB, chưa tải lên`, 'orange'); continue; }
+        if (CLOUD_ON) {
+          const blob: Blob = img ? await (await fetch(await compressImage(f, 1600))).blob() : f;
+          const up = await cloud.uploadAttachment(org.id, `sales/${o.id}`, blob, img ? '' : f.name);
+          out.push({ id: uid('sf'), name: f.name, url: `${ATTACH_PREFIX}${up.path}`, path: up.path, size: blob.size, type: up.mimeType, mimeType: up.mimeType, at: Date.now(), by: me?.id });
+          continue;
+        }
         const url = img ? await compressImage(f, 1600) : await readAsDataUrl(f);
         out.push({ id: uid('sf'), name: f.name, url, size: img ? Math.round(url.length * 0.75) : f.size, type: f.type || 'application/octet-stream', at: Date.now(), by: me?.id });
       }
@@ -1504,9 +1536,15 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
         setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, files: [...(x.files ?? []), ...out], notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: `Tải lên ${out.map((f) => f.name).join(', ')}` }] } : x)));
         notify(`Đã tải lên ${out.length} tệp cho ${o.code}`, 'teal');
       }
-    } catch { notify('Không đọc được tệp', 'red'); } finally { setUpBusy(false); if (upRef.current) upRef.current.value = ''; }
+    } catch (e) { notify(e instanceof CloudError ? cloudMessage(e) : 'Không đọc được tệp', 'red'); } finally { setUpBusy(false); if (upRef.current) upRef.current.value = ''; }
   };
-  const delFile = (f: SaleFile) => setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, files: (x.files ?? []).filter((y) => y.id !== f.id), notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: `Bỏ tệp ${f.name}` }] } : x)));
+  const delFile = (f: SaleFile) => {
+    setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, files: (x.files ?? []).filter((y) => y.id !== f.id), notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: `Bỏ tệp ${f.name}` }] } : x)));
+    // v55.1: xóa luôn trong kho riêng tư (cùng nội dung tải 2 lần trong một đơn dùng chung một tệp -> chỉ xóa khi không còn tệp nào trỏ tới)
+    const p = attachPath(f);
+    if (CLOUD_ON && p && !(o.files ?? []).some((y) => y.id !== f.id && attachPath(y) === p)) void cloud.removeAttachment(p).catch(() => notify(`Chưa xóa được ${f.name} trong kho tệp`, 'orange'));
+  };
+  const openFile = (f: SaleFile, mode: 'view' | 'download') => { void openAttachment(f, mode).catch((e) => notify(cloudMessage(e), 'red')); };
   const lineCfg = blkOf('K-Order-Lines')?.config;
   const lineIds = lFieldOrder([...SO_LINE_F, ...cfLineCols.map((d) => ({ id: `cf:${d.key}`, label: d.label }))], lineCfg);
   const download = () => {
@@ -1583,21 +1621,18 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
       })()}
       {(() => {
         const iconCls = 'h-4 w-4 shrink-0 text-[rgb(var(--muted))]';
-        const infoCfg = blkOf('K-Order-Info')?.config;
-        const infoIds = lFieldOrder([...SO_INFO_F, ...cfHeadInfo.map((d) => ({ id: `cf:${d.key}`, label: d.label }))], infoCfg);
-        const grid = infoCfg?.gridCols === 2 ? 'grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2' : infoCfg?.gridCols === 3 ? 'grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 xl:grid-cols-3' : soGrid;
-        const infoItem = (id: string): ReactNode => {
-          if (id === 'customer') return <SoInfo key={id} label="Khách hàng" span={2}><Building2 className={iconCls} aria-hidden /><span className="truncate">{o.customer}</span><span className="truncate text-[12.5px] text-[rgb(var(--muted))]">{[o.taxCode && `MST ${o.taxCode}`, o.phone].filter(Boolean).join(' · ')}</span></SoInfo>;
-          if (id === 'code') return <SoInfo key={id} label="Mã đơn hàng"><Code>{o.code}</Code></SoInfo>;
-          if (id === 'origin') return <SoInfo key={id} label="Nguồn đơn hàng">{q ? <button className="hover:underline" onClick={() => openComposer({ quoteId: q.id, view: true, mode: 'QUOTE' })}>Từ báo giá <Code>{q.code}</Code></button> : o.origin ?? 'Tại quầy'}</SoInfo>;
-          if (id === 'by') return <SoInfo key={id} label="Người thực hiện"><Users className={iconCls} aria-hidden />{nm(o.by) || '—'}</SoInfo>;
-          if (id === 'wh') return <SoInfo key={id} label="Kho xuất"><Warehouse className={iconCls} aria-hidden />{warehouses.find((w) => w.id === o.whId)?.name ?? '—'}</SoInfo>;
-          if (id === 'docRef') return <SoInfo key={id} label="Nguồn chứng từ"><FileText className={iconCls} aria-hidden />{o.docRef || '—'}</SoInfo>;
-          if (id === 'invNo') return <SoInfo key={id} label="Số hóa đơn thuế">{invDone.length ? <>{invDone.map((r) => <Code key={r.id}>{r.no}</Code>)}{due - invDone.reduce((s, r) => s + r.amount, 0) > 0 && <span className="text-[12.5px] text-[rgb(var(--muted))]">còn {compact(due - invDone.reduce((s, r) => s + r.amount, 0))}</span>}</> : o.invoice ? '—' : <span className="text-[rgb(var(--muted))]">Không lấy</span>}</SoInfo>;
-          const d = cfHeadInfo.find((x) => `cf:${x.key}` === id);
-          if (!d) return null;
-          const tx = cfText(d, o.cf?.[d.key], nm);
-          return <SoInfo key={id} label={d.label}>{tx ? <span className="truncate" title={tx}>{tx}</span> : <span className="text-[rgb(var(--muted))]">—</span>}</SoInfo>;
+        // v55.2: khối Chi tiết bản ghi — nhóm trường, độ rộng, nhãn theo bố cục 3A; cùng bộ vẽ với màn xem trước
+        const infoCfg = blkOf('K-RecordDetail')?.config;
+        const infoSecs = lSaleSections('detail', infoCfg, cfd.head);
+        const infoValue = (id: string): ReactNode => {
+          if (id === 'customer') return <><Building2 className={iconCls} aria-hidden /><span className="truncate">{o.customer}</span><span className="truncate text-[12.5px] text-[rgb(var(--muted))]">{[o.taxCode && `MST ${o.taxCode}`, o.phone].filter(Boolean).join(' · ')}</span></>;
+          if (id === 'code') return <Code>{o.code}</Code>;
+          if (id === 'origin') return q ? <button className="hover:underline" onClick={() => openComposer({ quoteId: q.id, view: true, mode: 'QUOTE' })}>Từ báo giá <Code>{q.code}</Code></button> : o.origin ?? 'Tại quầy';
+          if (id === 'by') return <><Users className={iconCls} aria-hidden />{nm(o.by) || '—'}</>;
+          if (id === 'wh') return <><Warehouse className={iconCls} aria-hidden />{warehouses.find((w) => w.id === o.whId)?.name ?? '—'}</>;
+          if (id === 'docRef') return <><FileText className={iconCls} aria-hidden />{o.docRef || '—'}</>;
+          if (id === 'invNo') return invDone.length ? <>{invDone.map((r) => <Code key={r.id}>{r.no}</Code>)}{due - invDone.reduce((s, r) => s + r.amount, 0) > 0 && <span className="text-[12.5px] text-[rgb(var(--muted))]">còn {compact(due - invDone.reduce((s, r) => s + r.amount, 0))}</span>}</> : o.invoice ? '—' : <span className="text-[rgb(var(--muted))]">Không lấy</span>;
+          return '—';
         };
         const infoCard = info ? (
           <SoCard title="Cập nhật thông tin đơn hàng" action={<><button className={btnGhost} onClick={() => setInfo(null)}>Thôi</button><button className={btnPrimary} onClick={saveInfo}><CheckIcon className="h-4 w-4" aria-hidden />Lưu</button></>}>
@@ -1612,11 +1647,10 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
               <Field label="Địa chỉ giao"><input className={inputCls} value={info.address} onChange={(e) => setInfo({ ...info, address: e.target.value })} /></Field>
               <Field label="Ghi chú" className="sm:col-span-2 xl:col-span-4"><input className={inputCls} value={info.note} onChange={(e) => setInfo({ ...info, note: e.target.value })} /></Field>
             </div>
-            {cfHeadForm.length > 0 && (
+            {fl.sections.length > 0 && (
               <div className="mt-4 border-t border-[rgb(var(--line))] pt-3">
-                <p className="mb-2 text-[13.5px] font-medium">Thông tin thêm</p>
-                <div className={soGrid}>{cfHeadForm.map((d) => <Field key={d.id} label={`${d.label}${d.required !== 'NONE' ? ' *' : ''}`}><CfInput d={d} v={info.cf[d.key]} set={(v) => setInfo({ ...info, cf: cfSet(info.cf, d.key, v) })} users={users} /></Field>)}</div>
-                {cfHeadForm.some((d) => d.required === 'APPROVE') && <p className="mt-2 text-[12.5px] text-[rgb(var(--muted))]">* {cfHeadForm.filter((d) => d.required === 'APPROVE').map((d) => d.label).join(', ')}: bắt buộc trước khi duyệt đơn</p>}
+                <p className="mb-2 text-[13.5px] font-medium">{fl.title || 'Thông tin thêm'}</p>
+                <DynamicFieldRenderer mode="edit" sections={fl.sections} avail={lSaleAvail('form', cfd.head)} required={fl.defs} vals={info.cf} onChange={(k, v) => setInfo((p) => (p ? { ...p, cf: cfSet(p.cf, k, v) } : p))} users={users} nameOf={nm} recordId={o.id} />
               </div>
             )}
             {cfLineForm.length > 0 && (
@@ -1629,7 +1663,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
           </SoCard>
         ) : (
           <SoCard title={infoCfg?.title && infoCfg.title !== 'Thông tin đơn hàng' ? infoCfg.title : 'Thông tin đơn hàng'} action={<span className="flex items-center gap-2">{needAp.length > 0 && <Chip tone="orange">Thiếu {needAp.map((d) => d.label).join(', ')} để duyệt</Chip>}{R.canInfo(o) && <button className={cn(btnGhost, btnSm)} onClick={startInfo}><Pencil className="h-3.5 w-3.5" aria-hidden />Cập nhật thông tin</button>}</span>}>
-            <div className={grid}>{infoIds.map(infoItem)}</div>
+            <DynamicFieldRenderer mode="view" sections={infoSecs} avail={lSaleAvail('detail', cfd.head)} vals={o.cf} builtin={infoValue} nameOf={nm} />
           </SoCard>
         );
         type LCol = { h: ReactNode; right?: boolean; td: (l: SaleLine, i: number) => ReactNode; tot?: ReactNode; cls?: string };
@@ -1683,7 +1717,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
           <SoCard title={blkOf('K-Order-Files')?.config.title || 'Tệp đính kèm'} action={canUp ? <button className={cn(btnGhost, btnSm)} disabled={upBusy} onClick={() => upRef.current?.click()}><Upload className="h-3.5 w-3.5" aria-hidden />{upBusy ? 'Đang tải' : 'Tải lên'}</button> : undefined}>
             {(o.files ?? []).length ? (
               <ul className="space-y-1.5">{(o.files ?? []).map((f) => (
-                <li key={f.id} className="flex items-center gap-2 text-[13.5px]"><Paperclip className={iconCls} aria-hidden /><a href={f.url} download={f.name} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate hover:underline">{f.name}</a><span className="shrink-0 text-[12px] tabular-nums text-[rgb(var(--muted))]">{Math.max(1, Math.round(f.size / 1024))} KB</span>{canUp && <button className="text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => delFile(f)} aria-label={`Bỏ ${f.name}`}><X className="h-3.5 w-3.5" aria-hidden /></button>}</li>
+                <li key={f.id} className="flex items-center gap-2 text-[13.5px]"><Paperclip className={iconCls} aria-hidden /><button type="button" onClick={() => openFile(f, 'view')} className="min-w-0 flex-1 truncate text-left hover:underline" title={`Mở ${f.name}`}>{f.name}</button><span className="shrink-0 text-[12px] tabular-nums text-[rgb(var(--muted))]">{Math.max(1, Math.round(f.size / 1024))} KB</span><button type="button" className="text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => openFile(f, 'download')} aria-label={`Tải ${f.name}`}><Download className="h-3.5 w-3.5" aria-hidden /></button>{canUp && <button className="text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => delFile(f)} aria-label={`Bỏ ${f.name}`}><X className="h-3.5 w-3.5" aria-hidden /></button>}</li>
               ))}</ul>
             ) : <p className="text-[13px] text-[rgb(var(--muted))]">Chưa có tệp. Ảnh tự nén; PDF, Word, Excel tối đa 2 MB; tối đa 10 tệp</p>}
           </SoCard>
@@ -1811,7 +1845,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
         const node = (b: LBlock): ReactNode => {
           if (!lIsCore(b.type) && !lCondOk(b.config, lstage, myRole)) return null;
           switch (b.type) {
-            case 'K-Order-Info': return cancel !== null ? <SaleCancelCard o={o} why={cancel} setWhy={setCancel} /> : infoCard;
+            case 'K-RecordDetail': return cancel !== null ? <SaleCancelCard o={o} why={cancel} setWhy={setCancel} /> : infoCard;
             case 'K-Order-Lines': return linesNode;
             case 'K-Order-Flow': return flowNode;
             case 'K-Order-Pay': return payNode;

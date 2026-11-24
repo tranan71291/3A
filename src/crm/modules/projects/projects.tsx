@@ -20,6 +20,7 @@ import { BoqEditorModal } from './boq';
 import { GeneratedDocList } from '../sales/quote';
 import { ProjectFlow } from '../sales/sales-flow';
 import { ActivityList } from '../staff/staff';
+import { EntityCfDetail } from '../page-builder';
 import { ReservedGoodsPanel } from '../supply/inventory';
 
 export function PriceProtectionModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
@@ -133,6 +134,8 @@ export function ProjectDrawer({ id, onClose, onBoq, onLost, onPP, onEdit }: { id
         <div className="rounded bg-[rgb(var(--raised))] p-2.5"><p className="text-[11px] text-[rgb(var(--muted))]">Hạn báo giá</p><div className="mt-0.5">{l.status === 'ACCEPTED' ? <QuoteTimer deadline={l.quoteDeadline} now={now} /> : <span className="text-xs">{qs[0] ? `Đã gửi ${fmtDate(qs[0].date)}` : '—'}</span>}</div></div>
         <div className="rounded bg-[rgb(var(--raised))] p-2.5"><p className="text-[11px] text-[rgb(var(--muted))]">Liên hệ</p><p className="truncate text-xs">{l.contact}</p><p className="truncate text-[11px] text-[rgb(var(--muted))]">{l.phone}</p></div>
       </div>
+      {/* v55.3 khối Chi tiết bản ghi lead do 3A thiết kế (trường tùy chỉnh + trường gốc đặt thêm) */}
+      <EntityCfDetail entity="lead" vals={l.cf} builtin={(k) => ({ code: l.code, company: l.company, contact: l.contact || '—', phone: l.phone || '—', email: l.email || '—', taxCode: l.taxCode || '—', segment: segName(l.segment), source: SOURCE_LABEL[l.source], region: REGION_LABEL[l.region], province: l.province || '—' } as Record<string, string>)[k] ?? '—'} />
 
       <Tabs tabs={[{ id: 'quote', label: 'Báo giá & BOQ' }, { id: 'contract', label: 'Hợp đồng & Doanh số' }, { id: 'progress', label: 'Tiến độ & Công tác' }]} value={tab} onChange={setTab} />
 
