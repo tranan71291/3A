@@ -163,7 +163,8 @@ export function ConsoleCustomFields() {
     where: { form: true, info: true, list: scope === 'HEAD', filter: false }, status: 'ACTIVE', order: Math.max(0, ...platform.customFields.map((d) => d.order)) + 1, at: Date.now(), by: who });
   const lvText = (d: CfDef) => [d.levels.sys && 'Toàn hệ thống', d.levels.tr && 'Mô hình Thương mại', d.levels.mfg && 'Mô hình Xưởng', d.levels.tenants.length > 0 && `Riêng ${d.levels.tenants.map((t) => orgOf(t).shortName).join(', ')}`].filter(Boolean).join(' · ') || '—';
   const whereText = (d: CfDef) => (d.scope === 'LINE' ? [d.where.form && 'Nhập ở Cập nhật thông tin', d.where.info && 'Bảng hàng hóa'] : [d.where.form && 'Form', d.where.info && 'Thông tin', d.where.list && 'Danh sách', d.where.filter && 'Lọc']).filter(Boolean).join(' · ') || '—';
-  const REQ: Record<CfDef['required'], string> = { NONE: 'Không', SAVE: sale ? 'Khi lưu đơn' : 'Khi lưu', APPROVE: 'Khi duyệt đơn' };
+  // v56.2 Nhiệm vụ nội dung: "bắt buộc" = trước khi giao AI (nháp vẫn lưu được)
+  const REQ: Record<CfDef['required'], string> = { NONE: 'Không', SAVE: sale ? 'Khi lưu đơn' : entity === 'content_task' ? 'Trước khi giao AI' : 'Khi lưu', APPROVE: 'Khi duyệt đơn' };
   // v56: cùng mã được dùng lại khi phạm vi riêng từng doanh nghiệp tách biệt (bản sao mẫu ngành của mỗi doanh nghiệp)
   const keyTaken = (k: string, id: string) => !!ed && platform.customFields.some((d) => d.entity === entity && d.key === k && d.id !== id && cfKeyClash(d, ed));
   const resKinds = useMemo(() => { const m = new Map<string, string>(); industryProfilesEff(platform.industryProfiles).forEach((p) => p.resourceKinds.forEach((k) => m.set(k.id, `${k.label} (${p.label})`))); return [...m]; }, [platform.industryProfiles]);
@@ -174,6 +175,7 @@ export function ConsoleCustomFields() {
     customer: ['Form thêm / sửa khách hàng', 'Khối Chi tiết trong hồ sơ khách hàng', 'Cột trong Danh sách khách hàng', 'Bộ lọc (chưa dùng)'],
     lead: ['Form thêm / sửa lead', 'Khối Chi tiết trong hồ sơ dự án / lead', 'Cột trong Data MKT', 'Bộ lọc (chưa dùng)'],
     product: ['Form thêm / sửa sản phẩm', 'Chi tiết sản phẩm', 'Cột danh mục (chưa dùng)', 'Bộ lọc (chưa dùng)'],
+    content_task: ['Bảng trượt Nhiệm vụ (tự vào Bước 1; kéo sang bước khác ở Studio) và ngữ cảnh gửi AI', 'Chi tiết (chưa dùng)', 'Cột danh sách nhiệm vụ (chưa dùng)', 'Bộ lọc (chưa dùng)'],
   };
   const errs: string[] = [];
   if (ed) {
@@ -277,7 +279,7 @@ export function ConsoleCustomFields() {
               </div>
             </Field>
           )}
-          {ed.scope === 'HEAD' && <Field label="Bắt buộc"><CbSeg label="Bắt buộc" items={sale ? [['NONE', 'Không'], ['SAVE', 'Khi lưu đơn'], ['APPROVE', 'Khi duyệt đơn']] : [['NONE', 'Không'], ['SAVE', 'Khi lưu']]} value={ed.required} onChange={(v) => setE({ required: v })} /></Field>}
+          {ed.scope === 'HEAD' && <Field label="Bắt buộc"><CbSeg label="Bắt buộc" items={sale ? [['NONE', 'Không'], ['SAVE', 'Khi lưu đơn'], ['APPROVE', 'Khi duyệt đơn']] : [['NONE', 'Không'], ['SAVE', REQ.SAVE]]} value={ed.required} onChange={(v) => setE({ required: v })} /></Field>}
           {ed.scope === 'HEAD' && ed.type === 'check' && ed.required !== 'NONE' && <p className="-mt-2 text-[12px] text-[rgb(var(--muted))]">Tích chọn bắt buộc: phải tích mới lưu / duyệt được</p>}
           <div className="border-t border-[rgb(var(--line))] pt-3">
             <p className="mb-1 text-[12px] text-[rgb(var(--muted))]">Áp dụng cho</p>

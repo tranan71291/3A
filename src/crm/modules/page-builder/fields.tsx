@@ -5,7 +5,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ChevronDown, Plus, X } from 'lucide-react';
 import { Field, MoneyInput } from '../../components/ui';
-import { cfDefsFor, cfEmpty, cfSample, cfWithLayout, fmtDate, fmtDT, inputCls, L_DETAIL_PAGE, L_FORM_PAGE, type LFieldAvail, lEntityAvail, lEntitySections, useApp } from '../../lib/core';
+import { cfDefsFor, cfEmpty, cfSample, cfWithLayout, fmtDate, fmtDT, inputCls, L_DETAIL_PAGE, L_FORM_PAGE, type LFieldAvail, lEntityAvail, lEntitySections, lFieldItem, useApp } from '../../lib/core';
 import { cfCompute, checklistDone, mediaOf, rangeParse, rangeText, signatureOf } from '../../lib/industry';
 import type { CfDef, CfEntity, CfVal, LFieldItem, LSection, User } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -68,6 +68,54 @@ export function useEntityDetailLayout(entity: CfEntity) {
     const cfg = lay?.blocks.find((b) => b.type === 'K-RecordDetail')?.config;
     return { sections: lEntitySections(entity, 'detail', cfg, head), avail: lEntityAvail(entity, 'detail', head), title: cfg?.title, head };
   }, [lay, head, entity]);
+}
+
+/** v56.2 Trường gốc của Nhiệm vụ nội dung luôn có trên form (thông số kênh: kiểm tra bắt buộc của kênh trước khi giao AI dựa vào các ô này) */
+export const CT_KEEP = ['seo', 'brand'];
+export const CT_STEP_NAMES = ['Định hướng', 'Kịch bản nội dung', 'Cấu hình hình ảnh'] as const;
+
+/**
+ * v56.2 Bố cục 3 bước của bảng "Nhiệm vụ nội dung" (trang content-step-1/2/3 do 3A thiết kế và cấp phát):
+ *  - trường khóa (Chủ đề, Kênh) luôn ở Bước 1; mỗi trường chỉ xuất hiện 1 lần (bước đặt trước giữ trường)
+ *  - trường tùy chỉnh mới (cờ "Form") tự vào Bước 1, trừ khi 3A đã đặt ở Bước 2 / 3
+ *  - Thông số kênh (CT_KEEP) chưa đặt ở đâu thì tự thêm cuối Bước 2
+ * Trả thêm định nghĩa trường đã áp bắt buộc theo bố cục (kiểm tra trước khi giao AI), nhãn hiển thị và bước chứa từng trường.
+ */
+export function useContentTaskSteps() {
+  const l1 = useTenantLayout('content-step-1');
+  const l2 = useTenantLayout('content-step-2');
+  const l3 = useTenantLayout('content-step-3');
+  const head = useEntityCf('content_task');
+  return useMemo(() => {
+    const cfgs = [l1, l2, l3].map((l, i) => { const c = l?.blocks.find((b) => b.type === 'K-RecordForm')?.config; return { ...(c ?? { title: '', ds: 'sales' as const }), step: (i + 1) as 1 | 2 | 3 }; });
+    const avail = lEntityAvail('content_task', 'form', head);
+    const lock = new Set(avail.filter((a) => a.lock).map((a) => a.key));
+    const raw = cfgs.map((c) => lEntitySections('content_task', 'form', c, head));
+    const later = new Set(raw.slice(1).flatMap((ss) => ss.flatMap((s) => s.fields.map((f) => f.fieldKey))));
+    const seen = new Set<string>();
+    const steps: LSection[][] = raw.map((ss, i) => ss.map((s) => ({ ...s, fields: s.fields.filter((f) => {
+      if (i === 0 && f.id.startsWith('auto-') && later.has(f.fieldKey) && !lock.has(f.fieldKey)) return false;
+      if (i > 0 && lock.has(f.fieldKey)) return false;
+      if (seen.has(f.fieldKey)) return false;
+      seen.add(f.fieldKey);
+      return true;
+    }) })).filter((s) => s.fields.length));
+    const miss = CT_KEEP.filter((k) => !seen.has(k));
+    if (miss.length) {
+      const s2 = steps[1];
+      const last = s2[s2.length - 1];
+      const add = miss.map((k) => lFieldItem(k, 12, `keep-${k}`));
+      if (last) s2[s2.length - 1] = { ...last, fields: [...last.fields, ...add] }; else s2.push({ id: 'ct2-keep', title: '', cols: 1, fields: add });
+    }
+    const all = steps.flat();
+    const defs = cfWithLayout(head, all);
+    const placed = all.flatMap((s) => s.fields);
+    const formDefs = defs.filter((d) => placed.some((f) => f.fieldKey === `cf:${d.key}` && !f.readOnly));
+    const stepOf = (key: string) => steps.findIndex((ss) => ss.some((s) => s.fields.some((f) => f.fieldKey === key)));
+    const labelOf = (key: string) => placed.find((f) => f.fieldKey === key)?.labelOverride?.trim() || avail.find((a) => a.key === key)?.label || key;
+    const titles = cfgs.map((c, i) => c.title?.trim() || CT_STEP_NAMES[i]);
+    return { steps, avail, defs, formDefs, head, stepOf, labelOf, titles };
+  }, [l1, l2, l3, head]);
 }
 
 /** v55.3 Phần "Thông tin thêm" trong form của khách hàng / lead / sản phẩm (cùng DynamicFieldRenderer) */
@@ -163,12 +211,15 @@ function useSpan(narrow?: boolean) {
  *  - mode 'edit': khối Form; chỉ trường tùy chỉnh; chỉ đọc, gợi ý nhập, chú thích, dấu * theo bắt buộc (đã áp bố cục)
  * Bỏ trường khỏi bố cục chỉ ẩn ô; giá trị cf[fieldKey] trong bản ghi giữ nguyên.
  */
-export function DynamicFieldRenderer({ sections, avail, mode, vals, onChange, users = [], nameOf = () => '', builtin, sample, narrow, required, design, recordId }: {
+export function DynamicFieldRenderer({ sections, avail, mode, vals, onChange, users = [], nameOf = () => '', builtin, bare, sample, narrow, required, design, recordId }: {
   /** v56 mã bản ghi đang sửa (kiểm tra trùng lịch tài nguyên bỏ chính bản ghi; thư mục ảnh / chữ ký) */
   recordId?: string;
   sections: LSection[]; avail: LFieldAvail[]; mode: 'view' | 'edit';
   vals?: Record<string, CfVal>; onChange?: (key: string, v: CfVal | undefined) => void;
-  users?: User[]; nameOf?: (id: string) => string; builtin?: (key: string) => ReactNode;
+  /** Trường gốc: mode 'view' = giá trị; mode 'edit' (v56.2) = ô nhập do màn hình nghiệp vụ vẽ (nhận nhãn đã áp bố cục) */
+  users?: User[]; nameOf?: (id: string) => string; builtin?: (key: string, label?: string) => ReactNode;
+  /** v56.2 trường gốc tự vẽ tiêu đề (không thêm nhãn phía trên) */
+  bare?: string[];
   /** Màn thiết kế / xem trước: giá trị mẫu, không đọc dữ liệu doanh nghiệp */
   sample?: boolean; narrow?: boolean;
   /** Định nghĩa đã áp bắt buộc theo bố cục (form) */
@@ -228,7 +279,17 @@ export function DynamicFieldRenderer({ sections, avail, mode, vals, onChange, us
         const rich = !sample && CF_RICH.includes(d.type) ? <CfRichView d={d} v={vals?.[d.key]} /> : null;
         return cell(f, <><p className="mb-1 flex items-center gap-1 text-[12.5px] text-[rgb(var(--muted))]">{label}{sample && <i className="inline-block h-1.5 w-1.5 rounded-full bg-[rgb(var(--accent))]" title="Trường tùy chỉnh" />}</p>{rich ? <div className="min-h-7 min-w-0 text-[14px]" data-cf-view={d.type}>{rich}</div> : <div className="flex min-h-7 min-w-0 items-center gap-1.5 truncate text-[14px]">{tx ? <span className={cn('truncate', (d.type === 'number' || d.type === 'money' || d.type === 'formula') && 'tabular-nums')} title={tx}>{tx}</span> : <span className="text-[rgb(var(--muted))]">—</span>}</div>}{f.helpText && <p className="mt-0.5 truncate text-[11.5px] text-[rgb(var(--muted))]">{f.helpText}</p>}</>, s.id);
       }
-      if (!d) return null;
+      if (!d) {
+        // v56.2 trường gốc trong khối Form (Nhiệm vụ nội dung): ô nhập do màn hình nghiệp vụ vẽ qua `builtin`; Studio / xem trước vẽ giá trị mẫu.
+        // Không bọc <label>: ô gốc có thể gồm nhiều điều khiển (chip, thẻ thu gọn, chọn ảnh)
+        if (!builtin) return null;
+        const node = builtin(f.fieldKey, label);
+        if (node === null || node === undefined || node === false) return null;
+        const lock = a.lock ? ' *' : '';
+        // bare: ô gốc tự vẽ tiêu đề (thẻ thu gọn, thanh chip) — nhận nhãn đã đổi tên qua tham số thứ 2 của `builtin`
+        if (!sample && bare?.includes(f.fieldKey)) return cell(f, <div data-builtin={f.fieldKey}>{node}{f.helpText && <span className="mt-1 block text-xs text-[rgb(var(--muted))]">{f.helpText}</span>}</div>, s.id);
+        return cell(f, <div data-builtin={f.fieldKey}><span className="mb-1.5 block text-xs font-medium text-[rgb(var(--muted))]">{label}{lock}</span>{sample ? <div className="flex min-h-[38px] items-center rounded-lg border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--sunken))] px-3 py-2 text-[13px] text-[rgb(var(--fg2))]">{node}</div> : node}{f.helpText && <span className="mt-1 block text-xs text-[rgb(var(--muted))]">{f.helpText}</span>}</div>, s.id);
+      }
       const r = req(d);
       const v = vals?.[d.key];
       const ro = !!f.readOnly;

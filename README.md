@@ -1,4 +1,68 @@
-# 3A CRM v56.0.1 (bản vá tạo ảnh: mô hình OpenAI mới, kiểm tra kết nối thật, màn Hình ảnh gọn lại — cùng nhánh v56)
+# 3A CRM v56.2 (Nhiệm vụ nội dung 3 bước, nối với 3A Studio — cùng nhánh v56)
+
+## Cập nhật v56.2 (25/11)
+
+**Triển khai theo thứ tự**
+1. Supabase › SQL Editor: chạy `supabase-v56.2.sql` (sau `v56`). Chỉ thay hàm trigger, không đổi bảng, không đổi dữ liệu. Chưa cài v56 thì chạy `v55.1` → `v55.3` → `v56` → `v56.2`.
+2. Chạy `scripts/cai-dat-v56.2.ps1` (cùng nhánh `v56`, chạy được cả khi chưa cài v56 / v56.0.1).
+3. Không có biến môi trường mới.
+
+**1. Đối tượng `content_task` trong 3A Studio**
+- `contentTasks` trong yêu cầu = bộ sưu tập `mktTasks` đang dùng. Bộ này đã nằm trong `KEYED_COLLS` (mỗi nhiệm vụ 1 dòng theo `id`), nên giữ tên cũ, không chuyển dữ liệu.
+- Mỗi nhiệm vụ có thêm `cf` (giá trị trường tùy chỉnh) và `productSku` (sản phẩm trọng tâm).
+- Trường tùy chỉnh có đối tượng mới **Nhiệm vụ nội dung**. Mức bắt buộc ghi là **"Trước khi giao AI"**: lưu nháp luôn được, chỉ chặn lúc giao.
+- 3 trang mới trong Thiết kế giao diện, mỗi trang một khối Form:
+  - `content-step-1` Bước 1: Định hướng
+  - `content-step-2` Bước 2: Kịch bản nội dung
+  - `content-step-3` Bước 3: Cấu hình hình ảnh
+- 17 trường gốc đặt được trong khối Form:
+  - Bước 1: Chủ đề / ý tưởng, Kênh đăng, Ngày đăng, Sản phẩm / dịch vụ trọng tâm, Chiến dịch, Loại nội dung, Phụ trách;
+  - Bước 2: Mẫu nhanh, Yêu cầu soạn bài, Thông số kênh (từ khóa, SEO), Thông số kênh mặc định, Brief chi tiết, Ghi chú thêm cho bài;
+  - Bước 3: Yêu cầu hình ảnh, Ảnh tham chiếu, Cài đặt nâng cao hình ảnh, Ghi chú thêm cho ảnh.
+- Bố cục mặc định chuẩn có sẵn khi 3A chưa thiết kế. 3A kéo-thả, đổi nhãn, đổi độ rộng, đặt trường tùy chỉnh vào bước bất kỳ rồi phát hành như các trang khác.
+- Quy tắc ghép 3 bước:
+  - Chủ đề và Kênh đăng luôn ở Bước 1;
+  - mỗi trường chỉ hiện 1 lần;
+  - trường tùy chỉnh mới (cờ "Form") tự vào Bước 1, trừ khi 3A đã đặt ở Bước 2 / 3;
+  - Thông số kênh chưa đặt ở đâu thì tự thêm cuối Bước 2 (kiểm tra bắt buộc của kênh cần các ô này).
+- Màn xem trước trong Studio dùng chung `DynamicFieldRenderer` với bảng thật. Trường gốc hiện giá trị mẫu.
+
+**2. Bảng trượt "Nhiệm vụ mới" (Auto Content › Kế hoạch)**
+- Rộng 580px. Thanh 3 bước dính trên cùng: bấm để chuyển bước, chấm đỏ là bước còn thiếu thông tin.
+- Chân bảng dính: Xóa (biểu tượng) · ← Quay lại · Lưu nháp · Tiếp tục → · ✨ Giao cho AI xử lý.
+- Bỏ ô "Trạng thái thủ công". Trạng thái hiện ở dưới tiêu đề. Bài đăng ngoài hệ thống: dòng nhỏ "Đánh dấu đã đăng" ở cuối Bước 1.
+- **Bước 1**:
+  - nút **Gợi ý tiêu đề** cho 3–5 tiêu đề để chọn ngay dưới ô (không mở thêm cửa sổ);
+  - chọn **Sản phẩm / dịch vụ trọng tâm**: ảnh sản phẩm tự thành ảnh tham chiếu ở Bước 3, tên sản phẩm tự vào "Sản phẩm / mã hàng cần nhắc tới" ở Bước 2, thông số sản phẩm vào ngữ cảnh gửi AI.
+- **Bước 2**:
+  - Mẫu nhanh thành thanh chip ngang 1 dòng;
+  - khối "Yêu cầu soạn bài" ở giữa;
+  - SĐT, liên kết, hashtag cố định (kênh Facebook / Zalo) gom vào thẻ thu gọn "Kế thừa từ thương hiệu". Thẻ tự mở khi còn thiếu, có nút "Lấy lại theo thương hiệu".
+- **Bước 3**:
+  - Số lượng ảnh: **1 ảnh đơn / Bộ ảnh theo từng ý / Không dùng ảnh**. Nhiệm vụ cũ chọn "Tối đa 3 ảnh" vẫn ra đúng 3 ảnh;
+  - Ảnh tham chiếu: sản phẩm chưa có ảnh thì có nút **Tải ảnh cho [mã]**. Ảnh lưu vào sản phẩm (cùng cách màn Sản phẩm) và tự chọn làm tham chiếu. Chỉ người có quyền quản lý sản phẩm thấy nút;
+  - Cài đặt nâng cao: **Mô hình tạo ảnh** Nhanh (mặc định, `gpt-image-2.5-flare`) / Chi tiết cao (`gpt-image-2.5-sunburst`).
+- Bấm Giao khi còn thiếu: về bước thiếu đầu tiên, báo tên ô cần nhập.
+
+**3. Ngữ cảnh gửi AI**
+- Lúc giao, hệ thống ghép `aiCtx` vào bản nội dung:
+  - sản phẩm trọng tâm: tên, mã, thương hiệu, đơn vị, xuất xứ, thông số do 3A định nghĩa cho sản phẩm;
+  - mọi trường tùy chỉnh có giá trị của nhiệm vụ, dạng "nhãn: giá trị" (nhãn theo bố cục 3A).
+- Bộ soạn nền gửi kèm ngữ cảnh này ở lời gọi lập dàn ý, soạn từng mục và mô tả ảnh. Ảnh gửi đúng chế độ Nhanh / Chi tiết cao đã chọn.
+
+**4. Máy chủ (`supabase-v56.2.sql`)**
+- Trigger `records_cf_guard` nhận thêm `mktTasks` → `content_task`. Chỉ kiểm tra **kiểu dữ liệu** (số, ngày, danh sách chọn…), không chặn lưu nháp vì thiếu trường.
+- RLS không đổi: nhiệm vụ vẫn theo `tenant_id` của doanh nghiệp.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict).
+- Giao diện 43 / 43 (`anh-v56.2/ket-qua-chay-thu.txt`): bảng 33, Studio 10.
+- SQL (`anh-v56.2/kiem-tra-sql-v56.2.sql`, PostgreSQL 16):
+  - sai kiểu số và giá trị ngoài danh sách bị chặn;
+  - nháp thiếu trường bắt buộc lưu được;
+  - nhiệm vụ cũ không có `cf` lưu được;
+  - doanh nghiệp khác không bị ảnh hưởng.
+- Chạy lại bộ thử v56, v56.0.1, v55.3, v55.2.1: 108 / 108 đạt.
+
 
 ## Cập nhật v56.0.1 (25/11)
 

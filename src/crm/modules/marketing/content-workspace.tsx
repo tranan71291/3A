@@ -8,12 +8,12 @@ import StarterKit from '@tiptap/starter-kit';
 import { type Node as PMNode } from '@tiptap/pm/model';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
-import { AlertTriangle, CheckCircle2, ChevronDown, Copy, Download, ExternalLink, Eye, ImagePlus, Info, Loader2, Lock, PenLine, Pencil, RefreshCw, Search, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { AlertTriangle, Check, CheckCircle2, ChevronDown, Copy, Download, ExternalLink, Eye, ImagePlus, Info, Loader2, Lock, PenLine, Pencil, RefreshCw, Search, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { RowMenu } from '../../components/controls';
 import { Chip, Field, MoneyInput, Panel, SideSheet, useSticky } from '../../components/ui';
-import { btnAccent, btnGhost, btnPrimary, btnSm, CAMP_STATUS, cloneContent, cloud, CLOUD_ON, compact, CONTENT_STATUS, CONTENT_TEMPLATES, contentBusy, contentExportItems, countOf, CV_KIND, CV_MAX, dataKb, dayMs, downloadBlob, downloadData, esc, fmtDate, GHOST_PREF, ghostEligible, ghostPrefOff, HS_CLICHES_DEFAULT, IMG_SIZES, inputBase, inputCls, isoDay, maskPii, MKT_CH, MKT_IMG_MAX, MKT_OPEN_EVT, MKT_REVIEW_EVT, openContentReview, SeoSidebar, slugify, ST_BRAND, ST_BRIEF_FIELDS, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stEsc, stFold, stHas, stickyStore, stSectionPrompt, stStr, TASK_STATUS, todayISO, uid, useApp, VARIANT_GROUPS, vAspect, vCfgOf, vImg, vKey, WRITER, WS_BLOCK_TYPES, WS_CSS, WS_GHOST, WS_MARKS, WS_TONES, wsClamp, wsCleanAi, wsHeadKey, wsId, wsImages, wsInlineMd, wsPara, wsPushVersion, wsSafeHref, wsSecKey, wsSentences, wsText, wsWords } from '../../lib/core';
-import type { AiQuotaCfg, AnyRec, Campaign, CampaignStatus, ConfirmState, ContentVariantCfg, ContentVersion, ContentVersionKind, HumanBlock, HumanReport, MenuOption, MktChannel, MktContent, MktContentType, MktImage, MktTask, Module, StArticle, StCompany, StSection, StSettings, StudioApi, TaskStatus, User, VariantGroup, VariantKind, WriterPreset, WsBlock, WsDiffPart, WsGhost, WsImagePanel, WsMarks, WsProposal, WsSlash, WsSlashItem, WsTone } from '../../lib/types';
+import { btnAccent, btnGhost, btnPrimary, btnSm, CAMP_STATUS, cloneContent, cloud, CLOUD_ON, compact, CONTENT_STATUS, CONTENT_TEMPLATES, contentBusy, contentExportItems, countOf, CV_KIND, CV_MAX, dataKb, dayMs, downloadBlob, downloadData, esc, fmtDate, GHOST_PREF, ghostEligible, ghostPrefOff, HS_CLICHES_DEFAULT, IMG_SIZES, inputBase, inputCls, isoDay, maskPii, MKT_CH, MKT_IMG_MAX, MKT_OPEN_EVT, MKT_REVIEW_EVT, openContentReview, SeoSidebar, slugify, ST_BRAND, ST_BRIEF_FIELDS, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stEsc, stFold, stHas, stickyStore, stSectionPrompt, stStr, todayISO, uid, useApp, VARIANT_GROUPS, vAspect, vCfgOf, vImg, vKey, WS_BLOCK_TYPES, WS_CSS, WS_GHOST, WS_MARKS, WS_TONES, wsClamp, wsCleanAi, wsHeadKey, wsId, wsImages, wsInlineMd, wsPara, wsPushVersion, wsSafeHref, wsSecKey, wsSentences, wsText, wsWords } from '../../lib/core';
+import type { AiQuotaCfg, AnyRec, Campaign, CampaignStatus, ConfirmState, ContentVariantCfg, ContentVersion, ContentVersionKind, HumanBlock, HumanReport, MenuOption, MktChannel, MktContent, MktImage, MktTask, Module, StArticle, StCompany, StSection, StSettings, StudioApi, User,VariantGroup, VariantKind, WsBlock, WsDiffPart, WsGhost, WsImagePanel, WsMarks, WsProposal, WsSlash, WsSlashItem, WsTone } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
 import { applyWatermark, contentToArticle, getPlatform, scoreArticle, stClip, StFieldControl, stShrinkImage, useStudio, useStudioActions, useStudioApi, useStudioPort } from './content-studio';
@@ -1591,14 +1591,65 @@ export function VariantControl({ g, values, cfg, onChange, ro }: { g: VariantGro
  * Thay cho bộ chip v38.2 (thay tên giữ nguyên để các nơi dùng cũ không đổi).
  */
 export function VariantPicker({ kind, platform, values, onChange, title, context, ro, middle, advancedExtra }: { kind: VariantKind; platform?: string; values: StSettings; onChange: (next: StSettings) => void; title: string; context?: string; ro?: boolean; middle?: ReactNode; advancedExtra?: ReactNode }) {
-  const { hubCfg, setHubCfg, canDo, notify, skus } = useApp();
-  const ai = useAi('writer');
+  const { hubCfg, skus } = useApp();
   const cfg = vCfgOf(hubCfg.content);
   const groups = vGroups(cfg, platform, kind);
   const basic = groups.filter((g) => !g.adv);
   const adv = groups.filter((g) => g.adv);
   const [showAdv, setShowAdv] = useState(false);
   const [preview, setPreview] = useState(false);
+  const refs = stArr(values[vKey('imgRef')]);
+  const withImg = skus.filter((x) => x.image && !x.archived);
+  return (
+    <div className="space-y-3">
+      {kind === 'text' && <QuickTemplates platform={platform} values={values} onChange={onChange} title={title} context={context} ro={ro} />}
+      {middle}
+      <FormCard title={kind === 'text' ? 'Yêu cầu soạn bài' : 'Yêu cầu hình ảnh'}>
+        <div className="grid grid-cols-2 gap-3">
+          {basic.map((g) => <VariantControl key={g.id} g={g} values={values} cfg={cfg} onChange={onChange} ro={ro} />)}
+          {kind === 'image' && (
+            <div className="col-span-2">
+              <p className="mb-1 text-xs font-medium text-[rgb(var(--muted))]">Ảnh tham chiếu từ danh mục sản phẩm (tối đa 2)</p>
+              {withImg.length
+                ? <SelectMenu ariaLabel="Ảnh tham chiếu" multi value={refs} disabled={ro} onChange={(v) => onChange({ ...values, [vKey('imgRef')]: v.slice(-2) })} placeholder="Chọn sản phẩm để AI bám theo hình thật…" options={withImg.slice(0, 200).map((x) => ({ id: x.sku, label: x.sku, hint: x.name, img: x.image }))} />
+                : <p className="text-xs text-[rgb(var(--faint))]">Chưa có sản phẩm nào có ảnh (Sản phẩm › sửa mã hàng › Ảnh).</p>}
+            </div>
+          )}
+        </div>
+      </FormCard>
+      <div className="flex items-center justify-between gap-3">
+        {(adv.length > 0 || advancedExtra) ? <button type="button" className="text-xs font-medium text-[rgb(var(--secondary-fg))] hover:underline" aria-expanded={showAdv} onClick={() => setShowAdv((v) => !v)}>{showAdv ? '− Ẩn cài đặt nâng cao' : '+ Hiện cài đặt nâng cao'}</button> : <span />}
+        <button type="button" className="text-[11px] text-[rgb(var(--muted))] hover:underline" onClick={() => setPreview((p) => !p)}>{preview ? 'Ẩn' : 'Xem'} chỉ dẫn sẽ gửi cho AI</button>
+      </div>
+      {(adv.length > 0 || advancedExtra) && showAdv && (
+        <FormCard title="Cài đặt nâng cao">
+          {adv.length > 0 && <div className="grid grid-cols-2 gap-3">{adv.map((g) => <VariantControl key={g.id} g={g} values={values} cfg={cfg} onChange={onChange} ro={ro} />)}</div>}
+          {advancedExtra && <div className={adv.length ? 'mt-3' : ''}>{advancedExtra}</div>}
+        </FormCard>
+      )}
+      {preview && <pre className="whitespace-pre-wrap rounded-md bg-[rgb(var(--sunken))] p-2.5 font-sans text-xs leading-relaxed">{(kind === 'text' ? `- ${vText(values, platform, 'text', cfg)}` : vText(values, platform, 'image', cfg)) || '(không có chỉ dẫn thêm)'}</pre>}
+    </div>
+  );
+}
+
+/** Các nhóm biến thể của một loại (cơ bản hoặc nâng cao) xếp lưới 2 cột: dùng ở bảng Nhiệm vụ nội dung (v56.2) */
+export function VariantGroupsGrid({ kind, platform, values, onChange, ro, adv }: { kind: VariantKind; platform?: string; values: StSettings; onChange: (next: StSettings) => void; ro?: boolean; adv: boolean }) {
+  const { hubCfg } = useApp();
+  const cfg = vCfgOf(hubCfg.content);
+  const groups = vGroups(cfg, platform, kind).filter((g) => !!g.adv === adv);
+  if (!groups.length) return null;
+  return <div className="grid grid-cols-2 gap-3">{groups.map((g) => <VariantControl key={g.id} g={g} values={values} cfg={cfg} onChange={onChange} ro={ro} />)}</div>;
+}
+
+/**
+ * Mẫu nhanh: mẫu cài sẵn + mẫu riêng của doanh nghiệp, gợi ý 3 cấu hình theo tiêu đề, lưu cấu hình thành mẫu.
+ * `chips`: thanh chip ngang (bảng Nhiệm vụ nội dung v56.2); mặc định: lưới thẻ trong khung "Mẫu nhanh" (Content Studio, Chiến dịch).
+ */
+export function QuickTemplates({ platform, values, onChange, title, context, ro, chips, label }: { platform?: string; values: StSettings; onChange: (next: StSettings) => void; title: string; context?: string; ro?: boolean; chips?: boolean; label?: string }) {
+  const { hubCfg, setHubCfg, canDo, notify } = useApp();
+  const ai = useAi('writer');
+  const cfg = vCfgOf(hubCfg.content);
+  const groups = vGroups(cfg, platform, 'text');
   const [sugs, setSugs] = useState<{ name: string; why: string; pick: Record<string, string[]> }[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [presetName, setPresetName] = useState<string | null>(null);
@@ -1628,25 +1679,14 @@ export function VariantPicker({ kind, platform, values, onChange, title, context
     if (!j?.options?.length) { if (r.ok) console.warn('[AI gợi ý mẫu] không đọc được JSON:', r.text); notify(r.ok ? 'AI trả lời không đúng định dạng, bấm lại lần nữa' : `AI chưa trả lời được: ${r.error}`, 'orange'); return; }
     setSugs(j.options.slice(0, 3).map((o) => ({ name: String(o.name ?? 'Phương án'), why: String(o.why ?? ''), pick: Object.fromEntries(Object.entries(o.pick ?? {}).filter(([g]) => all.some((x) => x.id === g)).map(([g, ids]) => [g, (Array.isArray(ids) ? ids : [ids]).map(String).filter((id) => all.find((x) => x.id === g)?.options.some((o2) => o2.id === id))])) })));
   };
-  const refs = stArr(values[vKey('imgRef')]);
-  const withImg = skus.filter((x) => x.image && !x.archived);
-  return (
-    <div className="space-y-3">
-      {kind === 'text' && (
-        <FormCard title="Mẫu nhanh" aside={<>
-          {!ro && canDo('mkt.manage') && <button type="button" className="text-[11px] font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => setPresetName('')}>Lưu cấu hình thành mẫu</button>}
-          {!ro && ai.available && <AiSpark title="AI gợi ý 3 cấu hình hợp với tiêu đề" busy={busy} disabled={!title.trim()} onClick={() => void suggest()} />}
-        </>}>
-          <div className="grid grid-cols-2 gap-2">
-            {[...tpls.map((t) => ({ id: t.id, name: t.name, desc: t.desc, vals: t.values })), ...presets.map((p) => ({ id: p.id, name: p.name, desc: 'Mẫu riêng của doanh nghiệp', vals: p.values }))].map((t) => (
-              <button key={t.id} type="button" disabled={ro} onClick={() => applyValues(t.vals, t.id)}
-                className={cn('rounded-md border bg-[rgb(var(--surface))] p-2.5 text-left transition-colors', tplId === t.id ? 'border-[rgb(var(--accent))] ring-1 ring-[rgb(var(--accent)/0.4)]' : 'border-[rgb(var(--line))] hover:border-[rgb(var(--accent)/0.5)]')}>
-                <span className="block text-[13px] font-semibold leading-snug">{tplId === t.id ? '✓ ' : ''}{t.name}</span>
-                <span className="mt-0.5 block text-[11px] leading-snug text-[rgb(var(--muted))]">{t.desc}</span>
-              </button>
-            ))}
-          </div>
-          {presetName !== null && (
+  const all = [...tpls.map((t) => ({ id: t.id, name: t.name, desc: t.desc, vals: t.values })), ...presets.map((p) => ({ id: p.id, name: p.name, desc: 'Mẫu riêng của doanh nghiệp', vals: p.values }))];
+  const cur = all.find((t) => t.id === tplId);
+  const actions = <>
+    {!ro && canDo('mkt.manage') && <button type="button" className="shrink-0 text-[11px] font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => setPresetName('')}>Lưu cấu hình thành mẫu</button>}
+    {!ro && ai.available && <AiSpark title={chips ? 'Gợi ý 3 cấu hình hợp với chủ đề' : 'AI gợi ý 3 cấu hình hợp với tiêu đề'} busy={busy} disabled={!title.trim()} onClick={() => void suggest()} />}
+  </>;
+  const extra = <>
+    {presetName !== null && (
             <form className="mt-2 flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (presetName.trim()) savePreset(presetName.trim()); }}>
               <input autoFocus className={cn(inputBase, 'h-8 min-w-0 flex-1 py-0 text-xs')} value={presetName} onChange={(e) => setPresetName(e.target.value)} placeholder="Tên mẫu, VD: Bài SEO sản phẩm 3M" aria-label="Tên mẫu" />
               <button className={cn(btnPrimary, btnSm)}>Lưu</button><button type="button" className={cn(btnGhost, btnSm)} onClick={() => setPresetName(null)}>Hủy</button>
@@ -1661,38 +1701,43 @@ export function VariantPicker({ kind, platform, values, onChange, title, context
               ))}
             </div>
           )}
-        </FormCard>
-      )}
-      {middle}
-      <FormCard title={kind === 'text' ? 'Yêu cầu soạn bài' : 'Yêu cầu hình ảnh'}>
-        <div className="grid grid-cols-2 gap-3">
-          {basic.map((g) => <VariantControl key={g.id} g={g} values={values} cfg={cfg} onChange={onChange} ro={ro} />)}
-          {kind === 'image' && (
-            <div className="col-span-2">
-              <p className="mb-1 text-xs font-medium text-[rgb(var(--muted))]">Ảnh tham chiếu từ danh mục sản phẩm (tối đa 2)</p>
-              {withImg.length
-                ? <SelectMenu ariaLabel="Ảnh tham chiếu" multi value={refs} disabled={ro} onChange={(v) => onChange({ ...values, [vKey('imgRef')]: v.slice(-2) })} placeholder="Chọn sản phẩm để AI bám theo hình thật…" options={withImg.slice(0, 200).map((x) => ({ id: x.sku, label: x.sku, hint: x.name, img: x.image }))} />
-                : <p className="text-xs text-[rgb(var(--faint))]">Chưa có sản phẩm nào có ảnh (Sản phẩm › sửa mã hàng › Ảnh).</p>}
-            </div>
-          )}
-        </div>
-      </FormCard>
-      <div className="flex items-center justify-between gap-3">
-        {(adv.length > 0 || advancedExtra) ? <button type="button" className="text-xs font-medium text-[rgb(var(--secondary-fg))] hover:underline" aria-expanded={showAdv} onClick={() => setShowAdv((v) => !v)}>{showAdv ? '− Ẩn cài đặt nâng cao' : '+ Hiện cài đặt nâng cao'}</button> : <span />}
-        <button type="button" className="text-[11px] text-[rgb(var(--muted))] hover:underline" onClick={() => setPreview((p) => !p)}>{preview ? 'Ẩn' : 'Xem'} chỉ dẫn sẽ gửi cho AI</button>
+  </>;
+  if (chips) return (
+    <div data-quick-templates>
+      <div className="mb-1.5 flex min-h-7 items-center gap-2">
+        <span className="min-w-0 flex-1 text-xs font-medium text-[rgb(var(--muted))]">{label ?? 'Mẫu nhanh'}</span>
+        {actions}
       </div>
-      {(adv.length > 0 || advancedExtra) && (
-        <>
-          {showAdv && (
-            <FormCard title="Cài đặt nâng cao">
-              {adv.length > 0 && <div className="grid grid-cols-2 gap-3">{adv.map((g) => <VariantControl key={g.id} g={g} values={values} cfg={cfg} onChange={onChange} ro={ro} />)}</div>}
-              {advancedExtra && <div className={adv.length ? 'mt-3' : ''}>{advancedExtra}</div>}
-            </FormCard>
-          )}
-        </>
-      )}
-      {preview && <pre className="whitespace-pre-wrap rounded-md bg-[rgb(var(--sunken))] p-2.5 font-sans text-xs leading-relaxed">{(kind === 'text' ? `- ${vText(values, platform, 'text', cfg)}` : vText(values, platform, 'image', cfg)) || '(không có chỉ dẫn thêm)'}</pre>}
+      <div>
+        <div className="-mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 pb-1" role="radiogroup" aria-label="Mẫu nhanh">
+          {all.map((t) => {
+            const on = tplId === t.id;
+            return (
+              <button key={t.id} type="button" role="radio" aria-checked={on} disabled={ro} title={t.desc} onClick={() => applyValues(t.vals, t.id)}
+                className={cn('inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 text-[12.5px] transition-colors', on ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.1)] font-medium text-[rgb(var(--fg))]' : 'border-[rgb(var(--line))] bg-[rgb(var(--surface))] text-[rgb(var(--fg2))] hover:border-[rgb(var(--ink)/0.3)]')}>
+                {on && <Check className="h-3.5 w-3.5" aria-hidden />}{t.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {cur && <p className="mt-1 text-[12px] text-[rgb(var(--muted))]">{cur.desc}</p>}
+      {extra}
     </div>
+  );
+  return (
+    <FormCard title="Mẫu nhanh" aside={actions}>
+      <div className="grid grid-cols-2 gap-2">
+        {all.map((t) => (
+          <button key={t.id} type="button" disabled={ro} onClick={() => applyValues(t.vals, t.id)}
+            className={cn('rounded-md border bg-[rgb(var(--surface))] p-2.5 text-left transition-colors', tplId === t.id ? 'border-[rgb(var(--accent))] ring-1 ring-[rgb(var(--accent)/0.4)]' : 'border-[rgb(var(--line))] hover:border-[rgb(var(--accent)/0.5)]')}>
+            <span className="block text-[13px] font-semibold leading-snug">{tplId === t.id ? '✓ ' : ''}{t.name}</span>
+            <span className="mt-0.5 block text-[11px] leading-snug text-[rgb(var(--muted))]">{t.desc}</span>
+          </button>
+        ))}
+      </div>
+      {extra}
+    </FormCard>
   );
 }
 
@@ -1757,100 +1802,7 @@ export function ChannelSettingsCard({ platformId, title, note, settings, onChang
   );
 }
 
-// ---------- Nhiệm vụ nội dung (tab Plan) ----------
-
-export function TaskSheet({ t, onClose }: { t: MktTask; onClose: () => void }) {
-  const { mktTasks, setMktTasks, campaigns, contents, users, canDo, notify, go, company } = useApp();
-  const assign = useAssignToAi();
-  const stCo = useMemo(() => stCompanyOf(company), [company]);
-  const [tab, setTab] = useState<'general' | 'content' | 'image'>('general');
-  const [f, setF] = useState<MktTask>(() => {
-    const pid = t.platform ?? ST_OF_CHANNEL[t.channel];
-    return pid ? { ...t, platform: pid, settings: { ...getPlatform(pid).defaults(stCompanyOf(company)), ...(t.settings ?? {}) } } : t;
-  });
-  const set = <K extends keyof MktTask>(k: K, v: MktTask[K]) => setF((p) => ({ ...p, [k]: v }));
-  const pid = f.platform && ST_OF_CHANNEL[f.channel] ? f.platform : undefined;
-  const plat = pid ? getPlatform(pid) : null;
-  const sv = f.settings ?? {};
-  const setSv = (next: StSettings) => setF((p) => ({ ...p, settings: next }));
-  const setChannel = (ch: MktChannel) => setF((p) => {
-    const np = ST_OF_CHANNEL[ch];
-    if (!np) return { ...p, channel: ch, platform: undefined };
-    const keep = Object.fromEntries(Object.entries(p.settings ?? {}).filter(([k]) => k.startsWith('v_') || getPlatform(np).fields.some((x) => x.key === k) || ST_BRIEF_FIELDS.some((x) => x.key === k)));
-    return { ...p, channel: ch, platform: np, settings: { ...getPlatform(np).defaults(stCo), ...keep } };
-  });
-  const errs = plat ? plat.validate(sv) : [];
-  const ro = !canDo('mkt.manage');
-  const exists = mktTasks.some((x) => x.id === f.id);
-  const live = mktTasks.find((x) => x.id === f.id) ?? f;
-  const st = taskStatusOf(live, contents);
-  const content = contents.find((c) => c.id === live.contentId);
-  const save = (x = f) => setMktTasks((p) => (p.some((y) => y.id === x.id) ? p.map((y) => (y.id === x.id ? { ...x, contentId: y.contentId ?? x.contentId } : y)) : [x, ...p]));
-  const openStudio = () => { if (!live.contentId) return; onClose(); openMktContent(live.contentId, go); };
-  const canGive = !!f.title.trim() && st !== 'AI_QUEUED' && st !== 'PUBLISHED' && errs.length === 0;
-  return (
-    <SideSheet title={exists ? 'Nhiệm vụ nội dung' : 'Nhiệm vụ mới'} width="sm:w-[600px]" onClose={onClose}
-      sub={<span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: TASK_STATUS[st].color }} aria-hidden />{TASK_STATUS[st].label}{content?.aiJob?.step ? ` · ${content.aiJob.step}` : ''}</span>}
-      footer={ro ? <button className={btnGhost} onClick={onClose}>Đóng</button> : <>
-        {exists && <button className={cn(btnGhost, 'mr-auto text-[rgb(var(--danger-fg))]')} onClick={() => { setMktTasks((p) => p.filter((x) => x.id !== f.id)); onClose(); }}>Xóa</button>}
-        {!canGive && f.title.trim() && errs.length > 0 && <span className="mr-auto text-xs text-[rgb(var(--danger-fg))]">Thiếu: {errs.join(', ')}</span>}
-        <button className={btnGhost} disabled={!f.title.trim()} onClick={() => { save(); notify('Đã lưu nhiệm vụ', 'teal'); onClose(); }}>Lưu</button>
-        <button className={btnAccent} disabled={!canGive} title={errs.length ? `Cần nhập: ${errs.join(', ')}` : undefined} onClick={() => { save(); assign(f); onClose(); }}><Sparkles className="h-4 w-4" aria-hidden />{content ? 'Giao AI làm lại' : 'Giao cho AI xử lý'}</button>
-      </>}>
-      <SheetTabs value={tab} onChange={setTab} tabs={[{ id: 'general', label: 'Thông tin chung', dot: !f.title.trim() }, { id: 'content', label: 'Cấu hình nội dung', dot: errs.length > 0 }, { id: 'image', label: 'Cấu hình hình ảnh' }]} />
-      <fieldset disabled={ro} className="min-w-0 space-y-3">
-        {tab === 'general' && <>
-          <ol className="flex items-center gap-1 text-[11px]" aria-label="Tiến trình">
-            {(Object.keys(TASK_STATUS) as TaskStatus[]).map((s, i) => { const idx = (Object.keys(TASK_STATUS) as TaskStatus[]).indexOf(st); return (
-              <li key={s} className="flex flex-1 items-center gap-1"><span className="h-1.5 flex-1 rounded-full" style={{ background: i <= idx ? TASK_STATUS[s].color : 'rgb(var(--line))' }} /><span className={cn('whitespace-nowrap', i === idx ? 'font-semibold' : 'text-[rgb(var(--muted))]')}>{TASK_STATUS[s].label}</span></li>
-            ); })}
-          </ol>
-          <FormCard>
-            <Field label="Tiêu đề / chủ đề bài"><input className={inputCls} value={f.title} onChange={(e) => set('title', e.target.value)} placeholder="VD: 5 lưu ý chọn đầu cáp co nguội cho trạm 24kV" /></Field>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <Field label="Kênh phân phối"><select className={inputCls} value={f.channel} onChange={(e) => setChannel(e.target.value as MktChannel)}>{(Object.keys(MKT_CH) as MktChannel[]).map((k) => <option key={k} value={k}>{MKT_CH[k].label}{ST_OF_CHANNEL[k] ? '' : ' (soạn tự do)'}</option>)}</select></Field>
-              <Field label="Ngày đăng"><input type="date" className={inputCls} value={f.date} onChange={(e) => set('date', e.target.value)} /></Field>
-              <Field label="Chiến dịch"><select className={inputCls} value={f.campaignId ?? ''} onChange={(e) => set('campaignId', e.target.value || undefined)}><option value="">Không gắn</option>{campaigns.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
-              <Field label="Loại nội dung"><select className={inputCls} value={f.contentType} onChange={(e) => set('contentType', e.target.value as MktContentType)}>{(Object.keys(WRITER) as WriterPreset[]).map((k) => <option key={k} value={k}>{WRITER[k].label}</option>)}</select></Field>
-              <Field label="Phụ trách"><select className={inputCls} value={f.ownerId ?? ''} onChange={(e) => set('ownerId', e.target.value || undefined)}><option value="">—</option>{users.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
-              <Field label="Trạng thái thủ công" hint={content ? 'Đang theo nội dung AI' : undefined}><select className={inputCls} value={f.status} disabled={!!content} onChange={(e) => set('status', e.target.value as TaskStatus)}><option value="PLAN">Kế hoạch</option><option value="PUBLISHED">Đã đăng (làm ngoài hệ thống)</option></select></Field>
-            </div>
-          </FormCard>
-          {!plat && (
-            <FormCard title="Yêu cầu cho AI (kênh này soạn tự do)">
-              <Field label="Yêu cầu nội dung"><textarea className={cn(inputCls, 'min-h-[72px]')} value={f.textPrompt} onChange={(e) => set('textPrompt', e.target.value)} placeholder="Đối tượng, thông điệp, ưu đãi, độ dài…" /></Field>
-              <Field label="Yêu cầu hình ảnh" className="mt-3"><textarea className={cn(inputCls, 'min-h-[56px]')} value={f.imagePrompt} onChange={(e) => set('imagePrompt', e.target.value)} placeholder="Phong cách, bối cảnh, màu sắc…" /></Field>
-            </FormCard>
-          )}
-          {plat && <p className="text-xs text-[rgb(var(--muted))]">Tiếp theo: tab <b>Cấu hình nội dung</b> chọn mẫu nhanh và từ khóa, tab <b>Cấu hình hình ảnh</b> chọn khung hình, bối cảnh.</p>}
-          {content && (
-            <FormCard title="Nội dung AI">
-              <p className="font-medium">{content.title}</p>
-              <p className="text-xs text-[rgb(var(--muted))]">{content.blocks?.length ?? 0} mục · {content.blocks?.filter((b) => b.image).length ?? 0} ảnh · {CONTENT_STATUS[content.status].label}{content.aiJob?.status === 'FAILED' ? ` · lỗi: ${content.aiJob.error}` : ''}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {content.status !== 'DRAFT' && <button type="button" className={cn(btnPrimary, btnSm)} onClick={() => { onClose(); openContentReview(content.id); }}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />{content.status === 'REVIEW' && canDo('mkt.manage') ? 'Xem & duyệt' : 'Xem bài'}</button>}
-                <button type="button" className={cn(btnGhost, btnSm)} onClick={openStudio}><ExternalLink className="h-3.5 w-3.5" aria-hidden />Mở Workspace</button>
-              </div>
-            </FormCard>
-          )}
-        </>}
-        {tab === 'content' && plat && pid && (
-          <VariantPicker kind="text" platform={pid} values={sv} title={f.title} context={f.textPrompt} ro={ro} onChange={setSv}
-            middle={<ChannelSettingsCard platformId={pid} title={f.title} note={f.textPrompt} settings={sv} onChange={setSv} ro={ro} self={{ taskId: f.id, contentId: live.contentId }} />}
-            advancedExtra={<div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">{ST_BRIEF_FIELDS.map((x) => <StFieldControl key={x.key} f={x} value={sv[x.key]} company={stCo} onChange={(v) => setSv({ ...sv, [x.key]: v })} />)}</div>
-              <Field label="Ghi chú thêm cho AI"><textarea className={cn(inputCls, 'min-h-[64px]')} value={f.textPrompt} onChange={(e) => set('textPrompt', e.target.value)} placeholder="Góc nhìn, ví dụ thực tế, công trình đã làm…" /></Field>
-            </div>} />
-        )}
-        {tab === 'image' && plat && pid && (
-          <VariantPicker kind="image" platform={pid} values={sv} title={f.title} context={f.imagePrompt} ro={ro} onChange={setSv}
-            advancedExtra={<Field label="Ghi chú thêm cho ảnh"><textarea className={cn(inputCls, 'min-h-[56px]')} value={f.imagePrompt} onChange={(e) => set('imagePrompt', e.target.value)} placeholder="Nhân vật, góc chụp, chi tiết cần có…" /></Field>} />
-        )}
-        {tab !== 'general' && !plat && <p className="rounded-md bg-[rgb(var(--sunken))] p-3 text-sm text-[rgb(var(--muted))]">Kênh {MKT_CH[f.channel].label} soạn tự do: nhập yêu cầu ở tab Thông tin chung.</p>}
-      </fieldset>
-    </SideSheet>
-  );
-}
+// v56.2: bảng "Nhiệm vụ nội dung" (3 bước theo bố cục 3A Studio) chuyển sang ./content-task.tsx
 
 // ---------- Chiến dịch (tab Plan) ----------
 

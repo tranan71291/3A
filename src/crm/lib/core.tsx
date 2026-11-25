@@ -2237,10 +2237,10 @@ export const VARIANT_GROUPS: VariantGroup[] = [
   ] },
   // ---- hình ảnh ----
   { id: 'imgCount', kind: 'image', label: 'Số lượng ảnh', multi: false, options: [
-    { id: 'hero', label: '1 ảnh đại diện', prompt: '' },
-    { id: 'perh2', label: '1 ảnh mỗi mục H2', prompt: '', def: true },
-    { id: 'max3', label: 'Tối đa 3 ảnh', prompt: '' },
-    { id: 'none', label: 'Không tạo ảnh', prompt: '' },
+    // v56.2 3 lựa chọn dễ hiểu (bản cũ 'max3' — "Tối đa 3 ảnh" — vẫn chạy với nhiệm vụ đã lưu, không còn trong danh sách chọn)
+    { id: 'hero', label: '1 ảnh đơn', prompt: '' },
+    { id: 'perh2', label: 'Bộ ảnh theo từng ý', prompt: '', def: true },
+    { id: 'none', label: 'Không dùng ảnh', prompt: '' },
   ] },
   { id: 'imgAspect', kind: 'image', label: 'Khung hình', multi: false, options: [
     { id: 'auto', label: 'Theo kênh', prompt: '', def: true },
@@ -2306,13 +2306,13 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
   { id: 'tpl_howto', name: 'Hướng dẫn thi công', desc: 'Từng bước, dụng cụ, lỗi hay gặp, mời khảo sát', channels: ['website'],
     values: { type: ['howto'], length: ['w_mid'], tone: ['engineer'], audience: ['mep'], proof: ['standard', 'specs'], cta: ['survey', 'zalo'], sections: ['s57'], extras: ['bullets', 'tldr', 'faq'], depth: ['pro'], imgCount: ['perh2'], imgScene: ['crew', 'closeup'], imgStyle: ['real'] } },
   { id: 'tpl_compare', name: 'So sánh / tư vấn chọn mua', desc: 'Tiêu chí rõ ràng, bảng so sánh, kết luận nên chọn gì', channels: ['website'],
-    values: { type: ['compare'], length: ['w_long'], tone: ['investor'], audience: ['owner'], proof: ['specs', 'table'], cta: ['quote'], extras: ['table', 'faq'], depth: ['pro'], imgCount: ['max3'], imgScene: ['closeup'], imgStyle: ['studio'] } },
+    values: { type: ['compare'], length: ['w_long'], tone: ['investor'], audience: ['owner'], proof: ['specs', 'table'], cta: ['quote'], extras: ['table', 'faq'], depth: ['pro'], imgCount: ['perh2'], imgScene: ['closeup'], imgStyle: ['studio'] } },
   { id: 'tpl_case_web', name: 'Case study công trình', desc: 'Bối cảnh, vấn đề, giải pháp, kết quả, lời khách', channels: ['website'],
     values: { type: ['case'], length: ['w_mid'], tone: ['investor'], audience: ['owner'], proof: ['project', 'beforeafter', 'testimonial'], cta: ['survey'], depth: ['pro'], imgCount: ['perh2'], imgScene: ['site', 'crew'], imgStyle: ['real'] } },
   { id: 'tpl_fb_promo', name: 'Khuyến mãi Fanpage', desc: 'Ngắn, nhấn ưu đãi, CTA nhắn Zalo / gọi', channels: ['facebook'],
     values: { type: ['promo'], length: ['fb_short'], tone: ['sales'], cta: ['zalo', 'hotline'], address: ['ban'], imgCount: ['hero'], imgAspect: ['square'], imgStyle: ['copyspace'], imgColor: ['brand'] } },
   { id: 'tpl_fb_story', name: 'Kể chuyện công trình', desc: 'Bài Fanpage dài vừa, có trước / sau và ảnh thi công', channels: ['facebook'],
-    values: { type: ['case'], length: ['fb_long'], tone: ['investor'], proof: ['project', 'beforeafter'], cta: ['survey'], imgCount: ['max3'], imgAspect: ['p45'], imgScene: ['site', 'crew'] } },
+    values: { type: ['case'], length: ['fb_long'], tone: ['investor'], proof: ['project', 'beforeafter'], cta: ['survey'], imgCount: ['perh2'], imgAspect: ['p45'], imgScene: ['site', 'crew'] } },
   { id: 'tpl_fb_tip', name: 'Mẹo kỹ thuật nhanh', desc: 'Một mẹo / một sai lầm, dễ chia sẻ', channels: ['facebook'],
     values: { type: ['mistakes'], length: ['fb_mid'], tone: ['engineer'], depth: ['basic'], cta: ['zalo'], imgCount: ['hero'], imgAspect: ['square'], imgScene: ['closeup'] } },
   { id: 'tpl_zalo_news', name: 'Bản tin Zalo OA', desc: 'Thông báo ngắn, rõ ngày hiệu lực, nút nhắn tin', channels: ['zalo'],
@@ -2504,18 +2504,28 @@ export const L_PAGES: { id: LPage; label: string; kind: 'SUMMARY' | 'BUSINESS'; 
   { id: 'lead-list', label: 'Danh sách lead (Data MKT)', kind: 'BUSINESS', open: true, plan: '' },
   { id: 'lead-detail', label: 'Chi tiết / form lead', kind: 'BUSINESS', open: true, plan: '' },
   { id: 'claim', label: 'Hồ sơ MDF / Claim', kind: 'BUSINESS', open: false, plan: 'Bản sau' },
+  // v56.2: bảng trượt Nhiệm vụ nội dung (Auto Content) — 3 bước, kéo thả trường gốc và trường tùy chỉnh theo ngành / doanh nghiệp
+  { id: 'content-step-1', label: 'Nhiệm vụ nội dung · Bước 1: Định hướng', kind: 'BUSINESS', open: true, plan: '' },
+  { id: 'content-step-2', label: 'Nhiệm vụ nội dung · Bước 2: Kịch bản nội dung', kind: 'BUSINESS', open: true, plan: '' },
+  { id: 'content-step-3', label: 'Nhiệm vụ nội dung · Bước 3: Cấu hình hình ảnh', kind: 'BUSINESS', open: true, plan: '' },
 ];
 
-export const L_ALL_PAGES: LPage[] = ['home', 'sale-detail', 'sale-list', 'customer-list', 'customer-detail', 'lead-list', 'lead-detail'];
+/** v56.2 3 trang bước của Nhiệm vụ nội dung */
+export const L_CONTENT_STEPS: LPage[] = ['content-step-1', 'content-step-2', 'content-step-3'];
+
+export const L_ALL_PAGES: LPage[] = ['home', 'sale-detail', 'sale-list', 'customer-list', 'customer-detail', 'lead-list', 'lead-detail', ...L_CONTENT_STEPS];
 
 /** v55.3 Đối tượng của trang thiết kế (trang tổng hợp: không có) */
-export const L_PAGE_ENTITY: Partial<Record<LPage, CfEntity>> = { 'sale-detail': 'sale', 'sale-list': 'sale', 'sale-form': 'sale', 'customer-list': 'customer', 'customer-detail': 'customer', 'lead-list': 'lead', 'lead-detail': 'lead' };
+export const L_PAGE_ENTITY: Partial<Record<LPage, CfEntity>> = { 'sale-detail': 'sale', 'sale-list': 'sale', 'sale-form': 'sale', 'customer-list': 'customer', 'customer-detail': 'customer', 'lead-list': 'lead', 'lead-detail': 'lead', 'content-step-1': 'content_task', 'content-step-2': 'content_task', 'content-step-3': 'content_task' };
 
-/** v55.3 Trang chứa bố cục form (K-RecordForm) / chi tiết (K-RecordDetail) của từng đối tượng; sản phẩm chưa có trang thiết kế (dùng mặc định theo cờ) */
-export const L_FORM_PAGE: Record<CfEntity, LPage | null> = { sale: 'sale-form', customer: 'customer-detail', lead: 'lead-detail', product: null };
-export const L_DETAIL_PAGE: Record<CfEntity, LPage | null> = { sale: 'sale-detail', customer: 'customer-detail', lead: 'lead-detail', product: null };
+/**
+ * v55.3 Trang chứa bố cục form (K-RecordForm) / chi tiết (K-RecordDetail) của từng đối tượng; sản phẩm chưa có trang thiết kế (dùng mặc định theo cờ).
+ * v56.2 Nhiệm vụ nội dung: form chia 3 trang bước (L_CONTENT_STEPS), trang đầu ghi ở đây.
+ */
+export const L_FORM_PAGE: Record<CfEntity, LPage | null> = { sale: 'sale-form', customer: 'customer-detail', lead: 'lead-detail', product: null, content_task: 'content-step-1' };
+export const L_DETAIL_PAGE: Record<CfEntity, LPage | null> = { sale: 'sale-detail', customer: 'customer-detail', lead: 'lead-detail', product: null, content_task: null };
 
-export const CF_ENTITY: Record<CfEntity, string> = { sale: 'Đơn bán hàng', customer: 'Khách hàng', lead: 'Lead', product: 'Sản phẩm' };
+export const CF_ENTITY: Record<CfEntity, string> = { sale: 'Đơn bán hàng', customer: 'Khách hàng', lead: 'Lead', product: 'Sản phẩm', content_task: 'Nhiệm vụ nội dung' };
 
 export const L_TYPES: LTypeDef[] = [
   { type: 'K-Text', label: 'Khối text', def: { x: 0, y: 0, w: 6, h: 2 }, desc: '8 kiểu: tiêu đề, đoạn văn, nhãn, ghi chú, lưu ý, cảnh báo…; biến tự điền', pages: L_ALL_PAGES, tier: 'show' },
@@ -2529,7 +2539,7 @@ export const L_TYPES: LTypeDef[] = [
   { type: 'K-Tabs', label: 'Tab', def: { x: 0, y: 0, w: 12, h: 1 }, desc: 'Chia trang thành tab, mỗi tab một nhóm khối', pages: ['home'], tier: 'data' },
   { type: 'K-Target', label: 'Tiến độ mục tiêu', def: { x: 0, y: 0, w: 12, h: 1 }, desc: 'Doanh thu so với chỉ tiêu tháng, vạch kỳ vọng', pages: ['home'], tier: 'data' },
   { type: 'K-RecordDetail', label: 'Chi tiết bản ghi', def: { x: 0, y: 0, w: 8, h: 3 }, desc: 'Nhóm trường, kéo thả từng trường (trường gốc và trường tùy chỉnh)', pages: ['sale-detail', 'customer-detail', 'lead-detail'], tier: 'biz', core: true },
-  { type: 'K-RecordForm', label: 'Form bản ghi', def: { x: 0, y: 0, w: 12, h: 4 }, desc: 'Phần Thông tin thêm của form: nhóm trường, nhãn, gợi ý, chỉ đọc, bắt buộc', pages: ['sale-form', 'customer-detail', 'lead-detail'], tier: 'biz', core: true },
+  { type: 'K-RecordForm', label: 'Form bản ghi', def: { x: 0, y: 0, w: 12, h: 4 }, desc: 'Phần Thông tin thêm của form: nhóm trường, nhãn, gợi ý, chỉ đọc, bắt buộc', pages: ['sale-form', 'customer-detail', 'lead-detail', 'content-step-1', 'content-step-2', 'content-step-3'], tier: 'biz', core: true },
   { type: 'K-RecordList', label: 'Danh sách bản ghi', def: { x: 0, y: 0, w: 12, h: 8 }, desc: 'Bảng thật của phân hệ; 3A chọn cột trường tùy chỉnh và thứ tự', pages: ['customer-list', 'lead-list'], tier: 'biz', core: true },
   { type: 'K-Order-Info', label: 'Thông tin đơn hàng (cũ)', def: { x: 0, y: 0, w: 8, h: 3 }, desc: 'Đã thay bằng Chi tiết bản ghi', pages: [], tier: 'biz' },
   { type: 'K-Order-Lines', label: 'Hàng hóa & chứng từ', def: { x: 0, y: 0, w: 8, h: 5 }, desc: 'Bảng hàng hóa, chứng từ liên quan', pages: ['sale-detail'], tier: 'biz', core: true },
@@ -2589,7 +2599,10 @@ export const lStarterSale = (): LBlock[] => {
 export const lStarterList = (): LBlock[] => lOrderSm([lNewBlock('K-SaleList', { x: 0, y: 0, w: 12, h: 8 }, 'sale-list')]);
 
 /** v55.3 Bố cục khởi tạo trang khách hàng / lead: danh sách = khối Danh sách bản ghi; chi tiết = khối Chi tiết + khối Form */
-export const lStarterEntity = (page: LPage): LBlock[] => lOrderSm(page.endsWith('-list')
+export const lStarterEntity = (page: LPage): LBlock[] => lOrderSm(L_CONTENT_STEPS.includes(page)
+  // v56.2 Nhiệm vụ nội dung: mỗi bước một khối Form, bố cục mặc định của bước
+  ? [lNewBlock('K-RecordForm', { x: 0, y: 0, w: 12, h: page === 'content-step-1' ? 7 : 9 }, page)]
+  : page.endsWith('-list')
   ? [lNewBlock('K-RecordList', { x: 0, y: 0, w: 12, h: 8 }, page)]
   : [lNewBlock('K-RecordDetail', { x: 0, y: 0, w: 12, h: 3 }, page), lNewBlock('K-RecordForm', { x: 0, y: 3, w: 12, h: 4 }, page)]);
 
@@ -2625,6 +2638,9 @@ export const lMigrate = (page: LPage, bs: LBlock[]): LBlock[] => bs.map((b) => {
   // v55.3: khối bản ghi luôn mang đối tượng (bố cục trước v55.3 chỉ có đơn bán)
   const ent: CfEntity = b.config.entity ?? L_PAGE_ENTITY[page] ?? 'sale';
   if (b.type === 'K-RecordDetail' && !b.config.sections) return { ...b, config: { ...b.config, entity: ent, sections: ent === 'sale' ? lInfoSections(b.id, b.config) : [] } };
+  // v56.2 khối Form của trang bước Nhiệm vụ nội dung luôn mang số bước (theo trang)
+  const stepOf = L_CONTENT_STEPS.indexOf(page) + 1;
+  if (b.type === 'K-RecordForm' && stepOf > 0 && b.config.step !== stepOf) return { ...b, config: { ...b.config, entity: 'content_task', step: stepOf as 1 | 2 | 3, sections: b.config.sections ?? lContentStepDefault(stepOf as 1 | 2 | 3) } };
   if (b.type === 'K-RecordForm' && !b.config.sections) return { ...b, config: { ...b.config, entity: ent, sections: [] } };
   if ((b.type === 'K-RecordDetail' || b.type === 'K-RecordForm' || b.type === 'K-RecordList') && !b.config.entity) return { ...b, config: { ...b.config, entity: ent } };
   return b;
@@ -2636,6 +2652,35 @@ export const ENTITY_INFO_F: Record<CfEntity, { id: string; label: string; lock?:
   customer: [{ id: 'code', label: 'Mã khách hàng' }, { id: 'name', label: 'Tên khách hàng' }, { id: 'taxCode', label: 'Mã số thuế' }, { id: 'segment', label: 'Nhóm khách hàng' }, { id: 'tier', label: 'Hạng khách hàng' }, { id: 'region', label: 'Khu vực' }, { id: 'dept', label: 'Phòng ban quản lý' }, { id: 'amId', label: 'Người phụ trách' }, { id: 'contactName', label: 'Người liên hệ' }, { id: 'contactPhone', label: 'Điện thoại liên hệ' }, { id: 'contactEmail', label: 'Email liên hệ' }, { id: 'address', label: 'Địa chỉ' }, { id: 'creditLimit', label: 'Hạn mức công nợ' }, { id: 'debt', label: 'Công nợ hiện tại' }],
   lead: [{ id: 'code', label: 'Mã lead' }, { id: 'company', label: 'Công ty' }, { id: 'contact', label: 'Người liên hệ' }, { id: 'phone', label: 'Điện thoại' }, { id: 'email', label: 'Email' }, { id: 'taxCode', label: 'Mã số thuế' }, { id: 'segment', label: 'Nhóm khách' }, { id: 'source', label: 'Nguồn' }, { id: 'region', label: 'Khu vực' }, { id: 'province', label: 'Tỉnh / thành' }],
   product: [],
+  // v56.2 Nhiệm vụ nội dung: trường gốc của 3 bước (đặt được ở khối Form; trường khóa luôn có ở Bước 1)
+  content_task: [
+    { id: 'title', label: 'Chủ đề / ý tưởng', lock: true }, { id: 'channel', label: 'Kênh đăng', lock: true }, { id: 'date', label: 'Ngày đăng' },
+    { id: 'product', label: 'Sản phẩm / dịch vụ trọng tâm' }, { id: 'campaign', label: 'Chiến dịch' }, { id: 'contentType', label: 'Loại nội dung' }, { id: 'owner', label: 'Phụ trách' },
+    { id: 'tpl', label: 'Mẫu nhanh' }, { id: 'brief', label: 'Yêu cầu soạn bài' }, { id: 'seo', label: 'Thông số kênh (từ khóa, SEO)' },
+    { id: 'brand', label: 'Thông số kênh mặc định' }, { id: 'briefAdv', label: 'Brief chi tiết' }, { id: 'textNote', label: 'Ghi chú thêm cho bài' },
+    { id: 'imgReq', label: 'Yêu cầu hình ảnh' }, { id: 'imgRef', label: 'Ảnh tham chiếu' }, { id: 'imgAdv', label: 'Cài đặt nâng cao hình ảnh' }, { id: 'imgNote', label: 'Ghi chú thêm cho ảnh' },
+  ],
+};
+
+/** v56.2 Đối tượng có trường gốc đặt được cả trong khối Form (Nhiệm vụ nội dung: cả form là bố cục 3A thiết kế) */
+export const CF_FORM_BUILTIN: CfEntity[] = ['content_task'];
+
+/** v56.2 Bố cục mặc định 3 bước của Nhiệm vụ nội dung (doanh nghiệp chưa có bản thiết kế riêng dùng bản này) */
+export const lContentStepDefault = (step: 1 | 2 | 3): LSection[] => {
+  const F = (k: string, n: number, p: Partial<LFieldItem> = {}): LFieldItem => ({ id: `ct${step}-${k}`, fieldKey: k, colSpan: n, ...p });
+  if (step === 1) return [
+    { id: 'ct1-s1', title: '', cols: 2, fields: [F('title', 12), F('channel', 6), F('date', 6), F('product', 12, { helpText: 'Ảnh và thông số sản phẩm tự sang Bước 2, 3' }), F('campaign', 6), F('contentType', 6), F('owner', 6)] },
+    { id: 'ct1-s2', title: 'Thông tin thêm', cols: 2, fields: [] },
+  ];
+  if (step === 2) return [
+    { id: 'ct2-s1', title: '', cols: 1, fields: [F('tpl', 12), F('brief', 12)] },
+    { id: 'ct2-s2', title: 'Thông số kênh', cols: 1, fields: [F('seo', 12), F('brand', 12)] },
+    { id: 'ct2-s3', title: 'Nâng cao', cols: 1, collapsedByDefault: true, fields: [F('briefAdv', 12), F('textNote', 12)] },
+  ];
+  return [
+    { id: 'ct3-s1', title: '', cols: 1, fields: [F('imgReq', 12), F('imgRef', 12)] },
+    { id: 'ct3-s2', title: 'Cài đặt nâng cao', cols: 1, collapsedByDefault: true, fields: [F('imgAdv', 12), F('imgNote', 12)] },
+  ];
 };
 
 /** v55.3 Health Check đủ: cả trường tự vào bố cục theo cờ (trường mới) — VD trường chỉ áp dụng cho DN khác nhưng có cờ "Thông tin" */
@@ -2713,7 +2758,7 @@ export const lSaleAvail = (kind: 'detail' | 'form', head: CfDef[]): LFieldAvail[
 
 /** v55.3 Trường đặt được vào khối của một đối tượng: trường gốc (chỉ khối Chi tiết) + trường tùy chỉnh của đối tượng đó */
 export const lEntityAvail = (entity: CfEntity, kind: 'detail' | 'form', head: CfDef[]): LFieldAvail[] => [
-  ...(kind === 'detail' ? (entity === 'sale' ? SO_INFO_F : ENTITY_INFO_F[entity]).map((f) => ({ key: f.id, label: f.label, lock: f.lock })) : []),
+  ...(kind === 'detail' || CF_FORM_BUILTIN.includes(entity) ? (entity === 'sale' ? SO_INFO_F : ENTITY_INFO_F[entity]).map((f) => ({ key: f.id, label: f.label, lock: f.lock })) : []),
   ...head.filter((d) => d.entity === entity && d.scope === 'HEAD' && (d.status === 'ACTIVE' || kind === 'detail')).map((d) => ({ key: `cf:${d.key}`, label: d.label, cf: d })),
 ];
 
@@ -2723,6 +2768,13 @@ export const lSaleSections = (kind: 'detail' | 'form', c: LBlockCfg | undefined,
 /** v55.3 Bố cục trường đã tính sẵn của khối (thứ tự đọc: bố cục → trường mới theo cờ → trường bắt buộc / khóa) */
 export const lEntitySections = (entity: CfEntity, kind: 'detail' | 'form', c: LBlockCfg | undefined, head0: CfDef[], keepEmpty = false, extra: LFieldAvail[] = []): LSection[] => {
   const head = head0.filter((d) => d.entity === entity);
+  // v56.2 Nhiệm vụ nội dung bước 2 / 3: không tự thêm trường khóa / trường mới (chỉ Bước 1 nhận), không có bố cục thì dùng mặc định của bước
+  const stepN = entity === 'content_task' ? c?.step ?? 1 : 0;
+  if (stepN > 1) {
+    const av = [...lEntityAvail(entity, kind, head).map((a) => ({ ...a, lock: false })), ...extra];
+    return lResolveSections(c?.sections ?? lContentStepDefault(stepN as 2 | 3), av, { keepEmpty });
+  }
+  if (stepN === 1 && !c?.sections) c = { ...(c ?? { title: '', ds: 'sales' }), sections: lContentStepDefault(1) };
   const avail = [...lEntityAvail(entity, kind, head), ...extra];
   const eff = kind === 'form' ? cfWithLayout(head, c?.sections) : head;
   // Chi tiết: cả trường đã ngừng dùng (khi bản ghi còn giá trị, bộ hiển thị tự ẩn ô trống của trường ngừng dùng)
@@ -2827,7 +2879,7 @@ export const LPageC = createContext<LPageCtx | null>(null);
 
 export const lPeriodLabel = (p: DashPeriod, now = new Date()) => (p === 'MONTH' ? `Tháng ${now.getMonth() + 1}/${now.getFullYear()}` : p === 'QUARTER' ? `Quý ${Math.floor(now.getMonth() / 3) + 1}/${now.getFullYear()}` : p === 'YEAR' ? `Năm ${now.getFullYear()}` : 'Tuần này');
 
-export const L_VAR_KEYS: Record<LPage, string[]> = { home: ['kỳ', 'kỳ trước', 'giờ cập nhật', 'kỳ vọng %', 'số ngày còn lại', 'ngày', 'tên doanh nghiệp', 'người xem'], 'sale-detail': ['mã đơn', 'khách hàng', 'trạng thái đơn', 'ngày', 'tên doanh nghiệp', 'người xem'], 'sale-list': ['ngày', 'tên doanh nghiệp', 'người xem'], 'sale-form': [], 'customer-list': ['ngày', 'tên doanh nghiệp', 'người xem'], 'customer-detail': [], 'lead-list': ['ngày', 'tên doanh nghiệp', 'người xem'], 'lead-detail': [], desk: [], reports: [], customer: [], claim: [] };
+export const L_VAR_KEYS: Record<LPage, string[]> = { home: ['kỳ', 'kỳ trước', 'giờ cập nhật', 'kỳ vọng %', 'số ngày còn lại', 'ngày', 'tên doanh nghiệp', 'người xem'], 'sale-detail': ['mã đơn', 'khách hàng', 'trạng thái đơn', 'ngày', 'tên doanh nghiệp', 'người xem'], 'sale-list': ['ngày', 'tên doanh nghiệp', 'người xem'], 'sale-form': [], 'customer-list': ['ngày', 'tên doanh nghiệp', 'người xem'], 'customer-detail': [], 'lead-list': ['ngày', 'tên doanh nghiệp', 'người xem'], 'lead-detail': [], desk: [], reports: [], customer: [], claim: [], 'content-step-1': [], 'content-step-2': [], 'content-step-3': [] };
 
 export const lFill = (s: string, v?: Record<string, string>) => (v ? s.replace(/\{([^{}\n]{1,30})\}/g, (m, k: string) => v[k.trim()] ?? m) : s);
 

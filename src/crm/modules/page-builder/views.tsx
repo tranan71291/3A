@@ -96,7 +96,7 @@ export function lSaleSample({ b, stage, cf, narrow }: { b: LBlock; stage: LStage
   if (b.type === 'K-RecordForm') {
     const ent = c.entity ?? 'sale';
     const heads = cf.filter((d) => d.entity === ent && d.scope === 'HEAD');
-    return <DynamicFieldRenderer sample mode="edit" narrow={narrow} sections={lEntitySections(ent, 'form', c, heads)} avail={lEntityAvail(ent, 'form', heads)} required={cfWithLayout(heads, c.sections)} />;
+    return <DynamicFieldRenderer sample mode="edit" narrow={narrow} sections={lEntitySections(ent, 'form', c, heads)} avail={lEntityAvail(ent, 'form', heads)} required={cfWithLayout(heads, c.sections)} builtin={(k) => lBuiltinSample(ent, k)} />;
   }
   // v55.3 khối Danh sách bản ghi: bảng thật của phân hệ (khách hàng / Data MKT) với dữ liệu mẫu
   if (b.type === 'K-RecordList') return <SampleApp>{(c.entity ?? 'customer') === 'lead' ? <DataMktPage cfg={c} /> : <TradingCustomersList cfg={c} />}</SampleApp>;
