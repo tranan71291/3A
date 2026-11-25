@@ -3,7 +3,7 @@
 // Bộ vẽ trang — phần lõi không giao diện: cấu hình mặc định, xếp lưới, dữ liệu thật / mẫu, kỳ, biến, kiểu dáng, xuất Excel
 // (V55.2: chuyển từ modules/messages/messenger.tsx, giữ nguyên logic)
 import { type CSSProperties, useEffect, useState } from 'react';
-import { downloadBlob, fmtDate, iso, L_ACT, L_DS, L_FS, L_PERIOD, L_RAD, L_SAMPLE_CUST, L_SAMPLE_STAFF, L_SH, L_TONE, L_TS, L_TW, lAgg, lField, lFilter, lHasData, lHex, L_PAGE_ENTITY, lHit, lInfoSections, lPeriodLabel, lType, MODULE_LABEL, SALE_STAGE, saleOwed, salePaid, todayISO, uid } from '../../lib/core';
+import { downloadBlob, fmtDate, iso, L_ACT, L_DS, L_FS, L_PERIOD, L_RAD, L_SAMPLE_CUST, L_SAMPLE_STAFF, L_SH, L_TONE, L_TS, L_TW, lAgg, lField, lFilter, lHasData, lHex, L_PAGE_ENTITY, L_CONTENT_STEPS, lContentStepDefault, lHit, lInfoSections, lPeriodLabel, lType, MODULE_LABEL, SALE_STAGE, saleOwed, salePaid, todayISO, uid } from '../../lib/core';
 import { xlsxBlob } from '../../lib/csv';
 import { saleStage, saleTotals } from '../../lib/getfly';
 import type { AppCtx, DashPeriod, DateRange, LAgg, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LPage, LPageCtx, LPeriod, LPos, LRow, Module, StockVoucher, XlsxSheet } from '../../lib/types';
@@ -28,6 +28,9 @@ export function lDefaultCfg(type: LBlockType, page: LPage = 'home'): LBlockCfg {
   // v55.3: khách hàng / lead: khối Chi tiết bắt đầu bằng trường tùy chỉnh theo cờ "Thông tin" (trường gốc 3A tự kéo thêm)
   const ent = L_PAGE_ENTITY[page] ?? 'sale';
   if (type === 'K-RecordDetail') return ent === 'sale' ? { title: 'Thông tin đơn hàng', ds: 'sales', entity: 'sale', sections: lInfoSections(uid('lb'), { title: '', ds: 'sales' }) } : { title: 'Thông tin thêm', ds: 'sales', entity: ent, sections: [] };
+  // v56.2 Nhiệm vụ nội dung: khối Form của từng bước, bố cục mặc định của bước
+  const step = L_CONTENT_STEPS.indexOf(page) + 1;
+  if (type === 'K-RecordForm' && step > 0) return { title: ['Định hướng', 'Kịch bản nội dung', 'Cấu hình hình ảnh'][step - 1], ds: 'sales', entity: 'content_task', step: step as 1 | 2 | 3, sections: lContentStepDefault(step as 1 | 2 | 3) };
   if (type === 'K-RecordForm') return { title: ent === 'sale' ? 'Thông tin thêm' : 'Thông tin thêm (form)', ds: 'sales', entity: ent, sections: [] };
   if (type === 'K-RecordList') return { title: ent === 'lead' ? 'Danh sách lead' : 'Danh sách khách hàng', ds: ent === 'lead' ? 'leads' : 'customers', entity: ent };
   return { title: lType(type).label, ds: 'sales' };

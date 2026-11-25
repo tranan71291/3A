@@ -282,10 +282,12 @@ export type DateRange = { from: string; to: string };
 
 // ---------------- v52: Thiết kế giao diện (Page Builder) ----------------
 /** Trang dựng được bằng khối. Bản 1: Tổng quan */
-export type LPage = 'home' | 'desk' | 'reports' | 'sale-detail' | 'sale-list' | 'sale-form' | 'customer-list' | 'customer-detail' | 'lead-list' | 'lead-detail' | 'customer' | 'claim';
+export type LPage = 'home' | 'desk' | 'reports' | 'sale-detail' | 'sale-list' | 'sale-form' | 'customer-list' | 'customer-detail' | 'lead-list' | 'lead-detail' | 'customer' | 'claim'
+  /** v56.2: 3 bước của bảng trượt Nhiệm vụ nội dung (Auto Content) */
+  | 'content-step-1' | 'content-step-2' | 'content-step-3';
 
 /** v55.3 Đối tượng CRM có trường tùy chỉnh / trang thiết kế: đơn bán, khách hàng, lead, sản phẩm */
-export type CfEntity = 'sale' | 'customer' | 'lead' | 'product';
+export type CfEntity = 'sale' | 'customer' | 'lead' | 'product' | 'content_task';
 
 /**
  * Loại khối. 'K-Order-Info' là tên cũ (v53–v55.1) của khối Chi tiết bản ghi: chỉ còn để đọc bố cục cũ,
@@ -383,6 +385,8 @@ export type LBlockCfg = {
   stages?: LStage[]; roles?: Role[];
   /** v55.2 khối Form / Chi tiết bản ghi: loại bản ghi, các nhóm trường. Trường bị bỏ khỏi bố cục ghi ở `off` (không tự thêm lại) */
   entity?: CfEntity; sections?: LSection[];
+  /** v56.2 khối Form của Nhiệm vụ nội dung: bước 1 / 2 / 3 (trường khóa và trường mới theo cờ "Form" chỉ tự vào Bước 1) */
+  step?: 1 | 2 | 3;
 };
 
 export type LBlock = { id: string; type: LBlockType; pos: { lg: LPos; sm: { w: number; order: number } }; show: Record<LDevice, boolean>; config: LBlockCfg };
@@ -1703,6 +1707,8 @@ export type MktContent = {
   channel?: MktChannel; textPrompt?: string; imagePrompt?: string; tone?: string; blocks?: ContentBlock[]; titleReport?: TitleReport; aiJob?: AiJob; step?: number; taskId?: string;
   /** v37: Studio đa kênh — kênh xuất bản (website | facebook | zalo | google-maps), đoạn mở đầu, cài đặt riêng của kênh */
   platform?: string; sapo?: string; settings?: Record<string, StSettingValue>;
+  /** v56.2: ngữ cảnh riêng của nhiệm vụ (sản phẩm trọng tâm + trường tùy chỉnh: nhãn và giá trị) gửi kèm khi AI soạn bài / tạo ảnh */
+  aiCtx?: { text: string; image: string };
   /** v38: tài liệu TipTap của Workspace (blocks vẫn được ghi song song để bản cũ đọc được) */
   doc?: JSONContent;
   /** v38.3: người / lúc gửi duyệt, ghi chú trả về sửa, lúc duyệt */
@@ -1762,7 +1768,11 @@ export type TaskStatus = 'PLAN' | 'AI_QUEUED' | 'AI_DONE' | 'APPROVED' | 'PUBLIS
 
 export type MktTask = { id: string; date: string; title: string; campaignId?: string; channel: MktChannel; contentType: MktContentType; textPrompt: string; imagePrompt: string; status: TaskStatus; ownerId?: string; contentId?: string; createdAt: number;
   /** v38: kênh Studio + thông số SEO / kênh + brief (giống Bước 1 của Content Studio), AI dùng khi soạn */
-  platform?: string; settings?: StSettings };
+  platform?: string; settings?: StSettings;
+  /** v56.2: sản phẩm / dịch vụ trọng tâm (mã SKU) — ảnh và thông số tự sang Bước 2, 3 và ngữ cảnh gửi AI */
+  productSku?: string;
+  /** v56.2: trường tùy chỉnh do 3A định nghĩa (entity 'content_task'), bố cục 3 bước ở 3A Studio */
+  cf?: Record<string, CfVal> };
 
 export type CalView = 'calendar' | 'list' | 'board';
 

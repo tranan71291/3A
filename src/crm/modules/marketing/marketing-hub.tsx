@@ -12,8 +12,10 @@ import { apiPost, parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
 import { useWriter } from '../ai/copilot-plus';
 import { loadImg } from '../ai/visual-search';
 import { applyWatermark, getPlatform, stClip, StudioWorkspace } from './content-studio';
-import { AutomationHub, CampaignRowMenu, CampaignSheet, ContentRowMenu, ImageStudioTab, TaskRowMenu, TaskSheet, vText } from './content-workspace';
+import { AutomationHub, CampaignRowMenu, CampaignSheet, ContentRowMenu, ImageStudioTab, TaskRowMenu, vText } from './content-workspace';
+import { contentTaskCtx, TaskSheet } from './content-task';
 import { Switch } from '../platform/console';
+import { useContentTaskSteps, useEntityCf, useNameOf } from '../page-builder';
 
 /** Kết quả chiến dịch: lead theo kênh nguồn trong thời gian chạy (+30 ngày), doanh thu từ lead đã chốt / đơn đã ký */
 export function campaignStats(c: Campaign, leads: Lead[], jobs: Job[]) {
@@ -325,10 +327,11 @@ export function useStudioAi() {
     }
     return { text: localBlockText(b, title, company), by: 'Mẫu soạn sẵn' };
   };
-  const image = async (b: ContentBlock, title: string, imgPrompt: string, aspect: ImgAspect = 'landscape', reference?: string): Promise<{ url: string; prompt: string; by: string; error?: string }> => {
+  // v56.2 mode: 'fast' (mặc định, gpt-image-2.5-flare) | 'detail' (gpt-image-2.5-sunburst) — theo Cài đặt nâng cao của nhiệm vụ
+  const image = async (b: ContentBlock, title: string, imgPrompt: string, aspect: ImgAspect = 'landscape', reference?: string, mode: 'fast' | 'detail' = 'fast'): Promise<{ url: string; prompt: string; by: string; error?: string }> => {
     const prompt = `${b.imagePrompt || `${b.heading}. ${b.points}`}. Bối cảnh bài viết: ${title}. Lĩnh vực: ${sector}. ${imgPrompt ? `Yêu cầu hình ảnh: ${imgPrompt}.` : ''} Phong cách: ảnh chụp thương mại chân thực, ánh sáng tự nhiên, bố cục sạch, phù hợp thị trường Việt Nam, không có chữ, không có logo.`;
     if (imgOn) {
-      const r = await apiPost<{ b64: string; mediaType: string; model: string }>('/api/ai/image', { tenant: org.id, prompt, aspect, ...(reference ? { reference: { mediaType: reference.slice(5, reference.indexOf(';')) || 'image/jpeg', data: reference.split(',')[1] ?? '' }, strength: 0.35 } : {}) });
+      const r = await apiPost<{ b64: string; mediaType: string; model: string }>('/api/ai/image', { tenant: org.id, mode, prompt, aspect, ...(reference ? { reference: { mediaType: reference.slice(5, reference.indexOf(';')) || 'image/jpeg', data: reference.split(',')[1] ?? '' }, strength: 0.35 } : {}) });
       if (r.ok) return { url: await compactImage(`data:${r.mediaType};base64,${r.b64}`), prompt, by: `OpenAI · ${r.model}` };
       return { url: placeholderImage(b.heading, brand, aspect), prompt, by: 'Ảnh mẫu', error: aiErrText(r.error) };
     }
@@ -361,7 +364,10 @@ export function AiContentWorker() {
         const p = job.platform ? getPlatform(job.platform) : null;
         const settings: StSettings = p ? { ...p.defaults(co), ...(job.settings ?? {}) } : {};
         let sapo = job.sapo ?? '';
-        const extra = job.textPrompt ? `\nGhi chú thêm: ${job.textPrompt}` : '';
+        // v56.2 ngữ cảnh của nhiệm vụ (sản phẩm trọng tâm + trường tùy chỉnh) đi kèm mọi lần gọi soạn dàn ý / soạn mục / tạo ảnh
+        const ctxText = job.aiCtx?.text?.trim() ?? '';
+        const extra = `${job.textPrompt ? `\nGhi chú thêm: ${job.textPrompt}` : ''}${ctxText ? `\n${ctxText}` : ''}`;
+        const note = [job.textPrompt ?? '', ctxText].filter(Boolean).join('\n');
         const art = (bl: ContentBlock[]): StArticle => ({ id: job.id, platform: p?.id ?? 'website', title: job.title, sapo, settings, updatedAt: Date.now(), sections: bl.map((b) => ({ id: b.id, level: b.level, title: b.heading, body: b.body })) });
         step('Đang lập dàn ý');
         let blocks: ContentBlock[] = job.blocks?.length ? job.blocks : [];
@@ -375,7 +381,7 @@ export function AiContentWorker() {
             if (r.ok) by = `${AI_NAME[r.provider]} · ${r.model}`;
           }
         }
-        if (!blocks.length) blocks = (await s.outline(job.title, job.type, job.textPrompt ?? '')).blocks;
+        if (!blocks.length) blocks = (await s.outline(job.title, job.type, note)).blocks;
         patch((c) => ({ ...c, blocks, sapo, step: 2 }));
         for (let i = 0; i < blocks.length; i++) {
           step(`Đang viết ${i + 1}/${blocks.length}: ${blocks[i].heading}`);
@@ -385,21 +391,23 @@ export function AiContentWorker() {
             const r = await s.ai.ask({ maxTokens: 1400, system: `Bạn là biên tập viên nội dung B2B của ${co.name}${co.sector ? `, lĩnh vực ${co.sector}` : ''}. Chỉ trả nội dung mục, không lặp tiêu đề. Đoạn văn cách nhau 1 dòng trống, danh sách dùng "- ", chữ đậm dùng **…**.`, prompt: stSectionPrompt(p, art(blocks), blocks[i].id, co) + extra });
             if (r.ok) { text = r.text.trim(); by = `${AI_NAME[r.provider]} · ${r.model}`; }
           }
-          if (!text) { const r = await s.write(blocks[i], blocks, job.title, job.type, job.tone ?? WRITER_TONES[0], job.textPrompt ?? ''); text = r.text; by = r.by; }
+          if (!text) { const r = await s.write(blocks[i], blocks, job.title, job.type, job.tone ?? WRITER_TONES[0], note); text = r.text; by = r.by; }
           blocks = blocks.map((x, k) => (k === i ? { ...x, body: text } : x));
           patch((c) => ({ ...c, blocks, by }));
         }
         // Điền meta title / description / slug… còn trống bằng gợi ý tự động của kênh
         if (p) for (const fd of p.fields) if (fd.suggest && !stStr(settings[fd.key]).trim()) settings[fd.key] = fd.suggest(art(blocks), settings);
-        const cnt = vImg(settings, 'imgCount', p?.id);
+        // v56.2 'max3' không còn trong danh sách chọn nhưng nhiệm vụ đã lưu vẫn giữ đúng 3 ảnh
+        const cnt = stArr(settings[vKey('imgCount')])[0] === 'max3' ? 'max3' : vImg(settings, 'imgCount', p?.id);
         if (job.aiJob?.images !== false && cnt !== 'none') {
           const targets = blocks.filter((b) => b.level === 2 && !b.image).slice(0, cnt === 'hero' ? 1 : cnt === 'max3' ? 3 : 6);
-          const imgExtra = [job.imagePrompt ?? '', vText(settings, p?.id, 'image')].filter(Boolean).join('. ');
+          const imgExtra = [job.imagePrompt ?? '', vText(settings, p?.id, 'image'), job.aiCtx?.image ?? ''].filter(Boolean).join('. ');
+          const mode = stStr(settings.imgMode) === 'detail' ? 'detail' : 'fast';
           const stamp = vImg(settings, 'imgStamp', p?.id);
           const ref = stArr(settings[vKey('imgRef')]).map((id) => skuRef.current.find((x) => x.sku === id)?.image).find((u) => u?.startsWith('data:'));
           for (const [i, t] of targets.entries()) {
             step(`Đang tạo ảnh ${i + 1}/${targets.length}: ${t.heading}`);
-            const im0 = await s.image(t, job.title, imgExtra, vAspect(settings, p?.id, p?.image.aspect ?? 'landscape'), ref);
+            const im0 = await s.image(t, job.title, imgExtra, vAspect(settings, p?.id, p?.image.aspect ?? 'landscape'), ref, mode);
             const im = stamp !== 'nostamp' && im0.url.startsWith('data:') && !im0.by.startsWith('Ảnh mẫu') ? { ...im0, url: await applyWatermark(im0.url, co.name, stamp === 'logo' ? company.logo : undefined).catch(() => im0.url) } : im0;
             const kw = stStr(settings.focusKeyword).trim();
             const img = { url: im.url, prompt: im.prompt, by: im.by, at: Date.now(), alt: stClip([t.heading, kw && !stHas(t.heading, kw) ? kw : ''].filter(Boolean).join(' – '), 125) };
@@ -719,16 +727,22 @@ export function taskStatusOf(t: MktTask, contents: MktContent[]): TaskStatus {
 
 /** Giao việc cho AI: tạo bản nội dung gắn nhiệm vụ, đưa vào hàng đợi của bộ xử lý nền */
 export function useAssignToAi() {
-  const { setContents, setMktTasks, me, notify, contents } = useApp();
+  const { setContents, setMktTasks, me, notify, contents, skus } = useApp();
+  // v56.2 ngữ cảnh riêng của nhiệm vụ: sản phẩm trọng tâm (tên, mã, thông số) + trường tùy chỉnh 3A đặt trên 3 bước (nhãn: giá trị)
+  const steps = useContentTaskSteps();
+  const prodCf = useEntityCf('product');
+  const nameOf = useNameOf();
   return (t: MktTask) => {
     const ex = contents.find((c) => c.id === t.contentId);
     const id = ex?.id ?? uid('ct');
     const job: AiJob = { status: 'QUEUED', by: me?.id ?? '', at: Date.now(), images: true };
     const pid = t.platform ?? ST_OF_CHANNEL[t.channel];
     const seo = pid ? { platform: pid, settings: t.settings ?? {} } : {};
+    const ctx = contentTaskCtx(t, { skus, defs: steps.defs, labelOf: steps.labelOf, prodCf, nameOf });
+    const aiCtx = ctx.text || ctx.image ? ctx : undefined;
     // Giao lại: bỏ dàn ý / nội dung cũ để AI soạn theo thông số mới (bản cũ vẫn còn trong Lịch sử phiên bản nếu đã lưu mốc)
-    if (ex) setContents((p) => p.map((c) => (c.id === id ? { ...c, ...seo, title: t.title, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, blocks: [], doc: undefined, sapo: '', status: c.status === 'PUBLISHED' ? c.status : 'DRAFT', reviewNote: undefined, aiJob: job } : c)));
-    else setContents((p) => [{ id, title: t.title, type: t.contentType, channel: t.channel, campaignId: t.campaignId, taskId: t.id, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, body: '', status: 'DRAFT', ownerId: t.ownerId ?? me?.id, updatedAt: Date.now(), aiJob: job, ...seo }, ...p]);
+    if (ex) setContents((p) => p.map((c) => (c.id === id ? { ...c, ...seo, title: t.title, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, aiCtx, blocks: [], doc: undefined, sapo: '', status: c.status === 'PUBLISHED' ? c.status : 'DRAFT', reviewNote: undefined, aiJob: job } : c)));
+    else setContents((p) => [{ id, title: t.title, type: t.contentType, channel: t.channel, campaignId: t.campaignId, taskId: t.id, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, aiCtx, body: '', status: 'DRAFT', ownerId: t.ownerId ?? me?.id, updatedAt: Date.now(), aiJob: job, ...seo }, ...p]);
     setMktTasks((p) => p.map((x) => (x.id === t.id ? { ...x, contentId: id } : x)));
     notify(`Đã giao “${t.title}” cho AI. Theo dõi trạng thái trên lịch, kết quả ở Content Studio.`, 'teal');
   };

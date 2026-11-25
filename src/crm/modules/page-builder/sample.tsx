@@ -4,7 +4,7 @@
 // (bảng Quản lý đơn hàng thật, form / chi tiết qua DynamicFieldRenderer) thay vì HTML mẫu vẽ tay.
 // Ngữ cảnh mẫu không đọc dữ liệu doanh nghiệp, không ghi gì: mọi hàm ghi là no-op, vùng hiển thị đặt `inert` (không bấm / nhập được).
 import { type ReactNode, useEffect, useMemo, useRef } from 'react';
-import { Ctx, cfSample, EMPTY_CUSTOMER, L_SO_LINES, todayISO, useApp } from '../../lib/core';
+import { Ctx, cfSample, EMPTY_CUSTOMER, fmtDate, L_SO_LINES, todayISO, useApp } from '../../lib/core';
 import type { AppCtx, CfDef, CfEntity, CfVal, Customer, Lead, SalesOrder, User } from '../../lib/types';
 
 const U_SAMPLE = 'u-sample-bao';
@@ -49,5 +49,13 @@ const BUILTIN_SAMPLE: Record<CfEntity, Record<string, string>> = {
   customer: { code: 'KH-000012', name: 'NPP Hoàng Phát', taxCode: '0101234567', segment: 'Đại lý', tier: 'Vàng', region: 'Miền Bắc', dept: 'Kinh doanh', amId: 'Trần Quốc Bảo', contactName: 'Anh Phát', contactPhone: '0903 112 245', contactEmail: 'phat@hoangphat.vn', address: 'Lô C5, KCN Tân Bình', creditLimit: '500.000.000', debt: '124.000.000' },
   lead: { code: 'LD-0042', company: 'Công ty Xây lắp Minh Long', contact: 'Chị Hạnh', phone: '0912 345 678', email: 'hanh@minhlong.vn', taxCode: '0312345678', segment: 'Dự án', source: 'Website', region: 'Miền Nam', province: 'TP Hồ Chí Minh' },
   product: {},
+  // v56.2 Nhiệm vụ nội dung (3A Studio xem trước 3 bước)
+  content_task: {
+    title: '5 lưu ý chọn tủ bếp nhôm hệ Omega cho căn hộ', channel: 'Website (bài SEO)', product: 'OMEGA-TB01 · Tủ bếp nhôm hệ Omega', campaign: 'Ra mắt dòng Omega quý 4',
+    contentType: 'Bài SEO', owner: 'Trần Quốc Bảo', tpl: 'Bài SEO sản phẩm · Hướng dẫn kỹ thuật · So sánh lựa chọn', brief: 'Chuyên gia kỹ thuật · 1.000–1.500 từ · có bảng thông số, FAQ',
+    seo: 'Từ khóa: tủ bếp nhôm Omega · Meta title, meta description, đường dẫn', brand: 'Kế thừa từ thương hiệu: hotline, website, hashtag cố định', briefAdv: 'Thông điệp chính, ưu đãi, ý bắt buộc, không nhắc tới',
+    textNote: 'Ghi chú cho người soạn', imgReq: 'Bộ ảnh theo từng ý · Ảnh chụp chân thực · Màu thương hiệu', imgRef: '1 ảnh sản phẩm OMEGA-TB01', imgAdv: 'Chế độ Nhanh (gpt-image-2.5-flare) · đóng logo', imgNote: 'Ghi chú cho ảnh',
+  },
 };
-export const lBuiltinSample = (entity: CfEntity, key: string): string => BUILTIN_SAMPLE[entity][key] ?? '—';
+// Ngày mẫu tính khi gọi (không tính lúc nạp module: core / sample nạp vòng nhau)
+export const lBuiltinSample = (entity: CfEntity, key: string): string => (entity === 'content_task' && key === 'date' ? fmtDate(todayISO()) : BUILTIN_SAMPLE[entity][key] ?? '—');
