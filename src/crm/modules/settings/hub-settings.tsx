@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, MessageCircle, Plus, RefreshCw, Send, Trash2, X, Zap } from 'lucide-react';
+import { Copy, ImagePlus, MessageCircle, Plus, RefreshCw, Send, Trash2, X, Zap } from 'lucide-react';
 import { Field, MoneyInput, Panel, RuleRow, SideCard, Tabs, useSticky } from '../../components/ui';
-import { AI_NAME, btnGhost, btnSm, DEALER_BONUS_TEMPLATE, inputBase, inputCls, SOCIAL0, uid, useApp, ZNS_SOURCES } from '../../lib/core';
+import { AI_NAME, aiErrText, btnGhost, btnSm, DEALER_BONUS_TEMPLATE, inputBase, inputCls, SOCIAL0, uid, useApp, ZNS_SOURCES } from '../../lib/core';
 import type { AiProviderPref, HubCfg, KbItem, KbRule, SocialCfg, ZnsTpl } from '../../lib/types';
 import { cn } from '../../lib/utils';
-import { useAi, useServerStatus } from '../ai/ai-core';
+import { apiPost, type ImageCheck, type ImageModelState, useAi, useImageCheck, useServerStatus } from '../ai/ai-core';
 import { GhostSettingsPanel, VariantSettingsPanel } from '../marketing/content-workspace';
 import { Switch } from '../platform/console';
 import { ZnsSettings } from './zns';
@@ -27,6 +27,14 @@ export function HubSettings({ part = 'ai', znsOn = true }: { part?: 'ai' | 'zalo
   const soc = { ...SOCIAL0, ...(hubCfg.social ?? {}) };
   const setSoc = (p: Partial<SocialCfg>) => setHubCfg((c) => ({ ...c, social: { ...SOCIAL0, ...(c.social ?? {}), ...p } }));
   const ai = useAi('copilot');
+  // v56.0.1: trạng thái thật của mô hình tạo ảnh (không chỉ "có khóa")
+  const [imgChk, recheckImg] = useImageCheck(part === 'ai' && srv.reachable && srv.images);
+  const [imgTest, setImgTest] = useState<{ busy: boolean; url?: string; text?: string; err?: string }>({ busy: false });
+  const runImgTest = async () => {
+    setImgTest({ busy: true }); const t0 = Date.now();
+    const r = await apiPost<{ b64: string; mediaType: string; model: string }>('/api/ai/image', { tenant: org.id, mode: 'fast', aspect: 'square', prompt: 'Ảnh chụp sản phẩm đơn giản: một cuộn băng keo màu xám trên mặt bàn gỗ sáng, ánh sáng tự nhiên, nền trơn' });
+    setImgTest(r.ok ? { busy: false, url: `data:${r.mediaType};base64,${r.b64}`, text: `${r.model} · ${((Date.now() - t0) / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} giây` } : { busy: false, err: aiErrText(r.error) });
+  };
   const ro = !canDo('settings.edit');
   const [test, setTest] = useState('');
   const [busy, setBusy] = useState(false);
@@ -47,25 +55,26 @@ export function HubSettings({ part = 'ai', znsOn = true }: { part?: 'ai' | 'zalo
       <Tabs tabs={subs} value={sub} onChange={setSub} />
       {sub === 'assist' && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {([[srv.ai.anthropic, 'Claude (Anthropic)', srv.models.anthropic || 'mặc định', 'ANTHROPIC_API_KEY'], [srv.ai.openai, 'OpenAI', srv.models.openai || 'mặc định', 'OPENAI_API_KEY'], [srv.images, 'Tạo ảnh (OpenAI Images)', srv.models.image || 'gpt-image-1', 'OPENAI_API_KEY']] as const).map(([on, name, model, env]) => (
+          {([[srv.ai.anthropic, 'Claude (Anthropic)', srv.models.anthropic || 'mặc định', 'ANTHROPIC_API_KEY'], [srv.ai.openai, 'OpenAI', srv.models.openai || 'mặc định', 'OPENAI_API_KEY']] as const).map(([on, name, model, env]) => (
             <div key={name} className="glass-card rounded-xl px-4 py-3" title={`Biến môi trường ${env}`}>
               <p className="flex items-start gap-2 text-[13.5px] font-medium"><span className="flex-1">{name}</span><span className={cn('flex items-center gap-1.5 text-xs font-normal', on ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--muted))]')}><span className={cn('h-1.5 w-1.5 rounded-full', on ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--ink)/0.25)]')} aria-hidden />{on ? 'Đã kết nối' : 'Chưa cấu hình'}</span></p>
               <p className="mt-0.5 truncate font-mono text-xs text-[rgb(var(--muted))]">{model}</p>
             </div>
           ))}
+          <ImageEngineCard check={imgChk} keyOn={srv.images} reachable={srv.reachable} />
         </div>
       )}
       {sub === 'media' && <Panel title="Kết nối máy chủ" action={<button className={cn(btnGhost, btnSm)} onClick={recheck}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Kiểm tra lại</button>}>
         <ul className="grid gap-2 md:grid-cols-2">
           {dot(!!srv.social?.facebook, 'Facebook Fanpage (bài mới trên Bàn làm việc)', 'FACEBOOK_PAGE_ACCESS_TOKEN (Page access token), FACEBOOK_PAGE_ID tùy chọn')}
-          {dot(srv.images, 'Tạo ảnh minh họa (OpenAI Images)', `Dùng OPENAI_API_KEY · mô hình ${srv.models.image || 'gpt-image-1'} (OPENAI_IMAGE_MODEL). Claude không tạo ảnh`)}
+          {dot(srv.images, 'Tạo ảnh minh họa (OpenAI Images)', `Dùng OPENAI_API_KEY · Nhanh ${srv.models.image || 'gpt-image-2.5-flare'} (OPENAI_IMAGE_MODEL) · Chi tiết cao ${srv.models.imageDetail || 'gpt-image-2.5-sunburst'} (OPENAI_IMAGE_MODEL_DETAIL). Claude không tạo ảnh`)}
         </ul>
       </Panel>}
 
       <fieldset disabled={ro} className="space-y-5">
         {sub === 'assist' && <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_300px]">
           <div className="min-w-0 space-y-4">
-            <Panel title="Nhà cung cấp" action={<button type="button" className={cn(btnGhost, btnSm)} onClick={recheck}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Kiểm tra lại</button>}>
+            <Panel title="Nhà cung cấp" action={<button type="button" className={cn(btnGhost, btnSm)} onClick={() => { recheck(); recheckImg(); }}><RefreshCw className="h-3.5 w-3.5" aria-hidden />Kiểm tra lại</button>}>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field label="Nhà cung cấp"><select className={inputCls} value={hubCfg.ai.provider} onChange={(e) => setAi({ provider: e.target.value as AiProviderPref })}><option value="AUTO">Tự động (ưu tiên Claude)</option><option value="ANTHROPIC">Claude (Anthropic)</option><option value="OPENAI">OpenAI</option></select></Field>
                 <Field label="Mô hình Claude"><input className={inputCls} value={hubCfg.ai.anthropicModel} onChange={(e) => setAi({ anthropicModel: e.target.value.trim() })} placeholder={srv.models.anthropic || 'mặc định'} /></Field>
@@ -93,6 +102,12 @@ export function HubSettings({ part = 'ai', znsOn = true }: { part?: 'ai' | 'zalo
               <p className="mb-3 text-xs text-[rgb(var(--muted))]">Gửi một câu hỏi mẫu, đo thời gian phản hồi</p>
               <button type="button" className={cn(btnGhost, btnSm)} onClick={() => void runTest()} disabled={busy}><Zap className="h-3.5 w-3.5" aria-hidden />{busy ? 'Đang thử…' : 'Thử ngay'}</button>
               {test && <p className="mt-3 text-xs text-[rgb(var(--fg2))]">{test}</p>}
+            </SideCard>
+            <SideCard title="Thử tạo ảnh" icon={ImagePlus}>
+              <p className="mb-3 text-xs text-[rgb(var(--muted))]">Tạo 1 ảnh vuông bằng chế độ Nhanh, đo thời gian. Tính phí như 1 ảnh</p>
+              <button type="button" className={cn(btnGhost, btnSm)} onClick={() => void runImgTest()} disabled={imgTest.busy || !srv.images}><ImagePlus className="h-3.5 w-3.5" aria-hidden />{imgTest.busy ? 'Đang tạo…' : 'Tạo ảnh thử'}</button>
+              {imgTest.url && <figure className="mt-3"><img src={imgTest.url} alt="Ảnh thử" className="h-28 w-28 rounded-lg border border-[rgb(var(--line))] object-cover" /><figcaption className="mt-1 font-mono text-[11px] text-[rgb(var(--muted))]">{imgTest.text}</figcaption></figure>}
+              {imgTest.err && <p className="mt-3 text-xs text-[rgb(var(--danger-fg))]" role="alert">{imgTest.err}</p>}
             </SideCard>
           </div>
         </div>}
@@ -209,3 +224,42 @@ export function HubSettings({ part = 'ai', znsOn = true }: { part?: 'ai' | 'zalo
   );
 }
 
+
+/**
+ * v56.0.1 Thẻ trạng thái tạo ảnh: 2 chế độ (Nhanh / Chi tiết cao), mỗi chế độ một mô hình.
+ * "Sẵn sàng" chỉ khi máy chủ có khóa VÀ OpenAI xác nhận mô hình dùng được (trước đây chỉ xét có khóa).
+ */
+function ImageEngineCard({ check, keyOn, reachable }: { check: ImageCheck; keyOn: boolean; reachable: boolean }) {
+  const st = (m?: ImageModelState): { tone: 'ok' | 'warn' | 'off'; label: string; hint?: string } => {
+    if (!reachable) return { tone: 'off', label: 'Chưa kiểm tra' };
+    if (!keyOn) return { tone: 'off', label: 'Chưa có khóa', hint: aiErrText('image_not_configured') };
+    if (check.state === 'checking' || check.state === 'idle') return { tone: 'off', label: 'Đang kiểm tra' };
+    if (check.state === 'offline') return { tone: 'warn', label: 'Không kiểm tra được', hint: aiErrText(check.error) };
+    if (!m) return { tone: 'off', label: '—' };
+    return m.ok ? { tone: 'ok', label: 'Sẵn sàng', hint: m.retired ? `OPENAI_IMAGE_MODEL đang là ${m.retired} (đã ngừng), máy chủ tự dùng ${m.id}` : undefined } : { tone: 'warn', label: 'Không dùng được', hint: aiErrText(m.error) };
+  };
+  const rows: [string, ImageModelState | undefined, string][] = [['Nhanh', check.fast, 'gpt-image-2.5-flare'], ['Chi tiết cao', check.detail, 'gpt-image-2.5-sunburst']];
+  const all = rows.map(([, m]) => st(m));
+  const nOk = all.filter((x) => x.tone === 'ok').length;
+  // một chế độ dùng được, chế độ kia lỗi: báo "Dùng được 1/2", không báo hỏng cả thẻ
+  const head = nOk === all.length ? all[0] : nOk > 0 ? { tone: 'warn' as const, label: `Dùng được ${nOk}/${all.length} chế độ` } : all.find((x) => x.tone === 'warn') ?? all[0];
+  const warnI = all.findIndex((x) => x.tone === 'warn' && x.hint);
+  const toneCls = (t: 'ok' | 'warn' | 'off') => (t === 'ok' ? 'text-[rgb(var(--success-fg))]' : t === 'warn' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--muted))]');
+  const dotCls = (t: 'ok' | 'warn' | 'off') => (t === 'ok' ? 'bg-[rgb(var(--success))]' : t === 'warn' ? 'bg-[rgb(var(--danger))]' : 'bg-[rgb(var(--ink)/0.25)]');
+  return (
+    <div className="glass-card rounded-xl px-4 py-3" data-image-engine={head.tone}>
+      <p className="flex items-start gap-2 text-[13.5px] font-medium"><span className="flex-1">Tạo ảnh (OpenAI Images)</span><span className={cn('flex items-center gap-1.5 text-xs font-normal', toneCls(head.tone))}><span className={cn('h-1.5 w-1.5 rounded-full', dotCls(head.tone))} aria-hidden />{head.label}</span></p>
+      <ul className="mt-1 space-y-0.5">
+        {rows.map(([name, m, def], i) => (
+          <li key={name} className="flex items-center gap-2 text-xs" title={all[i].hint}>
+            <span className="w-[72px] shrink-0 text-[rgb(var(--muted))]">{name}</span>
+            <span className="min-w-0 flex-1 truncate font-mono text-[rgb(var(--fg2))]">{m?.id ?? def}</span>
+            <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotCls(all[i].tone))} aria-label={all[i].label} />
+          </li>
+        ))}
+      </ul>
+      {warnI >= 0 && <p className="mt-2 text-[11.5px] leading-snug text-[rgb(var(--danger-fg))]" role="alert">{rows[warnI][0]}: {all[warnI].hint}</p>}
+      {all.some((x) => x.tone === 'ok' && x.hint) && <p className="mt-2 text-[11.5px] leading-snug text-[rgb(var(--muted))]">{all.find((x) => x.tone === 'ok' && x.hint)!.hint}</p>}
+    </div>
+  );
+}

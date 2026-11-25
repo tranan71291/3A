@@ -1612,7 +1612,7 @@ export type HubCfg = {
   social?: SocialCfg;
 };
 
-export type ServerStatus = { email?: boolean; checked: boolean; reachable: boolean; ai: { anthropic: boolean; openai: boolean }; images: boolean; models: { anthropic: string; openai: string; image?: string }; zalo: { oa: boolean; webhook: boolean }; cloud: boolean; social?: { facebook: boolean; zalo: boolean; youtube: boolean } };
+export type ServerStatus = { email?: boolean; checked: boolean; reachable: boolean; ai: { anthropic: boolean; openai: boolean }; images: boolean; models: { anthropic: string; openai: string; image?: string; /** v56.0.1 mô hình ảnh chế độ chi tiết cao */ imageDetail?: string }; zalo: { oa: boolean; webhook: boolean }; cloud: boolean; social?: { facebook: boolean; zalo: boolean; youtube: boolean } };
 
 export type AiCall = { system?: string; prompt: string; history?: { role: 'user' | 'assistant'; content: string }[]; image?: { mediaType: string; data: string }; maxTokens?: number };
 
@@ -1899,6 +1899,8 @@ export interface ImageRequest {
   /** 0 = bám sát ảnh gốc (giữ bố cục, sản phẩm) … 1 = chỉ lấy cảm hứng */
   strength: number;
   brandPalette: boolean;
+  /** v56.0.1 'fast' = gpt-image-2.5-flare (mặc định) · 'detail' = gpt-image-2.5-sunburst (chi tiết cao, chỉnh sửa sâu) */
+  mode?: 'fast' | 'detail';
 }
 
 export interface StudioApi {

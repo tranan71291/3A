@@ -8,14 +8,14 @@ import StarterKit from '@tiptap/starter-kit';
 import { type Node as PMNode } from '@tiptap/pm/model';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
-import { CheckCircle2, ChevronDown, Copy, Download, ExternalLink, Eye, ImagePlus, Lock, Pencil, RefreshCw, Search, Sparkles, Trash2, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Copy, Download, ExternalLink, Eye, ImagePlus, Info, Loader2, Lock, PenLine, Pencil, RefreshCw, Search, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { RowMenu } from '../../components/controls';
 import { Chip, Field, MoneyInput, Panel, SideSheet, useSticky } from '../../components/ui';
 import { btnAccent, btnGhost, btnPrimary, btnSm, CAMP_STATUS, cloneContent, cloud, CLOUD_ON, compact, CONTENT_STATUS, CONTENT_TEMPLATES, contentBusy, contentExportItems, countOf, CV_KIND, CV_MAX, dataKb, dayMs, downloadBlob, downloadData, esc, fmtDate, GHOST_PREF, ghostEligible, ghostPrefOff, HS_CLICHES_DEFAULT, IMG_SIZES, inputBase, inputCls, isoDay, maskPii, MKT_CH, MKT_IMG_MAX, MKT_OPEN_EVT, MKT_REVIEW_EVT, openContentReview, SeoSidebar, slugify, ST_BRAND, ST_BRIEF_FIELDS, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stEsc, stFold, stHas, stickyStore, stSectionPrompt, stStr, TASK_STATUS, todayISO, uid, useApp, VARIANT_GROUPS, vAspect, vCfgOf, vImg, vKey, WRITER, WS_BLOCK_TYPES, WS_CSS, WS_GHOST, WS_MARKS, WS_TONES, wsClamp, wsCleanAi, wsHeadKey, wsId, wsImages, wsInlineMd, wsPara, wsPushVersion, wsSafeHref, wsSecKey, wsSentences, wsText, wsWords } from '../../lib/core';
 import type { AiQuotaCfg, AnyRec, Campaign, CampaignStatus, ConfirmState, ContentVariantCfg, ContentVersion, ContentVersionKind, HumanBlock, HumanReport, MenuOption, MktChannel, MktContent, MktContentType, MktImage, MktTask, Module, StArticle, StCompany, StSection, StSettings, StudioApi, TaskStatus, User, VariantGroup, VariantKind, WriterPreset, WsBlock, WsDiffPart, WsGhost, WsImagePanel, WsMarks, WsProposal, WsSlash, WsSlashItem, WsTone } from '../../lib/types';
 import { cn } from '../../lib/utils';
-import { parseAiJson, useAi } from '../ai/ai-core';
+import { parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
 import { applyWatermark, contentToArticle, getPlatform, scoreArticle, stClip, StFieldControl, stShrinkImage, useStudio, useStudioActions, useStudioApi, useStudioPort } from './content-studio';
 import { AudienceBuilder, AutomationList, BannerStudio, taskStatusOf, useAssignToAi } from './marketing-hub';
 import { Switch } from '../platform/console';
@@ -952,7 +952,7 @@ export function WsImageCard({ panel, api, article, company, logo: logo0, onClose
     try {
       const raw = await api.text({ system: 'Chỉ trả JSON hợp lệ.', prompt: `Viết alt text (≤ 125 ký tự, mô tả đúng nội dung ảnh, tự nhiên chứa "${kw || panel.heading}") và chú thích ảnh 1 câu (≤ 140 ký tự) cho ảnh trong mục "${panel.heading}" của bài "${article.title}". Đoạn văn quanh ảnh: ${panel.context.slice(0, 900)}\nTrả JSON {"alt":"...","caption":"..."}`, maxTokens: 600 });
       const j = parseAiJson<{ alt?: string; caption?: string }>(raw);
-      if (!j) throw new Error('AI trả sai định dạng');
+      if (!j) throw new Error('Kết quả sai định dạng, thử lại');
       if (j.alt) setAlt(stClip(j.alt, 125));
       if (j.caption) setCaption(stClip(j.caption, 160));
     } catch (e) {
@@ -1973,7 +1973,7 @@ export function ImageStudioTab() {
   const { mktImages } = useApp();
   return (
     <div className="space-y-3">
-      <div className="max-w-lg"><Segmented ariaLabel="Image" value={sub} onChange={(v) => setSub(v as 'ai' | 'library' | 'banner')} options={[{ id: 'ai', label: 'Tạo ảnh AI' }, { id: 'library', label: `Thư viện ảnh (${mktImages.length})` }, { id: 'banner', label: 'Thiết kế banner' }]} /></div>
+      <div className="max-w-lg"><Segmented ariaLabel="Image" value={sub} onChange={(v) => setSub(v as 'ai' | 'library' | 'banner')} options={[{ id: 'ai', label: 'Tạo ảnh' },{ id: 'library', label: `Thư viện ảnh (${mktImages.length})` }, { id: 'banner', label: 'Thiết kế banner' }]} /></div>
       {sub === 'ai' && <ImageGeneratorPanel onSaved={() => undefined} />}
       {sub === 'library' && <ImageLibrary />}
       {sub === 'banner' && <BannerStudio />}
@@ -1982,7 +1982,7 @@ export function ImageStudioTab() {
 }
 
 export function ImageGeneratorPanel({ onSaved }: { onSaved: () => void }) {
-  const { company, skus, canDo, notify, setMktImages, me, hubCfg } = useApp();
+  const { company, skus, canDo, notify, setMktImages, me, hubCfg, go } = useApp();
   const api = useStudioPort();
   const co = useMemo(() => stCompanyOf(company), [company]);
   const ro = !canDo('mkt.manage');
@@ -2007,6 +2007,13 @@ export function ImageGeneratorPanel({ onSaved }: { onSaved: () => void }) {
   const [busy, setBusy] = useState<'' | 'img' | 'prompt' | 'alt'>('');
   const [results, setResults] = useState<{ url: string; w: number; h: number; kb: number; model: string }[]>([]);
   const [err, setErr] = useState('');
+  // v56.0.1: chế độ Nhanh (gpt-image-2.5-flare) / Chi tiết cao (gpt-image-2.5-sunburst), nhớ theo người dùng; phương án đang xem; phần SEO thu gọn
+  const [mode, setMode] = useSticky<'fast' | 'detail'>('Mkt.imgMode', 'fast');
+  const [pick, setPick] = useState(0);
+  const [seoOpen, setSeoOpen] = useState(false);
+  const [srv] = useServerStatus();
+  const offReason = !hubCfg.ai.enabled ? 'Trợ lý đang tắt trong Cài đặt › AI & trợ lý' : hubCfg.ai.features.image === false ? 'Tạo ảnh minh họa đang tắt trong Cài đặt › AI & trợ lý'
+    : srv.checked && !srv.reachable ? 'Không kết nối được máy chủ' : srv.checked && !srv.images ? 'Máy chủ chưa có OPENAI_API_KEY' : '';
   const sz = IMG_SIZES.find((x) => x.id === size) ?? IMG_SIZES[5];
   const W = sz.id === 'custom' ? Math.max(200, Math.min(4096, cw)) : sz.w, H = sz.id === 'custom' ? Math.max(200, Math.min(4096, ch)) : sz.h;
   const aspect: 'landscape' | 'square' | 'portrait' = W / H > 1.15 ? 'landscape' : W / H < 0.87 ? 'portrait' : 'square';
@@ -2025,27 +2032,27 @@ export function ImageGeneratorPanel({ onSaved }: { onSaved: () => void }) {
     try {
       const t = await api.text({ system: 'Bạn viết mô tả ảnh (prompt) cho mô hình tạo ảnh, tiếng Việt, 1 đoạn ≤ 70 từ, cụ thể bối cảnh, ánh sáng, góc máy, không chữ trong ảnh. Chỉ trả đoạn mô tả.', prompt: `Chủ đề: ${topic || kw}. Lĩnh vực: ${co.sector}. Yêu cầu: ${vText(vals, undefined, 'image', cfg)}. Khung hình ${W}×${H}.${refImages.length ? ' Có ảnh sản phẩm tham chiếu, giữ đúng hình dáng sản phẩm.' : ''}`, maxTokens: 400 });
       setPrompt(wsCleanAi(t));
-    } catch (e) { setErr(e instanceof Error ? e.message : 'AI chưa viết được mô tả'); } finally { setBusy(''); }
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Chưa viết được mô tả, thử lại'); } finally { setBusy(''); }
   };
   const writeAlt = async () => {
     setBusy('alt'); setErr('');
     try {
       const raw = await api.text({ system: 'Chỉ trả về đúng 1 đối tượng JSON hợp lệ.', prompt: `Viết thông tin SEO cho ảnh: chủ đề "${topic}", từ khóa "${kw || topic}", mô tả ảnh: ${prompt.slice(0, 500)}. Trả JSON {"alt":"≤ 125 ký tự, mô tả đúng ảnh, tự nhiên chứa từ khóa","caption":"1 câu ≤ 140 ký tự","title":"≤ 60 ký tự","file":"ten-file-khong-dau"}`, maxTokens: 600 });
       const j = parseAiJson<{ alt?: string; caption?: string; title?: string; file?: string }>(raw);
-      if (!j) throw new Error('AI trả sai định dạng');
+      if (!j) throw new Error('Kết quả sai định dạng, thử lại');
       if (j.alt) setAlt(stClip(j.alt, 125)); if (j.caption) setCaption(stClip(j.caption, 160)); if (j.title) setTitleAttr(stClip(j.title, 60)); if (j.file && !fileBase) setFileBase(slugify(j.file));
-    } catch (e) { setErr(e instanceof Error ? e.message : 'AI chưa trả lời'); } finally { setBusy(''); }
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Chưa nhận được kết quả, thử lại'); } finally { setBusy(''); }
   };
   const generate = async () => {
     const p = [prompt.trim() || `Ảnh minh họa cho "${topic || kw}"`, vText(vals, undefined, 'image', cfg)].filter(Boolean).join(', ');
     if (p.length < 8) { setErr('Nhập chủ đề hoặc mô tả ảnh'); return; }
-    setBusy('img'); setErr('');
+    setBusy('img'); setErr(''); setPick(0); setResults([]);
     const n = Number(count) || 1;
     const out: typeof results = [];
     try {
       for (let i = 0; i < n; i++) {
         const brand = vImg(vals, 'imgColor') !== 'natural';
-        const r = await api.image({ prompt: brand ? `${p}\n${ST_BRAND.palettePrompt}${n > 1 ? `\nPhương án ${i + 1}: khác góc máy / bố cục.` : ''}` : p, aspect, reference: refImages[i % Math.max(1, refImages.length)], strength, brandPalette: brand });
+        const r = await api.image({ prompt: brand ? `${p}\n${ST_BRAND.palettePrompt}${n > 1 ? `\nPhương án ${i + 1}: khác góc máy / bố cục.` : ''}` : p, aspect, reference: refImages[i % Math.max(1, refImages.length)], strength, brandPalette: brand, mode });
         const marked = stamp === 'none' ? r.dataUrl : await applyWatermark(r.dataUrl, co.name, stamp === 'logo' ? company.logo : undefined).catch(() => r.dataUrl);
         const url = await fitImage(marked, W, H, fmt === 'webp' ? 'image/webp' : 'image/jpeg', quality);
         out.push({ url, w: W, h: H, kb: dataKb(url), model: r.model });
@@ -2058,64 +2065,120 @@ export function ImageGeneratorPanel({ onSaved }: { onSaved: () => void }) {
     setMktImages((p) => [img, ...p].slice(0, MKT_IMG_MAX));
     notify(`Đã lưu ${img.fileName} vào thư viện`, 'teal'); onSaved();
   };
+  // v56.0.1: bố cục 2 cột cân — cột trái thiết lập (nút tạo dính chân), cột phải khung xem trước đúng tỉ lệ, dính khi cuộn
+  const lvl = strength <= 0.25 ? 'Giữ nguyên sản phẩm, chỉ làm đẹp ánh sáng và nền' : strength <= 0.5 ? 'Giữ sản phẩm, đổi bối cảnh và góc chụp' : strength <= 0.75 ? 'Lấy sản phẩm, dựng bố cục mới' : 'Chỉ lấy cảm hứng màu và chủ đề';
+  const cur = results.length ? results[Math.min(pick, results.length - 1)] : undefined;
+  const curI = Math.min(pick, results.length - 1);
+  const fileOf = (i: number) => `${base}${results.length > 1 ? `-${i + 1}` : ''}.${ext}`;
+  const spec = `${W} × ${H} · ${fmt === 'webp' ? 'WebP' : 'JPEG'} ${Math.round(quality * 100)}%`;
+  const STAMP: Record<string, string> = { logo: 'đóng logo', name: 'đóng tên', none: 'không đóng dấu' };
+  const lbl = (t: string) => <p className="mb-1.5 text-xs font-medium text-[rgb(var(--muted))]">{t}</p>;
+  const writeBtn = (t: string, run: () => void, b: typeof busy, dis: boolean) => (
+    <button type="button" className="inline-flex items-center gap-1 rounded text-xs text-[rgb(var(--accent-fg))] hover:underline disabled:opacity-40 disabled:no-underline" disabled={dis || !!busy} onClick={run}>
+      {busy === b ? <RefreshCw className="h-3 w-3 motion-safe:animate-spin" aria-hidden /> : <PenLine className="h-3 w-3" aria-hidden />}{busy === b ? 'Đang viết…' : t}
+    </button>
+  );
   return (
-    <div className="grid gap-4 lg:grid-cols-[440px_1fr]">
-      <fieldset disabled={ro} className="min-w-0 space-y-3">
-        <FormCard title="Ảnh tham chiếu" aside={<span className="text-[11px] text-[rgb(var(--muted))]">AI bám theo hình sản phẩm thật</span>}>
-          <div className="flex flex-wrap gap-2">
-            {refs.map((u, i) => <div key={i} className="relative"><img src={u} alt={`Ảnh tham chiếu ${i + 1}`} className="h-16 w-16 rounded-md object-cover" /><button type="button" aria-label="Bỏ ảnh" className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-[rgb(var(--danger))] text-xs text-white" onClick={() => setRefs((p) => p.filter((_, k) => k !== i))}>×</button></div>)}
-            {refs.length < 3 && <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-[rgb(var(--line))] text-[11px] text-[rgb(var(--muted))] hover:border-[rgb(var(--accent))]" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void addFiles(e.dataTransfer.files); }}><Upload className="h-4 w-4" aria-hidden />Tải ảnh<input type="file" multiple accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => void addFiles(e.target.files)} /></label>}
-          </div>
-          <div className="mt-3"><SelectMenu ariaLabel="Ảnh sản phẩm trong danh mục" multi value={skuRefs} onChange={(v) => setSkuRefs(v.slice(-2))} placeholder="Hoặc chọn ảnh sản phẩm trong danh mục…" options={skus.filter((x) => x.image && !x.archived).slice(0, 200).map((x) => ({ id: x.sku, label: x.sku, hint: x.name, img: x.image }))} /></div>
-          {refImages.length > 0 && <div className="mt-3"><div className="flex justify-between text-xs"><span className="text-[rgb(var(--muted))]">Bám ảnh gốc</span><span className="tabular-nums">{strength.toFixed(2)}</span><span className="text-[rgb(var(--muted))]">Sáng tạo tự do</span></div><input type="range" min={0} max={1} step={0.05} value={strength} onChange={(e) => setStrength(Number(e.target.value))} className="w-full accent-[rgb(var(--accent))]" aria-label="Mức bám ảnh gốc" /><p className="text-[11px] text-[rgb(var(--faint))]">Nhiều phương án sẽ lần lượt dùng từng ảnh tham chiếu.</p></div>}
-        </FormCard>
+    <div className="grid items-start gap-5 lg:grid-cols-[420px_1fr]">
+      <fieldset disabled={ro} className="min-w-0 space-y-3" aria-label="Thiết lập ảnh">
         <FormCard title="Nội dung ảnh">
           <Field label="Chủ đề"><input className={inputCls} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="VD: Băng keo VHB dán mặt dựng kính" /></Field>
           <div className="mt-3">
-            <div className="mb-1 flex items-center justify-between"><span className="text-xs font-medium text-[rgb(var(--muted))]">Mô tả ảnh cho AI</span><AiSpark title="AI viết mô tả từ chủ đề và lựa chọn bên dưới" busy={busy === 'prompt'} disabled={!(topic || kw).trim()} onClick={() => void writePrompt()} /></div>
-            <textarea className={cn(inputCls, 'min-h-[72px] text-sm')} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Để trống: AI dùng chủ đề + các lựa chọn bên dưới" aria-label="Mô tả ảnh" />
+            <div className="mb-1.5 flex items-center justify-between"><span className="text-xs font-medium text-[rgb(var(--muted))]">Mô tả cảnh</span>{writeBtn('Viết từ chủ đề', () => void writePrompt(), 'prompt', !(topic || kw).trim())}</div>
+            <textarea className={cn(inputCls, 'min-h-[88px] text-sm')} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Để trống: dùng chủ đề và phong cách bên dưới" aria-label="Mô tả cảnh" />
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <div className="col-span-2"><p className="mb-1 text-xs font-medium text-[rgb(var(--muted))]">Kích thước</p><SelectMenu ariaLabel="Kích thước" value={[size]} onChange={(v) => setSize(v[0])} options={IMG_SIZES.map((x) => ({ id: x.id, label: x.label, hint: x.w ? `${x.w}×${x.h} px` : 'Tự nhập rộng × cao' }))} /></div>
+          <div className="mt-3">
+            {lbl('Ảnh sản phẩm tham chiếu')}
+            <div className="flex flex-wrap items-center gap-2">
+              {refs.map((u, i) => (
+                <div key={i} className="relative shrink-0">
+                  <img src={u} alt={`Ảnh tham chiếu ${i + 1}`} className="h-14 w-14 rounded-md border border-[rgb(var(--line))] object-cover" />
+                  <button type="button" aria-label={`Bỏ ảnh tham chiếu ${i + 1}`} className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full border border-[rgb(var(--line))] bg-[rgb(var(--surface))] text-[rgb(var(--muted))] transition-colors hover:text-[rgb(var(--danger-fg))]" onClick={() => setRefs((p) => p.filter((_, k) => k !== i))}><X className="h-3 w-3" aria-hidden /></button>
+                </div>
+              ))}
+              {refs.length < 3 && <label className="flex h-14 w-14 shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-[rgb(var(--line))] text-[11px] text-[rgb(var(--muted))] transition-colors hover:border-[rgb(var(--accent))]" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); void addFiles(e.dataTransfer.files); }}><Upload className="h-4 w-4" aria-hidden />Tải ảnh<input type="file" multiple accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => void addFiles(e.target.files)} aria-label="Tải ảnh tham chiếu" /></label>}
+              <div className="min-w-[150px] flex-1"><SelectMenu ariaLabel="Ảnh sản phẩm trong danh mục" multi value={skuRefs} onChange={(v) => setSkuRefs(v.slice(-2))} placeholder="Hoặc chọn từ danh mục" options={skus.filter((x) => x.image && !x.archived).slice(0, 200).map((x) => ({ id: x.sku, label: x.sku, hint: x.name, img: x.image }))} /></div>
+            </div>
+            {refImages.length > 0 && (
+              <div className="mt-3">
+                <div className="flex items-baseline justify-between gap-3 text-xs"><span className="text-[rgb(var(--muted))]">Mức bám ảnh sản phẩm</span><span className="truncate text-[rgb(var(--fg2))]" data-strength-level>{lvl}</span></div>
+                <input type="range" min={0} max={1} step={0.05} value={strength} onChange={(e) => setStrength(Number(e.target.value))} className="mt-1 w-full accent-[rgb(var(--accent))]" aria-label="Mức bám ảnh sản phẩm" />
+                {Number(count) > 1 && refImages.length > 1 && <p className="text-[11.5px] text-[rgb(var(--muted))]">Mỗi phương án lần lượt dùng một ảnh tham chiếu</p>}
+              </div>
+            )}
+          </div>
+        </FormCard>
+        <FormCard title="Khung hình & phong cách">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">{lbl('Kích thước')}<SelectMenu ariaLabel="Kích thước" value={[size]} onChange={(v) => setSize(v[0])} options={IMG_SIZES.map((x) => ({ id: x.id, label: x.label, hint: x.w ? `${x.w} × ${x.h} px` : 'Tự nhập rộng × cao' }))} /></div>
             {size === 'custom' && <><Field label="Rộng (px)"><input type="number" min={200} max={4096} className={inputCls} value={cw} onChange={(e) => setCw(Number(e.target.value) || 0)} /></Field><Field label="Cao (px)"><input type="number" min={200} max={4096} className={inputCls} value={ch} onChange={(e) => setCh(Number(e.target.value) || 0)} /></Field></>}
             {groups.map((g) => <VariantControl key={g.id} g={g} values={vals} cfg={cfg} onChange={setVals} />)}
-            <div className="col-span-2"><p className="mb-1 text-xs font-medium text-[rgb(var(--muted))]">Số phương án</p><Segmented ariaLabel="Số phương án" value={count} onChange={setCount} options={[{ id: '1', label: '1 ảnh' }, { id: '2', label: '2 ảnh' }, { id: '3', label: '3 ảnh' }]} /></div>
+            <div>{lbl('Số phương án')}<Segmented ariaLabel="Số phương án" value={count} onChange={setCount} options={[{ id: '1', label: '1' }, { id: '2', label: '2' }, { id: '3', label: '3' }]} /></div>
+            <div>{lbl('Chế độ')}<Segmented ariaLabel="Chế độ tạo ảnh" value={mode} onChange={(v) => setMode(v as 'fast' | 'detail')} options={[{ id: 'fast', label: 'Nhanh', title: srv.models.image || 'gpt-image-2.5-flare' }, { id: 'detail', label: 'Chi tiết cao', title: srv.models.imageDetail || 'gpt-image-2.5-sunburst' }]} /></div>
+            <p className="col-span-2 -mt-1 text-[11.5px] text-[rgb(var(--muted))]" data-mode-hint>{mode === 'detail' ? 'Chi tiết cao: chậm hơn, hợp ảnh sản phẩm cao cấp, studio và chỉnh sửa sâu từ ảnh tham chiếu' : 'Nhanh: hợp ảnh bài viết và mạng xã hội'}</p>
           </div>
         </FormCard>
-        <FormCard title="SEO ảnh" aside={<AiSpark title="AI viết alt, chú thích, title, tên file" busy={busy === 'alt'} disabled={!(topic || kw || prompt).trim()} onClick={() => void writeAlt()} />}>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Từ khóa chính"><input className={inputCls} value={kw} onChange={(e) => setKw(e.target.value)} placeholder="VD: băng keo VHB" /></Field>
-            <Field label="Tên file"><input className={cn(inputCls, 'font-mono text-xs')} value={fileBase} onChange={(e) => setFileBase(slugify(e.target.value))} placeholder={base} /></Field>
-            <Field label={`Alt text (${alt.length}/125)`} className="col-span-2"><input className={inputCls} maxLength={125} value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Mô tả đúng nội dung ảnh, có từ khóa" /></Field>
-            <Field label="Chú thích (caption)" className="col-span-2"><input className={inputCls} value={caption} onChange={(e) => setCaption(e.target.value)} /></Field>
-            <Field label="Title" className="col-span-2"><input className={inputCls} maxLength={60} value={titleAttr} onChange={(e) => setTitleAttr(e.target.value)} /></Field>
-            <div><p className="mb-1 text-xs font-medium text-[rgb(var(--muted))]">Đóng dấu</p><Segmented ariaLabel="Đóng dấu" value={stamp} onChange={setStamp} options={[{ id: 'logo', label: 'Logo' }, { id: 'name', label: 'Tên' }, { id: 'none', label: 'Không' }]} /></div>
-            <div><p className="mb-1 text-xs font-medium text-[rgb(var(--muted))]">Định dạng</p><Segmented ariaLabel="Định dạng" value={fmt} onChange={setFmt} options={[{ id: 'webp', label: 'WebP' }, { id: 'jpeg', label: 'JPEG' }]} /></div>
-            <div className="col-span-2"><div className="flex justify-between text-xs text-[rgb(var(--muted))]"><span>Chất lượng nén</span><span className="tabular-nums">{Math.round(quality * 100)}%</span></div><input type="range" min={0.6} max={0.95} step={0.05} value={quality} onChange={(e) => setQuality(Number(e.target.value))} className="w-full accent-[rgb(var(--accent))]" aria-label="Chất lượng nén" /></div>
-          </div>
-          <p className="mt-2 text-[11px] text-[rgb(var(--faint))]">Ảnh xuất được cắt đúng {W}×{H}, nén lại và xóa thông tin EXIF / vị trí GPS của ảnh gốc. Nên giữ dưới 200 KB.</p>
-        </FormCard>
+        <section className="rounded-lg border border-[rgb(var(--line)/0.8)] bg-[rgb(var(--ink)/0.025)]" aria-label="Xuất file và SEO">
+          <button type="button" className="flex w-full items-center gap-2 px-3.5 py-3 text-left" aria-expanded={seoOpen} onClick={() => setSeoOpen((v) => !v)}>
+            <span className="text-[13px] font-semibold">Xuất file & SEO</span>
+            <span className="min-w-0 flex-1 truncate text-right font-mono text-[11.5px] text-[rgb(var(--muted))]">{base}.{ext} · {STAMP[stamp]}</span>
+            <ChevronDown className={cn('h-4 w-4 shrink-0 text-[rgb(var(--muted))] transition-transform', seoOpen && 'rotate-180')} aria-hidden />
+          </button>
+          {seoOpen && (
+            <div className="border-t border-[rgb(var(--line)/0.8)] px-3.5 pb-3.5 pt-3">
+              <div className="mb-2 flex justify-end">{writeBtn('Viết mô tả, chú thích, tiêu đề', () => void writeAlt(), 'alt', !(topic || kw || prompt).trim())}</div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Từ khóa chính"><input className={inputCls} value={kw} onChange={(e) => setKw(e.target.value)} placeholder="VD: băng keo VHB" /></Field>
+                <Field label="Tên file"><input className={cn(inputCls, 'font-mono text-xs')} value={fileBase} onChange={(e) => setFileBase(slugify(e.target.value))} placeholder={base} /></Field>
+                <Field label={`Mô tả ảnh (alt) · ${alt.length}/125`} className="col-span-2"><input className={inputCls} maxLength={125} value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Mô tả đúng nội dung ảnh, có từ khóa" /></Field>
+                <Field label="Chú thích" className="col-span-2"><input className={inputCls} value={caption} onChange={(e) => setCaption(e.target.value)} /></Field>
+                <Field label="Tiêu đề ảnh (title)" className="col-span-2"><input className={inputCls} maxLength={60} value={titleAttr} onChange={(e) => setTitleAttr(e.target.value)} /></Field>
+                <div>{lbl('Đóng dấu')}<Segmented ariaLabel="Đóng dấu" value={stamp} onChange={setStamp} options={[{ id: 'logo', label: 'Logo' }, { id: 'name', label: 'Tên' }, { id: 'none', label: 'Không' }]} /></div>
+                <div>{lbl('Định dạng')}<Segmented ariaLabel="Định dạng" value={fmt} onChange={setFmt} options={[{ id: 'webp', label: 'WebP' }, { id: 'jpeg', label: 'JPEG' }]} /></div>
+                <div className="col-span-2"><div className="flex justify-between text-xs text-[rgb(var(--muted))]"><span>Chất lượng nén</span><span className="tabular-nums">{Math.round(quality * 100)}%</span></div><input type="range" min={0.6} max={0.95} step={0.05} value={quality} onChange={(e) => setQuality(Number(e.target.value))} className="w-full accent-[rgb(var(--accent))]" aria-label="Chất lượng nén" /></div>
+              </div>
+              <p className="mt-2 text-[11.5px] text-[rgb(var(--muted))]">Ảnh xuất được cắt đúng {W} × {H}, nén lại và xóa EXIF / vị trí GPS của ảnh gốc. Nên giữ dưới 200 KB</p>
+            </div>
+          )}
+        </section>
         <div className="sticky bottom-0 z-10 -mx-1 bg-[rgb(var(--bg)/0.92)] px-1 py-2 backdrop-blur">
-          <button type="button" className={cn(btnAccent, 'w-full justify-center')} disabled={!!busy} onClick={() => void generate()}><Sparkles className="h-4 w-4" aria-hidden />{busy === 'img' ? `Đang tạo ${results.length + 1}/${count}…` : `Tạo ${count} ảnh ${W}×${H}`}</button>
-          {err && <p className="mt-1 text-xs text-[rgb(var(--danger-fg))]" role="alert">{err}</p>}
+          <button type="button" className={cn(btnAccent, 'w-full justify-center')} disabled={!!busy} onClick={() => void generate()}><ImagePlus className="h-4 w-4" aria-hidden />{busy === 'img' ? `Đang tạo ${results.length + 1}/${count}…` : `Tạo ${count} ảnh ${W} × ${H}`}</button>
         </div>
       </fieldset>
-      <section className="min-w-0 space-y-3" aria-label="Kết quả">
-        {!results.length && <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed border-[rgb(var(--line))] text-center text-sm text-[rgb(var(--muted))]"><ImagePlus className="mb-2 h-6 w-6" aria-hidden />Ảnh tạo ra hiện ở đây, đúng kích thước đã chọn.<span className="text-xs">Tải về với tên file chuẩn SEO hoặc lưu vào thư viện để chèn vào bài.</span></div>}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {results.map((r, i) => (
-            <figure key={i} className="overflow-hidden rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))]">
-              <img src={r.url} alt={alt || topic} className="w-full object-contain" style={{ aspectRatio: `${r.w} / ${r.h}` }} />
-              <figcaption className="space-y-2 p-3 text-xs">
-                <p className="flex flex-wrap gap-x-2 text-[rgb(var(--muted))]"><span className="font-mono">{base}{results.length > 1 ? `-${i + 1}` : ''}.{ext}</span><span>{r.w}×{r.h}</span><span className={r.kb > 300 ? 'text-[rgb(var(--danger-fg))]' : ''}>{r.kb} KB</span><span>{r.model}</span></p>
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" className={cn(btnGhost, btnSm)} onClick={() => downloadData(r.url, `${base}${results.length > 1 ? `-${i + 1}` : ''}.${ext}`)}><Download className="h-3.5 w-3.5" aria-hidden />Tải về</button>
-                  {!ro && <button type="button" className={cn(btnPrimary, btnSm)} onClick={() => saveImg(r, i)}>Lưu vào thư viện</button>}
+      <section className="min-w-0 lg:sticky lg:top-[72px]" aria-label="Xem trước">
+        {offReason && <p className="mb-3 flex items-start gap-2 rounded-lg border border-[rgb(var(--warn)/0.35)] bg-[rgb(var(--warn)/0.08)] px-3 py-2 text-[12.5px] text-[rgb(var(--fg2))]" data-image-off><Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[rgb(var(--warn))]" aria-hidden /><span>{offReason}. Bấm Tạo sẽ ra ảnh mẫu để xem bố cục</span></p>}
+        <div className="relative mx-auto overflow-hidden rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.04)]" style={{ aspectRatio: `${W} / ${H}`, width: `min(100%, calc((100vh - 280px) * ${(W / H).toFixed(4)}))` }} data-preview-frame>
+          {cur ? <img src={cur.url} alt={alt || topic || 'Ảnh vừa tạo'} className="absolute inset-0 h-full w-full object-cover" /> : refImages[0] && <img src={refImages[0]} alt="" className="absolute inset-0 h-full w-full object-cover opacity-15" aria-hidden />}
+          {!cur && (
+            <div className="absolute inset-0 flex items-center justify-center p-6">
+              {busy === 'img' ? (
+                <p className="flex items-center gap-2 text-[13px] text-[rgb(var(--fg2))]" role="status"><Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden />Đang tạo ảnh {results.length + 1}/{count} · {mode === 'detail' ? 'Chi tiết cao' : 'Nhanh'}</p>
+              ) : err ? (
+                <div className="w-full max-w-[420px] rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-4 shadow-sm" role="alert" data-image-error>
+                  <p className="flex items-center gap-2 text-[13.5px] font-medium"><AlertTriangle className="h-4 w-4 text-[rgb(var(--danger-fg))]" aria-hidden />Chưa tạo được ảnh</p>
+                  <p className="mt-1.5 text-[12.5px] leading-relaxed text-[rgb(var(--fg2))]">{err}</p>
+                  <button type="button" className={cn(btnGhost, btnSm, 'mt-3')} onClick={() => go('settings', 'ai')}>Mở Cài đặt tạo ảnh</button>
                 </div>
-              </figcaption>
-            </figure>
-          ))}
+              ) : (
+                <div className="text-center text-[13px] text-[rgb(var(--muted))]"><ImagePlus className="mx-auto mb-2 h-5 w-5" aria-hidden />Ảnh tạo ra hiện ở đây<span className="mt-0.5 block text-xs">Cắt đúng khung, tải về với tên file chuẩn SEO</span></div>
+              )}
+            </div>
+          )}
+          <span className="absolute left-3 top-3 rounded-md bg-[rgb(var(--surface)/0.9)] px-2 py-1 font-mono text-[11px] tabular-nums text-[rgb(var(--fg2))]" data-spec>{cur ? `${cur.w} × ${cur.h} · ${cur.kb} KB` : spec}</span>
         </div>
+        {cur && (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {results.length > 1 && (
+              <div className="flex gap-2" role="radiogroup" aria-label="Phương án">
+                {results.map((r, i) => <button key={i} type="button" role="radio" aria-checked={i === curI} aria-label={`Phương án ${i + 1}`} className={cn('h-14 overflow-hidden rounded-md border-2 transition-[opacity,border-color]', i === curI ? 'border-[rgb(var(--accent))]' : 'border-transparent opacity-70 hover:opacity-100')} style={{ aspectRatio: `${r.w} / ${r.h}` }} onClick={() => setPick(i)}><img src={r.url} alt="" className="h-full w-full object-cover" /></button>)}
+              </div>
+            )}
+            <div className="min-w-0 flex-1 text-xs"><p className="truncate font-mono text-[rgb(var(--fg))]">{fileOf(curI)}</p><p className="truncate text-[rgb(var(--muted))]"><span className={cn('tabular-nums', cur.kb > 300 && 'text-[rgb(var(--danger-fg))]')}>{cur.kb} KB</span> · {cur.model}</p></div>
+            <button type="button" className={cn(btnGhost, btnSm)} onClick={() => downloadData(cur.url, fileOf(curI))}><Download className="h-3.5 w-3.5" aria-hidden />Tải về</button>
+            {!ro && <button type="button" className={cn(btnPrimary, btnSm)} onClick={() => saveImg(cur, curI)}>Lưu vào thư viện</button>}
+          </div>
+        )}
+        {cur && err && <p className="mt-2 text-xs text-[rgb(var(--danger-fg))]" role="alert">{err}</p>}
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
 import { aiStatus } from '../_lib/ai';
 import { envFor, json, supabaseEnv, TENANT_RE } from '../_lib/server';
 import { zaloStatus } from '../_lib/zalo';
+import { imageModel } from '../_lib/image';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,8 @@ export async function GET(req: Request) {
   return json({
     ok: true,
     ai: aiStatus(tenant),
-    models: { anthropic: envFor('ANTHROPIC_MODEL', tenant) || 'claude-sonnet-5-5', openai: envFor('OPENAI_MODEL', tenant) || 'gpt-4o-mini', image: envFor('OPENAI_IMAGE_MODEL', tenant) || 'gpt-image-1' },
+    // v56.0.1: mô hình ảnh hiện hành (tên đã ngừng trong biến môi trường tự đổi); images = có khóa (Cài đặt kiểm tra mô hình riêng)
+    models: { anthropic: envFor('ANTHROPIC_MODEL', tenant) || 'claude-sonnet-5-5', openai: envFor('OPENAI_MODEL', tenant) || 'gpt-4o-mini', image: imageModel('fast', tenant).model, imageDetail: imageModel('detail', tenant).model },
     images: !!envFor('OPENAI_API_KEY', tenant),
     zalo: zaloStatus(tenant),
     cloud: !!(sb.url && sb.key),

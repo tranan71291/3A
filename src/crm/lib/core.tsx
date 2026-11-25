@@ -1385,9 +1385,30 @@ export const serverCache = { tenant: '', at: 0, value: SERVER0, inflight: null a
 export const AI_ERR: Record<string, string> = {
   ai_not_configured: 'Máy chủ chưa có khóa API cho nhà cung cấp AI đã chọn', rate_limited: 'Gửi quá nhiều yêu cầu, thử lại sau 1 phút', unauthorized: 'Phiên đăng nhập hết hạn, đăng nhập lại',
   forbidden: 'Tài khoản không thuộc doanh nghiệp này', quota_exceeded: 'Đã dùng hết lượt AI hôm nay', not_allowed: 'Tài khoản chưa được bật tính năng này', auth_unavailable: 'Máy chủ chưa cấu hình xác thực (Supabase) cho API', zalo_not_configured: 'Máy chủ chưa cấu hình Zalo OA',
+  // v56.0.1 tạo ảnh: lỗi có nghĩa, kèm việc cần làm
+  image_not_configured: 'Máy chủ chưa có OPENAI_API_KEY. Thêm khóa ở Vercel › Settings › Environment Variables rồi triển khai lại',
+  image_model_unavailable: 'Tài khoản OpenAI không dùng được mô hình ảnh này (mô hình đã ngừng hoặc chưa được cấp). Kiểm tra OPENAI_IMAGE_MODEL ở Vercel, để trống để dùng mô hình mặc định',
+  image_org_unverified: 'OpenAI yêu cầu xác minh tổ chức trước khi tạo ảnh: platform.openai.com › Organization › General › Verify',
+  image_billing: 'Tài khoản OpenAI hết hạn mức hoặc chưa có phương thức thanh toán',
+  image_policy: 'Nội dung mô tả bị bộ lọc an toàn từ chối. Sửa mô tả rồi tạo lại',
+  image_key_invalid: 'Khóa OPENAI_API_KEY không hợp lệ hoặc đã bị thu hồi',
+  image_forbidden: 'Khóa OpenAI không có quyền dùng mô hình ảnh (kiểm tra giới hạn mô hình của project trên OpenAI)',
+  image_rate_limited: 'OpenAI đang giới hạn tốc độ, thử lại sau ít phút',
+  image_network: 'Máy chủ không gọi được OpenAI, thử lại sau',
+  image_empty: 'OpenAI không trả ảnh, thử lại',
+  reference_invalid: 'Ảnh tham chiếu không hợp lệ (JPEG, PNG, WebP, tối đa khoảng 5 MB)',
+  reference_needs_gpt_image: 'Mô hình đang đặt không nhận ảnh tham chiếu',
 };
 
-export const aiErrText = (e?: string) => (e && AI_ERR[e]) || e || 'Lỗi không xác định';
+export const aiErrText = (e?: string) => {
+  if (!e) return 'Lỗi không xác định';
+  if (AI_ERR[e]) return AI_ERR[e];
+  // v56.0.1: mã kèm chi tiết ('image_network: …', 'openai: …'): dịch phần mã, giữ chi tiết gốc để tra cứu
+  const m = /^([a-z_]+): (.+)$/.exec(e);
+  if (m && AI_ERR[m[1]]) return `${AI_ERR[m[1]]} (${m[2]})`;
+  if (m && m[1] === 'openai') return `OpenAI báo lỗi: ${m[2]}`;
+  return e;
+};
 
 /** Che số điện thoại, email trước khi gửi dữ liệu cho nhà cung cấp AI */
 export const maskPii = (s: string) => s.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[email]').replace(/(\+?84|0)(\s?\d){8,10}/g, (m) => `[SĐT …${m.replace(/\D/g, '').slice(-3)}]`);

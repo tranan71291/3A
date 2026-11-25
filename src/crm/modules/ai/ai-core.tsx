@@ -30,6 +30,29 @@ export function useServerStatus(): [ServerStatus, () => void] {
   return [s, () => setTick((t) => t + 1)];
 }
 
+/** v56.0.1 Trạng thái thật của 2 mô hình tạo ảnh (máy chủ hỏi OpenAI, không tạo ảnh, không tốn phí) */
+export type ImageModelState = { id: string; ok: boolean; error?: string; retired?: string };
+export type ImageCheck = { state: 'idle' | 'checking' | 'done' | 'offline'; key: boolean; fast?: ImageModelState; detail?: ImageModelState; error?: string };
+const imgCheckCache: { tenant: string; at: number; value: ImageCheck | null } = { tenant: '', at: 0, value: null };
+export function useImageCheck(enabled: boolean): [ImageCheck, () => void] {
+  const { org } = useApp();
+  const [s, setS] = useState<ImageCheck>(() => (imgCheckCache.tenant === org.id && imgCheckCache.value ? imgCheckCache.value : { state: 'idle', key: false }));
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    if (!tick && imgCheckCache.tenant === org.id && imgCheckCache.value && Date.now() - imgCheckCache.at < 300_000) { setS(imgCheckCache.value); return; }
+    let live = true;
+    setS((p) => ({ ...p, state: 'checking' }));
+    void apiPost<{ key: boolean; fast: ImageModelState; detail: ImageModelState }>('/api/ai/image', { tenant: org.id, check: true }).then((r) => {
+      const v: ImageCheck = r.ok ? { state: 'done', key: r.key, fast: r.fast, detail: r.detail } : { state: 'offline', key: false, error: r.error };
+      imgCheckCache.tenant = org.id; imgCheckCache.at = Date.now(); imgCheckCache.value = v;
+      if (live) setS(v);
+    });
+    return () => { live = false; };
+  }, [org.id, enabled, tick]);
+  return [s, () => setTick((t) => t + 1)];
+}
+
 /** Gọi route máy chủ kèm phiên đăng nhập Supabase (nếu có) */
 export async function apiPost<T>(path: string, body: AnyRec): Promise<T & { ok: boolean; error?: string }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
