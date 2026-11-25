@@ -391,7 +391,7 @@ export function useStudioPort(): StudioApi {
       const { imgOn: on, org: o, brand: b } = ref.current;
       if (!on) return { dataUrl: placeholderImage(req.prompt.split('\n')[0].replace(/^Ảnh minh họa cho "|"\..*$/g, '').slice(0, 60), b, req.aspect), model: 'Ảnh mẫu (chưa kết nối API tạo ảnh)' };
       const reference = req.reference ? { mediaType: 'image/jpeg', data: req.reference.split(',')[1] ?? '' } : undefined;
-      const r = await apiPost<{ b64: string; mediaType: string; model: string }>('/api/ai/image', { tenant: o.id, prompt: req.prompt, aspect: req.aspect, reference, strength: req.strength, brandPalette: req.brandPalette });
+      const r = await apiPost<{ b64: string; mediaType: string; model: string }>('/api/ai/image', { tenant: o.id, mode: req.mode ?? 'fast', prompt: req.prompt, aspect: req.aspect, reference, strength: req.strength, brandPalette: req.brandPalette });
       if (!r.ok) throw new Error(aiErrText(r.error));
       return { dataUrl: await compactImage(`data:${r.mediaType};base64,${r.b64}`), model: r.model };
     },

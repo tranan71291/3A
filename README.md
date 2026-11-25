@@ -1,4 +1,60 @@
-# 3A CRM v56 (Chặng 4: động cơ đa ngành — ngành nghề, nhân bản bộ mẫu ngành, từ điển thuật ngữ, tài nguyên, kiểu trường chuyên ngành; nhánh mới v56, dựa trên v55.3)
+# 3A CRM v56.0.1 (bản vá tạo ảnh: mô hình OpenAI mới, kiểm tra kết nối thật, màn Hình ảnh gọn lại — cùng nhánh v56)
+
+## Cập nhật v56.0.1 (25/11)
+
+**Nguyên nhân lỗi "The model 'gpt-image-1' does not exist"**: OpenAI đã ngừng mô hình `gpt-image-1` từ 23/10/2026. Code cũ dùng tên này làm mặc định. Cài đặt vẫn báo "Đã kết nối" vì chỉ xét máy chủ có `OPENAI_API_KEY` hay không.
+
+**Triển khai**
+1. Không có SQL mới. Nếu chưa cài v56: vẫn chạy 3 file SQL theo thứ tự `v55.1` → `v55.3` → `v56` như hướng dẫn v56.
+2. Vercel › Settings › Environment Variables:
+   - `OPENAI_IMAGE_MODEL`: **để trống** (mặc định `gpt-image-2.5-flare`) hoặc xóa giá trị `gpt-image-1`. Nếu vẫn để `gpt-image-1`, máy chủ tự dùng mô hình mới và ghi cảnh báo vào log.
+   - Tùy chọn: `OPENAI_IMAGE_MODEL_DETAIL` (mặc định `gpt-image-2.5-sunburst`).
+3. Chạy `scripts/cai-dat-v56.0.1.ps1` (cùng nhánh `v56`; chạy được cả khi chưa cài v56 vì zip chứa toàn bộ code).
+4. Vào Cài đặt › AI & trợ lý: thẻ "Tạo ảnh" phải báo **Sẵn sàng** cho cả 2 chế độ. Nếu báo lỗi xác minh tổ chức: platform.openai.com › Organization › General › Verify.
+
+**1. Máy chủ (`src/app/api`)**
+- `_lib/image.ts` (mới):
+  - 2 chế độ: **Nhanh** = `gpt-image-2.5-flare` (mặc định), **Chi tiết cao** = `gpt-image-2.5-sunburst`;
+  - ghi đè bằng `OPENAI_IMAGE_MODEL` / `OPENAI_IMAGE_MODEL_DETAIL`, theo doanh nghiệp thêm `__MA_DN`;
+  - tên mô hình đã ngừng (`gpt-image-1`, `dall-e-2/3`…) tự đổi sang mô hình hiện hành.
+- `ai/image/route.ts`:
+  - nhận `mode: 'fast' | 'detail'`;
+  - `{ check: true }` hỏi OpenAI 2 mô hình còn dùng được không (`GET /v1/models/{id}`, không tạo ảnh, không tốn phí, lưu kết quả 10 phút);
+  - mô hình mới không nhận `input_fidelity` hoặc kích thước cũ thì tự bỏ tham số đó / dùng `size=auto` và gửi lại 1 lần (app vẫn cắt đúng khung đã chọn);
+  - lỗi trả về thành mã có nghĩa: `image_model_unavailable`, `image_org_unverified`, `image_billing`, `image_policy`, `image_key_invalid`, `image_rate_limited`…
+- `integrations/route.ts`: `models.image` / `models.imageDetail` là mô hình thực dùng.
+- Khóa API vẫn chỉ ở máy chủ.
+
+**2. Cài đặt › AI & trợ lý**
+- Thẻ **Tạo ảnh** hiện 2 dòng Nhanh / Chi tiết cao, mỗi dòng có trạng thái thật: Sẵn sàng · Không dùng được · Chưa có khóa · Đang kiểm tra. Một chế độ lỗi thì báo "Dùng được 1/2 chế độ" kèm lý do tiếng Việt.
+- Thêm thẻ **Thử tạo ảnh**: tạo 1 ảnh vuông chế độ Nhanh, hiện ảnh + mô hình + thời gian.
+
+**3. Màn Auto Content › Hình ảnh (gọn lại, theo THEME_CSS)**
+- Không còn gọi tên AI trên giao diện: "Tạo ảnh", "Mô tả cảnh", "Viết từ chủ đề"; bỏ biểu tượng lấp lánh.
+- 2 cột cân:
+  - trái là thiết lập ("Nội dung ảnh" gộp chủ đề, mô tả, ảnh sản phẩm tham chiếu; "Khung hình & phong cách"; "Xuất file & SEO" thu gọn sẵn, hiện tóm tắt tên file);
+  - nút **Tạo N ảnh W × H** dính chân cột;
+  - phải là **khung xem trước đúng tỉ lệ đã chọn**, dính khi cuộn, nhãn kích thước chữ mono ở góc, ảnh tham chiếu mờ phía sau khi chưa có kết quả.
+- Chọn **chế độ Nhanh / Chi tiết cao** ngay trên màn (nhớ theo người dùng), kèm dòng gợi ý khi nào dùng.
+- Kết quả: ảnh lớn trong khung + dải các phương án, tên file / KB / mô hình, Tải về, Lưu vào thư viện.
+- Mức bám ảnh sản phẩm hiện bằng lời ("Giữ sản phẩm, đổi bối cảnh và góc chụp"…) thay cho số 0,35.
+- Lỗi hiện thành thẻ tiếng Việt trong khung xem trước, có việc cần làm và nút "Mở Cài đặt tạo ảnh".
+- Tạo ảnh chưa bật thật (trợ lý tắt, tính năng tắt, máy chủ chưa có khóa) thì báo trước là sẽ ra ảnh mẫu.
+- Nút bỏ ảnh tham chiếu đổi sang nút trung tính.
+- Nhãn SEO tiếng Việt: Mô tả ảnh (alt), Chú thích, Tiêu đề ảnh (title).
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict, gồm route máy chủ).
+- **Máy chủ 16 / 16** (`anh-v56.0.1/kiem-tra-may-chu.js`, OpenAI giả lập):
+  - mặc định flare, chế độ chi tiết sunburst, `gpt-image-1` trong biến môi trường tự đổi, ghi đè theo doanh nghiệp;
+  - tự bỏ `input_fidelity` / đổi `size=auto` rồi gửi lại;
+  - 5 loại lỗi có nghĩa;
+  - kiểm tra mô hình không tạo ảnh và có lưu 10 phút; không có khóa; `/api/integrations` trả mô hình mới.
+- **Giao diện 13 / 13** (`anh-v56.0.1/ket-qua-chay-thu.txt`):
+  - không còn chữ AI, SEO thu gọn, khung 3:2, nút tạo trong màn hình đầu;
+  - thẻ lỗi tiếng Việt;
+  - chế độ Nhanh mặc định, Chi tiết cao gửi đúng `mode=detail`, 2 phương án và chọn phương án 2;
+  - Cài đặt báo "Dùng được 1/2 chế độ" và lý do; Tạo ảnh thử.
+- **Còn phải xác nhận trên khóa thật của anh**: kích thước và `input_fidelity` mà 2 mô hình 2.5 nhận. Code đã tự xử lý khi bị từ chối. Bấm "Tạo ảnh thử" để xác nhận.
 
 ## Cập nhật v56 (24/11)
 
