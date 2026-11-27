@@ -50,7 +50,7 @@ export function TenantLayoutPage({ ver }: { ver: LayoutVer }) {
   };
   return (
     <LPageC.Provider value={ctx}>
-      <LayoutView blocks={ver.blocks} rowsOf={rowsOf} range={pr} onOpen={(m) => go(m)} role={role} />
+      <LayoutView blocks={ver.blocks} rowsOf={rowsOf} range={pr} onOpen={(m) => go(m)} role={role} grid={ver.grid} />
       {sheet && <KpiTargetSheet onClose={() => setSheet(false)} />}
     </LPageC.Provider>
   );
@@ -74,7 +74,7 @@ export function EntityListPage({ page, render }: { page: LPage; render: (cfg?: L
   const node = (b: LBlock): ReactNode => {
     if (!lIsCore(b.type) && !lCondOk(b.config, null, role)) return null;
     if (b.type === 'K-RecordList') return render(b.config);
-    return lCommonNode(b);
+    return lCommonNode(b, lay.grid);
   };
-  return <LPageC.Provider value={ctx}><LBusinessView blocks={lay.blocks} node={node} narrow={!wide} dev={dev} /></LPageC.Provider>;
+  return <LPageC.Provider value={ctx}><LBusinessView blocks={lay.blocks} node={node} narrow={!wide} dev={dev} grid={lay.grid} /></LPageC.Provider>;
 }

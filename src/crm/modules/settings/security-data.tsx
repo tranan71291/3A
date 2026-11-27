@@ -5,12 +5,12 @@ import { Check as CheckIcon, Copy, Database, Download, HardDrive, History, KeyRo
 import { Pagination, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, RuleRow, SetBlock, SideCard, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { ACCT_EVENTS, ACCT_STD, ACCT_TOKEN, acctName, AGING, AUDIT_LABEL, bizMode, btnGhost, btnPrimary, btnSm, C, CASH_IN_CATS, CASH_OUT_CATS, CLOUD_ON, DATA_VERSION, dataKey, fmtDate, fmtN, inputBase, inputCls, iso, kpiGrid, nextCode, orgOf, ORGS, rangeBounds, rowCls, SESSION_KEY, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd, whQty } from '../../lib/core';
-import { downloadCsv } from '../../lib/csv';
+import { ACCT_EVENTS, ACCT_STD, ACCT_TOKEN, acctName, AGING, AUDIT_LABEL, bizMode, btnGhost, btnPrimary, btnSm, C, CASH_IN_CATS, CASH_OUT_CATS, CLOUD_ON, DATA_VERSION, dataKey, fmtN, inputBase, inputCls, iso, kpiGrid, nextCode, orgOf, ORGS, rowCls, SESSION_KEY, SNAP_KEEP, storage, tdCls, tdFirst, tdLast, todayISO, uid, useApp, vnd, whQty } from '../../lib/core';
 import { acctDefaults, acctList, cashJournal, saleJournal } from '../../lib/getfly';
+import { REVENUE_AT, revenueAtOf } from '../../lib/accounting';
 import { decryptBackup, encryptBackup } from '../../lib/security';
 import { takeSnapshot } from '../../lib/storage';
-import type { Acct, AcctConfig, AcctEvent, AcctStd, AgingScheme, AnyRec, AuditLevel, CheckItem, ConfirmState, EncryptedBackup, JLine, SettingsTab, WarehouseInfo } from '../../lib/types';
+import type { Acct, AcctConfig, AcctEvent, AcctStd, AgingScheme, RevenueAt, AnyRec, AuditLevel, CheckItem, ConfirmState, EncryptedBackup, JLine, SettingsTab, WarehouseInfo } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { useAi } from '../ai/ai-core';
 import { SearchBox } from '../alux/orders';
@@ -463,7 +463,7 @@ export function JournalBox({ lines, cfg }: { lines: JLine[]; cfg: AcctConfig | n
 }
 
 export function CoaSettings() {
-  const { me, range, notify } = useApp();
+  const { me, notify, go, journalEntries } = useApp();
   const { cfg, can, save } = useAcct();
   const { lines, missing } = useJournal(cfg);
   const year = new Date().getFullYear();
@@ -472,8 +472,6 @@ export function CoaSettings() {
   const [q, setQ] = useState('');
   const [add, setAdd] = useState<{ parent: string; code: string; name: string } | null>(null);
   const [redo, setRedo] = useState(false);
-  const { start, end } = rangeBounds(range);
-  const fromISO = iso(new Date(start)), toISO = iso(new Date(end));
   if (!cfg || redo) {
     const locked = !!cfg && year <= cfg.year;
     return (
@@ -513,16 +511,9 @@ export function CoaSettings() {
     setAdd(null);
   };
   const cats = Array.from(new Set([...CASH_IN_CATS, ...CASH_OUT_CATS, ...Object.keys(cfg.cats), ...missing])).sort();
-  const per = lines.filter((l) => l.date >= fromISO && l.date <= toISO);
-  const tbCodes = Array.from(new Set(lines.flatMap((l) => [l.dr, l.cr]))).sort();
-  const tb = tbCodes.map((c) => {
-    const pn = per.filter((l) => l.dr === c).reduce((s, l) => s + l.amount, 0), pc = per.filter((l) => l.cr === c).reduce((s, l) => s + l.amount, 0);
-    const upto = lines.filter((l) => l.date <= toISO);
-    const bal = upto.filter((l) => l.dr === c).reduce((s, l) => s + l.amount, 0) - upto.filter((l) => l.cr === c).reduce((s, l) => s + l.amount, 0);
-    return { c, pn, pc, bal };
-  }).filter((r) => r.pn || r.pc || r.bal);
-  const sum = (f: (r: (typeof tb)[number]) => number) => tb.reduce((s, r) => s + f(r), 0);
-  const tdN = 'px-3 py-2 text-right tabular-nums';
+  // v58: thời điểm ghi doanh thu khóa khi năm tài chính đã có bút toán doanh thu / giá vốn ghi sổ
+  const revLocked = journalEntries.some((e) => (e.src === 'SV' || e.src === 'SVC' || e.src === 'INV') && e.period.startsWith(String(cfg.year)));
+  const ra = revenueAtOf(cfg);
   return (
     <>
       <Panel>
@@ -565,6 +556,18 @@ export function CoaSettings() {
       )}
       {tab === 'rules' && (
         <Panel>
+          <div className="mb-5" data-revenue-cfg>
+            <p className="mb-2 text-[13.5px] font-medium">Thời điểm ghi nhận doanh thu</p>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2" role="radiogroup" aria-label="Thời điểm ghi nhận doanh thu">
+              {(Object.keys(REVENUE_AT) as RevenueAt[]).map((k) => (
+                <button key={k} type="button" role="radio" aria-checked={ra === k} disabled={!can || revLocked} onClick={() => save({ ...cfg, revenueAt: k }, `Thời điểm ghi doanh thu: ${REVENUE_AT[k].label}`)}
+                  className={cn('rounded-xl border p-3 text-left disabled:cursor-not-allowed', ra === k ? 'border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.06)]' : 'border-[rgb(var(--line))] hover:border-[rgb(var(--fg2))]', (!can || revLocked) && ra !== k && 'opacity-50')}>
+                  <p className="text-[13.5px] font-medium">{REVENUE_AT[k].label}</p><p className="mt-0.5 text-[12.5px] text-[rgb(var(--muted))]">{REVENUE_AT[k].desc}</p>
+                </button>
+              ))}
+            </div>
+            {revLocked && <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-[rgb(var(--muted))]"><Lock className="h-3.5 w-3.5" aria-hidden />Năm {cfg.year} đã ghi sổ doanh thu: đổi được từ năm tài chính sau</p>}
+          </div>
           <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
             <Field label="Quỹ tiền mặt"><AcctSelect cfg={cfg} label="Tài khoản quỹ tiền mặt" disabled={!can} value={cfg.funds.CASH} onChange={(v) => save({ ...cfg, funds: { ...cfg.funds, CASH: v } }, `TK quỹ tiền mặt: ${v}`)} /></Field>
             <Field label="Tiền gửi ngân hàng"><AcctSelect cfg={cfg} label="Tài khoản tiền gửi" disabled={!can} value={cfg.funds.BANK} onChange={(v) => save({ ...cfg, funds: { ...cfg.funds, BANK: v } }, `TK tiền gửi: ${v}`)} /></Field>
@@ -601,34 +604,13 @@ export function CoaSettings() {
           </div>
         </Panel>
       )}
-      {tab === 'journal' && (
-        <Panel title={`Sổ nhật ký ${fmtDate(fromISO)} – ${fmtDate(toISO)}`}>
-          <div className="mb-2 flex"><button className={cn(btnGhost, btnSm, 'ml-auto')} onClick={() => downloadCsv(`so-nhat-ky-${fromISO}-${toISO}.csv`, [['Ngày', 'Chứng từ', 'Diễn giải', 'Nợ', 'Có', 'Số tiền'], ...per.map((l) => [l.date, l.ref, l.desc, l.dr, l.cr, l.amount])])}><Download className="h-4 w-4" aria-hidden />CSV</button></div>
-          <div className="overflow-x-auto rounded-lg border border-[rgb(var(--line))]">
-            <table className="w-full min-w-[760px] text-[13.5px]">
-              <thead><tr className="bg-[rgb(var(--ink)/0.03)] text-left text-[12px] text-[rgb(var(--muted))]"><th className="px-3 py-2 font-normal">Ngày</th><th className="px-3 py-2 font-normal">Chứng từ</th><th className="px-3 py-2 font-normal">Diễn giải</th><th className="px-3 py-2 font-normal">Nợ</th><th className="px-3 py-2 font-normal">Có</th><th className="px-3 py-2 text-right font-normal">Số tiền</th></tr></thead>
-              <tbody>{per.slice(0, 500).map((l) => (
-                <tr key={l.id} className="border-t border-[rgb(var(--line)/0.6)]"><td className="px-3 py-2 tabular-nums text-[rgb(var(--fg2))]">{fmtDate(l.date)}</td><td className="px-3 py-2"><Code>{l.ref}</Code></td><td className="max-w-[320px] truncate px-3 py-2" title={l.desc}>{l.desc}</td><td className="px-3 py-2"><Code>{l.dr}</Code></td><td className="px-3 py-2"><Code>{l.cr}</Code></td><td className={tdN}>{fmtN(l.amount)}</td></tr>
-              ))}</tbody>
-            </table>
+      {(tab === 'journal' || tab === 'tb') && (
+        // v58: sổ ghi thật (bút toán lưu, khóa kỳ, số dư đầu kỳ) chuyển sang mục Kế toán; ở đây chỉ còn cấu hình
+        <Panel>
+          <div className="flex flex-wrap items-center gap-3" data-moved-books>
+            <p className="text-[13.5px] text-[rgb(var(--fg2))]">Sổ nhật ký, Sổ cái và Cân đối số phát sinh đã chuyển sang mục <b className="font-medium text-[rgb(var(--fg))]">Kế toán</b> (nhóm Tài chính): đọc từ bút toán đã ghi sổ, có khóa kỳ và số dư đầu kỳ.</p>
+            <button className={cn(btnPrimary, 'ml-auto')} onClick={() => go('accounting')}>Mở Kế toán</button>
           </div>
-          {!per.length && <EmptyState text="Không có bút toán trong kỳ." art="ledger" />}
-        </Panel>
-      )}
-      {tab === 'tb' && (
-        <Panel title={`Bảng cân đối số phát sinh ${fmtDate(fromISO)} – ${fmtDate(toISO)}`}>
-          <div className="overflow-x-auto rounded-lg border border-[rgb(var(--line))]">
-            <table className="w-full min-w-[760px] text-[13.5px]">
-              <thead><tr className="bg-[rgb(var(--ink)/0.03)] text-left text-[12px] text-[rgb(var(--muted))]"><th className="px-3 py-2 font-normal">Tài khoản</th><th className="px-3 py-2 text-right font-normal">Phát sinh Nợ</th><th className="px-3 py-2 text-right font-normal">Phát sinh Có</th><th className="px-3 py-2 text-right font-normal">Dư Nợ cuối kỳ</th><th className="px-3 py-2 text-right font-normal">Dư Có cuối kỳ</th></tr></thead>
-              <tbody>
-                {tb.map((r) => (
-                  <tr key={r.c} className="border-t border-[rgb(var(--line)/0.6)]"><td className="px-3 py-2"><Code>{r.c}</Code> <span className="text-[rgb(var(--fg2))]">{acctName(cfg, r.c)}</span></td><td className={tdN}>{fmtN(r.pn)}</td><td className={tdN}>{fmtN(r.pc)}</td><td className={tdN}>{r.bal > 0 ? fmtN(r.bal) : ''}</td><td className={tdN}>{r.bal < 0 ? fmtN(-r.bal) : ''}</td></tr>
-                ))}
-                <tr className="border-t border-[rgb(var(--line))] font-medium"><td className="px-3 py-2">Cộng</td><td className={tdN}>{fmtN(sum((r) => r.pn))}</td><td className={tdN}>{fmtN(sum((r) => r.pc))}</td><td className={tdN}>{fmtN(sum((r) => Math.max(0, r.bal)))}</td><td className={tdN}>{fmtN(sum((r) => Math.max(0, -r.bal)))}</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-2 text-[12.5px] text-[rgb(var(--muted))]">Lập từ bút toán phiếu thu chi và đơn bán (doanh thu, thuế, giá vốn tạm tính khi kho duyệt). Chưa gồm số dư đầu kỳ, mua hàng, lương, khấu hao; Báo cáo tình hình tài chính và Kết quả kinh doanh theo mẫu của từng thông tư làm ở bản sau.</p>
         </Panel>
       )}
     </>

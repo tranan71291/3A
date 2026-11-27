@@ -6,20 +6,23 @@ import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { cloudMessage } from '../../lib/cloud';
-import { btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, CF_ENTITY, CF_FILTERABLE, CF_TYPE, cfSlug, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, fold, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, iso, isPlatformEmail, kpiGrid, L_ACT, L_ALL_PAGES, L_DS, L_GAP, L_ICONSET, L_KIND, L_LATER, L_PAGES, L_PER, L_PERIOD, L_ROLES, L_ROW, L_STAGE, L_TONE, L_TYPES, L_VAR_KEYS, lAssignLabel, lCondOk, lDrag, lEnsureCore, lFramed, lHasData, lHex, lIsCore, lKind, lMigrate, lNewBlock, lOnTab, lOrderSm, LPageC, lRoleProfit, lRoleSees, lSaleSampleShows, lStarter, L_PAGE_ENTITY, lHealthFull, type LHealth, lListCols, lStarterEntity, lStarterForm, lStarterList, lStarterSale, lTabList, lToneCls, lType, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, portal, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, SO_FILTERS, SO_HEAD_BTNS, SO_LINE_F, SO_LIST_COLS, SO_LIST_TABS, SO_PERS, SO_SEARCH, SO_SEARCH_DEF, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, verLabel, vnd } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, BUSINESS_PROFILE, C, CF_ENTITY, CF_FILTERABLE, CF_TYPE, cfSlug, cloud, CLOUD_ON, CONSOLE_TABS, DATA_VERSION, dataKey, daysTo, defaultTenantReg, DEMO_PASSWORD, EMAIL_RE, fmtDate, fold, headRoleFor, INITIAL_PERMS, INITIAL_SECURITY, inputBase, inputCls, iso, isPlatformEmail, kpiGrid, L_ACT, L_ALL_PAGES, L_DS, L_GRID_FINE, L_ICONSET, L_KIND, lFineH, lGridOf, lToFine, L_LATER, L_PAGES, L_PER, L_PERIOD, L_ROLES, L_STAGE, L_TONE, L_TYPES, L_VAR_KEYS, lAssignLabel, lCondOk, lDrag, lEnsureCore, lFramed, lHasData, lHex, lIsCore, lKind, lMigrate, lNewBlock, lOnTab, lOrderSm, LPageC, lRoleProfit, lRoleSees, lSaleSampleShows, lStarter, L_PAGE_ENTITY, lHealthFull, type LHealth, lListCols, lStarterEntity, lStarterForm, lStarterList, lStarterSale, lTabList, lToneCls, lType, MODULE_DESC, MODULE_GROUP, MODULE_ICON, MODULE_LABEL, MODULES, OPEN_STATUSES, orgOf, ORGS, PAY_TRIGGER, pct, PLATFORM_DOMAIN, portal, PRICE_UNIT, PROVISION_MODULES, ROLE_LABEL, ROLES, rowCls, SNAP_KEEP, SO_FILTERS, SO_HEAD_BTNS, SO_LINE_F, SO_LIST_COLS, SO_LIST_TABS, SO_PERS, SO_SEARCH, SO_SEARCH_DEF, storage, tdCls, tdFirst, tdLast, tempPassword, TENANT_PLAN, todayISO, uid, useApp, verLabel, vnd } from '../../lib/core';
 import { downloadCsv } from '../../lib/csv';
 import { AddTenantModal, OrgMark } from '../../lib/modules';
 import { hashPassword } from '../../lib/security';
 import { listSnapshots, tenantStats } from '../../lib/storage';
-import type { AnyRec, AppCtx, CfDef, CfEntity, CfType, ConfirmState, ConsoleTab, DashPeriod, DateRange, Department, DeptCode, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, LDrop, LPage, LPeriod, LPos, LPtr, LRow, LStage, LStyle, LTextKind, LTypeDef, MfgConfig, Module, Org, PayStage, PayTrigger, Perms, PriceItem, PriceUnit, Role, SecurityPolicy, SoColDef, StoredData, TenantPlan, TenantReg, Tone, User } from '../../lib/types';
+import type { AnyRec, AppCtx, CfDef, CfEntity, CfType, ConfirmState, ConsoleTab, DashPeriod, DateRange, Department, DeptCode, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LDevice, LDrop, LGrid, LPage, LPeriod, LPos, LPtr, LRow, LStage, LStyle, LTextKind, LTypeDef, MfgConfig, Module, Org, PayStage, PayTrigger, Perms, PriceItem, PriceUnit, Role, SecurityPolicy, SoColDef, StoredData, TenantPlan, TenantReg, Tone, User } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { SearchBox } from '../alux/orders';
 import { dashRange } from '../dashboard/exec-dashboard';
 import { CbSeg } from '../finance/cashbook';
-import { LayoutView, LBlockBody, LBusinessView, lDesignCtx, lRowsSample, lSaleSample, lSettle, lSt, LTextBlock } from '../page-builder';
+import { LayoutView, lBindSample, LBlockBody, LBusinessView, lDesignCtx, lRowsSample, lSaleSample, lSettle, lSt, LTextBlock } from '../page-builder';
 import { LFieldCanvas, LFieldInspector, LFieldPalette, useFieldLayout } from './field-layout';
 import { cfKeyClash, formulaIssue, industryProfilesEff, tenantIndustry } from '../../lib/industry';
 import { IndustrySheet } from './industry';
+import { LDeviceExtra, LPageGridEditor, LSpacingEditor, LVerticalCfg } from './layout-spacing';
+import { LContainerCfg } from './layout-containers';
+import { ConsoleUiKit } from './ui-kit';
 
 export function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (
@@ -43,6 +46,7 @@ export function PlatformConsole() {
       {tab === 'modules' && <ConsoleModules />}
       {tab === 'users' && <ConsoleUsers />}
       {tab === 'design' && <ConsoleDesign />}
+      {tab === 'uikit' && <ConsoleUiKit />}
       {tab === 'data' && <ConsoleData />}
       {tab === 'admins' && <ConsoleAdmins />}
     </div>
@@ -399,11 +403,14 @@ export function LayoutPublishPanel({ page, tab, setTab, onClose, onEdit, notify,
   );
 }
 
-export function LGridEditor({ blocks, commit, sel, setSel, page, stage, cf, etab, health }: { health?: (b: LBlock) => LHealth[]; blocks: LBlock[]; commit: (b: LBlock[]) => void; sel: string | null; setSel: (id: string | null) => void; page: LPage; stage: LStage; cf: CfDef[]; etab: string }) {
+export function LGridEditor({ blocks, commit, sel, setSel, page, stage, cf, etab, health, grid }: { health?: (b: LBlock) => LHealth[]; blocks: LBlock[]; commit: (b: LBlock[]) => void; sel: string | null; setSel: (id: string | null) => void; page: LPage; stage: LStage; cf: CfDef[]; etab: string; /** v57a lưới trang */ grid?: LGrid }) {
   const ref = useRef<HTMLDivElement>(null);
   const [W, setW] = useState(1100);
   useEffect(() => { const el = ref.current; if (!el) return; const ro = new ResizeObserver(() => setW(el.clientWidth)); ro.observe(el); setW(el.clientWidth); return () => ro.disconnect(); }, []);
-  const colW = (W - 11 * L_GAP) / 12, cx = colW + L_GAP, cy = L_ROW + L_GAP;
+  // v57a lưới 8px: 1 hàng = 8px, khoảng cách dọc nằm trong chiều cao khối; cổ điển: 1 hàng = 56px + khoảng cách
+  const G = lGridOf(grid);
+  const L_GAP = G.gap;
+  const colW = (W - 11 * L_GAP) / 12, cx = colW + L_GAP, cy = G.step;
   type Drag = { id: string; mode: 'move' | 'resize'; sx: number; sy: number; o: LPos; dx: number; dy: number };
   const [drag, setDrag] = useState<Drag | null>(null);
   const [drop, setDrop] = useState<LPos | null>(null);
@@ -411,22 +418,22 @@ export function LGridEditor({ blocks, commit, sel, setSel, page, stage, cf, etab
   const rowsOf = (ds: LDataset) => { if (!sample.has(ds)) sample.set(ds, lRowsSample(ds)); return sample.get(ds)!; };
   const want = (d: Drag): LPos => (d.mode === 'move'
     ? { ...d.o, x: Math.max(0, Math.min(12 - d.o.w, Math.round(d.o.x + d.dx / cx))), y: Math.max(0, Math.round(d.o.y + d.dy / cy)) }
-    : { ...d.o, w: Math.max(1, Math.min(12 - d.o.x, Math.round(d.o.w + d.dx / cx))), h: Math.max(1, Math.min(12, Math.round(d.o.h + d.dy / cy))) });
-  const live = drag ? lSettle(blocks.map((b) => (b.id === drag.id ? { ...b, pos: { ...b.pos, lg: want(drag) } } : b)), drag.id) : blocks;
-  const bottom = Math.max(4, ...live.map((b) => b.pos.lg.y + b.pos.lg.h)) + 3;
-  const px = (p: LPos): CSSProperties => ({ left: p.x * cx, top: p.y * cy, width: p.w * colW + (p.w - 1) * L_GAP, height: p.h * L_ROW + (p.h - 1) * L_GAP });
+    : { ...d.o, w: Math.max(1, Math.min(12 - d.o.x, Math.round(d.o.w + d.dx / cx))), h: Math.max(G.fine ? 2 : 1, Math.min(G.maxH, Math.round(d.o.h + d.dy / cy))) });
+  const live = drag ? lSettle(blocks.map((b) => (b.id === drag.id ? { ...b, pos: { ...b.pos, lg: want(drag) } } : b)), drag.id, G.maxH) : blocks;
+  const bottom = Math.max(G.fine ? 30 : 4, ...live.map((b) => b.pos.lg.y + b.pos.lg.h)) + (G.fine ? 20 : 3);
+  const px = (p: LPos): CSSProperties => ({ left: p.x * cx, top: p.y * cy, width: p.w * colW + (p.w - 1) * L_GAP, height: Math.max(8, G.hPx(p.h)) });
   const start = (e: LPtr, b: LBlock, mode: Drag['mode']) => { e.preventDefault(); e.stopPropagation(); (e.currentTarget as Element).setPointerCapture(e.pointerId); setSel(b.id); setDrag({ id: b.id, mode, sx: e.clientX, sy: e.clientY, o: b.pos.lg, dx: 0, dy: 0 }); };
   const move = (e: LPtr) => { if (drag) setDrag({ ...drag, dx: e.clientX - drag.sx, dy: e.clientY - drag.sy }); };
   const end = () => { if (!drag) return; const moved = drag.dx || drag.dy; const next = live; setDrag(null); if (moved) commit(next); };
   const dropPos = (e: LDrop): LPos | null => {
     if (!lDrag.type || !ref.current) return null;
     const r = ref.current.getBoundingClientRect(); const d = lType(lDrag.type).def;
-    return { x: Math.max(0, Math.min(12 - d.w, Math.floor((e.clientX - r.left) / cx))), y: Math.max(0, Math.floor((e.clientY - r.top) / cy)), w: d.w, h: d.h };
+    return { x: Math.max(0, Math.min(12 - d.w, Math.floor((e.clientX - r.left) / cx))), y: Math.max(0, Math.floor((e.clientY - r.top) / cy)), w: d.w, h: G.fine ? (lDrag.type === 'K-Divider' || lDrag.type === 'K-Spacer' ? 2 + Math.ceil(G.gap / 8) : lFineH(d.h)) : d.h };
   };
   return (
     <div ref={ref} className="relative select-none" style={{ height: bottom * cy }}
       onDragOver={(e) => { const p = dropPos(e); if (p) { e.preventDefault(); setDrop(p); } }} onDragLeave={() => setDrop(null)}
-      onDrop={(e) => { const p = dropPos(e); setDrop(null); if (!p || !lDrag.type) return; e.preventDefault(); const nb = lNewBlock(lDrag.type, p, page); lDrag.type = null; commit(lSettle([...blocks, nb], nb.id)); setSel(nb.id); }}
+      onDrop={(e) => { const p = dropPos(e); setDrop(null); if (!p || !lDrag.type) return; e.preventDefault(); const nb = lNewBlock(lDrag.type, p, page); lDrag.type = null; commit(lSettle([...blocks, nb], nb.id, G.maxH)); setSel(nb.id); }}
       onPointerDown={(e) => { if (e.target === e.currentTarget) setSel(null); }}>
       <div className="pointer-events-none absolute inset-0 flex" style={{ gap: L_GAP }} aria-hidden>{Array.from({ length: 12 }, (_, i) => <div key={i} className="h-full flex-1 border-x border-dashed border-[rgb(var(--accent)/0.22)] bg-[rgb(var(--accent)/0.035)]" />)}</div>
       {drop && <div className="absolute rounded-xl border-[1.5px] border-dashed border-[rgb(var(--accent))] bg-[rgb(var(--accent)/0.08)]" style={px(drop)} />}
@@ -446,9 +453,9 @@ export function LGridEditor({ blocks, commit, sel, setSel, page, stage, cf, etab
                 {(b.config.stages?.length || b.config.roles?.length) ? <span className="shrink-0 text-[10.5px] text-[rgb(var(--accent))]" title="Có điều kiện hiện">có điều kiện</span> : null}
                 <span className="ml-auto flex shrink-0 gap-0.5">
                   <button className={cn('rounded p-1 hover:bg-[rgb(var(--ink)/0.06)]', sel === b.id && 'bg-[rgb(var(--accent)/0.12)] text-[rgb(var(--accent))]')} onClick={(e) => { e.stopPropagation(); setSel(b.id); }} aria-label="Cài đặt khối"><Settings className="h-3.5 w-3.5" aria-hidden /></button>
-                  {sel === b.id && lType(b.type).tier !== 'biz' && <button className="rounded p-1 hover:bg-[rgb(var(--ink)/0.06)]" onClick={(e) => { e.stopPropagation(); const c = { ...b, id: uid('lb'), pos: { ...b.pos, lg: { ...p, y: p.y + p.h } } }; commit(lSettle([...blocks, c], c.id)); setSel(c.id); }} aria-label="Nhân bản khối"><Copy className="h-3.5 w-3.5" aria-hidden /></button>}
+                  {sel === b.id && lType(b.type).tier !== 'biz' && <button className="rounded p-1 hover:bg-[rgb(var(--ink)/0.06)]" onClick={(e) => { e.stopPropagation(); const c = { ...b, id: uid('lb'), pos: { ...b.pos, lg: { ...p, y: p.y + p.h } } }; commit(lSettle([...blocks, c], c.id, G.maxH)); setSel(c.id); }} aria-label="Nhân bản khối"><Copy className="h-3.5 w-3.5" aria-hidden /></button>}
                   {lIsCore(b.type) ? <span className="p-1" title="Khối lõi: không xóa được"><Lock className="h-3.5 w-3.5" aria-label="Khối lõi" /></span>
-                    : sel === b.id && <button className="rounded p-1 hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--danger-fg))]" onClick={(e) => { e.stopPropagation(); commit(lSettle(blocks.filter((x) => x.id !== b.id))); setSel(null); }} aria-label="Xóa khối"><Trash2 className="h-3.5 w-3.5" aria-hidden /></button>}
+                    : sel === b.id && <button className="rounded p-1 hover:bg-[rgb(var(--ink)/0.06)] hover:text-[rgb(var(--danger-fg))]" onClick={(e) => { e.stopPropagation(); commit(lSettle(blocks.filter((x) => x.id !== b.id), undefined, G.maxH)); setSel(null); }} aria-label="Xóa khối"><Trash2 className="h-3.5 w-3.5" aria-hidden /></button>}
                 </span>
               </div>
               {(() => { const s = lSt(b.config, true, b.type === 'K-Divider'); return (
@@ -567,7 +574,7 @@ export function LStyleEditor({ b, onCfg }: { b: LBlock; onCfg: (c: Partial<LBloc
   );
 }
 
-export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab, setEtab, onFields }: { onFields?: () => void; b: LBlock; onCfg: (c: Partial<LBlockCfg>) => void; onBlock: (p: Partial<LBlock>) => void; onPos: (p: Partial<LPos>) => void; page: LPage; cf: CfDef[]; tabs: { id: string; label: string }[]; etab: string; setEtab: (t: string) => void }) {
+export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab, setEtab, onFields, ext, fine }: { /** v57a phần thêm theo nhóm: nội dung khối chuyên ngành, khoảng cách & khung, thiết bị */ ext?: { c?: ReactNode; s?: ReactNode; v?: ReactNode }; /** v57a lưới 8px */ fine?: boolean; onFields?: () => void; b: LBlock; onCfg: (c: Partial<LBlockCfg>) => void; onBlock: (p: Partial<LBlock>) => void; onPos: (p: Partial<LPos>) => void; page: LPage; cf: CfDef[]; tabs: { id: string; label: string }[]; etab: string; setEtab: (t: string) => void }) {
   const c = b.config; const ds = L_DS[c.ds];
   const core = lIsCore(b.type);
   const data = lHasData(b.type);
@@ -603,9 +610,10 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
       <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="tablist" aria-label="Nhóm cài đặt">
         {([['c', 'Nội dung'], ['s', 'Kiểu'], ['v', 'Hiển thị']] as const).map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={sec === k} onClick={() => setSec(k)} className={cn('flex-1 rounded-md py-1.5 text-[13px]', sec === k ? 'bg-[rgb(var(--fg))] font-medium text-[rgb(var(--bg))]' : 'text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>{l}</button>)}
       </div>
-      {sec === 's' && <LStyleEditor b={b} onCfg={onCfg} />}
+      {sec === 's' && <>{ext?.s}<LStyleEditor b={b} onCfg={onCfg} /></>}
       {sec === 'c' && <>
       {b.type !== 'K-Icons' && <Field label={b.type === 'K-SaleList' ? 'Tên khối (chỉ trong màn thiết kế)' : 'Tiêu đề'}><input className={inputCls} value={c.title} onChange={(e) => onCfg({ title: e.target.value })} /></Field>}
+      {ext?.c}
       {b.type === 'K-Text' && (
         <>
           <Field label="Kiểu">
@@ -850,9 +858,10 @@ export function LBlockSettings({ b, onCfg, onBlock, onPos, page, cf, tabs, etab,
         </div>
       )}
       <div className="border-t border-[rgb(var(--line))] pt-3">
-        <p className="mb-2 text-[12px] text-[rgb(var(--muted))]">Vị trí trên lưới 12 cột</p>
-        <div className="grid grid-cols-4 gap-2">{num('x', 'Cột', 12)}{num('y', 'Hàng', 99)}{num('w', 'Rộng', 12)}{num('h', 'Cao', 12)}</div>
+        <p className="mb-2 text-[12px] text-[rgb(var(--muted))]">Vị trí trên lưới 12 cột{fine ? ' · hàng 8px' : ''}</p>
+        <div className="grid grid-cols-4 gap-2">{num('x', 'Cột', 12)}{num('y', 'Hàng', fine ? 999 : 99)}{num('w', 'Rộng', 12)}{num('h', 'Cao', fine ? 160 : 12)}</div>
       </div>
+      {ext?.v}
       <Field label="Hiển thị trên">
         <div className="grid grid-cols-3 gap-2">{([['lg', 'Máy tính', Monitor], ['md', 'Tablet', Tablet], ['sm', 'Điện thoại', Smartphone]] as const).map(([k, l, I]) => (
           <button key={k} type="button" aria-pressed={b.show[k]} disabled={core} title={core ? 'Khối lõi luôn hiện' : undefined} className={cn('inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-2 py-1.5 text-[12.5px]', b.show[k] ? 'border-[rgb(var(--fg))] text-[rgb(var(--fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))] line-through')} onClick={() => onBlock({ show: { ...b.show, [k]: !b.show[k] } })}><I className="h-3.5 w-3.5" aria-hidden />{l}</button>
@@ -885,7 +894,10 @@ export function LayoutEditor({ page, verId, onClose, onNav }: { page: LPage; ver
   const starter = () => (page === 'sale-detail' ? lStarterSale() : page === 'sale-list' ? lStarterList() : page === 'sale-form' ? lStarterForm() : L_PAGE_ENTITY[page] ? lStarterEntity(page) : lStarter());
   // Bản mở ra: bản nháp (đang có) ưu tiên — tránh ghi đè bản nháp bằng bản cũ; còn lại theo URL, rồi bản mới nhất
   const base = draft ?? target ?? vers[0];
-  const init = lEnsureCore(page, lMigrate(page, base?.blocks ?? starter()));
+  // v57a bố cục mới bắt đầu bằng lưới 8px; bố cục đã có giữ lưới đang dùng (cổ điển nếu chưa đặt)
+  const grid0: LGrid | undefined = base ? base.grid : L_GRID_FINE;
+  const init0 = lEnsureCore(page, lMigrate(page, base?.blocks ?? starter()));
+  const init = base ? init0 : lToFine(init0);
   // URL luôn trỏ đúng bản đang sửa: có bản nháp thì /:idNháp; mở bản khác khi đã có nháp thì báo
   useEffect(() => {
     if (draft && verId !== draft.id) {
@@ -901,7 +913,10 @@ export function LayoutEditor({ page, verId, onClose, onNav }: { page: LPage; ver
   // v55.3: mọi đối tượng (khối bản ghi tự lọc theo entity của khối)
   const cfAll = platform.customFields;
   const [blocks, setBlocks0] = useState<LBlock[]>(init);
-  const [saved, setSaved] = useState(JSON.stringify(init));
+  const [grid, setGrid0] = useState<LGrid | undefined>(grid0);
+  const G = lGridOf(grid);
+  const snap = (bs: LBlock[], g: LGrid | undefined) => JSON.stringify([bs, g ?? null]);
+  const [saved, setSaved] = useState(snap(init, base ? base.grid : undefined));
   /** đã có thao tác của người thiết kế (mở xem không tự tạo bản nháp) */
   const [touched, setTouched] = useState(false);
   const setBlocks = (n: LBlock[]) => { setTouched(true); setBlocks0(n); };
@@ -917,7 +932,8 @@ export function LayoutEditor({ page, verId, onClose, onNav }: { page: LPage; ver
   const commit = (n: LBlock[], manualSm = false) => { if (manualSm) setSmCustom(true); const v = manualSm || smCustom ? n : lOrderSm(n); setPast((p) => [...p.slice(-40), blocks]); setFuture([]); setBlocks(v); };
   const undo = () => { const p = past[past.length - 1]; if (!p) return; setFuture((f) => [blocks, ...f]); setPast(past.slice(0, -1)); setBlocks(p); };
   const redo = () => { const f = future[0]; if (!f) return; setPast((p) => [...p, blocks]); setFuture(future.slice(1)); setBlocks(f); };
-  const dirty = touched && JSON.stringify(blocks) !== saved;
+  const setGrid = (g: LGrid | undefined) => { setTouched(true); setGrid0(g); };
+  const dirty = touched && snap(blocks, grid) !== saved;
   const nextNo = Math.max(0, ...vers.map((v) => v.version)) + 1;
   /** id bản nháp vừa tạo trong phiên (state nền tảng chưa kịp cập nhật thì vẫn ghi vào đúng bản, không tạo bản thứ hai) */
   const draftRef = useRef<string | null>(null);
@@ -927,12 +943,12 @@ export function LayoutEditor({ page, verId, onClose, onNav }: { page: LPage; ver
   const saveDraft = (quiet = false, stay = true): number => {
     const now = Date.now();
     const id = draft?.id ?? draftRef.current;
-    if (id) platform.setLayouts((all) => all.map((v) => (v.id === id ? { ...v, blocks, at: now, by: who } : v)));
-    else { const nid = uid('lv'); draftRef.current = nid; platform.setLayouts((all) => [{ id: nid, schema: 1, page, version: nextNo, status: 'DRAFT', role: null, blocks, by: who, at: now, ...(owner ? { tenantId: owner, fromIndustry: base?.fromIndustry } : {}) }, ...all]); if (stay) onNav(nid); }
+    if (id) platform.setLayouts((all) => all.map((v) => (v.id === id ? { ...v, blocks, grid, at: now, by: who } : v)));
+    else { const nid = uid('lv'); draftRef.current = nid; platform.setLayouts((all) => [{ id: nid, schema: 1, page, version: nextNo, status: 'DRAFT', role: null, blocks, ...(grid ? { grid } : {}), by: who, at: now, ...(owner ? { tenantId: owner, fromIndustry: base?.fromIndustry } : {}) }, ...all]); if (stay) onNav(nid); }
     const no = draft?.version ?? nextNo;
     if (!quiet || !loggedRef.current) platform.log('LAYOUT_DRAFT', `${pg.label}${owner ? ` (riêng ${orgOf(owner).shortName})` : ''} v${no}: ${quiet ? 'tự lưu' : 'lưu'} nháp ${blocks.length} khối`, owner ?? undefined);
     loggedRef.current = true;
-    setSaved(JSON.stringify(blocks));
+    setSaved(snap(blocks, grid));
     if (quiet) setAutoAt(now);
     return no;
   };
@@ -941,7 +957,7 @@ export function LayoutEditor({ page, verId, onClose, onNav }: { page: LPage; ver
     if (!dirty) return;
     const t = window.setTimeout(() => saveDraft(true), 2000);
     return () => window.clearTimeout(t);
-  }, [blocks, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [blocks, grid, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
   // Đóng tab / tải lại khi còn thay đổi chưa lưu: trình duyệt hỏi lại
   useEffect(() => {
     if (!dirty) return;
@@ -974,21 +990,24 @@ export function LayoutEditor({ page, verId, onClose, onNav }: { page: LPage; ver
   const fieldMode = !preview && !!fl && fieldOf === b?.id;
   const [blockPanel, setBlockPanel] = useState(false);
   const enterFields = () => { if (b) { setFieldOf(b.id); setBlockPanel(false); fl?.setSel(null); } };
-  const setPos = (p: Partial<LPos>) => b && commit(lSettle(blocks.map((x) => (x.id === b.id ? { ...x, pos: { ...x.pos, lg: { ...x.pos.lg, ...p } } } : x)), b.id));
+  const setPos = (p: Partial<LPos>) => b && commit(lSettle(blocks.map((x) => (x.id === b.id ? { ...x, pos: { ...x.pos, lg: { ...x.pos.lg, ...p } } } : x)), b.id, G.maxH));
   const add = (t: LBlockType) => {
     const has = blocks.find((x) => x.type === t);
     if (has && lType(t).tier === 'biz') { setSel(has.id); return; }
     const nb = lNewBlock(t, { y: Math.max(0, ...blocks.map((x) => x.pos.lg.y + x.pos.lg.h)) }, page); nb.pos.sm.order = blocks.length + 1;
+    // v57a lưới 8px: chiều cao mặc định đổi sang hàng 8px (Đường kẻ / Khoảng trống thấp 16px)
+    if (G.fine) nb.pos.lg = { ...nb.pos.lg, h: t === 'K-Divider' || t === 'K-Spacer' ? 2 + Math.ceil(G.gap / 8) : lFineH(nb.pos.lg.h) };
     if (etab && lHasData(t)) nb.config = { ...nb.config, tab: etab };
-    commit(lSettle([...blocks, nb], nb.id)); setSel(nb.id);
+    commit(lSettle([...blocks, nb], nb.id, G.maxH)); setSel(nb.id);
   };
   const libTypes = L_TYPES.filter((t) => t.pages.includes(page));
   const tabsCfg = lTabList(blocks);
   const etab = tabsCfg.some((t) => t.id === etab0) ? etab0 : tabsCfg[0]?.id ?? '';
-  const dctx = lDesignCtx(page, etab, setEtab, eperiod, setEperiod);
+  // v57b giá trị mẫu cho dữ liệu gắn {{…}} của Khung linh hoạt / Khung tự do
+  const dctx = { ...lDesignCtx(page, etab, setEtab, eperiod, setEperiod), bind: lBindSample(cfAll) };
   const er = dashRange(eperiod, Date.now());
   const erange: DateRange = { from: iso(new Date(er.from)), to: iso(new Date(er.to - 864e5)) };
-  const libIcon = (t: LBlockType) => ({ 'K-Stat-Simple': Hash, 'K-Chart-Line': TrendingUp, 'K-Table-Compact': Rows3, 'K-Text': StickyNote, 'K-Icons': LayoutGrid, 'K-Order-Info': FileText, 'K-RecordDetail': FileText, 'K-RecordForm': ListChecks, 'K-Order-Lines': Rows3, 'K-Order-Flow': ListChecks, 'K-Order-Pay': Wallet, 'K-Order-Profit': TrendingUp, 'K-Order-Debt': Scale, 'K-Order-Log': MessageSquare, 'K-Order-Ship': Truck, 'K-Order-Files': Paperclip, 'K-Button': LayoutGrid, 'K-Filter': Filter, 'K-Tabs': Columns3, 'K-Target': Target, 'K-Divider': Minus, 'K-Spacer': ArrowUpDown, 'K-SaleList': ShoppingBag } as Record<LBlockType, typeof Hash>)[t] ?? Info;
+  const libIcon = (t: LBlockType) => ({ 'K-Stat-Simple': Hash, 'K-Chart-Line': TrendingUp, 'K-Table-Compact': Rows3, 'K-Text': StickyNote, 'K-Icons': LayoutGrid, 'K-Order-Info': FileText, 'K-RecordDetail': FileText, 'K-RecordForm': ListChecks, 'K-Order-Lines': Rows3, 'K-Order-Flow': ListChecks, 'K-Order-Pay': Wallet, 'K-Order-Profit': TrendingUp, 'K-Order-Debt': Scale, 'K-Order-Log': MessageSquare, 'K-Order-Ship': Truck, 'K-Order-Files': Paperclip, 'K-Button': LayoutGrid, 'K-Filter': Filter, 'K-Tabs': Columns3, 'K-Target': Target, 'K-Divider': Minus, 'K-Spacer': ArrowUpDown, 'K-SaleList': ShoppingBag, 'K-WorkflowHeader': ArrowUpDown, 'K-ChecklistTracker': ListChecks, 'K-StageBoard': Columns3, 'K-ResourceCalendar': CalendarDays, 'K-QuickPOS': ShoppingBag, 'K-FlexContainer': Columns3, 'K-FreeformBox': LayoutTemplate } as Record<LBlockType, typeof Hash>)[t] ?? Info;
   const sample = useMemo(() => new Map<LDataset, LRow[]>(), []);
   const rowsAs = (r: Role) => (ds: LDataset) => { if (!lRoleSees(r, ds)) return null; if (!sample.has(ds)) sample.set(ds, lRowsSample(ds)); return sample.get(ds)!; };
   const hiddenFor = (r: Role) => blocks.filter((x) => (bizPage ? !lSaleSampleShows(x, stage, r) : (lHasData(x.type) && !lRoleSees(r, x.config.ds)) || !lCondOk(x.config, null, r)));
@@ -1081,11 +1100,11 @@ export function LayoutEditor({ page, verId, onClose, onNav }: { page: LPage; ver
                   <div className={cn(dev !== 'lg' && 'text-[13px]')}>
                     {biz && <div className="mb-3 flex flex-wrap items-center gap-2"><span className="text-[12.5px] text-[rgb(var(--muted))]">Quản lý đơn hàng ›</span><span className="font-medium">DH201126-02</span><Chip tone={stage === 'DONE' ? 'teal' : stage === 'CANCEL' ? 'muted' : 'orange'}>{L_STAGE[stage]}</Chip>
                       <span className="ml-auto flex gap-1.5">{stage === 'APPROVAL' && <span className={cn(btnPrimary, 'pointer-events-none')}>Duyệt đơn</span>}{stage === 'ISSUE' && role === 'SALES_REP' && <span className={cn(btnPrimary, 'pointer-events-none')}>Yêu cầu xuất kho</span>}{(stage === 'ISSUE' || stage === 'PAY') && <span className={cn(btnGhost, 'pointer-events-none')}>{lRoleProfit(role) && role !== 'SALES_REP' ? 'Lập phiếu thu' : 'Báo đã nhận tiền'}</span>}</span></div>}
-                    <LBusinessView blocks={blocks} narrow={dev !== 'lg'} dev={dev} node={(x) => (!lSaleSampleShows(x, stage, role) ? null : x.type === 'K-Text' ? <LTextBlock c={x.config} /> : lType(x.type).tier === 'show' || x.type === 'K-SaleList' || x.type === 'K-RecordList' ? lSaleSample({ b: x, stage, cf: cfAll }) : (
+                    <LBusinessView blocks={blocks} narrow={dev !== 'lg'} dev={dev} grid={grid} node={(x) => (!lSaleSampleShows(x, stage, role) ? null : x.type === 'K-Text' ? <LTextBlock c={x.config} /> : lType(x.type).tier === 'show' || x.type === 'K-SaleList' || x.type === 'K-RecordList' ? lSaleSample({ b: x, stage, cf: cfAll }) : (
                       <section className="glass-card rounded-xl px-4 py-3"><h3 className="mb-2 text-[14px] font-medium">{x.type === 'K-Order-Flow' && stage === 'CANCEL' ? 'Quy trình hủy' : x.type === 'K-RecordDetail' && stage === 'CANCEL' ? 'Hủy đơn' : x.config.title}</h3>{lSaleSample({ b: x, stage, cf: cfAll, narrow: dev === 'sm' })}</section>
                     ))} />
                   </div>
-                ) : <LayoutView blocks={blocks} rowsOf={rowsAs(role)} device={dev} role={role} range={erange} />}
+                ) : <LayoutView blocks={blocks} rowsOf={rowsAs(role)} device={dev} role={role} range={erange} grid={grid} />}
               </div>
               {hiddenFor(role).length > 0 && <p className="mt-3 text-center text-[12px] text-[rgb(var(--muted))]">Đang xem như {ROLE_LABEL[role]}: {hiddenFor(role).length} khối không có quyền đã tự ẩn</p>}
             </div>
@@ -1102,7 +1121,7 @@ export function LayoutEditor({ page, verId, onClose, onNav }: { page: LPage; ver
             <>
               <p className="mb-3 flex items-center gap-1.5 text-[12.5px] text-[rgb(var(--muted))]"><Info className="h-3.5 w-3.5" aria-hidden />{biz ? `Trang nghiệp vụ dùng chung cho mọi vai trò. Đơn mẫu ở trạng thái ${L_STAGE[stage]}; chiều cao thật theo nội dung` : 'Kéo khối bằng tay nắm, kéo góc phải dưới để đổi độ rộng 1–12 cột. Đang hiển thị dữ liệu mẫu'}<span className="ml-auto">Lưới 12 cột · {blocks.length} khối{biz ? ` · ${blocks.filter((x) => lIsCore(x.type)).length} lõi` : ''}</span></p>
               {tabsCfg.length > 0 && <div className="mb-3 flex flex-wrap items-center gap-2 text-[12.5px]"><span className="text-[rgb(var(--muted))]">Đang thiết kế tab</span><div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Tab đang thiết kế">{tabsCfg.map((t) => <button key={t.id} role="radio" aria-checked={etab === t.id} className={cn('rounded-md px-2.5 py-1', etab === t.id ? 'bg-[rgb(var(--fg))] text-[rgb(var(--surface))]' : 'text-[rgb(var(--fg2))]')} onClick={() => setEtab(t.id)}>{t.label}</button>)}</div><span className="text-[rgb(var(--muted))]">khối của tab khác mờ đi; khối "Mọi tab" luôn hiện</span></div>}
-              <LGridEditor blocks={blocks} commit={commit} sel={sel} setSel={setSel} page={page} stage={stage} cf={cfAll} etab={etab} health={healthOf} />
+              <LGridEditor blocks={blocks} commit={commit} sel={sel} setSel={setSel} page={page} stage={stage} cf={cfAll} etab={etab} health={healthOf} grid={grid} />
             </>
           )}
         </LPageC.Provider></main>
@@ -1125,8 +1144,12 @@ export function LayoutEditor({ page, verId, onClose, onNav }: { page: LPage; ver
               </div>
             </div>
           ) : fieldMode && fl && !blockPanel ? <LFieldInspector fl={fl} onBack={() => setBlockPanel(true)} />
-          : b ? <LBlockSettings b={b} onCfg={setCfg} onBlock={setB} onPos={setPos} page={page} cf={cfAll} tabs={tabsCfg} etab={etab} setEtab={setEtab} onFields={enterFields} /> : (
-            <div className="space-y-2 text-[13px] text-[rgb(var(--fg2))]"><h3 className="font-medium text-[rgb(var(--fg))]">Cài đặt khối</h3><p>Bấm vào một khối để đổi tiêu đề, nguồn dữ liệu, cách hiển thị trên từng thiết bị.</p><p className="text-[rgb(var(--muted))]">{blocks.length} khối · {blocks.filter((x) => x.show.sm).length} khối hiện trên điện thoại</p></div>
+          : b ? <LBlockSettings b={b} onCfg={setCfg} onBlock={setB} onPos={setPos} page={page} cf={cfAll} tabs={tabsCfg} etab={etab} setEtab={setEtab} onFields={enterFields} fine={G.fine}
+              ext={{ c: <><LVerticalCfg b={b} onCfg={setCfg} cf={cfAll} /><LContainerCfg key={b.id} b={b} onCfg={setCfg} page={page} cf={cfAll} dctx={dctx} /></>, s: <LSpacingEditor b={b} onCfg={setCfg} />, v: <LDeviceExtra b={b} onCfg={setCfg} onBlock={setB} fine={G.fine} dash={!bizPage} /> }} /> : (
+            <div className="space-y-4 text-[13px] text-[rgb(var(--fg2))]">
+              <div className="space-y-2"><h3 className="font-medium text-[rgb(var(--fg))]">Cài đặt khối</h3><p>Bấm vào một khối để đổi tiêu đề, nguồn dữ liệu, khoảng cách, cách hiển thị trên từng thiết bị.</p><p className="text-[rgb(var(--muted))]">{blocks.length} khối · {blocks.filter((x) => x.show.sm).length} khối hiện trên điện thoại</p></div>
+              <div className="border-t border-[rgb(var(--line))] pt-3 text-[rgb(var(--fg))]"><LPageGridEditor grid={grid} onGrid={setGrid} count={blocks.length} onFine={() => { commit(lToFine(blocks)); setGrid({ ...(grid ?? L_GRID_FINE), row: 8, gap: grid?.gap ?? 12 }); }} /></div>
+            </div>
           )}
         </aside>
       </div>

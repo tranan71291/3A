@@ -12,11 +12,12 @@ import { canon, cloudMessage, statsOf } from '../lib/cloud';
 import { industryProfilesEff, tenantIndustry, termsOf } from '../lib/industry';
 import { addDaysISO, AVATARS, bizMode, blockersOf, btnBase, btnGhost, BUSINESS_PROFILE, C, canSeeConv, cloud, CLOUD_ON, CloudError, compact, CONSOLE_TABS, Ctx, DATA_VERSION, dataKey, DATE_PAGES, daysTo, DEFAULT_MFG_CONFIG, DEFAULT_SCOPE, defaultTenantReg, DEMO_PASSWORD, EMAIL_PRESET, EMPTY_CUSTOMER, findByTax, fmtDate, fmtN, fold, GF_ALL, GRAD, INITIAL_AI_QUOTA, INITIAL_BUDGET, INITIAL_CATEGORIES, INITIAL_CLAIMS, INITIAL_COMPANY, INITIAL_CUSTOMERS, INITIAL_DEPARTMENTS, INITIAL_DOCS, INITIAL_EMAIL, INITIAL_GETFLY, INITIAL_GETFLY_ORDERS, INITIAL_HUB_CFG, INITIAL_MKT_ITEMS, INITIAL_NOTIFY_RULES, INITIAL_PERMS, INITIAL_PLATFORM_ADMINS, INITIAL_POLICY, INITIAL_POP_DOCS, INITIAL_PROGRAMS, INITIAL_SECURITY, INITIAL_SEGMENTS, INITIAL_SKUS, INITIAL_SOURCES, INITIAL_TIER_RULES, INITIAL_USERS, INITIAL_WAREHOUSES, INITIAL_ZNS, inputCls, isAcceptLate, isoDay, isPlatformEmail, isQuoteOverdue, LAST_ORG_KEY, LEGACY_STORE_KEY, lineNet, LOST_REASON, MAIN_WH, MODULE_ICON, MODULE_LABEL, MODULE_SHORT, ModuleBoundary, moduleEnabled, MODULES, NAV_GROUPS, nextCode, nextVoucherCode, oldDataKey, orgByEmail, orgIdIssue, orgOf, ORGS, PLATFORM_KEY, PLATFORM_TENANT, QUOTE_SLA_MS, receivedReservedFor, ROLE_LABEL, ROLE_PERSONA, ROLES, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, salePaid, saleResOf, saleRetQ, secretKeep, secretless, SESSION_KEY, snapPrefix, sourceFromChannel, stickyReset, stickyStore, storage, TENANT_PLAN, tenantCloudStats, TenantSync, THEME_CSS, TIERS, todayISO, UI_KEY, uid, v18DataKey, vnd, WF_POLICY, wfAmountOf, wfFormVals, wfNeeds, wfReasons, znsPhone } from '../lib/core';
 import { buildGetflyPayload, financialsFromOrders, salePendingQ, saleReturned, saleStock, saleTotals } from '../lib/getfly';
+import { diffJournal, expectedEntries, invCode, invFromLegacy, invoiceView } from '../lib/accounting';
 import { LoginScreen, orgDefaults, pathOrgOf, registerOrgs, regsFromStored, setPathOrg } from '../lib/modules';
 import { initialNotices } from '../lib/notify';
 import { encryptBackup, hashPassword, verifyPassword } from '../lib/security';
 import { listSnapshots, migrateData, takeSnapshot, withDefaults } from '../lib/storage';
-import type { UserPrefs, Action, Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, CfDef, IndustryProfile, Resource, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, InvMoveType, Job, KbItem, KpiTarget, LayoutAssign, LayoutVer, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SaleDelivery, SaleInvReq, SaleLine, SalePay, SalePayExtra, SalePayment, SalesOrder, SaleStatus, SaleStockData, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WfCtx, WfDecideArgs, WfDecision, WfDef, WfDelegation, WfPolicy, WfRun, WfRunStatus, WfSubject, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
+import type { CustomerFormOpts, InvoiceInfo, InvoiceReq, JEntry, SaleFile, UserPrefs,Action, Activity, AiQuotaCfg, AllocSnapshot, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLog, Audience, AuditLevel, AuditLog, Automation, AutoRun, BannerSpec, Brief, Budget, BudgetCategory, Campaign, CashDraft, CashEntry, CfDef, IndustryProfile, Resource, Channel, ChatChannel, Claim, CompanyInfo, ConsoleTab, ContentVersion, Customer, CustomerSource, DataScope, DateRange, Department, DeptCode, DocItem, DocTemplate, DraftProduct, EmailConfig, GeneratedDoc, GetflyConfig, GetflyLog, GetflyOrderRec, GlobalFilter, HubCfg, InstallJob, InvMove, InvMoveType, Job, KbItem, KpiTarget, LayoutAssign, LayoutVer, Lead, LostReason, MfgConfig, MktContent, MktImage, MktItem, MktTask, Module, MsgLog, Notice, NoticeKind, NotifyEvent, Org, OrgChoices, Perms, PlatformLog, PoAllocation, Policy, PopDocDef, Post, PriceItem, Program, Quote, QuoteStatus, Receipt, RemoteBatch, Role, RowComment, SaleDelivery, SaleInvReq, SaleLine, SalePay, SalePayExtra, SalePayment, SalesOrder, SaleStatus, SaleStockData, SecurityPolicy, SegmentDef, SegmentRules, SkuItem, SocialPost, StockItem, StockMove, StockMoveType, StockReservation, StockVoucher, StoredData, SyncInfo, TenantPlan, TenantReg, TierRule, ToastT, Tone, User, UserPerm, VendorPO, WarehouseInfo, WfCtx, WfDecideArgs, WfDecision, WfDef, WfDelegation, WfPolicy, WfRun, WfRunStatus, WfSubject, WorkOrder, ZaloConv, ZaloMsg, ZnsConfig, ZnsTemplateKey } from '../lib/types';
 import { cn, initialLeads, initialMoves, initialPOs, initialQuotes, initialReservations, syncCatalog, wfApprovers, wfMerge, wfPath } from '../lib/utils';
 import { stockOf } from '../lib/workshop';
 import { AiChatBot } from '../modules/ai/copilot-plus';
@@ -42,6 +43,7 @@ import { PlatformConsole } from '../modules/platform/console';
 import { SkuCatalog } from '../modules/products/catalog';
 import { ProjectsPage } from '../modules/projects/projects';
 import { ReportsPage } from '../modules/reports/reports';
+import { AccountingModule } from '../modules/accounting/accounting';
 import { SalesModule } from '../modules/sales/orders';
 import { DocComposerModal, DocsModule } from '../modules/sales/quote';
 import { WinModal } from '../modules/sales/sales-flow';
@@ -132,6 +134,9 @@ export default function DashboardApp() {
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [stockMoves, setStockMoves] = useState<InvMove[]>([]);
   const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
+  // v58: yêu cầu xuất hóa đơn (bảng riêng) + bút toán đã ghi sổ
+  const [invoiceRequests, setInvoiceRequests] = useState<InvoiceReq[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JEntry[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [wfDefs, setWfDefs] = useState<WfDef[]>([]);
   const [wfRuns, setWfRuns] = useState<WfRun[]>([]);
@@ -191,7 +196,7 @@ export default function DashboardApp() {
   const [openClaimId, setOpenClaimId] = useState<string | null>(null);
   const [openCustomerId, setOpenCustomerId] = useState<string | null>(null);
   const [programForm, setProgramForm] = useState<{ customerId?: string; programId?: string } | null>(null);
-  const [customerForm, setCustomerForm] = useState<{ id?: string } | null>(null);
+  const [customerForm, setCustomerForm] = useState<({ id?: string } & CustomerFormOpts) | null>(null);
   const [toast, setToast] = useState<ToastT | null>(null);
   const [now, setNow] = useState<number | null>(null); // null khi SSR -> tránh lệch hydration
   const orderSeq = useRef<number>(18300);
@@ -208,6 +213,7 @@ export default function DashboardApp() {
     genDocs: [genDocs, setGenDocs, []], salesOrders: [salesOrders, setSalesOrders, []], wfDefs: [wfDefs, setWfDefs, []], wfRuns: [wfRuns, setWfRuns, []], wfPolicy: [wfPolicy, setWfPolicy, WF_POLICY], wfDelegations: [wfDelegations, setWfDelegations, []], tierRules: [tierRules, setTierRules, INITIAL_TIER_RULES], getflyOrders: [getflyOrders, setGetflyOrders, INITIAL_GETFLY_ORDERS],
     getfly: [getfly, setGetfly, INITIAL_GETFLY], notices: [notices, setNotices, initialNotices], emailCfg: [emailCfg, setEmailCfg, INITIAL_EMAIL], zns: [zns, setZns, INITIAL_ZNS],
     userPrefs: [userPrefs, setUserPrefs, []],
+    invoiceRequests: [invoiceRequests, setInvoiceRequests, []], journalEntries: [journalEntries, setJournalEntries, []],
     notifyRules: [notifyRules, setNotifyRules, INITIAL_NOTIFY_RULES], docs: [docs, setDocs, INITIAL_DOCS], comments: [comments, setComments, []], channels: [channels, setChannels, []], posts: [posts, setPosts, []], approvalLogs: [approvalLogs, setApprovalLogs, []],
     auditLogs: [auditLogs, setAuditLogs, []], security: [security, setSecurity, INITIAL_SECURITY], workOrders: [workOrders, setWorkOrders, []], installJobs: [installJobs, setInstallJobs, []],
     jobs: [jobs, setJobs, []], receipts: [receipts, setReceipts, []], stockItems: [stockItems, setStockItems, []], stockMoves: [stockMoves, setStockMoves, []], cashEntries: [cashEntries, setCashEntries, []], priceItems: [priceItems, setPriceItems, []], mfgConfig: [mfgConfig, setMfgConfig, DEFAULT_MFG_CONFIG],
@@ -1012,7 +1018,7 @@ export default function DashboardApp() {
     notify(`Đã lập ${made.map((p) => p.code).join(', ')}. Hàng về sẽ tự giữ chỗ cho ${o.customer}`, 'teal');
   };
 
-  const saleCash = (o: SalesOrder, p: SalePayment): CashDraft => ({ kind: p.refund ? 'OUT' : 'IN', account: p.method === 'CASH' ? 'CASH' : 'BANK', category: p.refund ? 'Hoàn tiền bán hàng' : 'Thu tiền bán hàng', amount: Math.abs(p.amount), partner: p.payer || o.customer, ref: o.code, note: p.note || `Đơn bán ${o.code}`, date: p.date, source: 'SALE', sourceId: p.id });
+  const saleCash = (o: SalesOrder, p: SalePayment): CashDraft => ({ kind: p.refund ? 'OUT' : 'IN', account: p.method === 'CASH' ? 'CASH' : 'BANK', category: p.refund ? 'Hoàn tiền bán hàng' : 'Thu tiền bán hàng', amount: Math.abs(p.amount), partner: p.payer || o.customer, ref: o.code, note: p.note || `Đơn bán ${o.code}`, date: p.date, source: 'SALE', sourceId: p.id, saleId: o.id });
   const addSalePayment = (id: string, amount: number, method: 'CASH' | 'BANK', given?: SalesOrder, extra?: SalePayExtra) => {
     const o = given ?? salesOrders.find((x) => x.id === id);
     if (!o || !(amount > 0)) return;
@@ -1196,26 +1202,95 @@ export default function DashboardApp() {
     }
   };
   /** NV kinh doanh gửi yêu cầu xuất hóa đơn; kế toán xác nhận đã xuất (số hóa đơn) hoặc trả lại */
+  /**
+   * v58: yêu cầu xuất hóa đơn lưu bảng riêng invoiceRequests (mỗi yêu cầu 1 dòng); vẫn ghi bản sao vào SalesOrder.invReqs
+   * (cùng id) để màn hình / báo cáo cũ đọc được như trước
+   */
   const requestSaleInvoice = (id: string, amount: number, note?: string, extra?: Pick<SaleInvReq, 'buyer' | 'items'>) => {
     const o = salesOrders.find((x) => x.id === id);
     if (!o || !(amount > 0)) return;
     const r: SaleInvReq = { id: uid('ir'), at: Date.now(), by: me?.id, amount: Math.round(amount), note: note?.trim() || undefined, status: 'PENDING', ...extra };
     setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, invoice: true, invReqs: [...(x.invReqs ?? []), r] } : x)));
+    setInvoiceRequests((all) => [{ ...invFromLegacy(o, r, invCode(invoiceView(all, salesOrders), r.at)), legacy: undefined }, ...all]);
     const acc = accountantsOf().filter((u) => u.id !== me?.id);
-    acc.forEach((u) => dispatch('APPROVAL_RESULT', { to: u, title: `Yêu cầu xuất hóa đơn: ${o.code}`, body: `${o.customer}${o.taxCode ? ` (MST ${o.taxCode})` : ''}, ${fmtN(r.amount)} đ${r.note ? `. ${r.note}` : ''}`, module: 'sales' }));
+    acc.forEach((u) => dispatch('APPROVAL_RESULT', { to: u, title: `Yêu cầu xuất hóa đơn: ${o.code}`, body: `${o.customer}${o.taxCode ? ` (MST ${o.taxCode})` : ''}, ${fmtN(r.amount)} đ${r.note ? `. ${r.note}` : ''}`, module: 'accounting' }));
     notify(`Đã gửi yêu cầu xuất hóa đơn ${o.code}${acc.length ? ` cho ${acc.map((u) => u.name).join(', ')}` : ''}`, 'teal');
   };
-  const decideSaleInvoice = (id: string, reqId: string, ok: boolean, text: string) => {
-    const o = salesOrders.find((x) => x.id === id);
-    const r = o?.invReqs?.find((x) => x.id === reqId);
-    if (!o || !r || r.status !== 'PENDING') return;
-    if (!canAct('cash.manage') && !canAct('receipt.confirm')) return notify('Chỉ Kế toán xử lý yêu cầu xuất hóa đơn', 'red');
-    if (text.trim().length < (ok ? 1 : 3)) return notify(ok ? 'Nhập số hóa đơn' : 'Nhập lý do trả lại', 'red');
-    setSalesOrders((all) => all.map((x) => (x.id === id ? { ...x, invReqs: (x.invReqs ?? []).map((y) => (y.id === reqId ? { ...y, status: ok ? 'DONE' : 'REJECTED', no: ok ? text.trim() : undefined, why: ok ? undefined : text.trim(), doneBy: me?.id, doneAt: Date.now() } : y)) } : x)));
-    const req = users.find((u) => u.id === r.by);
-    if (req && req.id !== me?.id) dispatch('APPROVAL_RESULT', { to: req, title: ok ? `Đã xuất hóa đơn ${text.trim()} cho ${o.code}` : `Yêu cầu xuất hóa đơn ${o.code} bị trả lại`, body: ok ? `${fmtN(r.amount)} đ` : text.trim(), module: 'sales' });
-    notify(ok ? `Đã ghi nhận hóa đơn ${text.trim()} cho ${o.code}` : `Đã trả lại yêu cầu xuất hóa đơn ${o.code}`, ok ? 'teal' : 'orange');
+  /** Quyền kế toán xử lý hóa đơn: acct.post (v58) hoặc quyền thu chi cũ */
+  const canInvoice = () => canAct('acct.post') || canAct('cash.manage') || canAct('receipt.confirm');
+  /**
+   * v58: kế toán xuất hóa đơn (số / ký hiệu / ngày / tệp PDF, XML) hoặc trả lại.
+   * Không tự xuất cho yêu cầu của chính mình (v46); Giám đốc được tự xuất, có ghi nhật ký.
+   */
+  const issueInvoice = (reqId: string, ok: boolean, p: { invoice?: InvoiceInfo; files?: SaleFile[]; reason?: string }): boolean => {
+    const r = invoiceView(invoiceRequests, salesOrders).find((x) => x.id === reqId);
+    const o = r ? salesOrders.find((x) => x.id === r.saleId) : undefined;
+    if (!r || !o || r.status !== 'PENDING') { notify('Yêu cầu không còn chờ xử lý', 'orange'); return false; }
+    if (!canInvoice()) { notify('Chỉ Kế toán xử lý yêu cầu xuất hóa đơn', 'red'); return false; }
+    const self = !!me && r.requestedBy === me.id;
+    if (self && role !== 'BOD') { notify('Không tự xuất hóa đơn cho yêu cầu của chính mình. Kế toán khác hoặc Giám đốc xử lý', 'red'); return false; }
+    const no = p.invoice?.no.trim() ?? '';
+    if (ok && (!no || !p.invoice?.date)) { notify('Nhập số hóa đơn và ngày hóa đơn', 'red'); return false; }
+    if (ok && p.invoice!.date > todayISO()) { notify('Ngày hóa đơn không được sau hôm nay', 'red'); return false; }
+    if (!ok && (p.reason ?? '').trim().length < 3) { notify('Nhập lý do trả lại', 'red'); return false; }
+    const now = Date.now();
+    const selfLog = self ? `Giám đốc ${me?.name ?? ''} tự xuất hóa đơn cho yêu cầu của mình` : undefined;
+    const next: InvoiceReq = { ...r, legacy: r.legacy, status: ok ? 'ISSUED' : 'REJECTED', invoice: ok ? { ...p.invoice!, no } : undefined, files: ok ? p.files ?? r.files : r.files, reason: ok ? undefined : p.reason!.trim(), decidedBy: me?.id, decidedAt: now, selfLog };
+    setInvoiceRequests((all) => (all.some((x) => x.id === reqId) ? all.map((x) => (x.id === reqId ? next : x)) : [next, ...all]));
+    setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, invReqs: (x.invReqs ?? []).map((y) => (y.id === reqId ? { ...y, status: ok ? 'DONE' : 'REJECTED', no: ok ? no : undefined, why: ok ? undefined : p.reason!.trim(), doneBy: me?.id, doneAt: now } : y)) } : x)));
+    if (selfLog && me) writeAudit('INVOICE_SELF_ISSUE', `${selfLog}: ${no} · ${o.code}`, 'WARN', realUserId ?? me.id);
+    const req = users.find((u) => u.id === r.requestedBy);
+    if (req && req.id !== me?.id) dispatch('APPROVAL_RESULT', { to: req, title: ok ? `Đã xuất hóa đơn ${no} cho ${o.code}` : `Yêu cầu xuất hóa đơn ${o.code} bị trả lại`, body: ok ? `${fmtN(r.total)} đ` : p.reason!.trim(), module: 'sales' });
+    notify(ok ? `Đã xuất hóa đơn ${no} cho ${o.code}` : `Đã trả lại yêu cầu xuất hóa đơn ${o.code}`, ok ? 'teal' : 'orange');
+    return true;
   };
+  /** v58: hủy hóa đơn đã xuất (lập hóa đơn thay thế bằng yêu cầu mới); doanh thu ghi theo hóa đơn tự đảo */
+  const cancelInvoice = (reqId: string, reason: string): boolean => {
+    const r = invoiceView(invoiceRequests, salesOrders).find((x) => x.id === reqId);
+    if (!r || r.status !== 'ISSUED') return false;
+    if (!canInvoice()) { notify('Chỉ Kế toán hủy hóa đơn', 'red'); return false; }
+    if (reason.trim().length < 3) { notify('Nhập lý do hủy hóa đơn', 'red'); return false; }
+    const now = Date.now();
+    const next: InvoiceReq = { ...r, status: 'CANCELLED', cancelledBy: me?.id, cancelledAt: now, reason: reason.trim() };
+    setInvoiceRequests((all) => (all.some((x) => x.id === reqId) ? all.map((x) => (x.id === reqId ? next : x)) : [next, ...all]));
+    setSalesOrders((all) => all.map((x) => (x.id === r.saleId ? { ...x, invReqs: (x.invReqs ?? []).map((y) => (y.id === reqId ? { ...y, status: 'REJECTED' as const, why: `Hủy hóa đơn ${r.invoice?.no ?? ''}: ${reason.trim()}`, doneBy: me?.id, doneAt: now } : y)) } : x)));
+    if (me) writeAudit('INVOICE_CANCEL', `Hủy hóa đơn ${r.invoice?.no ?? ''} (${r.saleCode}): ${reason.trim()}`, 'WARN', realUserId ?? me.id);
+    notify(`Đã hủy hóa đơn ${r.invoice?.no ?? ''}`, 'orange');
+    return true;
+  };
+  /** Bản cũ: kế toán xử lý ngay trên đơn (giữ API) → chuyển sang issueInvoice */
+  const decideSaleInvoice = (_id: string, reqId: string, ok: boolean, text: string) => {
+    issueInvoice(reqId, ok, ok ? { invoice: { no: text.trim(), date: todayISO() } } : { reason: text });
+  };
+
+  // ---- v58: ghi sổ tự động (chỉ người có quyền kế toán / Giám đốc ghi; mã bút toán xác định nên nhiều máy ghi cùng lúc không trùng) ----
+  const acctCfg = mfgConfig.acct ?? null;
+  // cùng điều kiện với máy chủ (journal_guard): Kế toán / Giám đốc có quyền ghi sổ
+  const canPost = !!me && loadedOrg === orgId && (role === 'BOD' || role === 'ACCOUNTANT') && canAct('acct.post');
+  useEffect(() => {
+    if (!canPost || !acctCfg?.journalSince) return;
+    const t = setTimeout(() => {
+      const src = { cash: cashEntries, orders: salesOrders, vouchers: stockVouchers, skus, invoices: invoiceView(invoiceRequests, salesOrders) };
+      const exp = expectedEntries(src, acctCfg);
+      // An toàn: dữ liệu nguồn chưa nạp (rỗng) mà sổ đã có bút toán thì không đảo hàng loạt
+      if (!exp.length && journalEntries.some((e) => e.src !== 'REV' && !e.reversedBy)) return;
+      const d = diffJournal(journalEntries, exp, { since: acctCfg.journalSince!, lockedUntil: acctCfg.lockedUntil, by: me?.id, now: Date.now() });
+      if (!d.add.length && !d.mark.length) return;
+      const marks = new Map(d.mark.map((m) => [m.id, m]));
+      setJournalEntries((all) => {
+        const ids = new Set(all.map((x) => x.id));
+        return [...all.map((x) => { const m = marks.get(x.id); return m && !x.reversedBy ? { ...x, reversedBy: m.reversedBy, reversedAt: m.reversedAt } : x; }), ...d.add.filter((x) => !ids.has(x.id))];
+      });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [canPost, acctCfg, cashEntries, salesOrders, stockVouchers, skus, invoiceRequests, journalEntries]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ---- v58: chuyển yêu cầu xuất hóa đơn cũ (SalesOrder.invReqs) sang bảng mới, 1 lần theo id (đơn vẫn giữ bản cũ để đọc ngược) ----
+  useEffect(() => {
+    if (!canPost) return;
+    const missing = invoiceView(invoiceRequests, salesOrders).filter((r) => r.legacy && !invoiceRequests.some((x) => x.id === r.id));
+    if (!missing.length) return;
+    setInvoiceRequests((all) => [...all, ...missing.filter((r) => !all.some((x) => x.id === r.id))]);
+  }, [canPost, invoiceRequests, salesOrders]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const syncLeadToGetfly = (leadId: string) => {
     const l = leads.find((x) => x.id === leadId);
@@ -1927,7 +2002,7 @@ export default function DashboardApp() {
   const fontStyle = (
     <>
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
       ${THEME_CSS}
       /* Màu nhấn cam (trạng thái đang chọn, số đếm, KPI nổi bật) */
       .g-brand { background-color: rgb(var(--accent)); }
@@ -2061,7 +2136,7 @@ export default function DashboardApp() {
     openClaim: (id) => setOpenClaimId(id),
     openCustomer: (id) => setOpenCustomerId(id),
     openProgramForm: (customerId, programId) => setProgramForm({ customerId, programId }),
-    openCustomerForm: (id) => setCustomerForm({ id }),
+    openCustomerForm: (id, opts) => setCustomerForm({ id, ...opts }),
     canSee: seeModule,
     moduleOn: (m) => moduleEnabled(company, m),
     approvalLogs,
@@ -2100,7 +2175,7 @@ export default function DashboardApp() {
     userName, dept, routableDepts, routeLeads, acceptLead,
     getflyOrders, setGetflyOrders, getfly, setGetfly, getflyLogs, addGetflyLog, winLead, winDraftQuote, syncLeadToGetfly, recomputeLinked,
     wfAll, setWfDefs, wfRuns, setWfRuns, wfPolicy, setWfPolicy, wfDelegations, setWfDelegations, wfCtx, wfDef, wfDecide, wfSubmit, wfFinishRequest, openRequest: (id) => { setReqOpen(id); setPage('tasks'); }, reqOpen, setReqOpen, approveVoucher, wfFirstApprovers,
-    salesOrders, setSalesOrders, saveSale, issueSale, requestSaleIssue, approveSaleVoucher, approveSaleReturn, saleVoucherUndo, requestSaleInvoice, decideSaleInvoice, completeSale, splitSale, purchaseForSale, addSalePayment, confirmSalePayment, saleCashMulti, requestSaleReturn, setSaleStatus, openSale, setOpenSale,
+    salesOrders, setSalesOrders, saveSale, issueSale, requestSaleIssue, approveSaleVoucher, approveSaleReturn, saleVoucherUndo, requestSaleInvoice, decideSaleInvoice, invoiceRequests, setInvoiceRequests, journalEntries, setJournalEntries, issueInvoice, cancelInvoice,completeSale, splitSale, purchaseForSale, addSalePayment, confirmSalePayment, saleCashMulti, requestSaleReturn, setSaleStatus, openSale, setOpenSale,
     assignLead, submitQuote, markLost,
     notices: myNotices,
     markNoticeRead: (id) => setNotices((p) => p.map((n) => (!id || n.id === id ? { ...n, read: true } : n))),
@@ -2354,6 +2429,7 @@ export default function DashboardApp() {
                   {page === 'install' && <InstallModule />}
                   {page === 'inventory' && <InventoryModule />}
                   {page === 'cashbook' && <CashbookModule />}
+                  {page === 'accounting' && <AccountingModule />}
                   {page === 'staff' && <StaffModule />}
                   {page === 'docs' && <DocsModule />}
                   {page === 'reports' && <ReportsPage />}
@@ -2457,7 +2533,7 @@ export default function DashboardApp() {
         {openCustomerId && <CustomerDrawer id={openCustomerId} onClose={() => setOpenCustomerId(null)} />}
         {openClaimId && <ClaimDrawer key={openClaimId} id={openClaimId} onClose={() => setOpenClaimId(null)} />}
         {programForm && <ProgramFormModal customerId={programForm.customerId} programId={programForm.programId} onClose={() => setProgramForm(null)} />}
-        {customerForm && <CustomerFormModal id={customerForm.id} onClose={() => setCustomerForm(null)} />}
+        {customerForm && <CustomerFormModal id={customerForm.id} prefill={customerForm.prefill} onSaved={customerForm.onSaved} onClose={() => setCustomerForm(null)} />}
         {leadForm && <LeadFormModal id={leadForm.id} asProject={leadForm.asProject} onClose={() => setLeadForm(null)} />}
         <AiChatBot />
         <AutomationEngine />

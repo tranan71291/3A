@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { FileText, Paperclip, X } from 'lucide-react';
 import { Field, FilePicker, Modal, MoneyInput } from '../../components/ui';
 import { scoreLead } from '../../lib/business';
-import { btnGhost, btnPrimary, cfMissing, cfSet, EMAIL_RE, inputCls, MST_RE, nextCode, QUOTE_SLA_MS, REGION_LABEL, SEGMENT_LABEL, segName, SOURCE_LABEL, uid, useApp } from '../../lib/core';
+import { btnGhost, btnPrimary, cfMissing, cfSet, EMAIL_RE, inputCls, MST_MSG, MST_RE, nextCode, QUOTE_SLA_MS, REGION_LABEL, SEGMENT_LABEL, segName, SOURCE_LABEL, uid, useApp } from '../../lib/core';
 import type { CfVal, DeptCode, Lead, LeadForm, Region, Source } from '../../lib/types';
 import { EntityCfForm, useEntityFormLayout } from '../page-builder';
 import { cn } from '../../lib/utils';
@@ -14,7 +14,7 @@ export function validateLead(f: LeadForm, leads: Lead[], selfId?: string): Parti
   if (f.company.trim().length < 3) e.company = 'Nhập tên công ty';
   if (!f.contact.trim()) e.contact = 'Nhập người liên hệ';
   if (f.phone.replace(/\D/g, '').length < 9) e.phone = 'Số điện thoại chưa đúng';
-  if (f.taxCode && !MST_RE.test(f.taxCode.trim())) e.taxCode = 'MST gồm 10 số hoặc 13 số (dạng 0123456789-001)';
+  if (f.taxCode && !MST_RE.test(f.taxCode.trim())) e.taxCode = MST_MSG;
   else if (f.taxCode) {
     const dup = leads.find((l) => l.id !== selfId && l.taxCode === f.taxCode.trim() && !['WON', 'LOST'].includes(l.status));
     if (dup) e.taxCode = `Trùng MST với lead ${dup.code} đang mở`;

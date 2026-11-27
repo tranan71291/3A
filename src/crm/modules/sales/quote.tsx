@@ -665,7 +665,7 @@ export function QuoteChecks({ form, skus, canSeeCost, retail, onSubmit, onNote, 
   const tax = form.party.taxCode.replace(/[\s.]/g, '');
   if (retail) items.push({ tone: 'teal', title: 'Khách lẻ, báo giá nháp', detail: 'không cần MST và duyệt giá; khi chốt sẽ tự thêm khách vào CRM' });
   else if (!tax) items.push({ tone: 'orange', title: 'Chưa có mã số thuế khách hàng', detail: 'cần khi xuất hóa đơn và làm hợp đồng', act: act('Nhập MST', onEditParty) });
-  else if (!/^\d{10}(-?\d{3})?$/.test(tax)) items.push({ tone: 'red', title: `Mã số thuế "${form.party.taxCode}" sai định dạng`, detail: 'MST gồm 10 số, chi nhánh thêm 3 số', act: act('Sửa', onEditParty) });
+  else if (!/^(\d{10}(-?\d{3})?|\d{12})$/.test(tax)) items.push({ tone: 'red', title: `Mã số thuế "${form.party.taxCode}" sai định dạng`, detail: 'MST gồm 10 số, chi nhánh thêm 3 số; cá nhân, hộ kinh doanh dùng số định danh 12 số', act: act('Sửa', onEditParty) });
   else items.push({ tone: 'teal', title: 'Mã số thuế đúng định dạng', detail: 'chỉ kiểm tra định dạng, chưa tra cứu tình trạng hoạt động' });
   if (!form.party.email && !form.party.phone) items.push({ tone: 'orange', title: 'Chưa có email hoặc điện thoại người nhận', detail: 'cần để gửi báo giá', act: act('Nhập', onEditParty) });
   if (!form.items.length) return null;
@@ -1394,13 +1394,16 @@ export function SalesDocsPanel() {
 
 /** Tab Tài liệu: thư viện, mẫu báo giá & hợp đồng, văn bản đã xuất */
 export function DocsModule() {
-  const { genDocs } = useApp();
+  const { genDocs, canDo } = useApp();
   const [tab, setTab] = useSticky<'library' | 'templates' | 'generated'>('DocsModule.tab', 'library');
+  const [upload, setUpload] = useState(false);
   const pending = genDocs.filter((d) => d.status === 'PENDING_APPROVAL').length;
   return (
     <div className="space-y-4">
-      <Tabs tabs={[{ id: 'library', label: 'Kho tài liệu' }, { id: 'templates', label: 'Mẫu văn bản' }, { id: 'generated', label: pending ? `Báo giá & Hợp đồng (${pending})` : 'Báo giá & Hợp đồng' }]} value={tab} onChange={setTab} />
-      {tab === 'library' && <DocsPage />}
+      {/* v59: nút chính "Tải lên" nằm cùng hàng tab (như Thêm lịch, Thêm lead…), không lẫn trong hàng lọc */}
+      <Tabs tabs={[{ id: 'library', label: 'Kho tài liệu' }, { id: 'templates', label: 'Mẫu văn bản' }, { id: 'generated', label: pending ? `Báo giá & Hợp đồng (${pending})` : 'Báo giá & Hợp đồng' }]} value={tab} onChange={setTab}
+        aside={tab === 'library' ? <button className={cn(btnPrimary, btnSm)} disabled={!canDo('docs.manage')} onClick={() => setUpload(true)}><Upload className="h-3.5 w-3.5" aria-hidden />Tải lên</button> : undefined} />
+      {tab === 'library' && <DocsPage upload={upload} setUpload={setUpload} />}
       {tab === 'templates' && <TemplateManager />}
       {tab === 'generated' && <SalesDocsPanel />}
     </div>

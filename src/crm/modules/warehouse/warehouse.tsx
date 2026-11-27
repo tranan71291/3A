@@ -4,7 +4,8 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ArrowRight, Boxes, CheckCircle2, ClipboardCheck, Download, PackageMinus, PackagePlus, Plus, Printer, RefreshCw, Search, Warehouse, X, XCircle } from 'lucide-react';
 import { useIntent } from '../../components/command-palette';
 import { Pagination, usePaged } from '../../components/controls';
-import { useInRange } from '../../components/filters';
+import { StatusBar, useInRange } from '../../components/filters';
+import { FilterChips, FilterPopover } from '../../components/kit/filter-popover';
 import { Chip, Code, EmptyState, Field, Modal, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { addWh, btnDanger, btnGhost, btnPrimary, btnSm, C, compact, downloadBlob, esc, fmtDate, fold, inputBase, inputCls, kpiGrid, MAIN_WH, MOVE_LABEL, moveEffect, nextVoucherCode, rangeText, reservedInStock, rowCls, saleIssQ, saleRetQ, tdCls, tdFirst, tdLast, todayISO, uid, useApp, V_STATUS, VOUCHER_META, vStatusLabel, whQty } from '../../lib/core';
 import { xlsxBlob } from '../../lib/csv';
@@ -220,17 +221,27 @@ export function VoucherList({ type }: { type: VoucherType }) {
   const meta = VOUCHER_META[type];
   const whName = (id?: string) => warehouses.find((w) => w.id === id)?.name ?? '—';
   const t = fold(q.trim());
-  const list = stockVouchers.filter((v) => v.type === type && inR(v.date)).filter((v) => (st === 'ALL' || v.status === st) && (wh === 'ALL' || v.whId === wh || v.toWhId === wh) && (!t || fold(`${v.code} ${v.partner ?? ''} ${v.ref ?? ''} ${v.note ?? ''} ${v.lines.map((l) => l.sku).join(' ')}`).includes(t))).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+  const pool = stockVouchers.filter((v) => v.type === type && inR(v.date)).filter((v) => (wh === 'ALL' || v.whId === wh || v.toWhId === wh) && (!t || fold(`${v.code} ${v.partner ?? ''} ${v.ref ?? ''} ${v.note ?? ''} ${v.lines.map((l) => l.sku).join(' ')}`).includes(t)));
+  const list = pool.filter((v) => st === 'ALL' || v.status === st).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
   const srt = useSort(`Voucher40.${type}`, list, { 0: (v) => v.code, 2: (v) => v.date });
   const paged = usePaged(srt.rows, 15);
   const pend = stockVouchers.filter((v) => v.type === type && v.status === 'PENDING' && canApprove(v)).length;
   useIntent(`wh.new.${type}`, () => setOpen('new'));
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative min-w-0 flex-1 lg:w-[280px] lg:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--faint))]" aria-hidden /><input className={cn(inputCls, 'bg-[rgb(var(--surface))] py-1.5 pl-9 text-[13.5px]')} placeholder="Mã phiếu, mã hàng, đối tác, chứng từ gốc…" value={q} onChange={(e) => { setQ(e.target.value); paged.setPage(1); }} aria-label="Tìm phiếu" /></div>
-        <select className={cn(inputBase, 'py-1.5 text-[13px] sm:w-44')} value={wh} onChange={(e) => { setWh(e.target.value); paged.setPage(1); }} aria-label="Kho">{[<option key="a" value="ALL">Mọi kho</option>, ...warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)]}</select>
-        <select className={cn(inputBase, 'py-1.5 text-[13px] sm:w-40')} value={st} onChange={(e) => { setSt(e.target.value as typeof st); paged.setPage(1); }} aria-label="Trạng thái"><option value="ALL">Mọi trạng thái</option>{(Object.keys(V_STATUS) as VoucherStatus[]).map((k) => <option key={k} value={k}>{k === 'DONE' ? meta.done : V_STATUS[k].label}</option>)}</select>
+      {/* v59 Lô C: [Tìm][phễu: Kho][Tất cả · trạng thái phiếu] — cùng kiểu thanh lọc toàn CRM */}
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 items-center gap-2 lg:contents">
+          <div className="relative min-w-0 flex-1 lg:w-[280px] lg:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--faint))]" aria-hidden /><input className={cn(inputBase, 'h-8 w-full bg-[rgb(var(--surface))] py-1 pl-9 text-[13.5px]')} placeholder="Mã phiếu, mã hàng, đối tác, chứng từ gốc…" value={q} onChange={(e) => { setQ(e.target.value); paged.setPage(1); }} aria-label="Tìm phiếu" /></div>
+          <FilterPopover count={wh !== 'ALL' ? 1 : 0} onReset={wh !== 'ALL' ? () => { setWh('ALL'); paged.setPage(1); } : undefined}>
+            <Field label="Kho"><select className={inputCls} value={wh} onChange={(e) => { setWh(e.target.value); paged.setPage(1); }}>{[<option key="a" value="ALL">Mọi kho</option>, ...warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)]}</select></Field>
+          </FilterPopover>
+        </div>
+        <div className="min-w-0 lg:flex-1">
+          <StatusBar<VoucherStatus> label="Trạng thái phiếu" value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} total={pool.length} funnel={false}
+            options={(Object.keys(V_STATUS) as VoucherStatus[]).map((k) => ({ value: k, label: k === 'DONE' ? meta.done : V_STATUS[k].label, count: pool.filter((v) => v.status === k).length }))} />
+        </div>
+        {wh !== 'ALL' && <FilterChips items={[{ key: 'wh', label: `Kho: ${warehouses.find((w) => w.id === wh)?.code ?? wh}`, onClear: () => { setWh('ALL'); paged.setPage(1); } }]} />}
         <button className={cn(btnGhost, btnSm, 'sm:ml-auto lg:hidden')} disabled={!canDo('stock.voucher') && !canDo('stock.approve')} onClick={() => setOpen('new')}><Plus className="h-3.5 w-3.5" aria-hidden />Lập {meta.label.toLowerCase()}</button>
       </div>
       {pend > 0 && <p className="flex items-center gap-2 text-sm text-[rgb(var(--fg2))]"><AlertTriangle className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{pend} phiếu đang chờ bạn duyệt.<button className="font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => setSt('PENDING')}>Xem</button></p>}
@@ -275,18 +286,24 @@ export function StockMatrix() {
   const [only, setOnly] = useSticky<'ALL' | 'IN' | 'OUT'>('StockMatrix.only', 'IN');
   const whs = warehouses.filter((w) => sel.includes(w.id));
   const t = fold(q.trim());
-  const list = skus.filter((s) => !s.archived && (!t || fold(`${s.sku} ${s.name} ${s.category}`).includes(t)) && (only === 'ALL' || (only === 'IN' ? actual(s, 'ALL') > 0 : actual(s, 'ALL') <= 0)));
+  const pool = skus.filter((s) => !s.archived && (!t || fold(`${s.sku} ${s.name} ${s.category}`).includes(t)));
+  const list = pool.filter((s) => only === 'ALL' || (only === 'IN' ? actual(s, 'ALL') > 0 : actual(s, 'ALL') <= 0));
   const paged = usePaged(list, 20);
   const n = (x: number) => <span className={cn('tabular-nums', !x && 'text-[rgb(var(--faint))]')}>{x.toLocaleString('vi-VN')}</span>;
   const th = 'border-b border-l border-[rgb(var(--line))] px-3 py-2 text-right font-semibold';
   return (
     <div className="space-y-3">
+      {/* v59 Lô C: [Tìm][Tất cả · Còn hàng · Hết hàng] … [So sánh kho]; cùng chiều cao 32px, thanh lọc nhanh chung (Tất cả đầu) */}
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--faint))]" aria-hidden /><input className={cn(inputCls, 'pl-9')} placeholder="Tìm mã, tên hàng, phân loại" value={q} onChange={(e) => { setQ(e.target.value); paged.setPage(1); }} aria-label="Tìm hàng" /></div>
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Chọn kho so sánh">
-          {warehouses.filter((w) => w.active).map((w) => { const on = sel.includes(w.id); return <button key={w.id} aria-pressed={on} className={cn('rounded-full border px-3 py-1 text-xs font-medium transition-colors', on ? 'border-[rgb(var(--secondary)/0.7)] bg-[rgb(var(--secondary)/0.12)] text-[rgb(var(--secondary-fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')} onClick={() => setSel((p) => (on ? p.filter((x) => x !== w.id) : [...p, w.id]))}>{w.code}</button>; })}
+        <div className="relative min-w-0 lg:w-[280px] lg:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--faint))]" aria-hidden /><input className={cn(inputBase, 'h-8 w-full bg-[rgb(var(--surface))] py-1 pl-9 text-[13.5px]')} placeholder="Tìm mã, tên hàng, phân loại" value={q} onChange={(e) => { setQ(e.target.value); paged.setPage(1); }} aria-label="Tìm hàng" /></div>
+        <div className="min-w-0 lg:flex-1">
+          <StatusBar<'IN' | 'OUT'> label="Tồn kho" value={only} onChange={(v) => { setOnly(v); paged.setPage(1); }} total={pool.length} funnel={false}
+            options={[{ value: 'IN', label: 'Còn hàng', count: pool.filter((s) => actual(s, 'ALL') > 0).length }, { value: 'OUT', label: 'Hết hàng', count: pool.filter((s) => actual(s, 'ALL') <= 0).length }]} />
         </div>
-        <Tabs variant="pill" tabs={[{ id: 'IN' as const, label: 'Còn hàng' }, { id: 'OUT' as const, label: 'Hết hàng' }, { id: 'ALL' as const, label: 'Tất cả' }]} value={only} onChange={(v) => { setOnly(v); paged.setPage(1); }} />
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Chọn kho so sánh">
+          <span className="mr-0.5 text-[12.5px] text-[rgb(var(--muted))]">So sánh kho</span>
+          {warehouses.filter((w) => w.active).map((w) => { const on = sel.includes(w.id); return <button key={w.id} aria-pressed={on} className={cn('inline-flex h-7 items-center rounded-full border px-3 font-mono text-[12px] font-medium transition-colors', on ? 'border-[rgb(var(--secondary)/0.7)] bg-[rgb(var(--secondary)/0.12)] text-[rgb(var(--secondary-fg))]' : 'border-[rgb(var(--line))] text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]')} onClick={() => setSel((p) => (on ? p.filter((x) => x !== w.id) : [...p, w.id]))}>{w.code}</button>; })}
+        </div>
       </div>
       <div className="overflow-x-auto rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))]">
         <table className="w-full min-w-[820px] text-sm">

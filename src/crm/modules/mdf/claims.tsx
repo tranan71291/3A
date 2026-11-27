@@ -4,7 +4,7 @@ import { AlertTriangle, Camera, CheckCircle2, Clock, Download, FileCheck2, FileT
 import { useState } from 'react';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
-import { ChipFilter, claimDate, FilterBar, useInRange } from '../../components/filters';
+import { ChipFilter, claimDate, FilterBar, stMatch, useInRange } from '../../components/filters';
 import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, ProgressBar, StatCard, Table, Tabs, useSticky } from '../../components/ui';
 import { auditClaim, claimState } from '../../lib/business';
 import { blockersOf, btnBase, btnGhost, btnPrimary, btnSm, C, claimYear, compact, esc, fmtDate, FUND_LABEL, inputCls, kpiGrid, MST_RE, nextCode, POP_LABEL, POP_TYPES, progName, PROGRAM_BUDGET, PROGRAM_COLOR, PROGRAM_FUND, PROGRAM_STATUS, PROGRAM_TYPES, progYear, rowCls, tdCls, tdFirst, tdLast, todayISO, uid, useApp, usedByType, vnd } from '../../lib/core';
@@ -16,6 +16,9 @@ import { MdfSettlementPanel } from './settlement';
 import { ClaimFinancePanel } from './surplus';
 import { BudgetStrip, ClaimTable } from '../messages/messenger';
 import { useHubItem } from '../tasks/tasks';
+
+/** v59: nhóm tình trạng hồ sơ claim cho bộ lọc 2 lớp */
+type ClaimView = 'open' | 'blocked' | 'ready' | 'submitted';
 
 // =====================================================================
 //  PHÂN HỆ 3: HỒ SƠ CLAIM & POP
@@ -184,15 +187,17 @@ export function ClaimsTab() {
   const { claims: allClaims, programs, policy, customers, budget } = useApp();
   const claims = allClaims.filter((c) => claimYear(c, programs) === budget.fiscalYear);
   const [filter, setFilter] = useState<string>('open');
+  const [stM, setStM] = useState<ClaimView[]>([]);
   const inR = useInRange();
   const [q, setQ] = useSticky('ClaimsTab.q', '');
   const [dp, setDp] = useState('ALL');
+  const isView = (c: (typeof claims)[number], f: string) => (f === 'open' && !c.submitted) || (f === 'ready' && !c.submitted && blockersOf(c, policy.rules) === 0) || (f === 'blocked' && !c.submitted && blockersOf(c, policy.rules) > 0) || (f === 'submitted' && c.submitted);
   const list = claims
     .filter((c) => {
       const t = q.trim().toLowerCase();
       const cust = customers.find((k) => k.id === c.customerId);
       const hit = !t || [c.code, c.programTitle, c.preApprovalId, cust?.name ?? '', cust?.taxCode ?? ''].some((v) => v.toLowerCase().includes(t));
-      const st = filter === 'ALL' || (filter === 'open' && !c.submitted) || (filter === 'ready' && !c.submitted && blockersOf(c, policy.rules) === 0) || (filter === 'blocked' && !c.submitted && blockersOf(c, policy.rules) > 0) || (filter === 'submitted' && c.submitted);
+      const st = stMatch(filter as ClaimView | 'ALL', stM, (f) => isView(c, f));
       return hit && st && (dp === 'ALL' || c.dept === dp) && inR(claimDate(c));
     })
     .sort((a, b) => Number(a.submitted) - Number(b.submitted) || a.daysLeft - b.daysLeft);
@@ -209,7 +214,7 @@ export function ClaimsTab() {
         q={q} onQ={setQ} placeholder="Tìm mã claim, Pre-Approval, tên khách, MST"
         dept={dp} onDept={setDp} status={filter} onStatus={setFilter} statusLabel="Tất cả hồ sơ"
         statusOptions={[{ value: 'open', label: 'Đang làm' }, { value: 'blocked', label: 'Thiếu điều kiện' }, { value: 'ready', label: 'Sẵn sàng nộp' }, { value: 'submitted', label: 'Đã nộp Hãng' }]}
-        chips={<ChipFilter value={filter === 'ALL' ? 'ALL' : (filter as 'open' | 'blocked' | 'ready' | 'submitted')} onChange={(v) => setFilter(v)} total={claims.length} options={[
+        chips={<ChipFilter value={filter === 'ALL' ? 'ALL' : (filter as ClaimView)} onChange={(v) => setFilter(v)} multi={stM} onMulti={setStM} label="Tình trạng hồ sơ" total={claims.length} options={[
           { value: 'open', label: 'Đang làm', count: claims.filter((c) => !c.submitted).length, color: C.orange },
           { value: 'blocked', label: 'Thiếu điều kiện', count: blocked, color: C.red },
           { value: 'ready', label: 'Sẵn sàng nộp', count: claims.filter((c) => !c.submitted && blockersOf(c, policy.rules) === 0).length, color: C.teal },

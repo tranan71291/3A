@@ -63,7 +63,7 @@ export function CommissionPanel() {
       </div>
       <Panel>
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <StagePills items={[{ id: 'READY' as const, label: 'Chờ chi', count: ready.length }, { id: 'WAIT' as const, label: 'Chưa đủ điều kiện', count: all.filter((r) => r.status === 'WAIT').length }, { id: 'PAID' as const, label: 'Đã chi', count: all.filter((r) => r.status === 'PAID').length }, { id: 'ALL' as const, label: 'Tất cả', count: all.length }]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} />
+          <StagePills items={[{ id: 'READY' as const, label: 'Chờ chi', count: ready.length }, { id: 'WAIT' as const, label: 'Chưa đủ điều kiện', short: 'Chưa đủ ĐK', count: all.filter((r) => r.status === 'WAIT').length }, { id: 'PAID' as const, label: 'Đã chi', count: all.filter((r) => r.status === 'PAID').length }, { id: 'ALL' as const, label: 'Tất cả', count: all.length }]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} />
           {canPay && ready.length > 0 && <button className={cn(btnPrimary, btnSm, 'ml-auto')} onClick={() => setPay(ready)}><Banknote className="h-3.5 w-3.5" aria-hidden />Quyết toán tất cả ({ready.length} đơn, {compact(ready.reduce((s, r) => s + r.total, 0))})</button>}
         </div>
         <Table head={['STT', 'Đơn hàng', <span key="b" className="block text-right">Giá trị tính HH</span>, 'Đã xác nhận thu', 'Người nhận', <span key="t" className="block text-right">Tổng hoa hồng</span>, 'Trạng thái', '']} minW={1120}>

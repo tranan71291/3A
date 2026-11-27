@@ -1,19 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { Coins, Copy, Download, Eye, FileSpreadsheet, Pencil, Phone, Plus, Trash2, Upload } from 'lucide-react';
+import { Coins, Copy, Download, Eye, FileSpreadsheet, Pencil, Phone, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { TaxStrip, useTaxLookup } from '../../components/kit/tax-lookup';
+import { taxNorm } from '../../lib/taxcode';
 import { removeWithUndo } from '../../app/context';
 import { CommentButton } from '../../components/comments';
 import { BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
-import { ChipFilter, FilterBar } from '../../components/filters';
+import { ChipFilter, FilterBar, stMatch } from '../../components/filters';
 import { ImportModal } from '../../components/import-csv';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, ProgressBar, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { claimState, roiRating } from '../../lib/business';
-import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, cfMissing, cfSet, compact, CUSTOMER_SOURCE, CUSTOMER_STATUS, digits, EMAIL_RE, EMPTY_CUSTOMER, inputBase, inputCls, LEAD_STATUS, lListCols, mdfOfCustomer, MST_RE, nextCode, progName, PROGRAM_STATUS, quotesOfCustomer, REGION_LABEL, REVENUE_BAND, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, tierFor, tierInfo, TIERS, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, cfMissing, cfSet, compact, CUSTOMER_SOURCE, CUSTOMER_STATUS, digits, EMAIL_RE, EMPTY_CUSTOMER, inputBase, inputCls, LEAD_STATUS, lListCols, mdfOfCustomer, MST_MSG, MST_RE, nextCode, progName, PROGRAM_STATUS, quotesOfCustomer, REGION_LABEL, REVENUE_BAND, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, tierFor, tierInfo, TIERS, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv, matchEnum } from '../../lib/csv';
-import type { ConfirmState, Customer, CustomerForm, CustomerStatus, DeptCode, ImportSpec, LBlockCfg, MenuItem, Region, RevenueBand, Segment, Tier } from '../../lib/types';
+import type { ConfirmState, Customer, CustomerForm, CustomerFormOpts, CustomerStatus, DeptCode, ImportSpec, LBlockCfg, MenuItem, Region, RevenueBand, Segment, Tier } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { GetflyOrdersPanel } from './getfly-history';
 import { SourceManagerModal } from './sources';
@@ -26,7 +28,7 @@ import { cfText, EntityCfDetail, EntityCfForm, EntityListPage, useEntityCf, useE
 export function validateCustomer(f: CustomerForm, customers: Customer[], selfId?: string) {
   const e: Partial<Record<keyof CustomerForm, string>> = {};
   if (f.name.trim().length < 3) e.name = 'Nhập tên khách hàng';
-  if (!MST_RE.test(f.taxCode.trim())) e.taxCode = 'MST gồm 10 số hoặc 13 số (dạng 0123456789-001)';
+  if (!MST_RE.test(f.taxCode.trim())) e.taxCode = MST_MSG;
   else {
     const dup = customers.find((c) => c.taxCode === f.taxCode.trim() && c.id !== selfId);
     if (dup) e.taxCode = `MST đã thuộc khách hàng ${dup.code}`;
@@ -36,17 +38,19 @@ export function validateCustomer(f: CustomerForm, customers: Customer[], selfId?
   return e;
 }
 
-export function CustomerFormModal({ id, onClose }: { id?: string; onClose: () => void }) {
+export function CustomerFormModal({ id, prefill, onSaved, onClose }: { id?: string; onClose: () => void } & CustomerFormOpts) {
   const { customers, setCustomers, users, departments, tierRules, sources, notify } = useApp();
   const [manageSources, setManageSources] = useState(false);
   const existing = customers.find((c) => c.id === id);
   const [f, setF] = useState<CustomerForm>(() => {
-    if (!existing) return EMPTY_CUSTOMER;
+    if (!existing) return { ...EMPTY_CUSTOMER, ...prefill };
     const { id: _i, code: _c, ...rest } = existing;
     void _i;
     void _c;
-    return rest;
+    return { ...rest, ...prefill };
   });
+  // v60: tra cứu mã số thuế ngay trên form (điền tên, địa chỉ theo dữ liệu đăng ký thuế khi người dùng bấm)
+  const tax = useTaxLookup();
   const [touched, setTouched] = useState(false);
   const errors = validateCustomer(f, customers, id);
   const set = <K extends keyof CustomerForm>(k: K, v: CustomerForm[K]) => setF((p) => ({ ...p, [k]: v }));
@@ -60,15 +64,19 @@ export function CustomerFormModal({ id, onClose }: { id?: string; onClose: () =>
     setTouched(true);
     if (Object.keys(errors).length) return;
     if (cfMiss.length) return notify(`${cfMiss[0].type === 'check' ? 'Cần tích' : 'Nhập'} ${cfMiss[0].label}`, 'red');
-    const clean = { ...f, name: f.name.trim(), taxCode: f.taxCode.trim(), cf: f.cf && Object.keys(f.cf).length ? f.cf : undefined };
+    const clean = { ...f, name: f.name.trim(), taxCode: f.taxCode.trim(), cf: f.cf && Object.keys(f.cf).length ? f.cf : undefined, ...(tax.info && tax.info.taxCode === taxNorm(f.taxCode) ? { taxInfo: tax.info } : {}) };
+    let saved: Customer;
     if (existing) {
-      setCustomers((p) => p.map((c) => (c.id === existing.id ? { ...c, ...clean } : c)));
+      saved = { ...existing, ...clean };
+      setCustomers((p) => p.map((c) => (c.id === existing.id ? saved : c)));
       notify(`Đã cập nhật ${clean.name}`, 'teal');
     } else {
       const code = nextCode(customers.map((c) => c.code), 'KH-', 6);
-      setCustomers((p) => [...p, { id: uid('k'), code, ...clean, createdAt: clean.createdAt || todayISO() }]);
+      saved = { id: uid('k'), code, ...clean, createdAt: clean.createdAt || todayISO() };
+      setCustomers((p) => [...p, saved]);
       notify(`Đã thêm khách hàng ${code}`, 'teal');
     }
+    onSaved?.(saved);
     onClose();
   };
   const err = (k: keyof CustomerForm) => (touched ? errors[k] : undefined);
@@ -82,7 +90,13 @@ export function CustomerFormModal({ id, onClose }: { id?: string; onClose: () =>
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Tên khách hàng *" error={err('name')} className="sm:col-span-2"><input className={inputCls} value={f.name} onChange={(e) => set('name', e.target.value)} /></Field>
-        <Field label="Mã số thuế *" error={err('taxCode')}><input className={inputCls} value={f.taxCode} onChange={(e) => set('taxCode', e.target.value)} /></Field>
+        {/* dải kết quả tra nằm ngoài <label> để không thành nhãn của ô nhập */}
+        <div className="min-w-0">
+          <Field label="Mã số thuế *" error={err('taxCode')}>
+            <div className="flex gap-2"><input className={cn(inputCls, 'font-mono')} value={f.taxCode} onChange={(e) => set('taxCode', e.target.value)} /><button type="button" className={cn(btnGhost, 'shrink-0')} disabled={tax.busy || !f.taxCode.trim()} onClick={() => void tax.run(f.taxCode)}><Search className="h-4 w-4" aria-hidden />Tra cứu</button></div>
+          </Field>
+          <TaxStrip st={tax} name={f.name} address={f.address} compact onUseName={(v) => set('name', v)} onUseAddress={(v) => set('address', v)} />
+        </div>
         <Field label="Nhóm khách hàng">
           <select className={inputCls} value={f.segment} onChange={(e) => set('segment', e.target.value as Segment)}>
             {(Object.keys(SEGMENT_LABEL) as Segment[]).map((s) => <option key={s} value={s}>{segName(s)}</option>)}
@@ -153,6 +167,7 @@ export function TradingCustomersList({ cfg }: { cfg?: LBlockCfg } = {}) {
   const [dp, setDp] = useState<'ALL' | DeptCode>('ALL');
   const [region, setRegion] = useState<'ALL' | Region>('ALL');
   const [status, setStatus] = useState<string>('ALL');
+  const [statusM, setStatusM] = useState<CustomerStatus[]>([]);
   const [adv, setAdv] = useState<{ tier: string; source: string; band: RevenueBand; roiMin: number }>({ tier: 'ALL', source: 'ALL', band: 'ALL', roiMin: 0 });
   const [advOpen, setAdvOpen] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -166,7 +181,7 @@ export function TradingCustomersList({ cfg }: { cfg?: LBlockCfg } = {}) {
       const t = q.trim().toLowerCase();
       const orderHit = !!t && getflyOrders.some((o) => o.customerId === c.id && o.orderCode.toLowerCase().includes(t));
       return (!t || orderHit || [c.name, c.code, c.taxCode, c.contactName, c.contactPhone.replace(/\s/g, '')].some((v) => v.toLowerCase().includes(t.replace(/\s/g, '')) || v.toLowerCase().includes(t)))
-        && (dp === 'ALL' || c.dept === dp) && (region === 'ALL' || c.region === region) && (status === 'ALL' || c.status === status)
+        && (dp === 'ALL' || c.dept === dp) && (region === 'ALL' || c.region === region) && stMatch(status as CustomerStatus | 'ALL', statusM, (s) => c.status === s)
         && (adv.tier === 'ALL' || c.tier === adv.tier) && (adv.source === 'ALL' || c.sourceId === adv.source) && REVENUE_BAND[adv.band].test(c.ytdRevenue)
         && (adv.roiMin <= 0 || (roiOf(c) ?? 0) >= adv.roiMin);
     })
@@ -261,7 +276,7 @@ export function TradingCustomersList({ cfg }: { cfg?: LBlockCfg } = {}) {
         dept={dp} onDept={setDp} status={status} onStatus={setStatus}
         statusOptions={(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((x) => ({ value: x, label: CUSTOMER_STATUS[x].label }))}
         onAdvanced={() => setAdvOpen(true)} advancedCount={advCount} extraActive={region !== 'ALL' ? 1 : 0}
-        chips={<ChipFilter total={customers.length} value={status as CustomerStatus | 'ALL'} onChange={(v) => setStatus(v)} options={(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((x) => ({ value: x, label: CUSTOMER_STATUS[x].label, count: customers.filter((c) => c.status === x).length })).filter((o) => o.count > 0)} />}
+        chips={<ChipFilter total={customers.length} value={status as CustomerStatus | 'ALL'} onChange={(v) => setStatus(v)} multi={statusM} onMulti={setStatusM} options={(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((x) => ({ value: x, label: CUSTOMER_STATUS[x].label, count: customers.filter((c) => c.status === x).length })).filter((o) => o.count > 0)} />}
         actions={<>
           <RowMenu text="Nhập / xuất" icon={FileSpreadsheet} items={[{ label: 'Xuất CSV', icon: Download, onClick: () => exportRows(list) }, { label: 'Nhập từ file', icon: Upload, onClick: () => setImporting(true), disabled: !canEdit }]} />
           <button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} disabled={!canEdit} onClick={() => openCustomerForm()}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm khách hàng</button>

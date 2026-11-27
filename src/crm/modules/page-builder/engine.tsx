@@ -6,7 +6,7 @@ import { type CSSProperties, useEffect, useState } from 'react';
 import { downloadBlob, fmtDate, iso, L_ACT, L_DS, L_FS, L_PERIOD, L_RAD, L_SAMPLE_CUST, L_SAMPLE_STAFF, L_SH, L_TONE, L_TS, L_TW, lAgg, lField, lFilter, lHasData, lHex, L_PAGE_ENTITY, L_CONTENT_STEPS, lContentStepDefault, lHit, lInfoSections, lPeriodLabel, lType, MODULE_LABEL, SALE_STAGE, saleOwed, salePaid, todayISO, uid } from '../../lib/core';
 import { xlsxBlob } from '../../lib/csv';
 import { saleStage, saleTotals } from '../../lib/getfly';
-import type { AppCtx, DashPeriod, DateRange, LAgg, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LPage, LPageCtx, LPeriod, LPos, LRow, Module, StockVoucher, XlsxSheet } from '../../lib/types';
+import type { AppCtx, DashPeriod, DateRange, LAgg, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LElem, LPage, LPageCtx, LPeriod, LPos, LRow, Module, StockVoucher, XlsxSheet } from '../../lib/types';
 import { dashRange } from '../dashboard/exec-dashboard';
 
 export function lDefaultCfg(type: LBlockType, page: LPage = 'home'): LBlockCfg {
@@ -24,6 +24,30 @@ export function lDefaultCfg(type: LBlockType, page: LPage = 'home'): LBlockCfg {
   if (type === 'K-Filter') return { title: 'Bộ lọc chung', ds: 'sales', periods: ['WEEK', 'MONTH', 'QUARTER', 'YEAR'], showCompare: true, showDept: true, align: 'right' };
   if (type === 'K-Tabs') return { title: 'Tab trang', ds: 'sales', tabs: [{ id: uid('tb'), label: 'Tổng quan' }, { id: uid('tb'), label: 'Kinh doanh' }] };
   if (type === 'K-Divider') return { title: 'Đường kẻ', ds: 'sales', hideTitle: true };
+  // v57b khung chứa: trang đơn hàng gắn sẵn dữ liệu đơn, trang khác bắt đầu bằng chữ + nút
+  if (type === 'K-FlexContainer' || type === 'K-FreeformBox') {
+    const so = page === 'sale-detail';
+    const el = (kind: LElem['kind'], text: string, x: Partial<LElem> = {}): LElem => ({ id: uid('el'), kind, text, ...x });
+    if (type === 'K-FlexContainer') return {
+      title: 'Khung linh hoạt', ds: 'sales', sp: { frame: 'card', pad: 16 }, flex: { dir: 'row', gap: 12, align: 'center', justify: 'start', wrap: true },
+      elems: so ? [el('text', '{{customer.name}}', { size: 'lg', weight: 'medium', grow: true }), el('badge', '{{order.status}}', { tone: 'blue' }), el('text', '{{order.total}}', { size: 'lg', weight: 'medium', mono: true, align: 'right' })]
+        : [el('text', 'Nội dung', { size: 'md', weight: 'medium', grow: true }), el('button', 'Quay lại', { act: 'back', btn: 'ghost' })],
+    };
+    return {
+      title: 'Khung tự do', ds: 'sales', sp: { frame: 'card' }, canvas: { w: 720, h: 160, snap: true },
+      elems: so ? [
+        el('text', 'Khách hàng', { size: 'sm', tone: 'muted', box: { x: 16, y: 16, w: 240, h: 16 } }),
+        el('text', '{{customer.name}}', { size: 'xl', weight: 'medium', box: { x: 16, y: 40, w: 440, h: 32 } }),
+        el('text', 'Mã đơn {{order.code}} · {{order.date}}', { size: 'sm', tone: 'fg2', box: { x: 16, y: 80, w: 440, h: 24 } }),
+        el('badge', '{{order.status}}', { tone: 'blue', box: { x: 560, y: 16, w: 144, h: 24 }, pin: { h: 'right', v: 'top' }, align: 'right' }),
+        el('text', '{{order.total}}', { size: 'xl', weight: 'medium', mono: true, align: 'right', box: { x: 424, y: 112, w: 280, h: 32 }, pin: { h: 'right', v: 'bottom' } }),
+      ] : [
+        el('text', 'Tiêu đề', { size: 'xl', weight: 'medium', box: { x: 16, y: 16, w: 440, h: 32 } }),
+        el('text', 'Dòng mô tả ngắn', { size: 'sm', tone: 'fg2', box: { x: 16, y: 56, w: 440, h: 24 } }),
+        el('button', 'Quay lại', { act: 'back', btn: 'ghost', box: { x: 584, y: 112, w: 120, h: 32 }, pin: { h: 'right', v: 'bottom' } }),
+      ],
+    };
+  }
   // v55.2 khối bản ghi: Chi tiết lấy bộ trường gốc như giao diện cũ (4 cột); Form để trống, trường theo cờ "Form" tự vào nhóm "Thông tin thêm"
   // v55.3: khách hàng / lead: khối Chi tiết bắt đầu bằng trường tùy chỉnh theo cờ "Thông tin" (trường gốc 3A tự kéo thêm)
   const ent = L_PAGE_ENTITY[page] ?? 'sale';
@@ -36,8 +60,9 @@ export function lDefaultCfg(type: LBlockType, page: LPage = 'home'): LBlockCfg {
   return { title: lType(type).label, ds: 'sales' };
 }
 
-export function lSettle(bs: LBlock[], movedId?: string): LBlock[] {
-  const clamp = (p: LPos): LPos => { const w = Math.max(1, Math.min(12, p.w)); return { x: Math.max(0, Math.min(12 - w, p.x)), y: Math.max(0, p.y), w, h: Math.max(1, Math.min(12, p.h)) }; };
+/** Xếp lại lưới: khối chồng nhau bị đẩy xuống, rồi dồn lên. maxH: số hàng tối đa của 1 khối (cổ điển 12, lưới 8px 160) */
+export function lSettle(bs: LBlock[], movedId?: string, maxH = 12): LBlock[] {
+  const clamp = (p: LPos): LPos => { const w = Math.max(1, Math.min(12, p.w)); return { x: Math.max(0, Math.min(12 - w, p.x)), y: Math.max(0, p.y), w, h: Math.max(1, Math.min(maxH, p.h)) }; };
   const items = bs.map((b) => ({ ...b, pos: { ...b.pos, lg: clamp(b.pos.lg) } }));
   const moved = items.find((b) => b.id === movedId);
   const placed: LBlock[] = moved ? [moved] : [];

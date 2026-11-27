@@ -1,8 +1,8 @@
 'use client';
 
 import { Children, Fragment, cloneElement, isValidElement, type Dispatch, type DragEvent, type ReactElement, type ReactNode, type SetStateAction, useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, Copy, Download, Plus, Printer, Sparkles, Wallet, X } from 'lucide-react';
-import { BRAND, btnGhost, btnPrimary, btnSm, C, digits, esc, GRAD, inputCls, overlaySeq, overlayStack, overlaySubs, overlayTop, portal, stickySave, stickyStore, strHash, todayISO, useApp, VIEW_META } from '../lib/core';
+import { ArrowDown, ArrowUp, ArrowUpDown, Columns3, Copy, Download, Printer, Sparkles, Wallet, X } from 'lucide-react';
+import { btnGhost, btnSm, C, digits, esc, GRAD, inputCls, overlaySeq, overlayStack, overlaySubs, overlayTop, portal, stickySave, stickyStore, strHash, todayISO, useApp, VIEW_META } from '../lib/core';
 import { downloadCsv } from '../lib/csv';
 import type { SortState, SortVal, TableBulk, TableSort, Tone, ViewKind } from '../lib/types';
 import { cn } from '../lib/utils';
@@ -57,9 +57,9 @@ export function Panel({ title, action, children, className }: { title?: ReactNod
 }
 
 export function Chip({ tone = 'muted', children }: { tone?: Tone; children: ReactNode }) {
-  // v40: trạng thái = chấm màu + chữ (không ô nền màu). Teal = đạt / xong, Cam = chờ / đang làm, Đỏ = quá hạn / lỗi, Xanh = đã gửi
-  const dot: Record<Tone, string> = { muted: 'bg-[rgb(var(--faint))]', orange: 'bg-[rgb(var(--accent))]', teal: 'bg-[rgb(var(--success))]', red: 'bg-[rgb(var(--danger))]', blue: 'bg-[rgb(var(--secondary))]' };
-  return <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-[13px]', tone === 'red' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--fg2))]')}><span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dot[tone])} aria-hidden />{children}</span>;
+  // v59: nhãn trạng thái nền pastel (cùng lớp .ui-tone-* với StatusBadge). Teal = đạt / xong, Cam = chờ / đang làm, Đỏ = quá hạn / lỗi, Xanh = đã gửi, Xám = trung tính
+  const cls: Record<Tone, string> = { muted: 'ui-tone-neutral', orange: 'ui-tone-accent', teal: 'ui-tone-success', red: 'ui-tone-danger', blue: 'ui-tone-info' };
+  return <span data-chip={tone} className={cn('inline-flex h-[22px] max-w-full items-center whitespace-nowrap rounded-[var(--radius-badge)] px-2 text-[12px] font-medium leading-none', cls[tone])}><span className="truncate">{children}</span></span>;
 }
 
 /** v40: mã chứng từ (LD-0005, BG-0001…) dạng thẻ mono xám, dùng thống nhất mọi bảng */
@@ -99,10 +99,10 @@ export function monthly<T>(items: T[], when: (x: T) => string | number | undefin
 export function StatCard({ label, value, sub, color = C.orange, delta, deltaLabel = 'so với kỳ trước', highlight }: { label: string; value: string; sub?: string; icon?: typeof Wallet; color?: string; delta?: number | null; deltaLabel?: string; spark?: number[]; highlight?: boolean }) {
   // v40: thẻ số gọn: nhãn viết thường, con số, một dòng phụ. Không icon, không sparkline; màu chỉ khi số mang nghĩa (đỏ / xanh)
   const tone = color === C.red ? 'text-[rgb(var(--danger-fg))]' : highlight ? 'text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--fg))]';
+  // v59 (v49: không đặt dải KPI to trên trang danh sách): dòng tóm tắt gọn — số + nhãn cùng 1 dòng, dòng phụ bên dưới
   return (
     <div className="kpi flex min-w-0 flex-col gap-0.5 border-l border-[rgb(var(--ink)/0.08)] py-0.5 pl-4 pr-2">
-      <p className="min-w-0 truncate text-[12.5px] text-[rgb(var(--muted))]">{label}</p>
-      <p className={cn('truncate text-[22px] font-medium leading-7 tabular-nums', tone)}>{value}</p>
+      <p className="flex min-w-0 items-baseline gap-2"><span className={cn('font-archivo shrink-0 text-[19px] font-semibold leading-6 ui-num', tone)}>{value}</span><span className="min-w-0 truncate text-[12.5px] text-[rgb(var(--muted))]">{label}</span></p>
       {delta !== undefined && delta !== null && Number.isFinite(delta) ? (
         <p className={cn('truncate text-xs tabular-nums', delta >= 0 ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')}>
           {delta >= 0 ? '+' : '−'}{Math.abs(delta).toFixed(0)}% <span className="text-[rgb(var(--muted))]">{deltaLabel}</span>
@@ -164,13 +164,14 @@ export function Field({ label, error, hint, children, className }: { label: stri
 }
 
 /** Ô nhập tiền VNĐ — hiển thị có dấu chấm phân cách */
-export function MoneyInput({ value, onChange, disabled }: { value: number; onChange: (n: number) => void; disabled?: boolean }) {
+export function MoneyInput({ value, onChange, disabled, label }: { value: number; onChange: (n: number) => void; disabled?: boolean; label?: string }) {
   return (
     <div className="relative">
       <input
         className={cn(inputCls, 'pr-8 tabular-nums')}
         inputMode="numeric"
         disabled={disabled}
+        aria-label={label}
         value={value ? new Intl.NumberFormat('vi-VN').format(value) : ''}
         onChange={(e) => onChange(digits(e.target.value))}
         placeholder="0"
@@ -314,36 +315,8 @@ export function FilePicker({ accept, multiple, onFiles, children, disabled, clas
   );
 }
 
-/** Hình minh họa nét mảnh cho trạng thái trống (line-art, theo màu thương hiệu) */
-export function EmptyArt({ kind }: { kind: 'search' | 'box' | 'calendar' | 'doc' | 'ledger' | 'inbox' }) {
-  const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-  const accent = { fill: 'none', stroke: 'url(#emptyGrad)', strokeWidth: 2, strokeLinecap: 'round' as const };
-  return (
-    <svg viewBox="0 0 120 84" width="120" height="84" className="text-[rgb(var(--line))]" aria-hidden>
-      <defs><linearGradient id="emptyGrad" x1="0" x2="1"><stop offset="0" stopColor={BRAND.o1} /><stop offset=".55" stopColor={BRAND.o2} /><stop offset="1" stopColor={BRAND.o3} /></linearGradient></defs>
-      <path d="M14 74h92" {...stroke} strokeDasharray="2 5" />
-      {kind === 'search' && <><rect x="26" y="14" width="50" height="46" rx="3" {...stroke} /><path d="M34 26h30M34 34h22M34 42h26" {...stroke} /><circle cx="78" cy="50" r="12" {...accent} /><path d="M87 59l10 10" {...accent} /><circle cx="78" cy="50" r="4" fill={BRAND.blue} opacity=".8" /></>}
-      {kind === 'box' && <><path d="M30 34l30-14 30 14v28L60 76 30 62z" {...stroke} /><path d="M30 34l30 14 30-14M60 48v28" {...stroke} /><path d="M45 27l30 14" {...accent} /><circle cx="60" cy="48" r="3" fill={BRAND.blue} /></>}
-      {kind === 'calendar' && <><rect x="28" y="18" width="64" height="52" rx="3" {...stroke} /><path d="M28 32h64M42 12v12M78 12v12" {...stroke} /><path d="M40 44h8M56 44h8M72 44h8M40 56h8M56 56h8" {...stroke} /><rect x="70" y="52" width="12" height="10" rx="2" {...accent} /></>}
-      {kind === 'doc' && <><path d="M36 10h34l14 14v50H36z" {...stroke} /><path d="M70 10v14h14" {...stroke} /><path d="M44 38h30M44 46h30M44 54h18" {...stroke} /><path d="M44 30h16" {...accent} /><circle cx="78" cy="62" r="3" fill={BRAND.blue} /></>}
-      {kind === 'ledger' && <><rect x="30" y="12" width="60" height="60" rx="3" {...stroke} /><path d="M40 26h40M40 36h40M40 46h40M40 56h24" {...stroke} /><path d="M66 56h14" {...accent} /><path d="M58 12v60" {...stroke} strokeDasharray="2 3" /></>}
-      {kind === 'inbox' && <><path d="M24 44l12-26h48l12 26v24H24z" {...stroke} /><path d="M24 44h22l4 8h20l4-8h22" {...stroke} /><path d="M48 30h24" {...accent} /><circle cx="60" cy="38" r="3" fill={BRAND.blue} /></>}
-    </svg>
-  );
-}
-
-/** Trạng thái trống: minh họa + thông điệp rõ ràng + nút hành động (nếu có) */
-export function EmptyState({ text, hint, art, action, onAction, compact }: { text: ReactNode; hint?: ReactNode; art?: 'search' | 'box' | 'calendar' | 'doc' | 'ledger' | 'inbox'; action?: string; onAction?: () => void; compact?: boolean }) {
-  const kind = art ?? 'box';
-  return (
-    <div className={cn('flex flex-col items-center justify-center text-center', compact ? 'gap-2 py-6' : 'gap-3 py-10')}>
-      {!compact && <EmptyArt kind={kind} />}
-      <p className="max-w-md text-sm font-medium text-[rgb(var(--fg2))]">{text}</p>
-      {hint && <p className="max-w-md text-xs text-[rgb(var(--muted))]">{hint}</p>}
-      {action && onAction && <button className={cn(btnPrimary, 'mt-1')} onClick={onAction}><Plus className="h-4 w-4" aria-hidden />{action}</button>}
-    </div>
-  );
-}
+/** v59: trạng thái trống chuyển sang bộ giao diện lõi (components/kit), giữ tên export cũ */
+export { EmptyArt, EmptyState } from './kit/empty-state';
 
 export function ViewSwitch<T extends ViewKind>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: T[] }) {
   return (
@@ -392,10 +365,12 @@ export function nodeText(n: ReactNode): string {
  * v48: bảng dùng chung. Ô tích chọn nhiều dòng + thanh thao tác (sao chép, xuất CSV, in, thao tác riêng), nút chọn cột hiển thị (nhớ theo trình duyệt).
  * Bảng đã có ô chọn riêng (cột đầu là ô tích) giữ nguyên cách chọn cũ. optional: cột thêm, mặc định ẩn.
  */
-export function Table({ head, children, minW = 760, right, sort, stack = true, stt = 0, select, bulk, id, title, optional }: { head: ReactNode[]; children: ReactNode; minW?: number; right?: number[]; sort?: TableSort; stack?: boolean; stt?: number | false; select?: boolean; bulk?: TableBulk[]; id?: string; title?: string; optional?: number[] }) {
+export function Table({ head, children, minW = 760, right, sort, stack = true, stt = 0, select, bulk, id, title, optional, foot }: { head: ReactNode[]; children: ReactNode; minW?: number; right?: number[]; sort?: TableSort; stack?: boolean; stt?: number | false; select?: boolean; bulk?: TableBulk[]; id?: string; title?: string; optional?: number[]; /** v59: dòng tổng cuối bảng, mỗi ô đúng cột của nó (ẩn trên điện thoại) */ foot?: ReactNode[] }) {
   const showStt = stt !== false && stack && head[0] !== 'STT';
   const lastH = head[head.length - 1];
-  const actCol = head.length > 1 && (lastH === '' || lastH === 'Thao tác');
+  // v59: nhận cả tiêu đề dạng <span>Thao tác</span> (căn phải) là cột thao tác: không co, không ẩn, không xuất CSV
+  const lastT = nodeText(lastH).trim();
+  const actCol = head.length > 1 && (lastT === '' || lastT === 'Thao tác');
   const ownSel = isValidElement(head[0]) && (head[0] as ReactElement).type === 'input';
   const useSel = (select ?? true) && !ownSel && head.length > 1;
   const labels = head.map((h, i) => (actCol && i === head.length - 1 ? 'Thao tác' : nodeText(h).trim()));
@@ -439,7 +414,59 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
   const alignR = right ?? auto;
   // ---- ẩn cột: tiêu đề có thêm ô STT thật; thân bảng STT là ::before (không tính nth-child)
   const vis = hidden.filter((i) => i < head.length && !(actCol && i === head.length - 1));
-  const css = vis.map((i) => `table[data-tid="${tid}"] > thead > tr > :nth-child(${i + 1 + (showStt ? 1 : 0) + off}), table[data-tid="${tid}"] > tbody > tr:not(:has(> td[colspan])) > :nth-child(${i + 1 + off}){display:none}`).join('');
+  const hideCss = vis.map((i) => `table[data-tid="${tid}"] > thead > tr > :nth-child(${i + 1 + (showStt ? 1 : 0) + off}), table[data-tid="${tid}"] > tfoot > tr > :nth-child(${i + 1 + (showStt ? 1 : 0) + off}), table[data-tid="${tid}"] > tbody > tr:not(:has(> td[colspan])) > :nth-child(${i + 1 + off}){display:none}`).join('');
+  // ---- v59: bảng tự vừa khung (v49: không cuộn ngang ở màn ≥ 1200px). Khi tràn, các cột chữ dài (không phải cột số / thao tác)
+  // co lại chia phần còn trống, chữ cắt "…", rê chuột xem đủ. Cột số, ngày, mã giữ nguyên độ rộng. Màn hẹp hơn giữ cuộn ngang như cũ.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState<{ cols: number[]; px: number[]; w: number; adj?: number } | null>(null);
+  const visKey = vis.join(',');
+  useEffect(() => { setFit(null); }, [visKey, head.length]);
+  useEffect(() => {
+    const w = wrapRef.current, t = ref.current;
+    if (!w || !t || !stack) return;
+    if (window.innerWidth < 1200) { if (fit) setFit(null); return; }
+    const rows = [...(t.tBodies[0]?.rows ?? [])].filter((r) => r.cells.length === head.length + off).slice(0, 40);
+    if (fit) {
+      if (w.clientWidth > fit.w + 160) { setFit(null); return; }
+      // còn tràn vài px (làm tròn, mức tối thiểu): rút phần dư từ các cột còn rộng hơn 96px, tối đa 3 lần
+      const over = w.scrollWidth - w.clientWidth;
+      if (over > 1 && (fit.adj ?? 0) < 3 && fit.px.some((x) => x > 96)) {
+        const room = fit.px.reduce((s, x) => s + Math.max(0, x - 96), 0);
+        setFit({ ...fit, px: fit.px.map((x) => Math.max(96, x - Math.ceil(((x - 96) / Math.max(1, room)) * (over + 4)))), adj: (fit.adj ?? 0) + 1 });
+        return;
+      }
+      fit.cols.forEach((i) => rows.forEach((r) => { const c = r.cells[i + off]; if (c && !c.title && c.scrollWidth > c.clientWidth + 1) c.title = (c.innerText ?? '').trim(); }));
+      return;
+    }
+    if (w.scrollWidth <= w.clientWidth + 2) return;
+    if (!rows.length) { setFit({ cols: [], px: [], w: w.clientWidth }); return; } // bảng trống: chỉ bỏ độ rộng tối thiểu
+    // đo độ rộng thật khi bỏ độ rộng tối thiểu (minW): nếu vừa khung thì chỉ cần bỏ minW, không cắt chữ
+    const prevMin = t.style.minWidth;
+    t.style.minWidth = '0px';
+    const tight = w.scrollWidth <= w.clientWidth + 2;
+    const tw0 = t.getBoundingClientRect().width;
+    if (tight) { t.style.minWidth = prevMin; setFit({ cols: [], px: [], w: w.clientWidth }); return; }
+    // cột co được: chữ (không phải cột số, thao tác; không chứa nhãn trạng thái / ô nhập), rộng > 120px
+    const right0 = right ?? auto;
+    const natW = (i: number) => Math.max(...rows.map((r) => r.cells[i + off]?.getBoundingClientRect().width ?? 0));
+    const cand = head.map((_, i) => i).filter((i) => !vis.includes(i) && !(actCol && i === head.length - 1) && !right0.includes(i)
+      && !rows.some((r) => r.cells[i + off]?.querySelector('[data-chip],[data-status],[data-sla],input,select')) && natW(i) > 120);
+    const need = cand.reduce((s, i) => s + natW(i), 0);
+    const avail = w.clientWidth - (tw0 - need) - 4;
+    // "mức trần chung": chỉ cột dài nhất bị cắt bớt về cùng 1 độ rộng (tối thiểu 120px); cột ngắn hơn mức trần giữ nguyên
+    const nat = cand.map(natW);
+    let cap = Math.max(...nat, 120);
+    for (let k = 0; k < 40 && cap > 120; k += 1) { if (nat.reduce((s, x) => s + Math.min(x, cap), 0) <= avail) break; cap -= Math.max(4, Math.ceil((nat.reduce((s, x) => s + Math.min(x, cap), 0) - avail) / Math.max(1, nat.filter((x) => x >= cap).length))); }
+    const px = nat.map((x) => Math.max(120, Math.min(x, Math.floor(cap))));
+    t.style.minWidth = prevMin;
+    setFit({ cols: cand, px, w: w.clientWidth });
+  });
+  const fitCss = fit ? fit.cols.map((i, k) => {
+    const b = `table[data-tid="${tid}"] > tbody > tr:not(:has(> td[colspan])) > :nth-child(${i + 1 + off})`;
+    const h = `table[data-tid="${tid}"] > thead > tr > :nth-child(${i + 1 + (showStt ? 1 : 0) + off})`;
+    return `${b},${h}{box-sizing:border-box;max-width:${fit.px[k]}px;overflow:hidden;text-overflow:ellipsis}${b} > *{max-width:100%;min-width:0}${b} .truncate{max-width:100% !important}`;
+  }).join('') : '';
+  const css = hideCss + fitCss;
   // ---- thao tác hàng loạt: đọc chữ của các dòng đã chọn ngay trên bảng
   const grab = (): string[][] => {
     const t = ref.current;
@@ -468,10 +495,10 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
       )}
       {head.length > 2 && (
         <div className="absolute right-3 z-[2] max-md:hidden" style={{ top: useSel && sel.length > 0 ? 50 : 6 }}>
-          <button type="button" className={colBtn} onClick={() => setColOpen((v) => !v)} aria-expanded={colOpen} aria-label="Chọn cột hiển thị" title="Chọn cột hiển thị"><Columns3 className="h-3.5 w-3.5" aria-hidden />{vis.length ? <span className="tabular-nums">{head.length - vis.length - (actCol ? 1 : 0)}/{head.length - (actCol ? 1 : 0)}</span> : null}</button>
+          <button type="button" className={cn(colBtn, 'relative w-7 justify-center px-0')} onClick={() => setColOpen((v) => !v)} aria-expanded={colOpen} aria-label="Chọn cột hiển thị" title={vis.length ? `Chọn cột hiển thị (${head.length - vis.length - (actCol ? 1 : 0)}/${head.length - (actCol ? 1 : 0)} cột đang hiện)` : 'Chọn cột hiển thị'}><Columns3 className="h-3.5 w-3.5" aria-hidden />{vis.length ? <span data-cols-hidden={vis.length} className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-[rgb(var(--accent))]" aria-hidden /> : null}</button>
           {colOpen && (
             <div className="absolute right-0 top-8 z-30 w-60 rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-2 shadow-lg" onMouseLeave={() => setColOpen(false)}>
-              <p className="px-1.5 pb-1 text-[12px] text-[rgb(var(--muted))]">Cột hiển thị</p>
+              <p className="px-1.5 pb-1 text-[12px] text-[rgb(var(--muted))]">Cột hiển thị{vis.length ? ` · ${vis.length} cột ẩn` : ''}</p>
               {labels.map((l, i) => (actCol && i === head.length - 1) || !l ? null : (
                 <label key={i} className="flex items-center gap-2 rounded px-1.5 py-1 text-[13px] hover:bg-[rgb(var(--ink)/0.04)]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={!vis.includes(i)} disabled={!vis.includes(i) && head.length - vis.length - (actCol ? 1 : 0) <= 1} onChange={() => setHidden(vis.includes(i) ? vis.filter((x) => x !== i) : [...vis, i])} />{l}{optional?.includes(i) && <span className="ml-auto text-[11px] text-[rgb(var(--muted))]">thêm</span>}</label>
               ))}
@@ -480,8 +507,8 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
           )}
         </div>
       )}
-      <div className={cn('overflow-x-auto', stack && 'max-md:overflow-visible')}>
-      <table ref={ref} data-tid={tid} className={cn('dt w-full text-left text-[13.5px]', stack && 'dt-cards', showStt && 'dt-stt', actCol && 'dt-act')} style={{ minWidth: minW + (showStt ? 56 : 0) + (useSel ? 40 : 0) }}>
+      <div ref={wrapRef} className={cn('overflow-x-auto', stack && 'max-md:overflow-visible')}>
+      <table ref={ref} data-tid={tid} data-fit={fit ? fit.cols.join(',') || '-' : undefined} className={cn('dt w-full text-left text-[13.5px]', stack && 'dt-cards', showStt && 'dt-stt', actCol && 'dt-act')} style={{ minWidth: fit ? Math.min(minW + (showStt ? 56 : 0) + (useSel ? 40 : 0), fit.w) : minW + (showStt ? 56 : 0) + (useSel ? 40 : 0) }}>
         <thead className="text-[12.5px] text-[rgb(var(--muted))]">
           <tr className="border-b border-[rgb(var(--ink)/0.1)]">
             {showStt && <th className="w-14 whitespace-nowrap py-2.5 pl-5 pr-3 font-normal">STT</th>}
@@ -492,7 +519,9 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
               const on = can && sort?.sort?.col === i ? sort.sort.dir : 0;
               const Ico = on === 1 ? ArrowUp : on === -1 ? ArrowDown : ArrowUpDown;
               return (
-                <th key={i} aria-sort={on === 1 ? 'ascending' : on === -1 ? 'descending' : undefined} className={cn('whitespace-nowrap py-2.5 font-normal', i === 0 && !showStt && !useSel ? 'pl-5 pr-3' : i === lastVis ? 'pl-3 pr-12' : 'px-3', (alignR.includes(i) || (actCol && i === head.length - 1)) && 'text-right')}>
+                <th key={i} aria-sort={on === 1 ? 'ascending' : on === -1 ? 'descending' : undefined}
+                  // v59: chừa chỗ cho nút chọn cột nổi ở góc phải (quy tắc CSS th:last-child 16px từng đè pr-12 → nút che tên cột cuối)
+                  style={head.length > 2 && i === lastVis ? { paddingRight: 52 } : undefined} className={cn('whitespace-nowrap py-2.5 font-normal', i === 0 && !showStt && !useSel ? 'pl-5 pr-3' : i === lastVis ? 'pl-3 pr-12' : 'px-3', (alignR.includes(i) || (actCol && i === head.length - 1)) && 'text-right')}>
                   {can ? <button type="button" onClick={() => sort!.onSort(i)} className={cn('group inline-flex items-center gap-1 hover:text-[rgb(var(--fg))]', on !== 0 && 'text-[rgb(var(--fg))]', alignR.includes(i) && 'flex-row-reverse')}>{h}<Ico className={cn('h-3 w-3', on ? 'opacity-100' : 'opacity-40 group-hover:opacity-80')} aria-hidden /></button> : h}
                 </th>
               );
@@ -500,6 +529,15 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
           </tr>
         </thead>
         <tbody style={showStt ? { counterReset: `stt ${stt || 0}` } : undefined}>{body}</tbody>
+        {foot && (
+          <tfoot className="max-md:hidden">
+            <tr data-table-foot className="border-t border-[rgb(var(--ink)/0.1)] text-[13.5px] font-medium">
+              {showStt && <td className="py-2.5 pl-5 pr-3" />}
+              {useSel && <td className="py-2.5 pl-5 pr-1" />}
+              {head.map((_, i) => <td key={i} className={cn('whitespace-nowrap py-2.5', i === 0 && !showStt && !useSel ? 'pl-5 pr-3' : i === lastVis ? 'pl-3 pr-12' : 'px-3', alignR.includes(i) && 'text-right tabular-nums')}>{foot[i] ?? null}</td>)}
+            </tr>
+          </tfoot>
+        )}
       </table>
       </div>
     </div>

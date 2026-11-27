@@ -7,11 +7,12 @@ import { useIntent } from '../../components/command-palette';
 import { CommentButton } from '../../components/comments';
 import { Fab, Pagination, RowMenu, usePaged } from '../../components/controls';
 import { Drawer } from '../../components/drawer';
-import { useInRange } from '../../components/filters';
+import { StatusBar, stMatch, useInRange } from '../../components/filters';
+import { WorkflowStepper, type StepState, type WorkflowStep } from '../../components/kit/status';
 import { Sla } from '../../components/sla';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, StatCard, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { btnBase, btnGhost, btnPrimary, btnSm, C, compact, DESIGN_STATUS, digits, esc, fmtDate, fmtDT, holdingOverdue, inputCls, iso, JOB_LOST, JOB_STAGE, JOB_STAGES, jobCustName, jobPhone, kpiGrid, lineAmount, lineDims, needsCare, nextCode, PAY_TRIGGER, pct, phoneKey, PRICE_UNIT, RECEIPT_STATUS, rowCls, secHead, tdCls, tdFirst, tdLast, techUsers, todayISO, toLocal, uid, useApp, vnd, wfNeeds, wfReasons, WO_STAGE } from '../../lib/core';
-import type { CompanyInfo, Customer, InstallJob, Job, JobCare, JobFile, JobFilter, JobLine, JobLostReason, JobQuote, MfgConfig, PayStage, PriceItem, PriceUnit, Receipt, Tone, User, WfSubject, WorkOrder } from '../../lib/types';
+import type { CompanyInfo, Customer, InstallJob, Job, JobCare, JobFile, JobFilter, JobLine, JobLostReason, JobQuote, JobStage,MfgConfig, PayStage, PriceItem, PriceUnit, Receipt, Tone, User, WfSubject, WorkOrder } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { compressImage, dueByStage, jobActualCost, jobDetailOf, jobMoney, jobStageOf, lineMeasure, quoteTotalsOf, receiptCash } from '../../lib/workshop';
 import { InstallScheduleModal } from './install';
@@ -219,18 +220,42 @@ export function MiniStat({ label, value, tone }: { label: string; value: string;
   );
 }
 
-/** Thanh chọn trạng thái dạng viên, có số đếm */
-export function StagePills<T extends string>({ items, value, onChange }: { items: { id: T; label: string; count?: number }[]; value: T; onChange: (v: T) => void }) {
+/**
+ * Thanh chọn trạng thái có số đếm. v59: dùng bộ lọc trạng thái 2 lớp chung (Tất cả luôn đầu, nút bo tròn, trạng thái thừa vào
+ * "Thêm ▾"; có `onMulti` thì phễu bên trái cho chọn nhiều). Mục id 'ALL' trong items chỉ lấy số đếm cho "Tất cả".
+ */
+export function StagePills<T extends string>({ items, value, onChange, multi, onMulti, main, label }: {
+  items: { id: T; label: string; short?: string; count?: number; quickOnly?: boolean }[];
+  value: T;
+  onChange: (v: T) => void;
+  multi?: readonly T[];
+  onMulti?: (v: T[]) => void;
+  main?: number | readonly T[];
+  label?: string;
+}) {
   return (
-    <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="tablist">
-      {items.map((s) => (
-        <button key={s.id} role="tab" aria-selected={value === s.id} onClick={() => onChange(s.id)}
-          className={cn('flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-[13px]', value === s.id ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium text-[rgb(var(--fg))] shadow-sm' : 'border-transparent text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>
-          {s.label}{s.count !== undefined && <span className="font-mono text-[11.5px] font-normal text-[rgb(var(--muted))]">{s.count}</span>}
-        </button>
-      ))}
-    </div>
+    <StatusBar<T> options={items.filter((s) => s.id !== 'ALL').map((s) => ({ value: s.id, label: s.label, short: s.short, count: s.count, quickOnly: s.quickOnly }))}
+      total={items.find((s) => s.id === 'ALL')?.count} value={value} onChange={(v) => onChange(v as T)} multi={multi} onMulti={onMulti} main={main} label={label} />
   );
+}
+
+/**
+ * v59: các bước tiến độ đơn xưởng cho WorkflowStepper. Báo giá cuối chưa được duyệt giá (lãi gộp dưới ngưỡng quy trình
+ * "Báo giá xưởng lãi gộp thấp", mặc định 25%) thì bước Báo giá hiện "vướng"; đơn trượt dừng ở bước đã tới.
+ */
+export function jobSteps(j: Job, stage: JobStage): WorkflowStep[] {
+  const idx = JOB_STAGES.indexOf(stage);
+  const ap = j.quotes[j.quotes.length - 1]?.approval;
+  const stuck = stage === 'QUOTED' && !!ap && ap.status !== 'APPROVED';
+  const reached = stage === 'LOST' ? (j.quotes.length ? 1 : 0) : idx;
+  const gmTxt = ap?.gm !== undefined ? `Lãi gộp ${ap.gm.toFixed(1).replace('.', ',')}%` : 'Lãi gộp thấp';
+  return JOB_STAGES.map((s, i): WorkflowStep => {
+    const state: StepState = stage === 'LOST' ? (i < reached ? 'done' : i === reached ? 'blocked' : 'skipped')
+      : stage === 'DONE' || i < idx ? 'done' : i === idx ? (stuck ? 'blocked' : 'current') : 'todo';
+    const sub = stage === 'LOST' && i === reached ? 'Trượt'
+      : stuck && i === idx ? (ap?.status === 'PENDING' ? `${gmTxt} · chờ duyệt giá` : 'Giá bị trả lại') : undefined;
+    return { key: s, label: JOB_STAGE[s].short, state, sub };
+  });
 }
 
 /** Ô tìm kiếm dùng chung */
@@ -698,7 +723,6 @@ export function JobDrawer({ id, onClose }: { id: string; onClose: () => void }) 
   const owner = users.find((u) => u.id === j.ownerId);
   const can = canDo('job.manage');
   const patch = (p: Partial<Job>) => setJobs((all) => all.map((x) => (x.id === j.id ? { ...x, ...p } : x)));
-  const stepIdx = stage === 'LOST' ? -1 : JOB_STAGES.indexOf(stage);
   const remaining = Math.max(0, money.value - money.collected);
   const printQuote = (q: JobQuote) => printHtml(docShell(`Báo giá ${j.code} v${q.version}`, jobQuoteHtml(j, q, company, cust, owner, mfgConfig)));
   const accepted = installs.find((i) => i.acceptance);
@@ -722,21 +746,8 @@ export function JobDrawer({ id, onClose }: { id: string; onClose: () => void }) 
 
   return (
     <Drawer title={jobCustName(j, customers)} eyebrow={`${j.code} · ${j.title}`} badge={<Chip tone={JOB_STAGE[stage].tone}>{JOB_STAGE[stage].label}</Chip>} onClose={onClose} actions={actions}>
-      <ol className="grid grid-cols-6" aria-label="Tiến độ đơn hàng">
-        {JOB_STAGES.map((s, i) => {
-          const done = i < stepIdx || stage === 'DONE';
-          return (
-            <li key={s} className="flex flex-col items-center text-center">
-              <div className="flex w-full items-center">
-                <span className={cn('h-0.5 flex-1', i === 0 ? 'opacity-0' : i <= stepIdx ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--line))]')} />
-                <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold', done ? 'border border-[rgb(var(--ink)/0.12)] bg-[rgb(var(--surface))] text-[rgb(var(--fg))]' : i === stepIdx ? 'g-brand font-semibold text-[rgb(var(--on-accent))]' : 'border border-[rgb(var(--line))] bg-[rgb(var(--raised))] text-[rgb(var(--muted))]')}>{done ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> : i + 1}</span>
-                <span className={cn('h-0.5 flex-1', i === JOB_STAGES.length - 1 ? 'opacity-0' : i < stepIdx ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--line))]')} />
-              </div>
-              <p className={cn('mt-1 px-0.5 text-[11px] leading-tight', i === stepIdx ? 'font-semibold text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--muted))]')}>{JOB_STAGE[s].short}</p>
-            </li>
-          );
-        })}
-      </ol>
+      {/* v59: thanh tiến trình chung (WorkflowStepper); báo giá lãi gộp dưới 25% đang chờ / bị trả lại thì bước Báo giá hiện "vướng" */}
+      <WorkflowStepper label="Tiến độ đơn hàng" steps={jobSteps(j, stage)} />
       {j.lostAt && <p className="rounded bg-[rgb(var(--danger)/0.1)] p-3 text-sm text-[rgb(var(--danger-fg))]">Trượt ngày {fmtDate(j.lostAt)}: {JOB_LOST[j.lostReason ?? 'OTHER']}{j.lostNote ? `. ${j.lostNote}` : ''}</p>}
       <p className={cn('rounded px-3 py-2 text-sm', lateSurvey ? 'bg-[rgb(var(--danger)/0.1)] text-[rgb(var(--danger-fg))]' : 'bg-[rgb(var(--raised))] text-[rgb(var(--fg))]')}>{lateSurvey ? 'Quá giờ hẹn khảo sát. ' : ''}{detail}</p>
 
@@ -932,14 +943,17 @@ export function JobsList() {
   const inR = useInRange();
   const [q, setQ] = useSticky('JobsList.q', '');
   const [st, setSt] = useState<JobFilter>('SURVEY');
+  /** v59: trạng thái chọn nhiều trong phễu */
+  const [stM, setStM] = useState<JobFilter[]>([]);
   const [form, setForm] = useState(false);
   useIntent('job.create', () => setForm(true));
   const nowLocal = toLocal(new Date());
   const t = q.trim().toLowerCase();
   const rows = jobs.filter(inScope).map((j) => ({ j, ...info(j) }));
-  const count = (f: JobFilter) => rows.filter((r) => (f === 'ALL' ? true : f === 'ACTIVE' ? !['DONE', 'LOST'].includes(r.stage) : r.stage === f)).length;
+  const hit = (r: { stage: string }, f: JobFilter) => (f === 'ALL' ? true : f === 'ACTIVE' ? !['DONE', 'LOST'].includes(r.stage) : r.stage === f);
+  const count = (f: JobFilter) => rows.filter((r) => hit(r, f)).length;
   const list = rows
-    .filter((r) => (st === 'ALL' || (st === 'ACTIVE' ? !['DONE', 'LOST'].includes(r.stage) : r.stage === st)) && (!['DONE', 'LOST'].includes(r.stage) || inR(r.j.wonAt ?? r.j.lostAt ?? r.j.createdAt)))
+    .filter((r) => stMatch(st, stM, (f) => hit(r, f)) && (!['DONE', 'LOST'].includes(r.stage) || inR(r.j.wonAt ?? r.j.lostAt ?? r.j.createdAt)))
     .filter((r) => !t || `${r.j.code} ${r.j.title} ${r.j.siteAddress} ${jobCustName(r.j, customers)} ${jobPhone(r.j, customers)}`.toLowerCase().includes(t))
     .sort((a, b) => (a.stage === 'SURVEY' && b.stage === 'SURVEY' ? (a.j.appointmentAt ?? '').localeCompare(b.j.appointmentAt ?? '') : JOB_STAGES.indexOf(a.stage) - JOB_STAGES.indexOf(b.stage) || b.j.createdAt.localeCompare(a.j.createdAt)));
   const srt = useSort('Jobs40', list, { 1: (r) => r.j.code, 2: (r) => jobCustName(r.j, customers), 7: (r) => r.j.appointmentAt });
@@ -947,11 +961,11 @@ export function JobsList() {
   const startIdx = (paged.page - 1) * 20;
   const today = todayISO();
   const holding = receipts.filter((r) => r.status !== 'CONFIRMED' && r.status !== 'REJECTED');
-  const pills: { id: JobFilter; label: string; count: number }[] = [
+  const pills: { id: JobFilter; label: string; count: number; quickOnly?: boolean }[] = [
     { id: 'SURVEY', label: 'Chờ khảo sát', count: count('SURVEY') }, { id: 'QUOTED', label: 'Đã báo giá', count: count('QUOTED') },
     { id: 'PRODUCTION', label: 'Sản xuất', count: count('PRODUCTION') }, { id: 'INSTALL', label: 'Lắp đặt', count: count('INSTALL') },
     { id: 'WAIT_PAYMENT', label: 'Chờ thu tiền', count: count('WAIT_PAYMENT') }, { id: 'DONE', label: 'Hoàn tất', count: count('DONE') },
-    { id: 'LOST', label: 'Trượt', count: count('LOST') }, { id: 'ACTIVE', label: 'Đang xử lý', count: count('ACTIVE') }, { id: 'ALL', label: 'Tất cả', count: count('ALL') },
+    { id: 'LOST', label: 'Trượt', count: count('LOST') }, { id: 'ACTIVE', label: 'Đang xử lý', count: count('ACTIVE'), quickOnly: true }, { id: 'ALL', label: 'Tất cả', count: count('ALL') },
   ];
   return (
     <div className="space-y-4">
@@ -963,7 +977,7 @@ export function JobsList() {
       </div>
       <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
         <SearchBox value={q} onChange={setQ} placeholder="Tìm tên, số điện thoại, địa chỉ, mã đơn" />
-        <div className="min-w-0 flex-1"><StagePills items={pills} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} /></div>
+        <div className="min-w-0 flex-1"><StagePills items={pills} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} multi={stM} onMulti={(v) => { setStM(v); paged.setPage(1); }} /></div>
       </div>
       <Panel>
         <div className="space-y-2 md:hidden">
@@ -977,7 +991,7 @@ export function JobsList() {
           ))}
         </div>
         <div className="hidden md:block">
-          <Table head={['STT', 'Mã đơn', 'Khách hàng', 'Điện thoại', 'Địa chỉ', 'Hạng mục', 'Phụ trách', 'Hẹn khảo sát', 'Trạng thái', 'Tiến độ', '']} minW={1360} sort={srt.th}>
+          <Table head={['STT', 'Mã đơn', 'Khách hàng', 'Điện thoại', 'Địa chỉ', 'Hạng mục', 'Phụ trách', 'Hẹn khảo sát', 'Trạng thái', 'Tiến độ', '']} minW={1360} sort={srt.th} optional={[4, 9]}>
             {paged.slice.map(({ j, stage, detail }, i) => {
               const late = stage === 'SURVEY' && j.appointmentAt && j.appointmentAt < nowLocal;
               return (

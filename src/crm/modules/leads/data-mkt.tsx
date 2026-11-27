@@ -5,7 +5,7 @@ import { CheckCircle2, Download, FileSpreadsheet, Pencil, Trash2, Upload } from 
 import { removeWithUndo } from '../../app/context';
 import { BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
+import { ChipFilter, FilterBar, stMatch, useInRange } from '../../components/filters';
 import { ImportModal } from '../../components/import-csv';
 import { Chip, Code, EmptyState, Panel, Table, useSort, useSticky } from '../../components/ui';
 import { scoreLead } from '../../lib/business';
@@ -31,6 +31,7 @@ export function DataMktPage({ cfg }: { cfg?: LBlockCfg } = {}) {
   const { leads: allLeads, myLeads: leads, setLeads, customers, notify, presetQuery, canDo, userName, dept, openWin } = useApp();
   const [q, setQ] = useSticky('DataMktPage.q', presetQuery, !!presetQuery);
   const [status, setStatus] = useState<string>('ALL');
+  const [statusM, setStatusM] = useState<LeadStatus[]>([]);
   const [src, setSrc] = useState<'ALL' | Source>('ALL');
   const inR = useInRange();
   const [dp, setDp] = useState('ALL');
@@ -42,7 +43,7 @@ export function DataMktPage({ cfg }: { cfg?: LBlockCfg } = {}) {
   const list = leads.filter((l) => {
     const t = q.trim().toLowerCase();
     const hit = !t || [l.company, l.code, l.taxCode ?? '', l.contact, l.phone].some((v) => v.toLowerCase().includes(t));
-    return hit && (status === 'ALL' || l.status === status) && (src === 'ALL' || l.source === src) && (dp === 'ALL' || l.dept === dp) && inR(leadDate(l));
+    return hit && stMatch(status as LeadStatus | 'ALL', statusM, (s) => l.status === s) && (src === 'ALL' || l.source === src) && (dp === 'ALL' || l.dept === dp) && inR(leadDate(l));
   });
 
   const srt = useSort('DataMkt40b', list, { 1: (l) => l.code, 2: (l) => l.company, 8: (l) => l.boqValue, 9: (l) => l.score ?? scoreLead(l, customers), 10: (l) => l.status });
@@ -95,7 +96,7 @@ export function DataMktPage({ cfg }: { cfg?: LBlockCfg } = {}) {
         q={q} onQ={setQ} placeholder="Tìm MST, tên khách, mã lead, SĐT"
         dept={dp} onDept={setDp} status={status} onStatus={setStatus} extraActive={src !== 'ALL' ? 1 : 0}
         statusOptions={(Object.keys(LEAD_STATUS) as LeadStatus[]).map((s) => ({ value: s, label: LEAD_STATUS[s].label }))}
-        chips={<ChipFilter total={leads.length} value={status as LeadStatus | 'ALL'} onChange={(v) => setStatus(v)} options={(Object.keys(LEAD_STATUS) as LeadStatus[]).map((x) => ({ value: x, label: LEAD_STATUS[x].label, count: leads.filter((l) => l.status === x).length })).filter((o) => o.count > 0)} />}
+        chips={<ChipFilter total={leads.length} value={status as LeadStatus | 'ALL'} onChange={(v) => setStatus(v)} multi={statusM} onMulti={setStatusM} options={(Object.keys(LEAD_STATUS) as LeadStatus[]).map((x) => ({ value: x, label: LEAD_STATUS[x].label, short: LEAD_STATUS[x].short, count: leads.filter((l) => l.status === x).length })).filter((o) => o.count > 0)} />}
         actions={<RowMenu text="Nhập / xuất" icon={FileSpreadsheet} items={[{ label: 'Xuất CSV', icon: Download, onClick: exportCsv }, { label: 'Nhập từ file', icon: Upload, onClick: () => setModal('import'), disabled: !canEdit }]} />}
       >
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={src} onChange={(e) => setSrc(e.target.value as 'ALL' | Source)} aria-label="Lọc nguồn">

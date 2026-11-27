@@ -12,7 +12,7 @@ import { AlertTriangle, Check, CheckCircle2, ChevronDown, Copy, Download, Extern
 import { removeWithUndo } from '../../app/context';
 import { RowMenu } from '../../components/controls';
 import { Chip, Field, MoneyInput, Panel, SideSheet, useSticky } from '../../components/ui';
-import { btnAccent, btnGhost, btnPrimary, btnSm, CAMP_STATUS, cloneContent, cloud, CLOUD_ON, compact, CONTENT_STATUS, CONTENT_TEMPLATES, contentBusy, contentExportItems, countOf, CV_KIND, CV_MAX, dataKb, dayMs, downloadBlob, downloadData, esc, fmtDate, GHOST_PREF, ghostEligible, ghostPrefOff, HS_CLICHES_DEFAULT, IMG_SIZES, inputBase, inputCls, isoDay, maskPii, MKT_CH, MKT_IMG_MAX, MKT_OPEN_EVT, MKT_REVIEW_EVT, openContentReview, SeoSidebar, slugify, ST_BRAND, ST_BRIEF_FIELDS, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stEsc, stFold, stHas, stickyStore, stSectionPrompt, stStr, todayISO, uid, useApp, VARIANT_GROUPS, vAspect, vCfgOf, vImg, vKey, WS_BLOCK_TYPES, WS_CSS, WS_GHOST, WS_MARKS, WS_TONES, wsClamp, wsCleanAi, wsHeadKey, wsId, wsImages, wsInlineMd, wsPara, wsPushVersion, wsSafeHref, wsSecKey, wsSentences, wsText, wsWords } from '../../lib/core';
+import { btnAccent, btnGhost, btnPrimary, btnSm, CAMP_STATUS, cloneContent, cloud, CLOUD_ON, compact, CONTENT_STATUS, CONTENT_TEMPLATES, contentBusy, contentExportItems, countOf, CV_KIND, CV_MAX, dataKb, dayMs, downloadBlob, downloadData, esc, fmtDate, GHOST_PREF, ghostEligible, ghostPrefOff, HS_CLICHES_DEFAULT, IMG_SIZES, inputBase, inputCls, isoDay, maskPii, MKT_CH, MKT_IMG_MAX, MKT_OPEN_EVT, MKT_REVIEW_EVT, openContentReview, SeoSidebar, slugify, ST_BRAND, ST_BRIEF_FIELDS, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stEsc, stFold, stHas, stickyStore, stSectionPrompt, stStr, todayISO, uid, useApp, VARIANT_GROUPS, vAspect, vCfgOf, vImg, vKey, vStamp, WS_BLOCK_TYPES, WS_CSS, WS_GHOST, WS_MARKS, WS_TONES, wsClamp, wsCleanAi, wsHeadKey, wsId, wsImages, wsInlineMd, wsPara, wsPushVersion, wsSafeHref, wsSecKey, wsSentences, wsText, wsWords } from '../../lib/core';
 import type { AiQuotaCfg, AnyRec, Campaign, CampaignStatus, ConfirmState, ContentVariantCfg, ContentVersion, ContentVersionKind, HumanBlock, HumanReport, MenuOption, MktChannel, MktContent, MktImage, MktTask, Module, StArticle, StCompany, StSection, StSettings, StudioApi, User,VariantGroup, VariantKind, WsBlock, WsDiffPart, WsGhost, WsImagePanel, WsMarks, WsProposal, WsSlash, WsSlashItem, WsTone } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
@@ -920,7 +920,7 @@ export function WsImageCard({ panel, api, article, company, logo: logo0, onClose
   const { skus, mktImages } = useApp();
   const [lib, setLib] = useState(false);
   const kw = stStr(article.settings.focusKeyword);
-  const stampMode = vImg(article.settings, 'imgStamp', article.platform);
+  const stampMode = vStamp(article.settings);
   const logo = stampMode === 'name' ? undefined : logo0;
   const refImg = stArr(article.settings[vKey('imgRef')]).map((id) => skus.find((x) => x.sku === id)?.image).find((u) => u?.startsWith('data:'));
   const extra = vText(article.settings, article.platform, 'image');

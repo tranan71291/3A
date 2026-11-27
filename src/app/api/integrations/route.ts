@@ -2,6 +2,7 @@ import { aiStatus } from '../_lib/ai';
 import { envFor, json, supabaseEnv, TENANT_RE } from '../_lib/server';
 import { zaloStatus } from '../_lib/zalo';
 import { imageModel } from '../_lib/image';
+import { taxEnabled } from '../_lib/tax';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,5 +22,7 @@ export async function GET(req: Request) {
     cloud: !!(sb.url && sb.key),
     email: !!(envFor('SMTP_HOST', tenant) && envFor('SMTP_USER', tenant) && envFor('SMTP_PASS', tenant)),
     social: { facebook: !!envFor('FACEBOOK_PAGE_ACCESS_TOKEN', tenant), zalo: zaloStatus(tenant).oa, youtube: true },
+    // v60: tra cứu mã số thuế (nguồn mặc định không cần khóa; TAX_LOOKUP_DISABLED=1 để tắt)
+    tax: taxEnabled(tenant),
   });
 }

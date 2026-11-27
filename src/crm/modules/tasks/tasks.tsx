@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Eye, Pencil, UserPlus, XCircle } from 'lucide-react';
 import { Avatar, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
-import { ChipFilter, FilterBar } from '../../components/filters';
+import { ChipFilter, FilterBar, stMatch } from '../../components/filters';
 import { Sla } from '../../components/sla';
 import { Chip, EmptyState, Field, Modal, Panel, Table, Tabs, useSticky, ViewSwitch } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
@@ -522,6 +522,9 @@ export function TasksModule() {
   useEffect(() => { if (reqOpen) setTab('requests'); }, [reqOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   const [view, setView] = useSticky<'table' | 'board'>('TasksModule.view', 'table');
   const [grp, setGrp] = useSticky<'ALL' | HubGroup>('TasksModule.grp', 'ALL');
+  /** v59: loại yêu cầu chọn nhiều trong phễu (chỉ tab Chờ tôi duyệt có bộ lọc 2 lớp; đổi tab thì bỏ) */
+  const [grpM, setGrpM] = useState<HubGroup[]>([]);
+  const inGrp = (k: ApprovalKind) => stMatch(grp, grpM, (g) => groupOf(k) === g);
   const [who, setWho] = useState('ALL');
   const [prio, setPrio] = useState<'ALL' | 'URGENT' | 'NORMAL'>('ALL');
   const [q, setQ] = useSticky('TasksModule.q', '');
@@ -532,12 +535,12 @@ export function TasksModule() {
   const urgentOf = (x: HubItem) => { const s = slaInfo(x.requestedAt, x.slaMin, now); return s.overdue || s.tight || !!x.flagged; };
   const personMatch = (requesterId?: string, deptCode?: DeptCode) => who === 'ALL' || (who.startsWith('d:') ? deptCode === who.slice(2) || users.find((u) => u.id === requesterId)?.dept === who.slice(2) : requesterId === who);
 
-  const todoList = todo.filter((x) => !busyKeys.includes(x.key) && (grp === 'ALL' || groupOf(x.kind) === grp) && personMatch(x.requesterId, x.deptCode) && (prio === 'ALL' || (prio === 'URGENT') === urgentOf(x)) && (!t || `${x.title} ${x.sub} ${x.reason ?? ''}`.toLowerCase().includes(t)))
+  const todoList = todo.filter((x) => !busyKeys.includes(x.key) && inGrp(x.kind) && personMatch(x.requesterId, x.deptCode) && (prio === 'ALL' || (prio === 'URGENT') === urgentOf(x)) && (!t || `${x.title} ${x.sub} ${x.reason ?? ''}`.toLowerCase().includes(t)))
     .sort((a, b) => Number(urgentOf(b)) - Number(urgentOf(a)) || slaInfo(a.requestedAt, a.slaMin, now).deadline - slaInfo(b.requestedAt, b.slaMin, now).deadline);
-  const mineList = mine.filter((x) => (grp === 'ALL' || groupOf(x.kind) === grp) && (!t || `${x.title} ${x.sub}`.toLowerCase().includes(t)))
+  const mineList = mine.filter((x) => inGrp(x.kind) && (!t || `${x.title} ${x.sub}`.toLowerCase().includes(t)))
     .sort((a, b) => Number(b.status === 'PENDING') - Number(a.status === 'PENDING') || b.requestedAt - a.requestedAt);
   const seeAllHistory = role === 'BOD' || role === 'ACCOUNTANT';
-  const history = approvalLogs.filter((x) => (seeAllHistory || x.deciderId === me.id || x.requesterId === me.id) && (grp === 'ALL' || groupOf(x.kind) === grp) && personMatch(x.requesterId) && (!t || `${x.title} ${x.note ?? ''}`.toLowerCase().includes(t)));
+  const history = approvalLogs.filter((x) => (seeAllHistory || x.deciderId === me.id || x.requesterId === me.id) && inGrp(x.kind) && personMatch(x.requesterId) && (!t || `${x.title} ${x.note ?? ''}`.toLowerCase().includes(t)));
   const histPaged = usePaged(history, 15);
   const todoPaged = usePaged(todoList, 10);
   const minePaged = usePaged(mineList, 10);
@@ -572,7 +575,7 @@ export function TasksModule() {
         { id: 'mine', label: 'Tôi yêu cầu', count: mine.filter((x) => x.status === 'PENDING').length },
         { id: 'history', label: 'Đã xử lý' },
         { id: 'requests', label: 'Đề nghị', count: wfRuns.filter((r) => r.requesterId === me.id && r.status === 'PENDING').length },
-      ]} value={tab} onChange={(v) => { setTab(v); sel.clear(); }}
+      ]} value={tab} onChange={(v) => { setTab(v); sel.clear(); setGrpM([]); }}
         aside={tab === 'todo' ? <button className={cn(sel.ids.length ? btnPrimary : btnGhost, btnSm)} disabled={!sel.ids.length} onClick={bulkApprove} title={sel.ids.length ? `Duyệt ${sel.ids.length} yêu cầu đã chọn` : 'Tích chọn các dòng cần duyệt'}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Duyệt chọn{sel.ids.length ? ` (${sel.ids.length})` : ''}</button> : undefined} />
 
       {tab === 'requests' && <RequestsPanel />}
@@ -581,7 +584,7 @@ export function TasksModule() {
       <FilterBar q={q} onQ={setQ} placeholder="Tìm mã, khách hàng, lý do…" status={grp} onStatus={(v) => setGrp(v as 'ALL' | HubGroup)} statusLabel="Loại yêu cầu"
         statusOptions={(Object.keys(HUB_GROUP) as HubGroup[]).map((g) => ({ value: g, label: HUB_GROUP[g].label }))} extraActive={(who !== 'ALL' ? 1 : 0) + (prio !== 'ALL' ? 1 : 0)}
         actions={tab === 'todo' ? <ViewSwitch value={view} onChange={setView} options={['table', 'board']} /> : undefined}
-        chips={tab === 'todo' ? <ChipFilter value={grp} onChange={(v) => setGrp(v)} total={todo.length} options={counts.filter(([, n]) => n > 0).map(([g, n]) => ({ value: g, label: HUB_GROUP[g].label, count: n, color: HUB_GROUP[g].color }))} /> : undefined}>
+        chips={tab === 'todo' ? <ChipFilter value={grp} onChange={(v) => setGrp(v)} multi={grpM} onMulti={setGrpM} label="Loại yêu cầu" total={todo.length} options={counts.filter(([, n]) => n > 0).map(([g, n]) => ({ value: g, label: HUB_GROUP[g].label, short: HUB_GROUP[g].short, count: n }))} /> : undefined}>
         {tab !== 'mine' && (
           <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto sm:max-w-[200px]')} value={who} onChange={(e) => setWho(e.target.value)} aria-label="Phòng ban / nhân sự">
             <option value="ALL">Phòng ban</option>
@@ -600,7 +603,7 @@ export function TasksModule() {
       {tab === 'todo' && view === 'board' && (
         <div className="-mx-3 overflow-x-auto px-3 pb-2 sm:mx-0 sm:px-0">
           <div className="flex min-w-max gap-3">
-            {(Object.keys(HUB_GROUP) as HubGroup[]).filter((g) => grp === 'ALL' || g === grp).map((g) => {
+            {(Object.keys(HUB_GROUP) as HubGroup[]).filter((g) => stMatch(grp, grpM, (s) => s === g)).map((g) => {
               const items = todoList.filter((x) => groupOf(x.kind) === g);
               return (
                 <section key={g} className="flex w-[300px] shrink-0 flex-col rounded-md border border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--surface)/0.7)]" aria-label={HUB_GROUP[g].label}>
@@ -647,7 +650,7 @@ export function TasksModule() {
 
       {tab === 'todo' && view === 'table' && (
         <Panel>
-          <Table stt={Math.max(0, todoPaged.from - 1)} minW={1000} head={[
+          <Table stt={Math.max(0, todoPaged.from - 1)} minW={1000} optional={[5, 8]} head={[
             <input key="all" type="checkbox" className={selCls} checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" disabled={!todoList.some((x) => x.approve)} />,
             'Nội dung', <span key="m" className="block text-right">Số tiền</span>, 'Loại', 'Người đề nghị', 'Phòng', 'Gửi lúc', 'SLA', 'Lưu ý', <span key="act" className="block text-right">Thao tác</span>,
           ]}>
