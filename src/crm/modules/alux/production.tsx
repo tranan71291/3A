@@ -178,11 +178,11 @@ export function ProductionModule() {
       </div>
       <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
         <SearchBox value={q} onChange={setQ} placeholder="Tìm mã lệnh, khách hàng, địa chỉ" />
-        <div className="min-w-0 flex-1"><StagePills items={[...WO_STAGES.map((s) => ({ id: s as WoStage | 'ALL', label: WO_STAGE[s].label, count: count(s) })), { id: 'ALL', label: 'Tất cả', count: visible.length }]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} /></div>
+        <div className="min-w-0 flex-1"><StagePills items={[...WO_STAGES.map((s) => ({ id: s as WoStage | 'ALL', label: WO_STAGE[s].label, short: WO_STAGE[s].short, count: count(s) })), { id: 'ALL', label: 'Tất cả', count: visible.length }]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} /></div>
       </div>
       <Panel>
         <div>
-          <Table head={['STT', 'Lệnh SX', 'Khách hàng', 'Đội trưởng', 'Hạng mục', <span key="n" className="block text-right">Số mục</span>, 'Ngày nhận', 'Hạn xong', 'Trạng thái', 'Thiết kế', 'Thao tác']} minW={1320}>
+          <Table head={['STT', 'Lệnh SX', 'Khách hàng', 'Đội trưởng', 'Hạng mục', <span key="n" className="block text-right">Số mục</span>, 'Ngày nhận', 'Hạn xong', 'Trạng thái', 'Thiết kế', 'Thao tác']} minW={1320} optional={[5, 6, 9]}>
             {paged.slice.map((w, i) => {
               const j = jobOf(w);
               return (

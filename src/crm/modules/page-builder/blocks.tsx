@@ -6,12 +6,13 @@ import { Fragment, type CSSProperties, type ReactNode, useContext, useState } fr
 import { AlertTriangle, Info, StickyNote, Target } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Code } from '../../components/ui';
-import { btnGhost, btnPrimary, C, compact, inputCls, iso, L_ACT, L_DS, L_ICONSET, L_PER, L_PER_LOW, L_PERIOD, L_TS, L_TW, lAgg, lField, lFill, lFilter, lFmt, lFramed, lKind, LPageC, lPeriodLabel, lToneCls, tipStyle, useApp } from '../../lib/core';
-import type { DashPeriod, DashScope, DateRange, DeptCode, LAgg, LBlock, LBlockCfg, LPageCtx, LRow } from '../../lib/types';
+import { btnGhost, btnPrimary, C, compact, inputCls, iso, L_ACT, L_DS, L_ICONSET, L_PER, L_PER_LOW, L_PERIOD, L_TS, L_TW, lAgg, lField, lFill, lFilter, lFmt, lFramed, lGridOf, lKind, LPageC, lPeriodLabel, lToneCls, tipStyle, useApp } from '../../lib/core';
+import type { DashPeriod, DashScope, DateRange, DeptCode, LAgg, LBlock, LBlockCfg, LGrid, LPageCtx, LRow } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { dashRange, useDashData } from '../dashboard/exec-dashboard';
 import { useOutside } from '../sales/orders';
 import { lBounds, lCol, lOnColor, lSt } from './engine';
+import { LContainer } from './containers';
 
 export function LStat({ c, rows, range }: { c: LBlockCfg; rows: LRow[]; range?: DateRange }) {
   const ctxPer = useContext(LPageC)?.period;
@@ -227,11 +228,14 @@ export function LDivider({ c }: { c: LBlockCfg }) {
 }
 
 /** Khối hiển thị dùng chung trên trang nghiệp vụ */
-export function lCommonNode(b: LBlock): ReactNode {
+export function lCommonNode(b: LBlock, grid?: LGrid): ReactNode {
   if (b.type === 'K-Text') return <LTextBlock c={b.config} st={false} />;
   if (b.type === 'K-Button' || b.type === 'K-Icons') return <LButtons c={b.config} />;
   if (b.type === 'K-Divider') return <LDivider c={b.config} />;
-  if (b.type === 'K-Spacer') return <div style={{ height: Math.max(1, b.pos.lg.h) * 20 }} aria-hidden />;
+  // v57b khung chứa (trang nghiệp vụ: Khung tự do cao đúng khổ thiết kế)
+  if (b.type === 'K-FlexContainer' || b.type === 'K-FreeformBox') return <LContainer b={b} />;
+  // v57a lưới 8px: khoảng trống cao đúng số hàng 8px (trừ khoảng cách khối); cổ điển giữ 20px / hàng như trước
+  if (b.type === 'K-Spacer') return <div style={{ height: grid?.row === 8 ? Math.max(4, b.pos.lg.h * 8 - lGridOf(grid).gap) : Math.max(1, b.pos.lg.h) * 20 }} aria-hidden data-spacer />;
   return null;
 }
 
@@ -287,6 +291,7 @@ export function LBlockBody({ b, rows, range, narrow }: { b: LBlock; rows: LRow[]
   if (b.type === 'K-Chart-Line') return <LLine c={b.config} rows={rows} />;
   if (b.type === 'K-Text') return <LText c={b.config} />;
   if (b.type === 'K-Icons' || b.type === 'K-Button') return <LButtons c={b.config} />;
+  if (b.type === 'K-FlexContainer' || b.type === 'K-FreeformBox') return <LContainer b={b} fill />;
   if (b.type === 'K-Filter') return <LFilter c={b.config} />;
   if (b.type === 'K-Tabs') return <LTabsBar tabs={b.config.tabs ?? []} cur={b.config.tabs?.[0]?.id ?? ''} onChange={() => {}} kind={b.config.tabStyle} />;
   if (b.type === 'K-Target') return <LTarget />;

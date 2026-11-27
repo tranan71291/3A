@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowDown, ArrowUp, Banknote, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Columns3, Copy, Download, Gauge, GripVertical, History, ImagePlus, Inbox, List, Lock, Package, Plus, RefreshCw, Search, Sparkles, Trash2, TrendingUp, Upload, Wallet, X } from 'lucide-react';
 import { ConfirmDialog } from '../../components/crud';
 import { Chip, EmptyState, Field, Panel, SideSheet, StatCard, Table, Tabs, useSticky } from '../../components/ui';
-import { AI_NAME, aiErrText, AUD_FIELDS, AUD_OPS, AUTO_CH, AUTO_TRIGGER, BANNER_PRESETS, BANNER_SIZE, bizMode, blocksToHtml, blocksToMarkdown, boqTotal, btnAccent, btnGhost, btnPrimary, btnSm, C, CAMP_STATUS, compact, CONTENT_STATUS, dayMs, downloadBlob, fillVars, fmtDate, fold, inputBase, inputCls, isoDay, JOB_LABEL, kpiGrid, LEAD_STATUS, leadAt, MKT_CH, MKT_OPEN_EVT, MKT_TABS, rowCls, shrinkImage, SOURCE_LABEL, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stFold, stHas, stickyStore, stOutlinePrompt, stSectionPrompt, stStr, STUDIO_STEPS, studioSupports, subjectOf, TASK_STATUS, tdCls, tdFirst, tdLast, uid, useApp, vAspect, vCfgOf, vImg, vKey, WRITER, WRITER_TONES } from '../../lib/core';
+import { AI_NAME, aiErrText, AUD_FIELDS, AUD_OPS, AUTO_CH, AUTO_TRIGGER, BANNER_PRESETS, BANNER_SIZE, bizMode, blocksToHtml, blocksToMarkdown, boqTotal, btnAccent, btnGhost, btnPrimary, btnSm, C, CAMP_STATUS, compact, CONTENT_STATUS, dayMs, downloadBlob, fillVars, fmtDate, fold, inputBase, inputCls, isoDay, JOB_LABEL, kpiGrid, LEAD_STATUS, leadAt, MKT_CH, MKT_OPEN_EVT, MKT_TABS, rowCls, shrinkImage, SOURCE_LABEL, ST_OF_CHANNEL, ST_VARIANT_CACHE, stArr, stCompanyOf, stFold, stHas, stickyStore, stOutlinePrompt, stSectionPrompt, stStr, STUDIO_STEPS, studioSupports, subjectOf, TASK_STATUS, tdCls, tdFirst, tdLast, uid, useApp, vAspect, vCfgOf, vImg, vKey, vStamp, WRITER, WRITER_TONES } from '../../lib/core';
 import { downloadCsv, xlsxBlob } from '../../lib/csv';
 import type { AiJob, AppCtx, AudBase, Audience, AudOp, AudRule, AutoChannel, Automation, AutoRun, AutoStep, AutoSubject, AutoTrigger, BannerSize, BannerSpec, CalView, Campaign, CompanyInfo, ConfirmState, ContentBlock, ContentStatus, Customer, ImgAspect, Job, Lead, MktChannel, MktContent, MktContentType, MktTab, MktTask, StArticle, StSettings, TaskStatus, TitleReport, WriterPreset } from '../../lib/types';
 import { cn } from '../../lib/utils';
@@ -15,7 +16,7 @@ import { applyWatermark, getPlatform, stClip, StudioWorkspace } from './content-
 import { AutomationHub, CampaignRowMenu, CampaignSheet, ContentRowMenu, ImageStudioTab, TaskRowMenu, vText } from './content-workspace';
 import { contentTaskCtx, TaskSheet } from './content-task';
 import { Switch } from '../platform/console';
-import { useContentTaskSteps, useEntityCf, useNameOf } from '../page-builder';
+import { attachDataUrl, useContentTaskSteps, useEntityCf, useNameOf } from '../page-builder';
 
 /** Kết quả chiến dịch: lead theo kênh nguồn trong thời gian chạy (+30 ngày), doanh thu từ lead đã chốt / đơn đã ký */
 export function campaignStats(c: Campaign, leads: Lead[], jobs: Job[]) {
@@ -200,13 +201,15 @@ export function MarketingHubPage() {
   const stats = yc.map((c) => campaignStats(c, myLeads, jobs));
   const spent = yc.reduce((s, c) => s + c.spent, 0);
   const rev = stats.reduce((s, x) => s + x.revenue, 0);
+  const [tabSlot, setTabSlot] = useState<HTMLDivElement | null>(null);
   const tabs: { id: MktTab; label: string }[] = [
     { id: 'calendar', label: 'Kế hoạch' }, { id: 'content', label: 'Nội dung' }, { id: 'image', label: 'Hình ảnh' },
     { id: 'roi', label: 'Ngân sách' }, { id: 'automation', label: 'Tự động' },
   ];
   return (
     <div className="space-y-4">
-      <Tabs tabs={tabs} value={tab} onChange={setTab} />
+      {/* v56.3 ô bên phải hàng tab: chọn tháng + chế độ xem của tab Kế hoạch (CampaignCalendar vẽ vào đây) */}
+      <Tabs tabs={tabs} value={tab} onChange={setTab} aside={tab === 'calendar' ? <div ref={setTabSlot} className="flex items-center" data-tab-slot /> : undefined} />
       {tab === 'roi' && (
         <div className={kpiGrid('lg:grid-cols-4')}>
           <StatCard label={`Ngân sách ${year}`} value={compact(yc.reduce((s, c) => s + c.budget, 0))} sub={`${yc.length} chiến dịch, ${yc.filter((c) => c.status === 'RUNNING').length} đang chạy`} icon={Wallet} color={C.blue} />
@@ -215,7 +218,7 @@ export function MarketingHubPage() {
           <StatCard label="ROI marketing" value={spent ? `${Math.round(((rev - spent) / spent) * 100)}%` : '—'} sub={`Doanh thu ghi nhận ${compact(rev)}`} icon={TrendingUp} color={rev >= spent ? C.teal : C.red} />
         </div>
       )}
-      {tab === 'calendar' && <CampaignCalendar />}
+      {tab === 'calendar' && <CampaignCalendar periodSlot={tabSlot} />}
       {tab === 'roi' && <CampaignRoi />}
       {tab === 'content' && <ContentStudio />}
       {tab === 'image' && <ImageStudioTab />}
@@ -403,8 +406,11 @@ export function AiContentWorker() {
           const targets = blocks.filter((b) => b.level === 2 && !b.image).slice(0, cnt === 'hero' ? 1 : cnt === 'max3' ? 3 : 6);
           const imgExtra = [job.imagePrompt ?? '', vText(settings, p?.id, 'image'), job.aiCtx?.image ?? ''].filter(Boolean).join('. ');
           const mode = stStr(settings.imgMode) === 'detail' ? 'detail' : 'fast';
-          const stamp = vImg(settings, 'imgStamp', p?.id);
-          const ref = stArr(settings[vKey('imgRef')]).map((id) => skuRef.current.find((x) => x.sku === id)?.image).find((u) => u?.startsWith('data:'));
+          const stamp = vStamp(settings);
+          // v56.3 ảnh tham chiếu tải lên của nhiệm vụ (kho riêng tư) ưu tiên trước ảnh sản phẩm
+          let ref: string | undefined;
+          for (const r of job.refImages ?? []) { ref = await attachDataUrl(r); if (ref) break; }
+          ref ??= stArr(settings[vKey('imgRef')]).map((id) => skuRef.current.find((x) => x.sku === id)?.image).find((u) => u?.startsWith('data:'));
           for (const [i, t] of targets.entries()) {
             step(`Đang tạo ảnh ${i + 1}/${targets.length}: ${t.heading}`);
             const im0 = await s.image(t, job.title, imgExtra, vAspect(settings, p?.id, p?.image.aspect ?? 'landscape'), ref, mode);
@@ -741,14 +747,14 @@ export function useAssignToAi() {
     const ctx = contentTaskCtx(t, { skus, defs: steps.defs, labelOf: steps.labelOf, prodCf, nameOf });
     const aiCtx = ctx.text || ctx.image ? ctx : undefined;
     // Giao lại: bỏ dàn ý / nội dung cũ để AI soạn theo thông số mới (bản cũ vẫn còn trong Lịch sử phiên bản nếu đã lưu mốc)
-    if (ex) setContents((p) => p.map((c) => (c.id === id ? { ...c, ...seo, title: t.title, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, aiCtx, blocks: [], doc: undefined, sapo: '', status: c.status === 'PUBLISHED' ? c.status : 'DRAFT', reviewNote: undefined, aiJob: job } : c)));
-    else setContents((p) => [{ id, title: t.title, type: t.contentType, channel: t.channel, campaignId: t.campaignId, taskId: t.id, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, aiCtx, body: '', status: 'DRAFT', ownerId: t.ownerId ?? me?.id, updatedAt: Date.now(), aiJob: job, ...seo }, ...p]);
+    if (ex) setContents((p) => p.map((c) => (c.id === id ? { ...c, ...seo, title: t.title, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, aiCtx, refImages: t.refImages, blocks: [], doc: undefined, sapo: '', status: c.status === 'PUBLISHED' ? c.status : 'DRAFT', reviewNote: undefined, aiJob: job } : c)));
+    else setContents((p) => [{ id, title: t.title, type: t.contentType, channel: t.channel, campaignId: t.campaignId, taskId: t.id, textPrompt: t.textPrompt, imagePrompt: t.imagePrompt, aiCtx, refImages: t.refImages, body: '', status: 'DRAFT', ownerId: t.ownerId ?? me?.id, updatedAt: Date.now(), aiJob: job, ...seo }, ...p]);
     setMktTasks((p) => p.map((x) => (x.id === t.id ? { ...x, contentId: id } : x)));
     notify(`Đã giao “${t.title}” cho AI. Theo dõi trạng thái trên lịch, kết quả ở Content Studio.`, 'teal');
   };
 }
 
-export function CampaignCalendar() {
+export function CampaignCalendar({ periodSlot }: { periodSlot?: HTMLElement | null }) {
   const { campaigns, mktTasks, contents, canDo, now, userName, me } = useApp();
   const assign = useAssignToAi();
   const [ym, setYm] = useSticky('Mkt.ym', isoDay(now ?? Date.now()).slice(0, 7));
@@ -779,26 +785,29 @@ export function CampaignCalendar() {
       ...rows.map(({ t, st }, i) => [i + 1, fmtDate(t.date), t.title, campaigns.find((c) => c.id === t.campaignId)?.name ?? '', MKT_CH[t.channel].label, WRITER[t.contentType].label, t.textPrompt, t.imagePrompt, userName(t.ownerId), TASK_STATUS[st].label])];
     downloadBlob(`KeHoach_NoiDung_${ym}.xlsx`, xlsxBlob([{ name: `Ke hoach ${ym}`, rows: data, widths: [6, 12, 40, 26, 14, 18, 44, 40, 18, 18] }]));
   };
+  // v56.3 chọn tháng + chế độ xem nằm bên phải hàng tab (Kế hoạch / Nội dung…), vẽ qua portal vào ô `aside` của hàng tab
+  const period = (
+    <div className="flex flex-wrap items-center gap-2" data-period-bar>
+      <button className={cn(btnGhost, 'h-8 w-8 p-0')} onClick={() => shift(-1)} aria-label="Tháng trước"><ChevronLeft className="h-4 w-4" /></button>
+      <h2 className="min-w-[110px] text-center text-[15px] font-medium tabular-nums">Tháng {m}/{y}</h2>
+      <button className={cn(btnGhost, 'h-8 w-8 p-0')} onClick={() => shift(1)} aria-label="Tháng sau"><ChevronRight className="h-4 w-4" /></button>
+      <button className={cn(btnGhost, btnSm)} onClick={() => setYm(today.slice(0, 7))}>Hôm nay</button>
+      <div className="flex rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--sunken))] p-0.5" role="radiogroup" aria-label="Chế độ xem">
+        {([['calendar', 'Lịch tháng', CalendarDays], ['list', 'Danh sách', List], ['board', 'Bảng', Columns3]] as const).map(([v, l, I]) => <button key={v} role="radio" aria-checked={view === v} onClick={() => setView(v)} className={cn('flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium', view === v ? 'bg-[rgb(var(--surface))] text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))]')}><I className="h-3.5 w-3.5" aria-hidden />{l}</button>)}
+      </div>
+    </div>
+  );
   return (
     <section className="glass-card rounded-xl">
-      <div className="flex flex-wrap items-center gap-2 border-b border-[rgb(var(--line))] px-4 py-2.5">
-        <button className={cn(btnGhost, 'h-8 w-8 p-0')} onClick={() => shift(-1)} aria-label="Tháng trước"><ChevronLeft className="h-4 w-4" /></button>
-        <h2 className="min-w-[110px] text-center text-[15px] font-medium">Tháng {m}/{y}</h2>
-        <button className={cn(btnGhost, 'h-8 w-8 p-0')} onClick={() => shift(1)} aria-label="Tháng sau"><ChevronRight className="h-4 w-4" /></button>
-        <button className={cn(btnGhost, btnSm)} onClick={() => setYm(today.slice(0, 7))}>Hôm nay</button>
-        <div className="flex rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--sunken))] p-0.5" role="radiogroup" aria-label="Chế độ xem">
-          {([['calendar', 'Lịch tháng', CalendarDays], ['list', 'Danh sách', List], ['board', 'Bảng', Columns3]] as const).map(([v, l, I]) => <button key={v} role="radio" aria-checked={view === v} onClick={() => setView(v)} className={cn('flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium', view === v ? 'bg-[rgb(var(--surface))] text-[rgb(var(--fg))] shadow-sm' : 'text-[rgb(var(--muted))]')}><I className="h-3.5 w-3.5" aria-hidden />{l}</button>)}
-        </div>
+      {periodSlot ? createPortal(period, periodSlot) : <div className="border-b border-[rgb(var(--line))] px-4 py-2.5">{period}</div>}
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-[rgb(var(--line))] px-4 py-2.5 text-[13px]">
+        <button onClick={() => setStF('ALL')} className={cn('flex h-7 items-center gap-1.5 rounded-lg border px-2.5', stF === 'ALL' ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium shadow-sm' : 'border-transparent text-[rgb(var(--fg2))]')}>Tất cả<span className="font-mono text-[11.5px] text-[rgb(var(--muted))]">{monthTasks.length}</span></button>
+        {counts.map(([s, n]) => <button key={s} onClick={() => setStF(s)} className={cn('flex h-7 items-center gap-1.5 rounded-lg border px-2.5', stF === s ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium shadow-sm' : 'border-transparent text-[rgb(var(--fg2))]')}><span className="h-1.5 w-1.5 rounded-full" style={{ background: TASK_STATUS[s].color }} aria-hidden />{TASK_STATUS[s].label}<span className="font-mono text-[11.5px] text-[rgb(var(--muted))]">{n}</span></button>)}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <button className={cn(btnGhost, btnSm)} onClick={exportXlsx} disabled={!rows.length} title={`Xuất ${rows.length} nhiệm vụ tháng ${m}/${y}`}><Download className="h-3.5 w-3.5" aria-hidden />Xuất Excel</button>
           {canEdit && <button className={cn(btnGhost, btnSm)} onClick={() => setEdit('new')}><Plus className="h-3.5 w-3.5" aria-hidden />Chiến dịch</button>}
           {canEdit && <button className={cn(btnPrimary, btnSm)} onClick={() => setTask(neu(today.startsWith(ym) ? today : `${ym}-01`))}><Plus className="h-3.5 w-3.5" aria-hidden />Nhiệm vụ</button>}
         </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-[rgb(var(--line))] px-4 py-2 text-[13px]">
-        <button onClick={() => setStF('ALL')} className={cn('flex h-7 items-center gap-1.5 rounded-lg border px-2.5', stF === 'ALL' ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium shadow-sm' : 'border-transparent text-[rgb(var(--fg2))]')}>Tất cả<span className="font-mono text-[11.5px] text-[rgb(var(--muted))]">{monthTasks.length}</span></button>
-        {counts.map(([s, n]) => <button key={s} onClick={() => setStF(s)} className={cn('flex h-7 items-center gap-1.5 rounded-lg border px-2.5', stF === s ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium shadow-sm' : 'border-transparent text-[rgb(var(--fg2))]')}><span className="h-1.5 w-1.5 rounded-full" style={{ background: TASK_STATUS[s].color }} aria-hidden />{TASK_STATUS[s].label}<span className="font-mono text-[11.5px] text-[rgb(var(--muted))]">{n}</span></button>)}
-        <span className="ml-auto text-[rgb(var(--muted))]">{view === 'calendar' ? 'Bấm vào một ngày để thêm nhiệm vụ; thanh mảnh phía trên là chiến dịch' : 'Trạng thái tự cập nhật theo tiến độ AI và Content Studio'}</span>
       </div>
 
       {view === 'calendar' && (
@@ -860,6 +869,7 @@ export function CampaignCalendar() {
           ); })}
         </div>
       )}
+      <p className="border-t border-[rgb(var(--line))] px-4 py-2 text-[12px] text-[rgb(var(--muted))]">{view === 'calendar' ? 'Bấm vào một ngày để thêm nhiệm vụ; thanh mảnh phía trên là chiến dịch' : 'Trạng thái tự cập nhật theo tiến độ AI và Content Studio'}</p>
       {edit && <CampaignSheet c={edit === 'new' ? null : edit} onClose={() => setEdit(null)} />}
       {task && <TaskSheet t={task} onClose={() => setTask(null)} />}
       {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}

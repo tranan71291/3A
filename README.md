@@ -1,4 +1,333 @@
-# 3A CRM v56.2 (Nhiệm vụ nội dung 3 bước, nối với 3A Studio — cùng nhánh v56)
+# 3A CRM v60 (Tạo đơn hàng + Chi tiết đơn hàng bố cục mới, tra cứu mã số thuế — gồm cả v59, v58, v57, nhánh v60)
+
+## Cập nhật v60 — Tạo đơn hàng, Chi tiết đơn hàng, tra cứu mã số thuế (27/11)
+
+Không có SQL mới. Có **biến môi trường mới (không bắt buộc)** cho tra cứu mã số thuế, xem mục 4. Không đổi định khoản, luồng duyệt, quy tắc không tự duyệt. Ảnh chạy thật trong `anh-v60/`.
+
+### 1. Tạo đơn hàng (theo ảnh đã duyệt, bỏ tiêu đề "Tạo đơn hàng")
+- **Dải đầu trang:** chỉ còn đường dẫn `Quản lý đơn hàng \ Tạo đơn hàng` (theo từ điển ngành `useTerminology()`), nút **Quay lại** và nút chính **Lưu đơn / Lưu & gửi duyệt** (phím F9). Bỏ tiêu đề lớn và bỏ dải "Việc tiếp theo".
+- **Hai cột:**
+  - **Thông tin khách hàng:** tìm khách (tên, mã, SĐT, MST), tên, mã số thuế (chip "Khớp" khi trùng dữ liệu thuế), điện thoại, email nhận hóa đơn, người liên hệ, địa chỉ; **Nguồn chứng từ** (số PO / hợp đồng); tích **Yêu cầu xuất hóa đơn thuế**. Khách lẻ nay ghi được mã số thuế.
+  - **Thông tin đơn hàng:** mã đơn, ngày đặt hàng, **người thực hiện**, phòng ban, **kho xuất**, nguồn đơn hàng, **tài liệu liên quan** (chọn tệp trước khi lưu, tự tải lên kho tệp riêng tư khi đơn đã có mã; lỗi tải tệp không chặn lưu đơn), công nợ hiện tại của khách.
+- **Bảng Sản phẩm** toàn chiều ngang. **VAT và chiết khấu vẫn theo từng dòng** như cũ.
+- **Thông tin giao hàng:** Tại quầy / Giao tận nơi / Chành xe, người nhận, điện thoại, ngày giao dự kiến, địa chỉ giao, ghi chú cho kho.
+- **Khung Thông tin thanh toán:** tổng tiền hàng, phương thức thanh toán, số ngày công nợ, chiết khấu (% và số tiền, chỉ đọc), **phí vận chuyển (ô nhập duy nhất)**, thuế VAT (mức + số tiền, chỉ đọc), **Tổng cộng**, dòng báo cần duyệt / tự duyệt.
+- Form sửa đơn dùng cùng bố cục (dải đầu có mã đơn + "Sửa xong phải duyệt lại").
+
+### 2. Chi tiết đơn hàng (áp dụng mọi trạng thái: chờ duyệt, đã duyệt, đang giao, đã giao, hoàn tất, đã hủy)
+- **Dải đầu:** `Mã đơn · Trạng thái`, nút Hủy đơn, **Gửi email**, Thanh toán, **In ▾** (In phiếu bán hàng, Tải Excel), **Từ chối** (mở bảng trượt Duyệt đơn, con trỏ đặt sẵn ở ô lý do), ⋯ và một nút chính theo bước hiện tại.
+- **Khối phiếu "ĐƠN HÀNG BÁN · mã"** (viết hoa): bảng kẻ ô, **nhãn in đậm**, mỗi ô một trường (khách hàng, MST + "Khớp dữ liệu thuế", người thực hiện, phòng ban, địa chỉ, ngày đặt, điện thoại, phương thức thanh toán, email, kho xuất, người nhận, SĐT người nhận, địa chỉ giao, hình thức giao, chứng từ, nguồn, mã đơn, số hóa đơn).
+- **Bảng hàng hóa:** gọn trong 1440px; cột Đã xuất / Trả lại / Còn lại chỉ hiện khi đơn đã có phiếu kho (Trả lại chỉ khi có hàng trả). Dưới bảng là các dòng tổng: tiền hàng, chiết khấu, phí vận chuyển, thuế VAT, hàng trả lại, **Tổng cộng / Thực tế phải thu**.
+- **Điều khoản đơn hàng**, **Các thông tin bổ trợ**, **Ghi chú & hoạt động** (ô soạn, Ctrl+Enter để gửi).
+- **Cột phải:** nút nhanh **Thông tin xuất hàng** (bảng trượt chỉ xem) và **Yêu cầu hóa đơn**; **Quy trình xử lý đơn hàng** theo từng bước (ngày, người làm, người có quyền duyệt bước đang chờ, người duyệt phiếu xuất kho); **Người liên quan**; **Tài liệu liên quan**; **Thanh toán** (bảng tiền + **Lịch sử thanh toán**); Lãi gộp; Công nợ.
+- **Gửi email phiếu bán hàng** (bảng trượt): máy chủ đã cấu hình SMTP thì gửi kèm `MÃ-ĐƠN.pdf` và ghi nhật ký đơn; chưa cấu hình thì mở ứng dụng email trên máy (mailto) và ghi nhật ký "chưa xác nhận đã gửi".
+- **3A Studio:** bố cục mặc định mới của trang chi tiết đơn là 9 / 3 cột. Doanh nghiệp đã có bố cục phát hành từ 3A Studio vẫn hiển thị đúng bố cục đó (thứ tự trường, độ rộng, nhãn đổi tên giữ nguyên). Màn xem trước trong Studio dùng chung component với màn vận hành. Khối Chi tiết bản ghi có thêm các trường gốc mới (MST, địa chỉ, điện thoại, email, người nhận, địa chỉ giao, hình thức giao, ngày đặt, phòng ban, phương thức thanh toán).
+
+### 3. Tra cứu mã số thuế
+- **Định dạng chấp nhận:** tổ chức 10 số, chi nhánh / đơn vị phụ thuộc 10-3 số, **cá nhân, hộ kinh doanh dùng số định danh 12 số** (áp dụng ở khách hàng, lead, thông tin công ty, báo giá, yêu cầu hóa đơn).
+- **Tạo đơn:** gõ một MST chưa có trong danh bạ thì tự tra (chờ 0,45 giây sau phím cuối) và hiện kết quả ngay trong danh sách gợi ý, với 2 lựa chọn **Chỉ điền vào đơn** hoặc **Tạo khách & dùng cho đơn**. Chọn khách đã có MST thì tự tra lại khi chưa tra hoặc lần tra gần nhất đã quá 30 ngày; tên / địa chỉ khác dữ liệu thuế thì báo lệch, có nút **Dùng tên này / Dùng địa chỉ thuế** (chỉ người có quyền sửa khách mới ghi vào hồ sơ khách; người không có quyền chỉ dùng cho đơn).
+- **Form khách hàng:** nút Tra cứu cạnh ô MST.
+- **Yêu cầu xuất hóa đơn:** chọn loại người mua **Tổ chức / Hộ KD, cá nhân / Không có MST**, ô MST đổi theo loại (tổ chức không nhận 12 số), có nút Tra cứu.
+- Kết quả tra **chỉ là gợi ý**: người dùng bấm mới ghi. Khi ghi, hồ sơ khách lưu thêm `taxInfo` (tên, địa chỉ, tình trạng, nguồn, thời điểm tra) để lần sau không tra lại.
+- Luôn có liên kết mở **trang tra cứu của Cục Thuế** (`tracuunnt.gdt.gov.vn`) để tự đối chiếu. Trang này có mã xác nhận nên phần mềm không gọi tự động được.
+
+### 4. Máy chủ: `POST /api/tax/lookup` (mới) — biến môi trường (không bắt buộc)
+- Bắt buộc phiên đăng nhập là thành viên doanh nghiệp (`authorize` bằng access token của người dùng, không dùng service_role); giới hạn số lần tra / người / phút; khóa nguồn dữ liệu chỉ nằm trên máy chủ.
+- Mặc định dùng API tra cứu doanh nghiệp công khai của **VietQR** (`https://api.vietqr.io/v2/business/{code}`), không cần khóa. Đây là nguồn bên thứ ba, không phải cổng của Cục Thuế; số định danh cá nhân 12 số thường không có trong nguồn này (phần mềm báo "Không tìm thấy" và gợi ý mở trang Cục Thuế).
+- Đổi nguồn (VD cổng tra cứu của nhà cung cấp hóa đơn điện tử) bằng biến trong `env.local.example`; thêm hậu tố `__<MÃ_DOANH_NGHIỆP>` để mỗi doanh nghiệp dùng nguồn riêng:
+
+  | Biến | Ý nghĩa |
+  |---|---|
+  | `TAX_LOOKUP_URL` | mẫu địa chỉ có `{code}`, chỉ nhận https |
+  | `TAX_LOOKUP_KEY` | gửi ở header `x-api-key` |
+  | `TAX_LOOKUP_CLIENT_ID` | gửi ở header `x-client-id` |
+  | `TAX_LOOKUP_RATE_PER_MIN` | số lần tra / người / phút (mặc định 20) |
+  | `TAX_LOOKUP_DISABLED=1` | tắt tra cứu |
+- `/api/integrations` trả thêm `tax: true/false` để giao diện biết có tự tra hay không.
+
+### 5. Sửa lỗi phát hiện khi rà soát
+- Gõ phí vận chuyển rồi đổi lại "Tại quầy": phí không còn bị cộng vào tổng đơn (lỗi có từ trước).
+- Điện thoại: danh sách đơn và bảng sản phẩm form tạo đơn làm trang tràn ngang do nhãn ẩn ở cột cuối thoát khỏi khung cuộn (lỗi có từ trước). Bảng tồn kho trong chi tiết đơn nay cuộn trong khung.
+- Ô MST trên form khách hàng giữ đúng nhãn "Mã số thuế *" cho trình đọc màn hình; ô Phí vận chuyển có nhãn.
+- Yêu cầu xuất hóa đơn: dòng "Lấy từ hồ sơ khách hàng" chỉ hiện khi ô còn đúng giá trị ban đầu; người mua khác khách đặt thì không ghi kết quả tra của người mua vào hồ sơ khách.
+- Gửi email bằng ứng dụng trên máy (chưa có SMTP) nay ghi vào nhật ký đơn.
+- **Còn để ngỏ (có từ trước v60):** phí vận chuyển chưa được đưa vào yêu cầu xuất hóa đơn, nên tổng yêu cầu hóa đơn thấp hơn tổng đơn đúng bằng phí vận chuyển. Chưa sửa ở v60 vì đụng định khoản doanh thu / thuế; cần thống nhất cách xuất trước.
+
+### 6. Tệp thay đổi
+- Mới: `src/crm/lib/taxcode.ts`, `src/crm/components/kit/tax-lookup.tsx`, `src/app/api/_lib/tax.ts`, `src/app/api/tax/lookup/route.ts`.
+- Sửa: `modules/sales/orders.tsx` (form tạo / sửa đơn, chi tiết đơn, yêu cầu hóa đơn, gửi email), `modules/page-builder/{fields,views,sample}.tsx`, `lib/core.tsx` (`MST_RE`, `lStarterSale`, danh sách trường gốc), `lib/types.ts` (`Customer.taxInfo`, `CustomerFormOpts`), `app/App.tsx`, `modules/customers/customer-360.tsx`, `modules/leads/lead-form.tsx`, `modules/settings/company.tsx`, `modules/sales/quote.tsx`, `components/ui.tsx` (`MoneyInput` nhận `label`), `components/kit/index.ts`, `src/app/api/integrations/route.ts`, `env.local.example`.
+
+
+## Cập nhật v59 — Lọc trạng thái 2 lớp toàn CRM + Lô C: phân hệ nghiệp vụ (27/11)
+
+Không có SQL mới, không có biến môi trường mới, không đổi dữ liệu hay logic nghiệp vụ. Ảnh trước / sau trong `anh-v59/lo-c/`.
+
+### 1. Lọc trạng thái 2 lớp (dùng chung: `components/kit/status-filter.tsx`)
+- **Thanh lọc nhanh:** "Tất cả" luôn đứng đầu bên trái + tối đa 5 trạng thái chính, nút bo tròn, **không còn chấm màu**, có số đếm.
+  - **Desktop:** trạng thái thừa gom vào **"Thêm ▾"**. Khi chọn một mục trong đó, nút đổi thành tên mục đang chọn. Hàng công cụ hẹp (nhiều nút thao tác) thì nút chính cuối tự chuyển vào "Thêm" chứ không bị cắt. Có thẻ đang lọc thì cũng nhường chỗ để thanh công cụ giữ 1 dòng.
+  - **Mobile:** hiện đủ trạng thái, cuộn ngang.
+- **Phễu lọc:** danh sách **đủ trạng thái, chọn nhiều** (ô tích). Chọn trong phễu thì **thẻ tên trạng thái hiện ra thanh công cụ kèm ✕** để bỏ nhanh; từ 3 trạng thái trở lên gộp 1 thẻ "3 trạng thái". Số trên nút phễu tính cả trạng thái đã tích.
+- Chọn nhanh và chọn trong phễu loại trừ nhau: chọn bên này thì bỏ bên kia. Phễu tích sẵn trạng thái đang chọn nhanh.
+- **Tên dài rút gọn** trên nút / thẻ (tên đầy đủ vẫn ở phễu, Thêm ▾ và khi rê chuột), khai báo `short` ngay trong từ điển trạng thái:
+
+  | Tên đầy đủ | Tên rút gọn |
+  |---|---|
+  | Chưa thanh toán | Chưa thu |
+  | Đã thanh toán | Đã thu |
+  | Công tác & giải trình công | Công tác |
+  | Chi & claim quỹ MDF | Quỹ MDF |
+  | Giá & chiết khấu | Giá & CK |
+  | Thu tiền & nộp quỹ | Thu tiền |
+  | Nội dung marketing | Marketing |
+  | Kho, đơn bán & xưởng | Vận hành |
+  | Khảo sát / Nghiệm thu công trình | Khảo sát / NT |
+  | Đi công tác ngoại tỉnh / Hãng | Công tác |
+  | Nghỉ việc riêng / Đi muộn có lý do | Nghỉ / đi muộn |
+  | Chờ Sales tiếp nhận | Chờ tiếp nhận |
+  | Khảo sát & báo giá | Khảo sát |
+  | Đã nghiệm thu, chờ thu tiền | Chờ thu tiền |
+  | Hoàn tất, bảo hành | Bảo hành |
+  | Quy chế & Chính sách chung | Quy chế |
+  | Chưa đủ điều kiện | Chưa đủ ĐK |
+- **Áp dụng:**
+  - Có phễu sẵn, nay thêm chọn nhiều: Công việc (9 loại yêu cầu), Lịch công tác, Lead (Phân lead, Data MKT), Dự án, Khách hàng, MDF, Tài liệu.
+  - **Bán hàng** VASSH và Lệnh SX ALUX: hàng tab gạch chân đổi thành thanh lọc nhanh. Phễu "Bộ lọc" có thêm mục "Trạng thái đơn" (chọn nhiều, áp dụng cùng nút Tìm kiếm). Tùy chọn thứ tự / ẩn tab trạng thái của 3A Studio vẫn giữ.
+  - **ALUX:** Đơn hàng (7 trạng thái + lối tắt "Đang xử lý", có phễu riêng), Sản xuất, Lắp đặt, Quyết toán hoa hồng.
+  - **Khác:** Kế toán (Yêu cầu xuất hóa đơn, Đối chiếu đơn hàng), Công nợ, Danh bạ, Kho.
+  - Ô chọn trạng thái trùng trong phễu được bỏ.
+  - Ô chọn để trần trong phễu được thêm nhãn và giãn đủ khung.
+  - Lịch công tác bỏ ô "Nhân sự" bị lặp ở hàng công cụ; ô này vẫn còn trong phễu.
+- Console › Bộ giao diện có mục mẫu "StatusBar — lọc trạng thái 2 lớp".
+
+### 2. Lô C — phân hệ nghiệp vụ VASSH + ALUX
+- **Thanh tiến trình chung (WorkflowStepper):**
+  - **Chi tiết đơn bán:** "Quy trình xử lý" và "Quy trình duyệt" dùng bản dọc. Bước song song (Hóa đơn thuế, Thanh toán) có vòng nét đứt. Đơn **không được duyệt** thì bước Duyệt đơn hiện **"vướng"** (đỏ).
+  - **Đơn hàng ALUX:** thanh tiến độ 6 bước dùng bản ngang. Báo giá cuối chưa được duyệt giá (lãi gộp dưới ngưỡng quy trình "Báo giá xưởng lãi gộp thấp", mặc định 25%) thì bước **Báo giá "vướng"** kèm "Lãi gộp 18,2% · chờ duyệt giá". Đơn trượt dừng ở bước đã tới, các bước sau "bỏ qua". Quy tắc duyệt / không tự duyệt giữ nguyên.
+- **Sản phẩm:**
+  - Hàng tab còn 2 chế độ xem: Sản phẩm / Danh mục nháp.
+  - Tình trạng tồn (Tất cả · Còn hàng · Hết hàng · Lưu trữ) dùng thanh lọc nhanh.
+  - Kho, thương hiệu, phân loại, mức tồn gom vào nút phễu có số đếm; "Lọc nâng cao" ở chân phễu.
+  - Nhãn đang lọc dùng thẻ ✕ chung.
+  - Bộ lọc đã lưu (⭐) nằm cạnh phễu trên điện thoại.
+- **Kho:**
+  - Tồn kho: "Tất cả" lên đầu, ô tìm cùng chiều cao 32px, mã kho so sánh có nhãn "So sánh kho".
+  - Phiếu kho: ô Kho vào phễu, trạng thái phiếu thành thanh lọc nhanh. Nút "Xem" (phiếu chờ duyệt) vẫn chuyển đúng trạng thái.
+- **Lead › Điều phối:**
+  - Nút thao tác (Phân phòng / Chỉ định / Tiếp nhận) không còn bị cắt.
+  - Cột SLA không bị co. Quá hạn từ 24 giờ hiện "Quá 11 ngày 3 giờ" thay cho "Quá 267:13:15" (cách hiển thị của trang Công việc). Hạn báo giá quá hạn trên Dự án dùng cùng cách hiển thị ("Quá 10 ngày 10 giờ").
+  - Cột Nhu cầu ẩn sẵn để bảng vừa 1440px.
+- **Dự án:** cột Hạng mục ẩn sẵn (bật lại trong nút chọn cột), để bảng vừa 1440px khi cột thao tác và cột hạn báo giá không còn bị co.
+- **Bảng dùng chung:**
+  - Tiêu đề cột cuối dạng `<span>Thao tác</span>` (căn phải) nay được nhận là cột thao tác: không bị co, không ẩn được, không xuất CSV (9 bảng).
+  - Ô có đồng hồ SLA không bị co.
+- **Bán hàng:** cột Ghi chú ẩn sẵn (bật trong Cột hiển thị) để bảng đơn vừa 1440px. Người đã tự chọn cột thì giữ lựa chọn cũ.
+
+**Kiểm tra:**
+- TypeScript không lỗi, kể cả strict.
+- Bộ thử mới:
+  - lọc 2 lớp `rt/st59.js` 44 / 44;
+  - thanh tiến trình "vướng" `rt/lc59b.js` 2 / 2.
+- Bộ giao diện 26 / 26.
+- Hồi quy 253 / 253: ap58 44, ap5521 41, ap553 22, ap56 32, ap563 42, ap563b 10, ap57a 23, ap57b 25, ap563c 5, ap58c 9.
+- Node kế toán 21 / 21.
+- Luồng đơn hàng → xuất hóa đơn 0 lỗi.
+- 50 màn hình × 2 doanh nghiệp: 0 bảng cuộn ngang ở 1440px. 17 phân hệ nghiệp vụ chụp thêm ở điện thoại 390px: không trang nào tràn ngang.
+- Bộ thử Kế toán (ap58, ap58c) chạy với giờ UTC, vì từ 0h đến 7h giờ Việt Nam ngày của bộ thử và trình duyệt lệch nhau 1 ngày (không phải lỗi phần mềm).
+
+## Cập nhật v59 — Đợt 2, Lô B: Tổng quan + Không gian làm việc (26/11)
+
+Rà toàn trang 7 màn hình × 2 doanh nghiệp (Tổng quan, Bàn làm việc, Công việc, Lịch công tác, Tin nhắn, Danh bạ, Tài liệu), ảnh trước / sau trong `anh-v59/lo-b/`. Bộ lọc trạng thái **giữ nguyên như cũ** (chờ chốt kiểu hiển thị).
+- **Tin nhắn:** tên kênh / người chat ở đầu khung không còn bị cắt ("Kê…" → "Kênh chung"): ô "Tìm trong kênh" gọn hơn, nút AI tóm tắt chỉ còn biểu tượng ở màn < 1536px (giữ tên khi rê chuột, đọc màn hình).
+- **Tài liệu:** nút chính "Tải lên" chuyển lên hàng tab (cùng chỗ với Thêm lịch, Thêm lead…), không lẫn trong hàng lọc; cột Phạm vi, Phiên bản ẩn sẵn → tên tài liệu, danh mục hiện đủ.
+- **Danh bạ:** cột Ngày sinh ẩn sẵn (tab Nội bộ) → họ tên, chức danh, phòng ban, email hiện đủ.
+- **Lịch công tác:** cột Duyệt chi, Check-in ẩn sẵn → nhân sự, loại, nội dung, khách hàng hiện đủ; ngày hiển thị thống nhất `dd/mm` (trước phụ thuộc trình duyệt, có máy hiện `12-03`).
+- **Tổng quan:** tiêu đề khối giữ 1 dòng ("Doanh số phòng ban" không còn xuống dòng), chú thích dài cắt "…" và xem đủ khi rê chuột.
+- Cột ẩn sẵn chỉ áp cho người chưa từng tự chọn cột; bật lại trong nút chọn cột.
+
+**Kiểm tra:** TypeScript không lỗi (kể cả strict); bộ giao diện 26 / 26; hồi quy 253 / 253 (ap58 44, ap5521 41, ap553 22, ap56 32, ap563 42, ap563b 10, ap57a 23, ap57b 25, máy chủ giả lập ap563c 5 + ap58c 9); luồng đơn hàng → xuất hóa đơn 0 lỗi; 50 màn hình, 0 bảng cuộn ngang ở 1440px.
+
+## Cập nhật v59 — Đợt 2, Lô A: áp dụng cho toàn bộ màn hình VASSH + ALUX (26/11)
+
+Rà 50 màn hình (25 phân hệ × 2 doanh nghiệp) ở 1440px nền sáng, ảnh trước / sau trong `anh-v59/truoc-sau/`.
+
+- **Bảng tự vừa khung (v49):** trước có 15 bảng cuộn ngang ở 1440px (Công việc, Lịch công tác, Danh bạ, Khách hàng, Lead, Dự án, Tài liệu, Sản phẩm, Đặt hàng, Thu chi, Công nợ; ALUX: Đơn hàng 1478px, Sản xuất, Lắp đặt, Vật tư), nay **0 bảng**. `Table` dùng chung tự đo khi màn ≥ 1200px:
+  - bỏ độ rộng tối thiểu cố định nếu nội dung thật vừa khung;
+  - nếu vẫn tràn: chỉ cắt bớt các cột chữ dài nhất về cùng một mức trần (tối thiểu 120px), cột ngắn giữ nguyên; cột số / tiền, cột thao tác, cột có nhãn trạng thái không bị co; ô bị cắt có chữ đầy đủ khi rê chuột;
+  - màn hẹp hơn 1200px giữ cách cũ (cuộn ngang / thẻ trên điện thoại).
+- **Cột phụ ẩn sẵn** (bật lại trong nút chọn cột, nhớ theo người dùng): Sản phẩm (Hãng, Lead-time, Tài liệu), Công việc (Phòng, Lưu ý), ALUX Đơn hàng (Địa chỉ, Tiến độ), Sản xuất (Số mục, Ngày nhận, Thiết kế), Lắp đặt (Địa chỉ). Người đã từng chọn cột thì giữ lựa chọn cũ.
+- **Nhãn trạng thái pastel:** `Chip` (208 chỗ) đổi từ chấm màu sang nhãn nền pastel cùng lớp `.ui-tone-*` với StatusBadge (giữ nguyên chữ, tông).
+- **Bộ lọc phễu (v49):** `FilterBar` (10 phân hệ: Công việc, Lịch công tác, Dự án, Lead, Data MKT, Khách hàng 360, Tài liệu, Báo giá, MDF, Đặt hàng) đổi nút "Bộ lọc" mở khung bên phải thành nút phễu có số đếm, bảng lọc nhỏ ngay dưới nút, nhãn bộ lọc đang bật có ×.
+- **Dải số trên trang danh sách** (`StatCard`, ALUX Lead / Đơn hàng / Sản xuất / Lắp đặt / Vật tư, Kho, Đặt hàng…): thu gọn thành dòng tóm tắt (số + nhãn cùng 1 dòng, dòng phụ bên dưới), giữ đủ thông tin.
+- **Tổng quan:** số KPI dùng Archivo, thay đổi so kỳ trước có mũi tên ↑↓ (không chỉ dựa vào màu), ô bấm có viền tiêu điểm bàn phím.
+
+**Kiểm tra:** TypeScript không lỗi (kể cả strict); 50 màn hình mở được, 0 bảng cuộn ngang ở 1440px; bộ giao diện 26 / 26; hồi quy 253 / 253; luồng đơn hàng → xuất hóa đơn 0 lỗi.
+
+**Còn làm ở Lô B / C:** đầu trang chuẩn (PageHeader) và bảng chuẩn (SmartDataTable) theo từng phân hệ; thanh tiến trình chi tiết đơn / công trình ALUX dùng WorkflowStepper.
+
+## Cập nhật v59 — Đợt 1 (26/11)
+
+**Triển khai**
+1. Không có SQL mới, không có biến môi trường mới, không đổi dữ liệu. Nếu chưa chạy `supabase-v58.sql` thì chạy trước (sau `v56.2`).
+2. Chạy `scripts/cai-dat-v59.ps1`: nhánh `v59`, tạo từ `v58` (hoặc `v57` / `v56`) nếu nhánh đó chưa gộp vào `main`.
+
+**Giữ nguyên tuyệt đối**: logic nghiệp vụ, dữ liệu, hệ biến màu RGB trong `THEME_CSS` (Sáng / Tối, White-label), sidebar `.side-dark` Navy, font Archivo / Be Vietnam Pro / JetBrains Mono, quy tắc bảng v49. Không thêm màu mới.
+
+### 1. Token trong `THEME_CSS` (`lib/core.tsx`)
+- `--border` = viền mảnh (bằng `--line`), khai báo ở `:root`, `.light`, `.side-dark` để menu Navy nhận đúng viền của nó: dùng `border-[rgb(var(--border))]`.
+- Khoảng cách lưới 4px: `--space-1` 4 · `-2` 8 · `-3` 12 · `-4` 16 · `-5` 20 · `-6` 24 · `-8` 32 · `-10` 40. Bảng / menu dùng 1–4, thẻ 5–6, giữa các khối 6–8.
+- Bo góc: badge 6px (`--radius-badge`), nút / ô nhập 8px (`rounded-lg`), thẻ 12px (`rounded-xl`), sheet 16px (`--radius-xl`).
+- Chữ: nhãn 12,5 · bảng 13,5 · nội dung 14 · tiêu đề khối 15 · bảng trượt 17 · tiêu đề trang 20 (Archivo) · số KPI 26 (Archivo, `tabular-nums`).
+- Trạng thái: `--hover-a` .04, `--press-a` .07, `--control-a` .12 (độ đậm của `--ink`); lớp `.ui-hover`.
+- Bóng: `--shadow-xs` (thẻ nền sáng), `--shadow-pop` (popover). Thẻ chỉ dùng viền, không viền + bóng cùng lúc.
+- Chuyển động `--dur-fast` 120 · `--dur` 180 · `--dur-slow` 280 ms; lớp `z` 20 / 40 / 50 / 62 / 65 / 80.
+- Lớp tiện ích: `.ui-num` (chữ số đều), `.font-archivo`, `.ui-scroll` (thanh cuộn mảnh theo màu chữ, không kéo trang phía sau), `.ui-tone-*` (màu nhãn trạng thái).
+- Nạp thêm font Archivo 500 / 600 (có bộ chữ tiếng Việt) cho tiêu đề trang và số KPI.
+
+### 2. Bộ giao diện lõi `src/crm/components/kit/` (`import { … } from '../../components/kit'`)
+Đặt tên thư mục `kit` để không trùng với file `components/ui.tsx` đang có.
+- **PageHeader** — đường dẫn · tiêu đề (+ nhãn trạng thái) · mô tả · đúng 1 nút chính · nút phụ viền mảnh (quá 3 nút thì từ nút thứ 3 vào menu ⋯).
+- **SmartDataTable** — dựng trên `Table` dùng chung: mỗi trường 1 cột, mỗi ô 1 dòng, nút chọn cột `Columns3`, sắp xếp theo cột, cột số / tiền căn phải + `tabular-nums`, **dòng tổng** đúng cột, nút **phễu lọc** có số đếm mở bảng nhỏ ngay dưới nút (Esc đóng), nhãn bộ lọc đang bật có ×, phân trang gọn, trống thì hiện EmptyState (có nút Xóa bộ lọc khi đang lọc). Bấm dòng / Enter mở chi tiết.
+- **SlideOverDrawer** — bảng trượt phải: sm 480 / md 672 / lg 896 / xl 1152; đầu cố định, thân cuộn riêng, chân dính đáy (`primaryAction`, `secondaryActions`, `footerNote`); `useOverlay` nên không popup chồng popup; mở thì đưa tiêu điểm vào bảng, Tab không thoát ra, Esc / đóng thì trả về nút đã mở.
+- **StatKpiCard** — nhãn · số lớn · ↑↓ % so với kỳ trước (`lowerIsBetter` cho chỉ số giảm là tốt). Dùng ở Tổng quan / báo cáo, không đặt trên đầu trang danh sách (v49).
+- **StatusBadge** — 6 tông neutral / info / success / warning / danger / accent, nền pastel 12%, chữ cùng tông; nhận luôn tông cũ của `Chip` (muted / blue / teal / orange / red). Tương phản chữ đo được: nền sáng 5,6–7,0:1, nền tối 6,8–9,2:1.
+- **WorkflowStepper** — ngang (đầu chi tiết, bảng trượt) hoặc dọc (cột phải): Xong / Đang làm / Chưa / Vướng / Bỏ qua, có chữ đọc màn hình cho từng trạng thái.
+- **EmptyState** — giữ API cũ; thêm `icon`, tối đa 3 bước hướng dẫn, nút phụ. Minh họa nét mảnh không còn trùng id khi nhiều ô trống cùng trang.
+
+### 3. Áp dụng ngay (không đổi API)
+- `Drawer` cũ (16 bảng trượt: Duyệt đơn, Yêu cầu xuất kho, Thanh toán, Yêu cầu xuất hóa đơn, Kế toán…) giờ là `SlideOverDrawer` → tự nhận đầu cố định, cuộn riêng, giữ tiêu điểm bàn phím (vẫn render tại chỗ như cũ để khung cha "bấm ra ngoài thì đóng" không tự đóng).
+- `EmptyState` cũ (88 chỗ) dùng bản mới.
+- `Table`: thêm `foot` (dòng tổng). Sửa lỗi có từ trước: nút chọn cột nổi ở góc phải che tên cột cuối khi cột cuối là cột dữ liệu; nút giờ gọn (chấm cam khi có cột ẩn), số cột ẩn ghi trong bảng chọn cột ("n cột ẩn").
+- Console 3A thêm tab **Bộ giao diện** (`#/console/uikit`): trưng bày token + 7 thành phần bằng dữ liệu giả lập, dùng để duyệt Sáng / Tối trước khi áp dụng vào từng module.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict). Bộ giao diện 26 / 26 (Sáng / Tối, 1440 và 390px: không cuộn ngang, mỗi ô 1 dòng, tương phản, tiêu điểm bàn phím, Esc). Chạy lại toàn bộ bộ thử v55.2.1 → v58 (gồm luồng đơn hàng → xuất hóa đơn và máy chủ giả lập): xem `anh-v59/ket-qua-chay-thu.txt`.
+
+**Đợt sau** (chưa làm ở Đợt 1): thay dần đầu trang và bảng của từng module (Bán hàng, Kế toán, Kho, Khách hàng…) sang PageHeader / SmartDataTable; đổi `Chip` chấm màu sang StatusBadge theo từng module; `SoFlow` của chi tiết đơn sang WorkflowStepper dọc.
+
+## Cập nhật v58 (25/11)
+
+**Triển khai theo thứ tự**
+1. Supabase › SQL Editor: chạy `supabase-v58.sql` (sau `v56.2`). Chỉ thêm hàm / trigger / policy kho tệp, không đổi bảng, không đổi dữ liệu. Chạy lại nhiều lần không sao.
+2. Chạy `scripts/cai-dat-v58.ps1`: nhánh `v58`, tạo từ `v57` (hoặc `v56`) nếu nhánh đó chưa gộp vào `main`.
+3. Không có biến môi trường mới. Lần đầu mở bản mới nên để Giám đốc / Kế toán đăng nhập trước (chuyển yêu cầu xuất hóa đơn cũ sang bảng mới).
+
+**Mặc định em chọn cho 3 câu anh chưa chốt** (đổi được, báo em nếu anh muốn khác)
+- Hàng không qua kho (vật tư xưởng, gia công, dòng tự nhập) theo `ON_DELIVERY`: ghi doanh thu khi giao / hoàn thành đơn.
+- Sổ ghi thật bắt đầu từ ngày Kế toán bấm **Bắt đầu ghi sổ** (mặc định hôm nay, chọn được ngày trước, ví dụ 01/01/2026). Chứng từ trước ngày đó chuyển thành **số dư đầu kỳ** tính theo sổ cũ; kế toán sửa được số dư đầu kỳ trước khi khóa kỳ.
+- Hóa đơn điện tử: ghi tay số / ký hiệu / ngày / mẫu số / mã tra cứu + tải PDF, XML. Kết nối nhà cung cấp hóa đơn điện tử để bản sau.
+
+### Phần A — Mục Kế toán (nhóm Tài chính)
+- Dữ liệu mới, mỗi bản ghi 1 dòng (`KEYED_COLLS`):
+  - `invoiceRequests` — yêu cầu xuất hóa đơn (mã `YCHĐ-yymm-nnn`, người mua, hàng hóa, tiền hàng / thuế / tổng, trạng thái Chờ xuất → Đã xuất / Trả lại → Đã hủy, số hóa đơn, tệp). Yêu cầu cũ trong đơn (`invReqs`) chuyển sang 1 lần, cùng mã; đơn vẫn giữ bản sao để màn hình / báo cáo cũ đọc như trước.
+  - `journalEntries` — bút toán đã ghi sổ, mã theo nguồn: `CE:` phiếu quỹ, `SV:` phiếu kho bán, `SVC:` hàng không qua kho, `INV:` hóa đơn; ghi lại thêm `~2`, `~3`; đảo `REV:<mã gốc>`.
+- Ghi sổ tự động (máy của Kế toán / Giám đốc): bút toán **lưu thật, không sửa đè**. Chứng từ gốc sửa / hủy / xóa → tự sinh bút toán đảo + ghi lại. Đổi giá vốn mã hàng không ghi lại phiếu kho đã ghi.
+- **Khóa kỳ** (tab Cân đối): không ghi vào ngày đã khóa; chứng từ phát sinh trong kỳ đã khóa ghi vào ngày đầu kỳ còn mở. Chỉ Giám đốc mở lại kỳ.
+- **Thời điểm ghi doanh thu** (Cài đặt › Hệ thống tài khoản › Quy tắc định khoản): Khi giao hàng (mặc định, TT99 / TT133) hoặc Khi xuất hóa đơn (ngành dịch vụ: phiếu xuất chỉ ghi giá vốn, hóa đơn ghi doanh thu + thuế). Khóa khi năm tài chính đã có bút toán doanh thu. Quy tắc `SALE_REVENUE` / `IN_SALE` giữ nguyên.
+- 5 tab:
+  1. **Yêu cầu xuất hóa đơn** — bảng v49 (mỗi trường 1 cột, chọn cột, phễu lọc có số đếm). Bấm dòng mở bảng trượt: người mua, hàng hóa, nhập số / ký hiệu / ngày / mẫu số / mã tra cứu, tải PDF + XML (kho riêng `crm-attach/<dn>/invoices/<mã>/`), Xuất hóa đơn / Trả lại; hóa đơn đã xuất: bổ sung tệp, Hủy hóa đơn (có lý do).
+  2. **Bảng kê hóa đơn đầu ra** — theo kỳ, tách theo thuế suất, tổng doanh thu / thuế; hóa đơn hủy ghi 0; Xuất Excel.
+  3. **Sổ nhật ký & Sổ cái** — nhật ký chung từ bút toán đã ghi (nguồn, đã đảo); sổ cái theo tài khoản (gồm tài khoản chi tiết): số dư đầu, phát sinh, số dư lũy kế, cuối kỳ; bấm dòng mở chứng từ gốc.
+  4. **Cân đối số phát sinh** — đầu kỳ / phát sinh / cuối kỳ Nợ – Có, kiểm tra cân; Khóa kỳ; Số dư đầu kỳ (bảng trượt, tổng dư Nợ = dư Có).
+  5. **Đối chiếu đơn hàng (Giao – Hóa đơn – Thu tiền)** — mỗi đơn 1 dòng (gồm thuế): đã giao, đã xuất hóa đơn, đã thu, chênh lệch; cờ Hóa đơn trước giao / Giao chưa hóa đơn / Thu vượt hóa đơn.
+- Sổ nhật ký và Cân đối trong Cài đặt › Hệ thống tài khoản chuyển sang mục Kế toán (Cài đặt giữ cấu hình).
+- Quyền: `acct.view` (xem), `acct.post` (xuất / hủy hóa đơn, khóa kỳ, số dư đầu kỳ) — mặc định Giám đốc, Kế toán. Không tự xuất hóa đơn cho yêu cầu của chính mình (v46); Giám đốc tự xuất được, có ghi nhật ký.
+- Máy chủ (`supabase-v58.sql`), kiểm soát cả khi gọi thẳng API:
+  - `journal_guard`: chỉ thêm; không sửa / xóa (chỉ đánh dấu đã đảo 1 lần); mã theo nguồn; mỗi dòng Nợ ≠ Có, số tiền nguyên dương, tổng khớp; không ghi vào kỳ đã khóa; chỉ Kế toán / Giám đốc.
+  - `acct_cfg_guard`: cấu hình kế toán chỉ Kế toán / Giám đốc; mở lại kỳ chỉ Giám đốc; khóa kỳ rồi không sửa số dư đầu kỳ.
+  - `invoice_req_guard`: tạo yêu cầu đứng tên chính mình; Chờ xuất → Đã xuất / Trả lại, Đã xuất → Đã hủy chỉ Kế toán / Giám đốc; không tự xuất (Giám đốc cần ghi nhật ký); hóa đơn đã xuất chỉ bổ sung tệp; không xóa.
+  - Kho tệp: thư mục `<dn>/invoices/` chỉ Kế toán / Giám đốc tải lên / xóa.
+- Đồng bộ: 1 bản ghi bị máy chủ từ chối không còn làm hỏng cả lượt lưu (gửi lại từng dòng; dòng bị chặn giữ lại trên máy, báo lỗi). Cấu hình chỉ Giám đốc được ghi (phân quyền, bảo mật) không còn báo lỗi lặp với tài khoản khác.
+
+### Phần B — Chi tiết đơn hàng
+- Bố cục 2 cột 8 / 4. Cột phải (Quy trình xử lý + **Người liên quan**, **Thanh toán & hóa đơn**, **Tệp đính kèm**, Lãi trên đơn, Công nợ) dính khi cuộn nếu lọt màn hình.
+- Đầu trang **1 nút hành động chính đổi theo bước**: Duyệt đơn → Yêu cầu xuất kho (đơn chỉ có hàng gia công: Lệnh sản xuất) → Ghi thu (đã giao còn nợ) → Yêu cầu xuất hóa đơn (khách lấy hóa đơn). Người tự lên đơn không thấy Duyệt đơn nếu không có quyền tự duyệt (v46). Thao tác khác (Lập phiếu thu, Yêu cầu xuất hóa đơn, In, Mở báo giá, Sửa, Hủy, Xóa) vào menu ⋯.
+- Cột trái: thông tin đơn (DynamicFieldRenderer), hàng hóa, thẻ **Trao đổi** / **Chứng từ & Bút toán** (phiếu kho, phiếu thu, hóa đơn + bút toán đã ghi của đơn, bút toán đảo).
+- **Bảng trượt bên phải thay toàn bộ popup / trang riêng**: Duyệt đơn (kiểm tra trước khi duyệt có ô xác nhận đã xem), Yêu cầu xuất kho / Lệnh sản xuất (hàng còn phải giao, tồn khả dụng, lịch sử giao hàng), Yêu cầu xuất hóa đơn, Thanh toán (Khách trả / Hoàn tiền, lịch sử thu chi), Xem chứng từ. Mỗi lần 1 bảng, không chồng popup.
+- Kế toán không xử lý hóa đơn ngay trên đơn nữa: thẻ Thanh toán báo số yêu cầu chờ, nút "Xử lý ở Kế toán".
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict).
+- Lõi kế toán (Node) 21 / 21; máy chủ SQL 48 / 48 (`anh-v58/kiem-tra-sql-v58.sql`); giao diện 44 / 44; máy chủ giả lập (PostgreSQL thật, RLS + trigger thật) 9 / 9.
+- Chạy lại bộ thử v55.2.1, v55.3, v56, v56.3, v57a, v57b: 41 + 22 + 32 + 42 + 10 + 23 + 25 + 5 (máy chủ) = 200 / 200.
+- Bộ thử SQL v56 / v56.2 / v55.3 cho kết quả y hệt khi có / không có `supabase-v58.sql`.
+
+**Giới hạn đã biết**
+- Giá vốn trong bút toán là giá vốn tạm tính của mã hàng lúc ghi sổ (chưa tính giá xuất kho bình quân).
+- Theo `ON_INVOICE`, hàng bán trả lại chỉ ghi nhập lại kho; giảm doanh thu theo hóa đơn điều chỉnh để bản sau.
+- Báo cáo tình hình tài chính (B01), kết quả kinh doanh (B02) theo mẫu thông tư: bản sau.
+
+
+
+## Cập nhật v57 (25/11)
+
+**Triển khai**
+1. Không có SQL mới, không có biến môi trường mới. Bố cục lưu trong `_platform` như cũ (thêm trường trong JSON, đọc ngược được bố cục cũ).
+2. Chạy `scripts/cai-dat-v57.ps1`: nhánh `v57`, tạo từ `v56` nếu `v56` chưa gộp vào `main`.
+
+### V57a — Lưới & khoảng cách, khối chuyên ngành
+- **Lưới trang**: "Cổ điển · hàng 56px" (như cũ) hoặc "Mịn · hàng 8px". Chuyển sang lưới 8px giữ nguyên chiều cao khối trên màn. Kéo đổi chiều cao từng 8px.
+- **Khoảng cách theo token** 0 / 4 / 8 / 12 / 16 / 24 / 32px: khoảng cách giữa khối, lề trang (cài đặt trang); đệm trong, cách trên, cách dưới, khung (Thẻ / Viền / Phẳng) theo từng khối.
+- **Ghi đè theo thiết bị**: khoảng cách riêng cho Máy tính bảng / Điện thoại; độ rộng riêng trên máy tính bảng; "Chiều cao theo nội dung" (đo nội dung thật, khối bên dưới tự dời).
+- **5 khối chuyên ngành** (đọc quy trình, loại tài nguyên từ hồ sơ ngành):
+  - Chi tiết đơn: Quy trình theo ngành (chuyển bước có lịch sử, không đổi trạng thái kế toán / kho), Tiến độ công đoạn (tích từng công đoạn, lưu vào trường của đơn).
+  - Quản lý đơn: Bảng giai đoạn (kéo thẻ sang cột để chuyển bước), Lịch tài nguyên theo tuần, Bán nhanh tại quầy (lên đơn đi qua luồng duyệt như đơn thường).
+- Studio xem trước khối chuyên ngành bằng chính component của doanh nghiệp với dữ liệu mẫu.
+
+### V57b — Khung linh hoạt & Khung tự do
+- **Khung linh hoạt** (`K-FlexContainer`): xếp Chữ / Nhãn / Nút / Ảnh / Đường kẻ theo hàng (tự xuống dòng) hoặc cột; khoảng cách theo token; căn; phân bố (đầu / giữa / cuối / dàn đều); phần tử "giãn chiếm chỗ trống".
+- **Khung tự do** (`K-FreeformBox`): đặt phần tử theo khổ thiết kế (mặc định 720 × 160px). Bảng trượt **Sắp xếp trên khung**:
+  - kéo để di chuyển, kéo góc dưới phải để đổi cỡ;
+  - **hít lưới 8px**, **đường gióng** khi mép / tâm trùng mép / tâm khung hoặc phần tử khác;
+  - phím mũi tên dịch 1px, Shift + mũi tên 8px;
+  - **neo cạnh**: ngang Trái / Phải / Giữa / Giãn 2 bên, dọc Trên / Dưới / Giữa / Giãn 2 đầu — khung rộng / hẹp hơn khổ thiết kế vẫn giữ khoảng cách mép như lúc thiết kế;
+  - khung hẹp hơn 60% khổ (điện thoại) tự xếp phần tử thành cột theo thứ tự trên → dưới.
+- **Gắn dữ liệu** trong chữ, nhãn, nút: nút `{ }` chèn `{{customer.name}}`, `{{order.code}}`, `{{order.total}}`, `{{cf.<mã>}}` (trường tùy chỉnh đầu đơn đang dùng) và các trường khác của đơn (điện thoại, MST, ngày đơn, đã thu, còn phải thu, trạng thái, người lên đơn, ngày giao). Biến trang `{…}` vẫn dùng được.
+  - Mã gắn sai báo ngay "Không có trường gắn".
+  - Studio hiện giá trị mẫu (đơn DH201126-02); mã chưa có giá trị giữ nguyên để 3A thấy.
+  - Màn doanh nghiệp: giá trị thật của đơn; thiếu giá trị hiện "—". Giá trị hiện dạng chữ thường (không chạy HTML / định dạng).
+  - Dữ liệu đơn chỉ gắn được ở trang Chi tiết đơn hàng; trang khác dùng biến trang.
+- Nút trong khung dùng hành động chung của trang (Quay lại, Mở trang, Liên kết, In…). Ảnh nhận địa chỉ `https://`.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict).
+- V57a 23 / 23, V57b 25 / 25 (`anh-v57/ket-qua-chay-thu.txt`).
+- Chạy lại bộ thử v55.2.1, v55.3, v56, v56.3: 137 / 137.
+
+**Giới hạn đã biết**
+- Hoàn tác (Undo) chưa trả lại thay đổi lưới / token của trang.
+- Khối nghiệp vụ dạng thẻ (Thanh toán, Quy trình…) chỉ nhận cách trên / dưới và khoảng cách giữa khối, chưa nhận khung / đệm.
+- Ảnh trong khung chưa có nút tải lên (dán địa chỉ https).
+
+
+
+## Cập nhật v56.3 (25/11)
+
+**Triển khai**
+1. Không có SQL mới. Chưa chạy `supabase-v56.2.sql` thì chạy (sau `v56`).
+2. Chạy `scripts/cai-dat-v56.3.ps1` (cùng nhánh `v56`).
+
+**1. Thanh chọn tháng ở Auto Content › Kế hoạch**
+- Cụm "‹ Tháng 11/2026 › · Hôm nay · Lịch tháng / Danh sách / Bảng" chuyển lên bên phải, cùng hàng với các tab Kế hoạch / Nội dung / Hình ảnh / Ngân sách / Tự động.
+- Hàng trong khung lịch còn: chip trạng thái (Tất cả / Kế hoạch / Chờ AI xử lý…, giữ nguyên) bên trái, Xuất Excel · Chiến dịch · Nhiệm vụ bên phải. Lịch được thêm 1 hàng.
+- Dòng gợi ý "Bấm vào một ngày để thêm nhiệm vụ…" chuyển xuống chân khung lịch.
+
+**2. Ảnh tham chiếu tải tự do (Bước 3 của Nhiệm vụ nội dung)**
+- Luôn có ô **Tải ảnh**, không cần chọn sản phẩm ở Bước 1.
+- Ảnh tải lên thuộc riêng nhiệm vụ (`MktTask.refImages`), **không ghi vào danh mục sản phẩm**. Bản v56.2 tải ảnh vào sản phẩm: đã bỏ.
+- Có máy chủ: ảnh nén (cạnh dài 1600px) lên kho riêng tư `crm-attach`, thư mục `<doanh nghiệp>/marketing/tasks/<mã nhiệm vụ>/`; nhiệm vụ chỉ lưu đường dẫn `attach:` (không nhúng base64). Ảnh nhỏ đọc lại có xác thực.
+- Vẫn chọn được ảnh từ danh mục sản phẩm. Tổng tối đa 2 ảnh; đủ 2 ảnh thì ẩn ô Tải ảnh, bỏ 1 ảnh thì hiện lại.
+- Khi tạo ảnh, bộ soạn nền dùng ảnh tải lên làm ảnh tham chiếu trước, sau đó mới tới ảnh sản phẩm.
+
+**3. Bỏ "Đóng dấu"**
+- Bỏ nhóm Đóng dấu (Logo / Tên doanh nghiệp / Không đóng). Ảnh mới mặc định không đóng dấu.
+- Nhiệm vụ / bài đã lưu chọn rõ Logo hoặc Tên doanh nghiệp vẫn đóng dấu như cũ (không đổi dữ liệu cũ).
+
+**4. Màu sắc mặc định "Màu tự nhiên"**
+- Nhóm Màu sắc đổi mặc định từ "Màu thương hiệu" sang "Màu tự nhiên". 2 mẫu cài sẵn trước đây ép "Màu thương hiệu" nay để theo mặc định.
+- Doanh nghiệp đã đặt mặc định riêng ở Cài đặt biến thể nội dung thì giữ lựa chọn của doanh nghiệp.
+
+**Kiểm tra**: TypeScript không lỗi (kể cả strict).
+- Giao diện 42 / 42 + Studio 10 / 10 (`anh-v56.3/ket-qua-chay-thu.txt`).
+- Máy chủ giả lập (PostgreSQL thật, RLS kho tệp thật) 5 / 5: ảnh lên `crm-attach` đúng thư mục doanh nghiệp, nhiệm vụ lưu 1 dòng với `attach:`, không base64, không ghi sang doanh nghiệp khác.
+- Chạy lại bộ thử v56, v56.0.1, v55.3, v55.2.1: 108 / 108.
+
 
 ## Cập nhật v56.2 (25/11)
 

@@ -410,7 +410,7 @@ export function InstallModule() {
       </div>
       <div className="tb40 flex flex-col gap-2 lg:flex-row lg:items-center">
         <SearchBox value={q} onChange={setQ} placeholder="Tìm khách hàng, số điện thoại, địa chỉ" />
-        <div className="min-w-0 flex-1"><StagePills items={[{ id: 'ALL' as InstallView | 'ALL', label: 'Tất cả', count: rows.length }, ...order.map((v) => ({ id: v as InstallView | 'ALL', label: INSTALL_VIEW[v].label, count: count(v) }))]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} /></div>
+        <div className="min-w-0 flex-1"><StagePills items={[{ id: 'ALL' as InstallView | 'ALL', label: 'Tất cả', count: rows.length }, ...order.map((v) => ({ id: v as InstallView | 'ALL', label: INSTALL_VIEW[v].label, short: INSTALL_VIEW[v].short, count:count(v) }))]} value={st} onChange={(v) => { setSt(v); paged.setPage(1); }} /></div>
       </div>
       <Panel>
         <div className="space-y-2 md:hidden">
@@ -423,7 +423,7 @@ export function InstallModule() {
           ))}
         </div>
         <div className="hidden md:block">
-          <Table head={['STT', 'Mã', 'Khách hàng', 'Điện thoại', 'Địa chỉ', 'Lịch lắp', 'Đội trưởng', 'Trạng thái', '']} minW={1200}>
+          <Table head={['STT', 'Mã', 'Khách hàng', 'Điện thoại', 'Địa chỉ', 'Lịch lắp', 'Đội trưởng', 'Trạng thái', '']} minW={1200} optional={[4]}>
             {paged.slice.map((r, i) => (
               <tr key={r.key} className={cn(rowCls, 'cursor-pointer')} onClick={() => (r.ij ? setOpen(r.ij.id) : r.wo && canDo('install.manage') && setSchedule(r.wo))}>
                 <td className={cn(tdFirst, 'w-12 tabular-nums text-[rgb(var(--muted))]')}>{(paged.page - 1) * 20 + i + 1}</td>

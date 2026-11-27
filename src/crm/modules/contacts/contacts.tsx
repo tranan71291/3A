@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { BookUser, Copy, Download, ExternalLink, Eye, History, LayoutGrid, Mail, MessageSquare, Phone, Rows3, Search, Star, Tag } from 'lucide-react';
 import { PAvatar } from '../../app/header';
 import { Avatar, Pagination, RowMenu, usePaged } from '../../components/controls';
+import { StatusBar } from '../../components/kit/status-filter';
 import { Chip, EmptyState, Panel, Table, Tabs, useSticky } from '../../components/ui';
 import { bizMode, btnGhost, btnPrimary, btnSm, contactKey, dmId, downloadText, fmtDate, fold, initials, inputBase, inputCls, PRESENCE_META, presenceOf, ROLE_LABEL, rowCls, segName, tdCls, tdFirst, tdLast, uid, useApp, vcard } from '../../lib/core';
 import type { ContactItem, ContactPrefs, DeptCode } from '../../lib/types';
@@ -64,8 +65,10 @@ export function ContactsPage() {
       <div className="min-w-0 space-y-4">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
           <div className="relative min-w-0 flex-1 lg:w-[280px] lg:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--faint))]" aria-hidden /><input className={cn(inputCls, 'bg-[rgb(var(--surface))] py-1.5 pl-9 text-[13.5px]')} placeholder="Tìm tên, chức danh, số điện thoại, email" value={q} onChange={(e) => { setQ(e.target.value); paged.setPage(1); }} aria-label="Tìm liên hệ" /></div>
-          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Lọc nhanh">
-            {chips.map((c) => <button key={c.id} type="button" aria-pressed={view === c.id} onClick={() => { setView(c.id); paged.setPage(1); }} className={cn('flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 text-[13px]', view === c.id ? 'border-[rgb(var(--ink)/0.14)] bg-[rgb(var(--surface))] font-medium shadow-sm' : 'border-transparent text-[rgb(var(--fg2))] hover:text-[rgb(var(--fg))]')}>{c.label}<span className="font-mono text-[11.5px] font-normal text-[rgb(var(--muted))]">{c.n}</span></button>)}
+          {/* v59: cùng kiểu thanh lọc nhanh toàn CRM; nhãn riêng nhiều thì gom vào Thêm ▾ */}
+          <div className="min-w-0 flex-1">
+            <StatusBar label="Danh sách" value={view === 'all' ? 'ALL' : view} onChange={(v) => { setView(v === 'ALL' ? 'all' : v); paged.setPage(1); }} total={chips[0]?.n} funnel={false}
+              options={chips.filter((c) => c.id !== 'all').map((c) => ({ value: c.id, label: c.label, count: c.n }))} />
           </div>
           <select className={cn(inputBase, 'py-1.5 text-[13px] lg:w-48')} value={grp} onChange={(e) => { setGrp(e.target.value); paged.setPage(1); }} aria-label={tab === 'staff' ? 'Phòng ban' : 'Nhóm khách hàng'}>
             <option value="ALL">{tab === 'staff' ? 'Mọi phòng ban' : 'Mọi nhóm khách'}</option>{groups.map((g) => <option key={g} value={g}>{g}</option>)}
@@ -77,7 +80,7 @@ export function ContactsPage() {
         </div>
         {list.length && layout === 'list' ? (
           <Panel>
-            <Table stt={Math.max(0, paged.from - 1)} minW={980} head={['Họ tên', 'Chức danh', tab === 'staff' ? 'Phòng ban' : 'Công ty', 'Điện thoại', 'Email', ...(tab === 'staff' ? ['Ngày sinh', 'Trạng thái'] : []), '']}>
+            <Table stt={Math.max(0, paged.from - 1)} minW={980} optional={tab === 'staff' ? [5] : undefined} head={['Họ tên', 'Chức danh', tab === 'staff' ? 'Phòng ban' : 'Công ty', 'Điện thoại', 'Email', ...(tab === 'staff' ? ['Ngày sinh', 'Trạng thái'] : []), '']}>
               {paged.slice.map((c) => {
                 const self = c.user?.id === me?.id;
                 const fav = p.fav.includes(c.key);

@@ -5,9 +5,9 @@ import { Download, Eye, FileText, Pencil, Trash2, Upload } from 'lucide-react';
 import { removeWithUndo } from '../../app/context';
 import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
+import { ChipFilter, FilterBar, stMatch, useInRange } from '../../components/filters';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, Panel, Table, useSort, useSticky } from '../../components/ui';
-import { btnGhost, btnPrimary, btnSm, canViewDoc, DOC_CATEGORY, docVisibility, fmtDate, inputCls, rowCls, slug, tdCls, tdFirst, tdLast, todayISO, uid, useApp, visibilityOptions } from '../../lib/core';
+import { btnGhost, btnPrimary, btnSm, canViewDoc, DOC_CATEGORY, DOC_CATEGORY_SHORT, docVisibility, fmtDate, inputCls, rowCls, slug, tdCls, tdFirst, tdLast, todayISO, uid, useApp, visibilityOptions } from '../../lib/core';
 import type { ConfirmState, Department, DocCategory, DocItem, DocVisibility } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
@@ -97,21 +97,25 @@ export function DocUploadModal({ doc: existing, onClose }: { doc?: DocItem; onCl
   );
 }
 
-export function DocsPage() {
+/** v59: `upload` / `setUpload` do trang cha giữ khi nút "Tải lên" nằm ở hàng tab; không truyền thì nút nằm trong hàng lọc như cũ */
+export function DocsPage({ upload, setUpload }: { upload?: boolean; setUpload?: (v: boolean) => void } = {}) {
   const { docs, setDocs, me, canDo, userName, departments, notify } = useApp();
   const [editDoc, setEditDoc] = useState<DocItem | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const inR = useInRange();
   const [q, setQ] = useSticky('DocsPage.q', '');
   const [cat, setCat] = useState('ALL');
+  const [catM, setCatM] = useState<DocCategory[]>([]);
   const [vis, setVis] = useState<'ALL_VIS' | DocVisibility>('ALL_VIS');
   const [view, setView] = useSticky<DocItem | null>('DocsPage.view', null);
-  const [uploading, setUploading] = useState(false);
+  const [uploading0, setUploading0] = useState(false);
+  const uploading = upload ?? uploading0;
+  const setUploading = setUpload ?? setUploading0;
 
   const visible = docs.filter((d) => canViewDoc(d, me));
   const list = visible.filter((d) => {
     const t = q.trim().toLowerCase();
-    return (!t || [d.title, d.summary, ...d.tags].some((v) => v.toLowerCase().includes(t))) && (cat === 'ALL' || d.category === cat) && (vis === 'ALL_VIS' || d.visibility === vis) && inR(d.updatedAt);
+    return (!t || [d.title, d.summary, ...d.tags].some((v) => v.toLowerCase().includes(t))) && stMatch(cat as DocCategory | 'ALL', catM, (s) => d.category === s) && (vis === 'ALL_VIS' || d.visibility === vis) && inR(d.updatedAt);
   });
 
   const srt = useSort('Docs40', list, { 0: (d) => d.title, 2: (d) => d.category, 6: (d) => d.updatedAt, 7: (d) => d.sizeKb });
@@ -123,8 +127,8 @@ export function DocsPage() {
         q={q} onQ={setQ} placeholder="Tìm tên tài liệu, nội dung, từ khóa"
         status={cat} onStatus={setCat} statusLabel="Danh mục" extraActive={vis !== 'ALL_VIS' ? 1 : 0}
         statusOptions={(Object.keys(DOC_CATEGORY) as DocCategory[]).map((c) => ({ value: c, label: DOC_CATEGORY[c] }))}
-        actions={<button className={cn(btnPrimary, btnSm)} disabled={!canDo('docs.manage')} onClick={() => setUploading(true)}><Upload className="h-3.5 w-3.5" aria-hidden />Tải lên</button>}
-        chips={<ChipFilter value={cat === 'ALL' ? 'ALL' : (cat as DocCategory)} onChange={(v) => setCat(v)} total={visible.length} options={(Object.keys(DOC_CATEGORY) as DocCategory[]).map((c) => ({ value: c, label: DOC_CATEGORY[c], count: visible.filter((d) => d.category === c).length }))} />}
+        actions={upload === undefined ? <button className={cn(btnPrimary, btnSm)} disabled={!canDo('docs.manage')} onClick={() => setUploading(true)}><Upload className="h-3.5 w-3.5" aria-hidden />Tải lên</button> : undefined}
+        chips={<ChipFilter value={cat === 'ALL' ? 'ALL' : (cat as DocCategory)} onChange={(v) => setCat(v)} multi={catM} onMulti={setCatM} label="Danh mục" total={visible.length} options={(Object.keys(DOC_CATEGORY) as DocCategory[]).map((c) => ({ value: c, label: DOC_CATEGORY[c], short: DOC_CATEGORY_SHORT[c], count: visible.filter((d) => d.category === c).length }))} />}
       >
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={vis} onChange={(e) => setVis(e.target.value as 'ALL_VIS' | DocVisibility)} aria-label="Phạm vi hiển thị">
           <option value="ALL_VIS">Phạm vi</option>
@@ -133,7 +137,7 @@ export function DocsPage() {
       </FilterBar>
 
       <Panel>
-        <Table stt={Math.max(0, paged.from - 1)} minW={1180} sort={srt.th} head={['Tài liệu', 'Loại', 'Danh mục', 'Phạm vi', 'Phụ trách', 'Phiên bản', 'Cập nhật', <span key="s" className="block text-right">Dung lượng</span>, <span key="a" className="block text-right">Thao tác</span>]}>
+        <Table stt={Math.max(0, paged.from - 1)} minW={1180} sort={srt.th} optional={[3, 5]} head={['Tài liệu', 'Loại', 'Danh mục', 'Phạm vi', 'Phụ trách', 'Phiên bản', 'Cập nhật', <span key="s" className="block text-right">Dung lượng</span>, <span key="a" className="block text-right">Thao tác</span>]}>
           {paged.slice.map((d) => (
             <tr key={d.id} className={rowCls}>
               <td className={tdFirst}>

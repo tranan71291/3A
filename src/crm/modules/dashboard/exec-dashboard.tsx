@@ -1,7 +1,7 @@
 'use client';
 
 import { type ReactNode, useState } from 'react';
-import { Printer, Target } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Printer, Target } from 'lucide-react';
 import { Chip, EmptyState, Field, MoneyInput, ProgressBar, SideSheet, Table, Tabs, useSticky } from '../../components/ui';
 import { claimState, scoreLead } from '../../lib/business';
 import { agoText, bizMode, boqTotal, btnGhost, btnPrimary, btnSm, channelOfSource, compact, daysInMonth, deltaPct, inputCls, inScope, isoMs, KPI_CFG_DEFAULT, kpiId, kpiMonthKey, LEAD_STATUS, leadAt, LOST_REASON, median, MKT_CH, MQL_THRESHOLD, paceStatus, PROGRAM_LABEL, ROLE_LABEL, rowCls, salesFunnel, SOURCE_LABEL, splitUnit, ST_NONE, ST_OK, ST_SLOW, ST_WATCH, tdCls, tdFirst, tdLast, TONE_RGB, useApp } from '../../lib/core';
@@ -112,12 +112,12 @@ export function KpiTile({ label, tag, value, delta, deltaGood = 'up', deltaText,
   const good = delta == null ? null : deltaGood === 'up' ? delta >= 0 : delta <= 0;
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag onClick={onClick} className={cn('relative flex min-w-0 flex-col gap-1 px-4 py-3 text-left', onClick && 'transition-colors hover:bg-[rgb(var(--ink)/0.03)]')}>
+    <Tag onClick={onClick} className={cn('relative flex min-w-0 flex-col gap-1 px-4 py-3 text-left', onClick && 'ui-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[rgb(var(--fg)/0.5)]')}>
       <div className="flex items-baseline justify-between gap-2"><p className="truncate text-[12.5px] text-[rgb(var(--muted))]">{label}</p><span className="shrink-0 font-mono text-[11px] text-[rgb(var(--faint))]">{tag}</span></div>
-      <p className={cn('truncate text-[26px] font-medium leading-8 tabular-nums', status.tone === 'red' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--fg))]')}>{num}{unit && <span className="ml-1 text-sm font-normal text-[rgb(var(--muted))]">{unit}</span>}</p>
+      <p className={cn('font-archivo truncate text-[26px] font-semibold leading-8 ui-num', status.tone === 'red' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--fg))]')}>{num}{unit && <span className="ml-1 font-sans text-sm font-normal text-[rgb(var(--muted))]">{unit}</span>}</p>
       <p className="min-h-[18px] truncate text-xs tabular-nums">
         {deltaText ? <span className={status.tone === 'red' ? 'text-[rgb(var(--danger-fg))]' : 'text-[rgb(var(--warn))]'}>{deltaText}</span>
-          : delta != null && Number.isFinite(delta) ? <><span className={good ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]'}>{delta >= 0 ? '+' : '−'}{Math.abs(delta).toLocaleString('vi-VN', { maximumFractionDigits: delta > -10 && delta < 10 ? 1 : 0 })}{deltaPts ? ' điểm' : '%'}</span> <span className="text-[rgb(var(--muted))]">so với kỳ trước</span></>
+          : delta != null && Number.isFinite(delta) ? <><span className={cn('inline-flex items-center gap-0.5 font-medium', good ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')}>{delta >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> : <ArrowDownRight className="h-3.5 w-3.5" aria-hidden />}{delta >= 0 ? '+' : '−'}{Math.abs(delta).toLocaleString('vi-VN', { maximumFractionDigits: delta > -10 && delta < 10 ? 1 : 0 })}{deltaPts ? ' điểm' : '%'}</span> <span className="text-[rgb(var(--muted))]">so với kỳ trước</span></>
             : <span className="text-[rgb(var(--faint))]">Chưa có kỳ trước</span>}
       </p>
       {progress !== undefined && (
@@ -135,10 +135,10 @@ export function KpiTile({ label, tag, value, delta, deltaGood = 'up', deltaText,
 export function DashPanel({ title, sub, more, onMore, children, className, badge }: { title: string; sub?: string; more?: string; onMore?: () => void; children: ReactNode; className?: string; badge?: number }) {
   return (
     <section className={cn('glass-card min-w-0 rounded-xl p-5', className)}>
-      <div className="mb-4 flex items-baseline gap-2">
-        <h2 className="text-[15px] font-medium">{title}</h2>
+      <div className="mb-4 flex min-w-0 items-baseline gap-2">
+        <h2 className="shrink-0 whitespace-nowrap text-[15px] font-medium">{title}</h2>
         {badge !== undefined && badge > 0 && <span className="font-mono text-xs text-[rgb(var(--danger-fg))]">{badge}</span>}
-        {sub && <span className="truncate text-xs text-[rgb(var(--muted))]">{sub}</span>}
+        {sub && <span className="min-w-0 truncate text-xs text-[rgb(var(--muted))]" title={sub}>{sub}</span>}
         {onMore && <button className="ml-auto shrink-0 text-[13px] text-[rgb(var(--accent-fg))] hover:underline" onClick={onMore}>{more ?? 'Chi tiết'} →</button>}
       </div>
       {children}

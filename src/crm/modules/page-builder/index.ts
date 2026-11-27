@@ -6,3 +6,5 @@ export * from './tenant';
 export * from './fields';
 export * from './sample';
 export * from './vertical';
+export * from './industry-blocks';
+export * from './containers';

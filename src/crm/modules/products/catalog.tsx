@@ -7,6 +7,8 @@ import { useIntent } from '../../components/command-palette';
 import { Pagination, RowMenu, usePaged } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
+import { FilterChips, FilterPopover } from '../../components/kit/filter-popover';
+import { StatusBar, type StatusOpt } from '../../components/kit/status-filter';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, SideSheet, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { poLineStats } from '../../lib/business';
 import { btnGhost, btnPrimary, btnSm, cfMissing, cfSet, chatFileMax, downloadBlob, fmtDate, fmtN, fmtSize, fold, inputBase, inputCls, MAIN_WH, MOVE_LABEL, reservedInStock, rowCls, shrinkImage, SKU_FILTER0, SKU_IMPORT_COLS, SKU_RE, stickyStore, STOCK_LEVEL, stockLevel, tdCls, tdFirst, tdLast, todayISO, UNITS, useApp, whQty } from '../../lib/core';
@@ -477,10 +479,18 @@ export function SkuCatalog() {
   if (f.hasImage) chips.push({ k: 'hasImage', label: 'Có ảnh' });
   if (f.onOrder) chips.push({ k: 'onOrder', label: 'Đang đặt Hãng' });
   const moreN = ['supplier', 'origin', 'unit', 'priceMin', 'priceMax', 'leadMax', 'hasDocs', 'hasImage', 'onOrder'].filter((k) => !!f[k as keyof SkuFilter]).length;
-  const sel = cn(inputBase, 'h-8 max-w-[160px] py-0 pr-8 text-[13px]');
   const levelCell = (s: SkuItem) => { const L = STOCK_LEVEL[level(s)]; const r = res(s); return <Chip tone={L.tone}>{L.label}{!curWh && r ? ` · giữ ${fmtN(r)}` : ''}</Chip>; };
 
-  const viewTabs = <Tabs tabs={[{ id: 'ALL' as const, label: 'Tất cả', count: pool.length }, { id: 'IN' as const, label: 'Còn hàng', count: pool.filter((s) => qtyOf(s) > 0).length }, { id: 'OUT' as const, label: 'Hết hàng', count: pool.filter((s) => qtyOf(s) <= 0).length }, { id: 'ARCH' as const, label: 'Lưu trữ', count: skus.filter((s) => s.archived).length }, { id: 'DRAFT' as const, label: 'Danh mục nháp', count: draftProducts.filter((d) => !d.promotedSku).length }]} value={view} onChange={(v) => { setView(v); paged.setPage(1); }} />;
+  // v59 Lô C: hàng tab chỉ còn 2 chế độ xem (Sản phẩm / Danh mục nháp); tình trạng tồn chuyển sang thanh lọc nhanh chung,
+  // các ô lọc (kho, thương hiệu, phân loại, mức tồn) gom vào nút phễu có số đếm (v49)
+  const live = skus.filter((s) => !s.archived && match(s));
+  const viewTabs = <Tabs tabs={[{ id: 'LIST' as const, label: 'Sản phẩm', count: skus.filter((s) => !s.archived).length }, { id: 'DRAFT' as const, label: 'Danh mục nháp', count: draftProducts.filter((d) => !d.promotedSku).length }]} value={view === 'DRAFT' ? 'DRAFT' : 'LIST'} onChange={(v) => { setView(v === 'DRAFT' ? 'DRAFT' : 'ALL'); paged.setPage(1); }} />;
+  const stockOpts: StatusOpt<'IN' | 'OUT' | 'ARCH'>[] = [
+    { value: 'IN', label: 'Còn hàng', count: live.filter((s) => qtyOf(s) > 0).length },
+    { value: 'OUT', label: 'Hết hàng', count: live.filter((s) => qtyOf(s) <= 0).length },
+    { value: 'ARCH', label: 'Lưu trữ', count: skus.filter((s) => s.archived && match(s)).length },
+  ];
+  const mainN = [f.wh, f.brand, f.cat, f.level].filter(Boolean).length;
   if (view === 'DRAFT') return <div className="space-y-4">{viewTabs}<DraftCatalog /></div>;
   return (
     <div className="space-y-4">
@@ -507,18 +517,19 @@ export function SkuCatalog() {
       </div>
 
       {/* Bộ lọc */}
-      <section aria-label="Bộ lọc sản phẩm">
+      <section aria-label="Bộ lọc sản phẩm" className="space-y-2.5">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-          <div className="relative min-w-0 flex-1 lg:w-[280px] lg:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden /><input className={cn(inputCls, 'h-8 bg-[rgb(var(--surface))] py-0 pl-9 text-[13.5px]')} value={f.q} onChange={(e) => set('q', e.target.value)} placeholder="Tìm SKU, tên sản phẩm, phân loại, nhà cung cấp…" aria-label="Tìm sản phẩm" /></div>
-          <div className="hidden flex-wrap gap-2 lg:flex lg:flex-1">
-            <select className={sel} value={f.wh} onChange={(e) => set('wh', e.target.value)} aria-label="Kho"><option value="">Tất cả kho</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}</select>
-            <select className={sel} value={f.brand} onChange={(e) => set('brand', e.target.value)} aria-label="Thương hiệu"><option value="">Thương hiệu</option>{opts('brand').map((o) => <option key={o} value={o}>{o}</option>)}</select>
-            <select className={sel} value={f.cat} onChange={(e) => set('cat', e.target.value)} aria-label="Phân loại"><option value="">Phân loại</option>{opts('category').map((o) => <option key={o} value={o}>{o}</option>)}</select>
-            <select className={sel} value={f.level} onChange={(e) => set('level', e.target.value as SkuFilter['level'])} aria-label="Tình trạng tồn"><option value="">Tình trạng tồn</option>{(Object.keys(STOCK_LEVEL) as StockLevel[]).map((k) => <option key={k} value={k}>{STOCK_LEVEL[k].label}</option>)}</select>
-          </div>
-          <div className="flex gap-2">
-            <button className={cn(btnGhost, 'h-8 flex-1 text-[13px] lg:flex-none')} onClick={() => { setDraft(f); setMoreOpen(true); }}><SlidersHorizontal className="h-4 w-4" aria-hidden /><span className="lg:hidden">Bộ lọc</span><span className="hidden lg:inline">Bộ lọc</span>{(moreN || chips.length) > 0 && <span className="rounded-full bg-[rgb(var(--accent))] px-1.5 text-[11px] font-semibold text-[rgb(var(--on-accent))]"><span className="lg:hidden">{chips.length}</span><span className="hidden lg:inline">{moreN || ''}</span></span>}</button>
-            <div className="relative" ref={savedRef}>
+          <div className="flex min-w-0 items-center gap-2 lg:contents">
+            <div className="relative min-w-0 flex-1 lg:w-[280px] lg:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgb(var(--muted))]" aria-hidden /><input className={cn(inputCls, 'h-8 bg-[rgb(var(--surface))] py-0 pl-9 text-[13.5px]')} value={f.q} onChange={(e) => set('q', e.target.value)} placeholder="Tìm SKU, tên sản phẩm, phân loại, nhà cung cấp…" aria-label="Tìm sản phẩm" /></div>
+            <FilterPopover count={mainN + moreN} onReset={mainN + moreN ? () => { setFilter({ ...SKU_FILTER0, q: f.q }); paged.setPage(1); } : undefined}
+              footer={<button type="button" className={cn(btnGhost, 'w-full justify-center py-1.5 text-[13px]')} onClick={() => { setDraft(f); setMoreOpen(true); }}><SlidersHorizontal className="h-4 w-4" aria-hidden />Lọc nâng cao{moreN > 0 && <span className="ml-1 tabular-nums text-[rgb(var(--accent-fg))]">{moreN}</span>}</button>}>
+              <Field label="Kho"><select className={inputCls} value={f.wh} onChange={(e) => set('wh', e.target.value)}><option value="">Tất cả kho</option>{warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}</select></Field>
+              <Field label="Thương hiệu"><select className={inputCls} value={f.brand} onChange={(e) => set('brand', e.target.value)}><option value="">Tất cả thương hiệu</option>{opts('brand').map((o) => <option key={o} value={o}>{o}</option>)}</select></Field>
+              <Field label="Phân loại"><select className={inputCls} value={f.cat} onChange={(e) => set('cat', e.target.value)}><option value="">Tất cả phân loại</option>{opts('category').map((o) => <option key={o} value={o}>{o}</option>)}</select></Field>
+              <Field label="Mức tồn"><select className={inputCls} value={f.level} onChange={(e) => set('level', e.target.value as SkuFilter['level'])}><option value="">Tất cả mức tồn</option>{(Object.keys(STOCK_LEVEL) as StockLevel[]).map((k) => <option key={k} value={k}>{STOCK_LEVEL[k].label}</option>)}</select></Field>
+            </FilterPopover>
+            {/* bộ lọc đã lưu: cạnh phễu trên điện thoại, cuối hàng trên desktop */}
+            <div className="relative shrink-0 lg:order-last" ref={savedRef}>
               <button className={cn(btnGhost, 'h-8 text-[13px]')} onClick={() => setSavedOpen((v) => !v)} aria-expanded={savedOpen} aria-haspopup="menu" title="Bộ lọc đã lưu"><Star className="h-4 w-4" aria-hidden /><span className="sr-only">Bộ lọc của tôi</span><ChevronDown className="h-3.5 w-3.5" aria-hidden /></button>
               {savedOpen && (
                 <div className="absolute right-0 top-11 z-30 w-72 rounded-md border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-2 shadow-[var(--shadow-lg)]" role="menu">
@@ -530,19 +541,21 @@ export function SkuCatalog() {
               )}
             </div>
           </div>
+          <div className="min-w-0 lg:flex-1">
+            <StatusBar<'IN' | 'OUT' | 'ARCH'> label="Tồn kho" value={view} onChange={(v) => { setView(v); paged.setPage(1); }} total={live.length} funnel={false} options={stockOpts} />
+          </div>
         </div>
         {chips.length > 0 && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-[rgb(var(--ink)/0.06)] pt-2.5">
-            <span className="text-xs text-[rgb(var(--muted))]">Đang lọc:</span>
-            {chips.map((c) => <span key={c.k} className="inline-flex items-center gap-1 rounded-full bg-[rgb(var(--secondary)/0.12)] py-0.5 pl-2.5 pr-1 text-xs font-medium text-[rgb(var(--secondary-fg))]">{c.label}<button className="rounded-full p-0.5 hover:bg-[rgb(var(--secondary)/0.2)]" onClick={() => set(c.k, SKU_FILTER0[c.k] as never)} aria-label={`Bỏ ${c.label}`}><X className="h-3 w-3" aria-hidden /></button></span>)}
-            <button className="ml-1 text-xs font-medium text-[rgb(var(--danger-fg))] hover:underline" onClick={() => { setFilter(SKU_FILTER0); paged.setPage(1); }}>Xóa tất cả</button>
-            <span className="ml-auto text-xs text-[rgb(var(--muted))]">{list.length} / {base.length} sản phẩm</span>
+          <div className="flex flex-wrap items-center gap-2" data-sku-chips>
+            <FilterChips items={chips.map((c) => ({ key: c.k, label: c.label, onClear: () => set(c.k, SKU_FILTER0[c.k] as never) }))} />
+            <button type="button" className="text-[12.5px] text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => { setFilter(SKU_FILTER0); paged.setPage(1); }}>Xóa tất cả</button>
+            <span className="ml-auto text-[12.5px] tabular-nums text-[rgb(var(--muted))]">{list.length} / {base.length} sản phẩm</span>
           </div>
         )}
       </section>
 
       <Panel>
-        <Table head={['STT', 'SKU', 'Tên sản phẩm', 'Hãng', 'ĐVT', <span key="p1" className="block text-right">Giá bán lẻ</span>, <span key="p2" className="block text-right">Giá đại lý</span>, <span key="p3" className="block text-right">Giá dự án</span>, <span key="st" className="block text-right">Tồn</span>, 'Mức tồn', 'Lead-time', <span key="oo" className="block text-right">Đang về</span>, 'Tài liệu', <span key="a" className="block text-right">Thao tác</span>]} minW={1000} sort={srt.th}>
+        <Table head={['STT', 'SKU', 'Tên sản phẩm', 'Hãng', 'ĐVT', <span key="p1" className="block text-right">Giá bán lẻ</span>, <span key="p2" className="block text-right">Giá đại lý</span>, <span key="p3" className="block text-right">Giá dự án</span>, <span key="st" className="block text-right">Tồn</span>, 'Mức tồn', 'Lead-time', <span key="oo" className="block text-right">Đang về</span>, 'Tài liệu', <span key="a" className="block text-right">Thao tác</span>]} minW={1000} sort={srt.th} optional={[3, 10, 12]}>
           {paged.slice.map((s, i) => (
             <tr key={s.sku} className={cn(rowCls, 'cursor-pointer', s.archived && 'opacity-60')} onClick={() => setDetail(s.sku)}>
               <td className={cn(tdFirst, 'w-12 tabular-nums text-[rgb(var(--muted))]')}>{(paged.page - 1) * 20 + i + 1}</td>

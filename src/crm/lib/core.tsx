@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, ArrowLeft, ArrowLeftRight, AtSign, Banknote, Bell, BookUser, Boxes, Briefcase, Building2, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Clock, Coins, Columns3, Copy, Database, Download, ExternalLink, Eye, Factory, FileCheck2, FileText, Filter, FolderOpen, HardHat, House, Inbox, Info, LayoutDashboard, LayoutTemplate, Lightbulb, Link2, Megaphone, MessageCircle, MessagesSquare, MoreVertical, Newspaper, Package, PackageMinus, PackagePlus, Paperclip, Pencil, Plane, Plus, Printer, Receipt as ReceiptIcon, RefreshCw, Rows3, Ruler, Send, Settings, ShieldCheck, Ship, ShoppingBag, SlidersHorizontal, Sparkles, SquarePlay, Star, Target, ThumbsUp, Truck, Upload, Users, Vote, Wallet, Warehouse, XCircle, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowLeftRight, AtSign, Banknote, Bell, BookUser, Boxes, Briefcase, Building2, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Clock, Coins, Columns3, Component as ComponentIcon, Copy, Database, Download, ExternalLink, Eye, Factory, FileCheck2, FileText, Filter, FolderOpen, HardHat, House, Inbox, Info, LayoutDashboard, LayoutTemplate, Lightbulb, Link2, Megaphone, MessageCircle, MessagesSquare, MoreVertical, Newspaper, Package, PackageMinus, PackagePlus, Paperclip, Pencil, Plane, Plus, Printer, Receipt as ReceiptIcon, RefreshCw, Rows3, Ruler, Send, Settings, ShieldCheck, Ship, ShoppingBag, SlidersHorizontal, Sparkles, SquarePlay, Star, Target, ThumbsUp, Truck, Upload, Users, Vote, Wallet, Warehouse, XCircle, Zap } from 'lucide-react';
 import { Component, Fragment, createContext, memo, type ReactNode, useContext, useDeferredValue, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { type JSONContent } from '@tiptap/core';
@@ -9,7 +9,7 @@ import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
 import { acctList, saleReturned, saleTotals } from './getfly';
-import type { AcctConfig, AcctEvent, AcctStd, Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, CfDef, CfEntity, CfType, CfVal, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashPeriod, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LFieldItem, LSection, LDevice, Lead, LeadStatus, LeaveKind, LField, LostReason, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, LTextKind, LTypeDef, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, SoColDef, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { AcctConfig, AcctEvent, AcctStd, Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, CfDef, CfEntity, CfType, CfVal, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashPeriod, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LFieldItem, LSection, LDevice, LGrid, LSpace, LTok, Lead, LeadStatus, LeaveKind, LField, LostReason, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, LTextKind, LTypeDef, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, SoColDef, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
@@ -68,7 +68,41 @@ body{background:rgb(var(--bg));color:rgb(var(--fg))}
 }
 :root:not(.light) .side-dark{ --sunken:7 8 13; --surface:17 20 28; --raised:26 30 40; --line:34 38 50; }
 
-div.kpi-row{background:rgb(var(--surface));border:1px solid rgb(var(--line));border-radius:var(--radius-lg);padding:12px 16px}
+/* v59 token bố cục (không đổi màu). --border = viền mảnh, khai báo ở cả 3 phạm vi để .side-dark nhận đúng --line của nó */
+:root,.light,.side-dark{ --border:var(--line); }
+:root{
+  /* khoảng cách: lưới 4px; dày (bảng, menu) dùng 1-4, thẻ 5-6, khoảng giữa các khối 6-8 */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px; --space-8:32px; --space-10:40px;
+  /* bo góc: badge 6, nút / ô nhập 8 (rounded-lg), thẻ 12 (rounded-xl), bảng trượt trên điện thoại 16 */
+  --radius-badge:6px; --radius-xl:16px;
+  /* chữ: nhãn 12.5, bảng 13.5, nội dung 14, tiêu đề khối 15, tiêu đề trang 20, số KPI 26 */
+  --fs-xs:12px; --fs-label:12.5px; --fs-sm:13px; --fs-table:13.5px; --fs-base:14px; --fs-h3:15px; --fs-h2:17px; --fs-h1:20px; --fs-kpi:26px;
+  /* trạng thái: nền rê chuột / bấm (độ đậm của --ink), viền ô điều khiển */
+  --hover-a:.04; --press-a:.07; --control-a:.12;
+  /* chuyển động: phản hồi nhanh, mở bảng trượt chậm hơn, đóng nhanh hơn mở */
+  --dur-fast:120ms; --dur:180ms; --dur-slow:280ms;
+  /* lớp: dính 20, popover 40, bảng trượt 50, sheet 62, modal 65, thông báo 80 */
+  --z-sticky:20; --z-popover:40; --z-drawer:50; --z-sheet:62; --z-modal:65; --z-toast:80;
+  --shadow-xs:none; --shadow-pop:0 12px 32px rgba(0,0,0,.45);
+}
+.light{ --shadow-xs:0 1px 2px rgba(17,24,39,.05); --shadow-pop:0 12px 32px rgba(17,24,39,.12); }
+.ui-num{ font-variant-numeric:tabular-nums; }
+.font-archivo{ font-family:'Archivo','Be Vietnam Pro',system-ui,sans-serif; letter-spacing:-0.01em; }
+.ui-scroll{ overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:rgb(var(--ink)/.18) transparent; }
+.ui-scroll::-webkit-scrollbar{ width:8px; height:8px; }
+.ui-scroll::-webkit-scrollbar-thumb{ background:rgb(var(--ink)/.16); border-radius:8px; border:2px solid transparent; background-clip:padding-box; }
+.ui-hover{ transition:background-color var(--dur-fast) var(--ease); }
+.ui-hover:hover{ background-color:rgb(var(--ink)/var(--hover-a)); }
+.ui-hover:active{ background-color:rgb(var(--ink)/var(--press-a)); }
+/* nhãn trạng thái: nền tông 12%, chữ = tông pha 20% --fg (đậm hơn ở nền sáng, sáng hơn ở nền tối) → tương phản ≥ 4.5:1 cả 2 chế độ */
+.ui-tone-neutral{ background:rgb(var(--ink)/.06); color:rgb(var(--fg2)); }
+.ui-tone-info{ background:rgb(var(--secondary)/.12); color:color-mix(in srgb, rgb(var(--secondary-fg)) 80%, rgb(var(--fg))); }
+.ui-tone-success{ background:rgb(var(--success)/.12); color:color-mix(in srgb, rgb(var(--success-fg)) 80%, rgb(var(--fg))); }
+.ui-tone-warning{ background:rgb(var(--warn)/.12); color:color-mix(in srgb, rgb(var(--warn)) 80%, rgb(var(--fg))); }
+.ui-tone-danger{ background:rgb(var(--danger)/.12); color:color-mix(in srgb, rgb(var(--danger-fg)) 80%, rgb(var(--fg))); }
+.ui-tone-accent{ background:rgb(var(--accent)/.12); color:color-mix(in srgb, rgb(var(--accent-fg)) 80%, rgb(var(--fg))); }
+
+div.kpi-row{background:rgb(var(--surface));border:1px solid rgb(var(--border));border-radius:var(--radius-lg);padding:10px 16px}
 
 `;
 
@@ -131,7 +165,9 @@ export const whQty = (s: SkuItem, whId: string, whs: WarehouseInfo[]) => {
 
 export const uid = (p: string) => `${p}${Math.random().toString(36).slice(2, 9)}`;
 
-export const MST_RE = /^\d{10}(-\d{3})?$/;
+/** Mã số thuế: tổ chức 10 số, chi nhánh 10-3 số; v60: cá nhân / hộ kinh doanh dùng số định danh 12 số (từ 01/7/2025) */
+export const MST_RE = /^(\d{10}(-\d{3})?|\d{12})$/;
+export const MST_MSG = 'MST gồm 10 số, chi nhánh 13 số (0123456789-001); cá nhân, hộ kinh doanh dùng số định danh 12 số';
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -171,7 +207,7 @@ export const ROLE_DESC: Record<Role, string> = {
   ACCOUNTANT: 'Đối soát hóa đơn VAT, Credit Note và cấn trừ công nợ Hãng',
 };
 
-export const MODULES: Module[] = ['home', 'overview', 'tasks', 'sales', 'leads', 'customers', 'projects', 'products', 'warehouse', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'staff', 'docs', 'reports', 'settings', 'messages', 'contacts', 'zalo', 'marketing'];
+export const MODULES: Module[] = ['home', 'overview', 'tasks', 'sales', 'leads', 'customers', 'projects', 'products', 'warehouse', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'accounting', 'staff', 'docs', 'reports', 'settings', 'messages', 'contacts', 'zalo', 'marketing'];
 
 export const MODULE_LABEL: Record<Module, string> = {
   home: 'Bàn làm việc',
@@ -197,6 +233,7 @@ export const MODULE_LABEL: Record<Module, string> = {
   staff: 'Lịch công tác',
   docs: 'Tài liệu',
   reports: 'Tài chính',
+  accounting: 'Kế toán',
   settings: 'Cài đặt',
 };
 
@@ -227,6 +264,7 @@ export const MODULE_DESC: Record<Module, string> = {
   claims: 'Kế hoạch quỹ MDF / CS, thẩm định POP và claim tiền Hãng',
   docs: 'Quy chế, chính sách hoa hồng và tài liệu kỹ thuật theo phân quyền',
   reports: 'Công nợ & tuổi nợ, quyết toán quỹ MDF, quyết toán hoa hồng, lãi gộp đơn hàng',
+  accounting: 'Yêu cầu xuất hóa đơn, bảng kê hóa đơn đầu ra, sổ nhật ký, sổ cái, cân đối số phát sinh, đối chiếu giao hàng - hóa đơn - thu tiền',
   settings: 'Doanh nghiệp, phòng ban, quỹ Hãng, ngân sách Marketing, Getfly, Email, Zalo ZNS',
 };
 
@@ -254,6 +292,7 @@ export const MODULE_ICON: Record<Module, typeof Wallet> = {
   staff: CalendarDays,
   docs: FolderOpen,
   reports: Banknote,
+  accounting: ReceiptIcon,
   settings: Settings,
 };
 
@@ -298,6 +337,8 @@ export const ACTION_LABEL: Record<Action, string> = {
   'zalo.reply': 'Zalo Hub: trả lời khách, gửi ZNS',
   'zalo.assign': 'Zalo Hub: phân công hội thoại cho nhân viên khác',
   'mkt.manage': 'Marketing Hub: chiến dịch, nội dung, phân khúc, kịch bản tự động',
+  'acct.view': 'Xem mục Kế toán: hóa đơn, sổ nhật ký, sổ cái, cân đối, đối chiếu',
+  'acct.post': 'Ghi sổ kế toán: xuất / hủy hóa đơn, khóa kỳ, số dư đầu kỳ',
   'stock.manage': 'Lập phiếu nhập / xuất / kiểm kê kho vật tư',
   'cash.manage': 'Lập phiếu thu / chi, chuyển quỹ',
   'sale.create': 'Bán hàng: lên đơn bán',
@@ -374,13 +415,14 @@ export const PO_PURPOSE: Record<PoPurpose, string> = { PROJECT: 'Hàng dự án 
 
 export const UNITS = ['Bộ', 'Cuộn', 'Cái', 'Tuýp', 'Hộp', 'Mét', 'Chai'];
 
-export const ACTIVITY_TYPE: Record<ActivityType, { label: string; color: string; approval: boolean }> = {
-  MEETING: { label: 'Gặp khách hàng', color: '#00B894', approval: false },
-  SURVEY: { label: 'Khảo sát / Nghiệm thu công trình', color: '#06B6D4', approval: false },
-  TRIP: { label: 'Đi công tác ngoại tỉnh / Hãng', color: '#1F74D4', approval: true },
-  LEAVE: { label: 'Nghỉ việc riêng / Đi muộn có lý do', color: '#EF4444', approval: true },
-  TRAINING: { label: 'Đào tạo / hội thảo', color: '#8B5CF6', approval: false },
-  EVENT: { label: 'Sự kiện chương trình', color: '#F28C33', approval: false },
+/** v59: `short` = tên rút gọn cho nút lọc nhanh / thẻ đang lọc (tên đầy đủ vẫn dùng ở bảng, phễu và chú thích) */
+export const ACTIVITY_TYPE: Record<ActivityType, { label: string; short?: string; color: string; approval: boolean }> = {
+  MEETING: { label: 'Gặp khách hàng', short: 'Gặp khách', color: '#00B894', approval: false },
+  SURVEY: { label: 'Khảo sát / Nghiệm thu công trình', short: 'Khảo sát / NT', color: '#06B6D4', approval: false },
+  TRIP: { label: 'Đi công tác ngoại tỉnh / Hãng', short: 'Công tác', color: '#1F74D4', approval: true },
+  LEAVE: { label: 'Nghỉ việc riêng / Đi muộn có lý do', short: 'Nghỉ / đi muộn', color: '#EF4444', approval: true },
+  TRAINING: { label: 'Đào tạo / hội thảo', short: 'Đào tạo', color: '#8B5CF6', approval: false },
+  EVENT: { label: 'Sự kiện chương trình', short: 'Sự kiện', color: '#F28C33', approval: false },
   OTHER: { label: 'Khác', color: '#94A3B8', approval: false },
 };
 
@@ -431,13 +473,13 @@ export const GENDOC_STATUS: Record<GenDocStatus, { label: string; tone: Tone }> 
   SUPERSEDED: { label: 'Đã thay thế', tone: 'muted' },
 };
 
-export const LEAD_STATUS: Record<LeadStatus, { label: string; tone: Tone }> = {
+export const LEAD_STATUS: Record<LeadStatus, { label: string; short?: string; tone: Tone }> = {
   NEW: { label: 'Mới', tone: 'orange' },
   NURTURE: { label: 'Nuôi dưỡng', tone: 'muted' },
-  ROUTED: { label: 'Chờ TP giao việc', tone: 'orange' },
-  ASSIGNED: { label: 'Chờ Sales tiếp nhận', tone: 'orange' },
-  ACCEPTED: { label: 'Khảo sát & báo giá', tone: 'blue' },
-  QUOTED: { label: 'Đã gửi báo giá', tone: 'orange' },
+  ROUTED: { label: 'Chờ TP giao việc', short: 'Chờ TP giao', tone: 'orange' },
+  ASSIGNED: { label: 'Chờ Sales tiếp nhận', short: 'Chờ tiếp nhận', tone: 'orange' },
+  ACCEPTED: { label: 'Khảo sát & báo giá', short: 'Khảo sát', tone: 'blue' },
+  QUOTED: { label: 'Đã gửi báo giá', short: 'Đã báo giá', tone: 'orange' },
   WON: { label: 'Chốt đơn', tone: 'teal' },
   LOST: { label: 'Trượt', tone: 'red' },
 };
@@ -708,9 +750,9 @@ export const allModules = (v: boolean) => Object.fromEntries(MODULES.map((m) => 
 export const INITIAL_PERMS: Perms = {
   modules: {
     BOD: allModules(true),
-    MKT_LEAD: { ...allModules(true), cashbook: false, inventory: false, warehouse: false, sales: false },
-    DEPT_HEAD: { ...allModules(true), settings: false },
-    SALES_REP: { ...allModules(true), reports: false, settings: false, cashbook: false, marketing: false },
+    MKT_LEAD: { ...allModules(true), cashbook: false, inventory: false, warehouse: false, sales: false, accounting: false },
+    DEPT_HEAD: { ...allModules(true), settings: false, accounting: false },
+    SALES_REP: { ...allModules(true), reports: false, settings: false, cashbook: false, marketing: false, accounting: false },
     ACCOUNTANT: { ...allModules(true), leads: false, zalo: false, marketing: false },
   },
   actions: {
@@ -738,6 +780,8 @@ export const INITIAL_PERMS: Perms = {
     'zalo.reply': ['BOD', 'MKT_LEAD', 'DEPT_HEAD', 'SALES_REP'],
     'zalo.assign': ['BOD', 'MKT_LEAD', 'DEPT_HEAD'],
     'mkt.manage': ['BOD', 'MKT_LEAD'],
+    'acct.view': ['BOD', 'ACCOUNTANT'],
+    'acct.post': ['BOD', 'ACCOUNTANT'],
     'mdf.margin': ['BOD', 'ACCOUNTANT'],
     'po.manage': ['BOD', 'DEPT_HEAD', 'ACCOUNTANT'],
     'stock.deliver': ['BOD', 'DEPT_HEAD', 'ACCOUNTANT'],
@@ -1275,6 +1319,8 @@ export const DOC_CATEGORY: Record<DocCategory, string> = {
   KPI: 'Chính sách Thưởng / KPI',
   PROFILE: 'Hồ sơ năng lực & Catalog',
 };
+/** v59: tên rút gọn cho nút lọc nhanh */
+export const DOC_CATEGORY_SHORT: Record<DocCategory, string> = { POLICY: 'Quy chế', MDF_RULES: 'Quỹ MDF', KPI: 'Thưởng / KPI', PROFILE: 'Hồ sơ năng lực' };
 
 /** Phạm vi hiển thị: Toàn công ty, Chỉ BOD & Kế toán, hoặc Chỉ một phòng ban */
 export const docVisibility = (v: DocVisibility, departments: Department[]): { label: string; tone: Tone } =>
@@ -2264,17 +2310,17 @@ export const VARIANT_GROUPS: VariantGroup[] = [
     { id: 'flat', label: 'Minh họa phẳng', prompt: 'minh họa phẳng dạng infographic, nét gọn' },
   ] },
   { id: 'imgColor', kind: 'image', label: 'Màu sắc', multi: false, options: [
-    { id: 'brand', label: 'Màu thương hiệu', prompt: 'tông màu xanh navy và cam thương hiệu', def: true },
-    { id: 'natural', label: 'Màu tự nhiên', prompt: 'màu sắc tự nhiên' },
+    // v56.3 mặc định Màu tự nhiên (doanh nghiệp đặt mặc định riêng ở Cài đặt biến thể thì theo doanh nghiệp)
+    { id: 'brand', label: 'Màu thương hiệu', prompt: 'tông màu xanh navy và cam thương hiệu' },
+    { id: 'natural', label: 'Màu tự nhiên', prompt: 'màu sắc tự nhiên', def: true },
     { id: 'light', label: 'Tông sáng', prompt: 'tông sáng, sạch' },
     { id: 'dark', label: 'Tông tối', prompt: 'tông tối sang trọng' },
   ] },
-  { id: 'imgStamp', kind: 'image', label: 'Đóng dấu', multi: false, options: [
-    { id: 'logo', label: 'Logo doanh nghiệp', prompt: '', def: true },
-    { id: 'name', label: 'Tên doanh nghiệp', prompt: '' },
-    { id: 'nostamp', label: 'Không đóng', prompt: '' },
-  ] },
+  // v56.3 bỏ nhóm "Đóng dấu": ảnh mặc định không đóng dấu (xem vStamp)
 ];
+
+/** v56.3 Đóng dấu ảnh: chỉ nhiệm vụ / bài đã lưu chọn rõ Logo hoặc Tên doanh nghiệp mới đóng dấu; còn lại không đóng */
+export const vStamp = (s: StSettings | undefined): 'logo' | 'name' | 'nostamp' => { const v = stArr(s?.v_imgStamp)[0]; return v === 'logo' || v === 'name' ? v : 'nostamp'; };
 
 /** Biến thể cấu hình sẵn đọc lúc dựng prompt (cập nhật mỗi lần app render Marketing Hub / bộ xử lý nền) */
 export const ST_VARIANT_CACHE: { cfg: ContentVariantCfg } = { cfg: CONTENT_CFG0 };
@@ -2300,9 +2346,10 @@ export const MKT_REVIEW_EVT = '3a:content-review';
 /** Mở khung "Xem & duyệt" (đặt ở khung app, dùng được từ Trung tâm phê duyệt, Plan, danh sách nội dung) */
 export const openContentReview = (id: string) => window.dispatchEvent(new CustomEvent(MKT_REVIEW_EVT, { detail: id }));
 
+// v56.3 mẫu cài sẵn không đặt Màu sắc (để theo mặc định Màu tự nhiên / mặc định riêng của doanh nghiệp)
 export const CONTENT_TEMPLATES: ContentTemplate[] = [
   { id: 'tpl_pr_seo', name: 'Bài PR kỹ thuật chuẩn SEO', desc: 'Chuyên ngành, dẫn tiêu chuẩn, bảng thông số, FAQ, mời báo giá', channels: ['website'],
-    values: { type: ['product'], length: ['w_mid'], tone: ['engineer'], audience: ['mep'], proof: ['standard', 'specs', 'table'], cta: ['quote', 'download'], sections: ['s57'], extras: ['faq', 'table', 'tldr'], depth: ['pro'], kwDensity: ['natural'], kwPlace: ['first', 'bold'], imgCount: ['perh2'], imgScene: ['closeup', 'site'], imgStyle: ['real'], imgColor: ['brand'] } },
+    values: { type: ['product'], length: ['w_mid'], tone: ['engineer'], audience: ['mep'], proof: ['standard', 'specs', 'table'], cta: ['quote', 'download'], sections: ['s57'], extras: ['faq', 'table', 'tldr'], depth: ['pro'], kwDensity: ['natural'], kwPlace: ['first', 'bold'], imgCount: ['perh2'], imgScene: ['closeup', 'site'], imgStyle: ['real'] } },
   { id: 'tpl_howto', name: 'Hướng dẫn thi công', desc: 'Từng bước, dụng cụ, lỗi hay gặp, mời khảo sát', channels: ['website'],
     values: { type: ['howto'], length: ['w_mid'], tone: ['engineer'], audience: ['mep'], proof: ['standard', 'specs'], cta: ['survey', 'zalo'], sections: ['s57'], extras: ['bullets', 'tldr', 'faq'], depth: ['pro'], imgCount: ['perh2'], imgScene: ['crew', 'closeup'], imgStyle: ['real'] } },
   { id: 'tpl_compare', name: 'So sánh / tư vấn chọn mua', desc: 'Tiêu chí rõ ràng, bảng so sánh, kết luận nên chọn gì', channels: ['website'],
@@ -2310,7 +2357,7 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
   { id: 'tpl_case_web', name: 'Case study công trình', desc: 'Bối cảnh, vấn đề, giải pháp, kết quả, lời khách', channels: ['website'],
     values: { type: ['case'], length: ['w_mid'], tone: ['investor'], audience: ['owner'], proof: ['project', 'beforeafter', 'testimonial'], cta: ['survey'], depth: ['pro'], imgCount: ['perh2'], imgScene: ['site', 'crew'], imgStyle: ['real'] } },
   { id: 'tpl_fb_promo', name: 'Khuyến mãi Fanpage', desc: 'Ngắn, nhấn ưu đãi, CTA nhắn Zalo / gọi', channels: ['facebook'],
-    values: { type: ['promo'], length: ['fb_short'], tone: ['sales'], cta: ['zalo', 'hotline'], address: ['ban'], imgCount: ['hero'], imgAspect: ['square'], imgStyle: ['copyspace'], imgColor: ['brand'] } },
+    values: { type: ['promo'], length: ['fb_short'], tone: ['sales'], cta: ['zalo', 'hotline'], address: ['ban'], imgCount: ['hero'], imgAspect: ['square'], imgStyle: ['copyspace'] } },
   { id: 'tpl_fb_story', name: 'Kể chuyện công trình', desc: 'Bài Fanpage dài vừa, có trước / sau và ảnh thi công', channels: ['facebook'],
     values: { type: ['case'], length: ['fb_long'], tone: ['investor'], proof: ['project', 'beforeafter'], cta: ['survey'], imgCount: ['perh2'], imgAspect: ['p45'], imgScene: ['site', 'crew'] } },
   { id: 'tpl_fb_tip', name: 'Mẹo kỹ thuật nhanh', desc: 'Một mẹo / một sai lầm, dễ chia sẻ', channels: ['facebook'],
@@ -2552,7 +2599,22 @@ export const L_TYPES: LTypeDef[] = [
   { type: 'K-Order-Files', label: 'Tệp đính kèm', def: { x: 8, y: 0, w: 4, h: 2 }, desc: 'Tệp tải lên cho đơn (ảnh, PDF)', pages: ['sale-detail'], tier: 'biz' },
   { type: 'K-SaleList', label: 'Danh sách đơn hàng', def: { x: 0, y: 0, w: 12, h: 8 }, desc: 'Tìm, lọc, tab trạng thái, chọn cột, xuất; 3A đặt cột mặc định và tab', pages: ['sale-list'], tier: 'biz', core: true },
   { type: 'K-Icons', label: 'Nút biểu tượng (cũ)', def: { x: 0, y: 0, w: 12, h: 1 }, desc: 'Đã thay bằng Nút / Icon', pages: [], tier: 'show' },
+  // v57a khối chuyên ngành: đọc quy trình / loại tài nguyên từ hồ sơ ngành của doanh nghiệp
+  { type: 'K-WorkflowHeader', label: 'Quy trình theo ngành', def: { x: 0, y: 0, w: 12, h: 1 }, desc: 'Các bước của ngành (Khảo sát → Sản xuất → Lắp đặt…), chuyển bước có ghi lịch sử', pages: ['sale-detail'], tier: 'biz' },
+  { type: 'K-ChecklistTracker', label: 'Tiến độ công đoạn', def: { x: 8, y: 0, w: 4, h: 3 }, desc: 'Trường Danh sách công đoạn của đơn: thanh tiến độ, tích từng công đoạn', pages: ['sale-detail'], tier: 'biz' },
+  { type: 'K-StageBoard', label: 'Bảng giai đoạn', def: { x: 0, y: 0, w: 12, h: 6 }, desc: 'Đơn theo từng bước quy trình ngành, kéo thẻ sang cột để chuyển bước', pages: ['sale-list'], tier: 'biz' },
+  { type: 'K-ResourceCalendar', label: 'Lịch tài nguyên', def: { x: 0, y: 0, w: 12, h: 5 }, desc: 'Lịch theo tuần của đội thợ / xe / phòng từ trường Chọn tài nguyên + Khoảng thời gian', pages: ['sale-list'], tier: 'biz' },
+  { type: 'K-QuickPOS', label: 'Bán nhanh tại quầy', def: { x: 0, y: 0, w: 12, h: 6 }, desc: 'Chọn hàng bằng ô vuông, giỏ hàng, lên đơn tại quầy (đi qua luồng duyệt như đơn thường)', pages: ['sale-list'], tier: 'biz' },
+  // v57b khung chứa phần tử con có gắn dữ liệu (không dùng ở các bước Nhiệm vụ nội dung)
+  { type: 'K-FlexContainer', label: 'Khung linh hoạt', def: { x: 0, y: 0, w: 12, h: 1 }, desc: 'Xếp chữ, nhãn, nút, ảnh theo hàng / cột; gắn dữ liệu {{customer.name}}, {{order.total}}…', pages: L_ALL_PAGES.filter((p) => !L_CONTENT_STEPS.includes(p)), tier: 'show' },
+  { type: 'K-FreeformBox', label: 'Khung tự do', def: { x: 0, y: 0, w: 12, h: 3 }, desc: 'Đặt phần tử tự do trên khổ thiết kế, hít lưới 8px, đường gióng, neo cạnh khi khung co giãn', pages: L_ALL_PAGES.filter((p) => !L_CONTENT_STEPS.includes(p)), tier: 'show' },
 ];
+
+/** v57b khung chứa phần tử con */
+export const L_BOXES: LBlockType[] = ['K-FlexContainer', 'K-FreeformBox'];
+
+/** v57a khối chuyên ngành (đọc dữ liệu thật của đơn bán; xem trước trong Studio bằng dữ liệu mẫu) */
+export const L_VERTICAL: LBlockType[] = ['K-WorkflowHeader', 'K-ChecklistTracker', 'K-StageBoard', 'K-ResourceCalendar', 'K-QuickPOS'];
 
 export const lType = (t: LBlockType) => L_TYPES.find((x) => x.type === t) ?? L_TYPES[0];
 
@@ -2589,10 +2651,14 @@ export const lNewBlock = (type: LBlockType, at?: Partial<LPos>, page: LPage = 'h
   return { id: uid('lb'), type, pos: { lg: { ...d, ...at }, sm: { w: type === 'K-Stat-Simple' ? 6 : 12, order: 0 } }, show: { lg: true, md: true, sm: true }, config: lDefaultCfg(type, page) };
 };
 
-/** Bố cục khởi tạo trang Chi tiết đơn hàng: giống giao diện gốc (cột trái 8, cột phải 4) */
+/** Bố cục khởi tạo trang Chi tiết đơn hàng */
 export const lStarterSale = (): LBlock[] => {
   const b = (t: LBlockType, x: number, y: number, w: number, h: number) => lNewBlock(t, { x, y, w, h }, 'sale-detail');
-  return lOrderSm([b('K-RecordDetail', 0, 0, 8, 3), b('K-Order-Lines', 0, 3, 8, 5), b('K-Order-Log', 0, 8, 8, 4), b('K-Order-Flow', 8, 0, 4, 3), b('K-Order-Pay', 8, 3, 4, 4), b('K-Order-Profit', 8, 7, 4, 3), b('K-Order-Debt', 8, 10, 4, 2)]);
+  // v60: phiếu đơn hàng 2 cột 9 / 3 (theo ảnh đã duyệt) — trái: ĐƠN HÀNG BÁN + bảng thông tin, hàng hóa & dòng tổng, điều khoản / thông tin bổ trợ, Trao đổi / Chứng từ & Bút toán;
+  // phải (dính khi cuộn, có đường kẻ): quy trình xử lý + người liên quan, tài liệu liên quan, thanh toán + lịch sử thanh toán, lãi trên đơn, công nợ khách
+  const info = b('K-RecordDetail', 0, 0, 9, 3);
+  info.config = { ...info.config, entity: 'sale', sections: [{ id: `${info.id}-s1`, title: '', cols: 2, fields: SO_INFO_SHEET.map((k) => lFieldItem(k, 6, `${info.id}-f-${k}`)) }] };
+  return lOrderSm([info, b('K-Order-Lines', 0, 3, 9, 5), b('K-Order-Ship', 0, 8, 9, 2), b('K-Order-Log', 0, 10, 9, 4), b('K-Order-Flow', 9, 0, 3, 3), b('K-Order-Files', 9, 3, 3, 2), b('K-Order-Pay', 9, 5, 3, 4), b('K-Order-Profit', 9, 9, 3, 3), b('K-Order-Debt', 9, 12, 3, 2)]);
 };
 
 /** Bố cục khởi tạo trang Quản lý đơn hàng */
@@ -2621,7 +2687,7 @@ export const lFieldItem = (fieldKey: string, colSpan: number, id = uid('lf')): L
 export const lInfoSections = (blockId: string, c: LBlockCfg): LSection[] => {
   const cols = c.gridCols ?? 4;
   const unit = 12 / cols;
-  const keys = lFieldOrder([...SO_INFO_F, ...(c.fields ?? []).filter((k) => k.startsWith('cf:')).map((id) => ({ id }))], c);
+  const keys = lFieldOrder([...SO_INFO_LEGACY, ...(c.fields ?? []).filter((k) => k.startsWith('cf:')).map((id) => ({ id }))], c);
   return [{ id: `${blockId}-s1`, title: '', cols, fields: keys.map((k) => lFieldItem(k, k === 'customer' ? Math.min(12, unit * 2) : unit, `${blockId}-f-${k}`)) }];
 };
 
@@ -2831,7 +2897,14 @@ export const lFieldOrder = (all: { id: string; lock?: boolean }[], c?: LBlockCfg
 };
 
 /** Trường gốc của khối Thông tin đơn hàng và cột gốc của bảng Hàng hóa */
-export const SO_INFO_F: { id: string; label: string; lock?: boolean }[] = [{ id: 'customer', label: 'Khách hàng', lock: true }, { id: 'code', label: 'Mã đơn hàng', lock: true }, { id: 'origin', label: 'Nguồn đơn hàng' }, { id: 'by', label: 'Người thực hiện', lock: true }, { id: 'wh', label: 'Kho xuất', lock: true }, { id: 'docRef', label: 'Nguồn chứng từ' }, { id: 'invNo', label: 'Số hóa đơn thuế' }];
+export const SO_INFO_LEGACY: { id: string; label: string; lock?: boolean }[] = [{ id: 'customer', label: 'Khách hàng', lock: true }, { id: 'code', label: 'Mã đơn hàng', lock: true }, { id: 'origin', label: 'Nguồn đơn hàng' }, { id: 'by', label: 'Người thực hiện', lock: true }, { id: 'wh', label: 'Kho xuất', lock: true }, { id: 'docRef', label: 'Nguồn chứng từ' }, { id: 'invNo', label: 'Số hóa đơn thuế' }];
+/** v60: thêm trường gốc cho bảng thông tin đơn (mỗi trường một ô theo quy tắc bảng v49); bố cục cũ không tự thêm các trường này */
+export const SO_INFO_F: { id: string; label: string; lock?: boolean }[] = [...SO_INFO_LEGACY,
+  { id: 'taxCode', label: 'Mã số thuế' }, { id: 'address', label: 'Địa chỉ' }, { id: 'phone', label: 'Điện thoại' }, { id: 'email', label: 'Email' },
+  { id: 'receiver', label: 'Người nhận' }, { id: 'recvPhone', label: 'Điện thoại người nhận' }, { id: 'shipAddr', label: 'Địa chỉ giao hàng' }, { id: 'delivery', label: 'Giao nhận' },
+  { id: 'date', label: 'Ngày đặt hàng' }, { id: 'dept', label: 'Phòng ban' }, { id: 'pay', label: 'Phương thức thanh toán' }];
+/** v60: bảng thông tin mặc định của trang chi tiết đơn (2 cột, theo ảnh đã duyệt) */
+export const SO_INFO_SHEET = ['customer', 'by', 'taxCode', 'dept', 'address', 'date', 'phone', 'pay', 'email', 'wh', 'receiver', 'recvPhone', 'shipAddr', 'delivery', 'docRef', 'origin', 'code', 'invNo'];
 
 export const SO_LINE_F: { id: string; label: string; lock?: boolean }[] = [{ id: 'stt', label: 'STT' }, { id: 'ref', label: 'Mã sản phẩm', lock: true }, { id: 'name', label: 'Tên sản phẩm', lock: true }, { id: 'unit', label: 'ĐVT' }, { id: 'qty', label: 'Số lượng', lock: true }, { id: 'price', label: 'Đơn giá', lock: true }, { id: 'ckPct', label: 'CK%' }, { id: 'ckAmt', label: 'CK (đ)' }, { id: 'vat', label: 'VAT%' }, { id: 'net', label: 'Thành tiền', lock: true }, { id: 'iss', label: 'Đã xuất' }, { id: 'ret', label: 'Trả lại' }, { id: 'rest', label: 'Còn phải xuất' }];
 
@@ -2951,6 +3024,29 @@ export const lDeviceOf = (w: number): LDevice => (w >= 1000 ? 'lg' : w >= 600 ? 
 export const L_ROW = 56;
 
 export const L_GAP = 12;
+
+/** v57a token khoảng cách (px) */
+export const L_TOKS: LTok[] = [0, 4, 8, 12, 16, 24, 32];
+/** v57a lưới mặc định của bố cục mới: hàng 8px, cách 12px */
+export const L_GRID_FINE: LGrid = { row: 8, gap: 12, pad: 0 };
+/** Lưới hiệu lực: không đặt = cổ điển (hàng 56px, cách 12px, tối đa 12 hàng) */
+export const lGridOf = (g?: LGrid) => {
+  const fine = g?.row === 8;
+  const gap = g?.gap ?? L_GAP;
+  return { fine, row: fine ? 8 : L_ROW, gap, pad: g?.pad ?? 0, maxH: fine ? 160 : 12,
+    /** chiều cao (px) của khối cao h hàng: lưới mịn dành phần cách dưới trong chính các hàng của khối */
+    hPx: (h: number) => (fine ? h * 8 - gap : h * L_ROW + (h - 1) * gap),
+    /** bước dọc của 1 hàng (px) */
+    step: fine ? 8 : L_ROW + gap };
+};
+/** v57a đổi số hàng cổ điển (56 + 12px) sang hàng 8px giữ nguyên chiều cao trên màn */
+export const lFineH = (h: number) => Math.max(2, Math.round((h * (L_ROW + L_GAP)) / 8));
+/** v57a chuyển bố cục cổ điển sang lưới 8px (y, h đổi đơn vị; x, w giữ nguyên) */
+export const lToFine = (bs: LBlock[]): LBlock[] => bs.map((b) => ({ ...b, pos: { ...b.pos, lg: { ...b.pos.lg, y: Math.round((b.pos.lg.y * (L_ROW + L_GAP)) / 8), h: lFineH(b.pos.lg.h) } } }));
+/** v57a khoảng cách & khung hiệu lực của khối theo thiết bị (máy tính bảng / điện thoại ghi đè lên máy tính) */
+export const lSpaceOf = (c: LBlockCfg, dev: LDevice): LSpace => ({ ...(c.sp ?? {}), ...(dev !== 'lg' ? c.resp?.[dev] ?? {} : {}) });
+/** v57a lớp khung: thẻ (nền + viền + bóng), viền (chỉ viền), phẳng (không nền, không viền) */
+export const lFrameCls = (f: LSpace['frame'] | undefined) => (f === 'outline' ? 'rounded-xl border border-[rgb(var(--line))]' : f === 'flat' ? '' : 'glass-card rounded-xl');
 
 /** Vai trò mặc định có thấy Lãi trên đơn (xem trước của 3A) */
 export const lRoleProfit = (r: Role) => r === 'BOD' || ['sale.manage', 'cash.manage', 'receipt.confirm'].some((a) => (INITIAL_PERMS.actions[a as Action] ?? []).includes(r));
@@ -3344,12 +3440,12 @@ export const needsApproval = (a: Pick<Activity, 'type' | 'cost'>) => ACTIVITY_TY
 
 export const woLate = (w: WorkOrder) => w.stage !== 'DONE' && w.dueDate < todayISO();
 
-export const INSTALL_VIEW: Record<InstallView, { label: string; tone: Tone }> = {
+export const INSTALL_VIEW: Record<InstallView, { label: string; short?: string; tone: Tone }> = {
   WAIT: { label: 'Chờ hẹn lắp', tone: 'orange' },
   SCHEDULED: { label: 'Đã hẹn lắp', tone: 'blue' },
   IN_PROGRESS: { label: 'Đang lắp đặt', tone: 'orange' },
-  WAIT_PAYMENT: { label: 'Đã nghiệm thu, chờ thu tiền', tone: 'red' },
-  DONE: { label: 'Hoàn tất, bảo hành', tone: 'teal' },
+  WAIT_PAYMENT: { label: 'Đã nghiệm thu, chờ thu tiền', short: 'Chờ thu tiền', tone: 'red' },
+  DONE: { label: 'Hoàn tất, bảo hành', short: 'Bảo hành', tone: 'teal' },
 };
 
 export const installView = (i: InstallJob, job: Job | undefined, receipts: Receipt[]): InstallView => {
@@ -3437,15 +3533,15 @@ export const COMMISSION_STATUS: Record<CommissionRow['status'], { label: string;
   WAIT: { label: 'Chưa thu đủ 100%', tone: 'muted' },
 };
 
-export const HUB_GROUP: Record<HubGroup, { label: string; color: string; kinds: ApprovalKind[] }> = {
-  PRICE: { label: 'Giá & chiết khấu', color: '#F28C33', kinds: ['QUOTE', 'CONTRACT'] },
-  WORK: { label: 'Công tác & giải trình công', color: '#1F74D4', kinds: ['ACTIVITY', 'EXPENSE'] },
-  MDF: { label: 'Chi & claim quỹ MDF', color: '#8B5CF6', kinds: ['PROGRAM', 'CLAIM'] },
+export const HUB_GROUP: Record<HubGroup, { label: string; short?: string; color: string; kinds: ApprovalKind[] }> = {
+  PRICE: { label: 'Giá & chiết khấu', short: 'Giá & CK', color: '#F28C33', kinds: ['QUOTE', 'CONTRACT'] },
+  WORK: { label: 'Công tác & giải trình công', short: 'Công tác', color: '#1F74D4', kinds: ['ACTIVITY', 'EXPENSE'] },
+  MDF: { label: 'Chi & claim quỹ MDF', short: 'Quỹ MDF', color: '#8B5CF6', kinds: ['PROGRAM', 'CLAIM'] },
   LEAD: { label: 'Phân lead', color: '#00B894', kinds: ['LEAD_ASSIGN'] },
-  CASH: { label: 'Thu tiền & nộp quỹ', color: '#EC4899', kinds: ['RECEIPT', 'CASH'] },
+  CASH: { label: 'Thu tiền & nộp quỹ', short: 'Thu tiền', color: '#EC4899', kinds: ['RECEIPT', 'CASH'] },
   STOCK: { label: 'Hàng giữ chỗ', color: '#F6B533', kinds: ['STOCK'] },
-  MKT: { label: 'Nội dung marketing', color: '#0EA5E9', kinds: ['CONTENT'] },
-  OPS: { label: 'Kho, đơn bán & xưởng', color: '#64748B', kinds: ['VOUCHER', 'SALE', 'SALE_PAY', 'JOB_QUOTE', 'DESIGN'] },
+  MKT: { label: 'Nội dung marketing', short: 'Marketing', color: '#0EA5E9', kinds: ['CONTENT'] },
+  OPS: { label: 'Kho, đơn bán & xưởng', short: 'Vận hành', color: '#64748B', kinds: ['VOUCHER', 'SALE', 'SALE_PAY', 'JOB_QUOTE', 'DESIGN'] },
   REQ: { label: 'Đề nghị', color: '#14B8A6', kinds: ['REQUEST'] },
 };
 
@@ -3536,6 +3632,7 @@ export const CONSOLE_TABS: { id: ConsoleTab; label: string; icon: typeof Wallet;
   { id: 'modules', label: 'Cấp phép module', icon: SlidersHorizontal, desc: 'Bật / tắt module theo hợp đồng từng doanh nghiệp' },
   { id: 'users', label: 'Người dùng & quyền', icon: Users, desc: 'Tài khoản, vai trò, phân quyền và chính sách bảo mật của từng doanh nghiệp' },
   { id: 'design', label: 'Thiết kế giao diện', icon: LayoutTemplate, desc: 'Bố cục trang do 3A thiết kế bằng khối, áp dụng xuống doanh nghiệp' },
+  { id: 'uikit', label: 'Bộ giao diện', icon: ComponentIcon, desc: 'Token và 7 thành phần lõi dùng chung (v59): đầu trang, bảng, bảng trượt, KPI, trạng thái, tiến trình, trạng thái trống' },
   { id: 'data', label: 'Dữ liệu & nâng cấp', icon: Database, desc: 'Khóa lưu, phiên bản dữ liệu, sao lưu, nâng cấp, snapshot' },
   { id: 'admins', label: 'Quản trị nền tảng', icon: ShieldCheck, desc: 'Tài khoản @3agroup.vn và nhật ký nền tảng' },
 ];
@@ -3586,7 +3683,7 @@ export const ACTION_MODULE: Record<Action, Module> = {
   'settings.edit': 'settings', 'data.backup': 'settings', 'security.manage': 'settings',
   'po.manage': 'supply', 'stock.deliver': 'supply', 'stock.release': 'supply', 'price.viewCost': 'products', 'stock.voucher': 'warehouse', 'stock.approve': 'warehouse',
   'activity.approve': 'staff', 'production.manage': 'production', 'install.manage': 'install', 'job.manage': 'jobs', 'receipt.confirm': 'jobs', 'priceList.manage': 'jobs',
-  'stock.manage': 'inventory', 'cash.manage': 'cashbook', 'sale.create': 'sales', 'sale.approve': 'sales', 'sale.viewAll': 'sales', 'customer.delete': 'customers', 'customer.viewAll': 'customers', 'lead.viewAll': 'leads', 'job.delete': 'jobs', 'production.delete': 'production', 'install.delete': 'install', 'sale.manage': 'sales', 'sale.info': 'sales', 'sale.delete': 'sales', 'sale.docs': 'sales', 'feed.moderate': 'home', 'feed.poll': 'home', 'zalo.reply': 'zalo', 'zalo.assign': 'zalo', 'mkt.manage': 'marketing',
+  'stock.manage': 'inventory', 'cash.manage': 'cashbook', 'acct.view': 'accounting', 'acct.post': 'accounting', 'sale.create': 'sales', 'sale.approve': 'sales', 'sale.viewAll': 'sales', 'customer.delete': 'customers', 'customer.viewAll': 'customers', 'lead.viewAll': 'leads', 'job.delete': 'jobs', 'production.delete': 'production', 'install.delete': 'install', 'sale.manage': 'sales', 'sale.info': 'sales', 'sale.delete': 'sales', 'sale.docs': 'sales', 'feed.moderate': 'home', 'feed.poll': 'home', 'zalo.reply': 'zalo', 'zalo.assign': 'zalo', 'mkt.manage': 'marketing',
 };
 
 export const LOCKED = (r: Role, m?: Module, a?: Action) => r === 'BOD' && (m === 'settings' || a === 'settings.edit');
@@ -3634,6 +3731,7 @@ export const PFEATS: PFeat[] = [
   { id: 'install', mod: 'install', label: 'Lắp đặt', cells: { create: ['install.manage'], edit: ['install.manage'], delete: ['install.delete'] } },
   { id: 'inventory', mod: 'inventory', label: 'Kho vật tư xưởng', cells: { edit: ['stock.manage'] } },
   { id: 'cashbook', mod: 'cashbook', label: 'Thu chi', cells: { create: ['cash.manage'], edit: ['cash.manage'], delete: ['cash.manage'], approve: ['receipt.confirm'] }, hint: 'Duyệt: xác nhận tiền thu' },
+  { id: 'accounting', mod: 'accounting', label: 'Kế toán', cells: { viewAll: ['acct.view'], approve: ['acct.post'] }, hint: 'Xem: sổ sách, hóa đơn; Duyệt: xuất / hủy hóa đơn, khóa kỳ' },
   { id: 'zalo', mod: 'zalo', label: 'Zalo Hub', cells: { create: ['zalo.reply'], edit: ['zalo.assign'] }, hint: 'Sửa: phân công hội thoại' },
   { id: 'staff', mod: 'staff', label: 'Lịch công tác', cells: { approve: ['activity.approve'] } },
   { id: 'settings', mod: 'settings', label: 'Cài đặt', cells: { edit: ['settings.edit'] } },
@@ -3776,10 +3874,10 @@ export const DESIGN_STATUS: Record<DesignStatus, { label: string; tone: Tone; ne
   APPROVED: { label: 'Bản vẽ đã duyệt', tone: 'teal' },
 };
 
-export const WO_STAGE: Record<WoStage, { label: string; color: string; tone: Tone }> = {
+export const WO_STAGE: Record<WoStage, { label: string; short?: string; color: string; tone: Tone }> = {
   WAITING: { label: 'Chờ sản xuất', color: '#F6B533', tone: 'orange' },
   IN_PROGRESS: { label: 'Đang sản xuất', color: '#1F74D4', tone: 'blue' },
-  DONE: { label: 'Đã hoàn thành', color: '#00B894', tone: 'teal' },
+  DONE: { label: 'Đã hoàn thành', short: 'Hoàn thành', color: '#00B894', tone: 'teal' },
 };
 
 /** Cần chăm sóc: đã báo giá chưa chốt, hoặc đã trượt */
@@ -3854,7 +3952,7 @@ export const ORG_DEFAULTS: Record<string, Record<string, unknown>> = {
 // =====================================================================
 
 /** Tăng số này mỗi khi cấu trúc dữ liệu đổi, và thêm một bước vào MIGRATIONS */
-export const DATA_VERSION = 32;
+export const DATA_VERSION = 33;
 
 /** Dữ liệu bản trước khi tách doanh nghiệp (chuyển sang VASSH ở lần mở đầu) */
 export const LEGACY_STORE_KEY = 'vassh-crm:data';
@@ -3894,7 +3992,7 @@ export const TENANT_PLAN: Record<TenantPlan, { label: string; seats: number; pri
 };
 
 /** 13 module nghiệp vụ cấp phép được (Tổng quan, Công việc, Cài đặt luôn bật) */
-export const PROVISION_MODULES: Module[] = ['sales', 'leads', 'customers', 'projects', 'products', 'warehouse', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'staff', 'docs', 'reports'];
+export const PROVISION_MODULES: Module[] = ['sales', 'leads', 'customers', 'projects', 'products', 'warehouse', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'accounting', 'staff', 'docs', 'reports'];
 
 export const defaultTenantReg = (o: Org): TenantReg => ({
   id: o.id, plan: o.id === 'vassh' ? 'ENTERPRISE' : 'BUSINESS', seats: o.id === 'vassh' ? 100 : 30,
@@ -3975,6 +4073,8 @@ export const MIGRATIONS: Record<number, (d: AnyRec) => AnyRec> = {
   31: (d) => ({ ...d, userPrefs: Array.isArray(d.userPrefs) ? d.userPrefs : [] }),
   // v56: tài nguyên doanh nghiệp (nhóm dữ liệu mới, không đổi dữ liệu cũ)
   32: (d) => ({ ...d, resources: Array.isArray(d.resources) ? d.resources : [] }),
+  // v58: yêu cầu xuất hóa đơn + bút toán (nhóm dữ liệu mới). invReqs trong đơn giữ nguyên để đọc ngược; chuyển sang bảng mới ở App (idempotent theo id)
+  33: (d) => ({ ...d, invoiceRequests: Array.isArray(d.invoiceRequests) ? d.invoiceRequests : [], journalEntries: Array.isArray(d.journalEntries) ? d.journalEntries : [] }),
   23:(d) => ({ ...d, warehouses: Array.isArray(d.warehouses) && d.warehouses.length ? d.warehouses : INITIAL_WAREHOUSES }),
 };
 
@@ -4359,6 +4459,8 @@ export const KEYED_COLLS: Record<string, string> = {
   salesOrders: 'id', userPrefs: 'id',
   // v56: tài nguyên doanh nghiệp (đội thợ, xe, phòng chụp…)
   resources: 'id',
+  // v58: yêu cầu xuất hóa đơn, bút toán đã ghi sổ (mỗi bản ghi 1 dòng; bút toán chỉ thêm, không sửa đè — trigger journal_guard)
+  invoiceRequests: 'id', journalEntries: 'id',
 };
 
 /**
@@ -4542,14 +4644,25 @@ export class TenantSync {
     }
     // v55.3: máy chủ chặn bản ghi có trường tùy chỉnh sai (CF_INVALID) -> gửi lại từng dòng, các dòng hợp lệ vẫn lưu,
     // dòng bị chặn giữ ở trạng thái chờ gửi trên máy (không mất), báo lỗi để người dùng bổ sung
+    // v58: mọi lỗi máy chủ từ chối dữ liệu (4xx: RLS, trigger bút toán / hóa đơn / khóa kỳ…) cũng gửi lại từng dòng để 1 dòng bị chặn
+    // không làm hỏng cả lượt; lỗi mạng (không có mã 4xx) vẫn dừng và thử lại cả lượt như cũ.
+    // Cấu hình chỉ Giám đốc được ghi (perms / security / aiQuota) bị chặn với tài khoản khác: giữ bản máy chủ, không báo lỗi lặp lại.
     const bad = new Set<string>();
+    const skip = new Set<string>();
     let badMsg = '';
+    const rejected = (x: unknown) => /CF_INVALID/.test(String((x as Error)?.message)) || (x instanceof CloudError && x.status >= 400 && x.status < 500 && x.status !== 401 && x.status !== 408 && x.status !== 429);
     try { await cloud.upsert(rows); }
     catch (e) {
-      if (!/CF_INVALID/.test(String((e as Error)?.message)) || rows.length < 2) throw e;
-      for (const r of rows) {
+      if (!rejected(e) || rows.length < 2) {
+        if (rows.length === 1 && rejected(e) && rows[0].coll === WHOLE && ['perms', 'security', 'aiQuota'].includes(rows[0].id)) skip.add(rowKey(rows[0].coll, rows[0].id));
+        else throw e;
+      } else for (const r of rows) {
         try { await cloud.upsert([r]); }
-        catch (e2) { if (!/CF_INVALID/.test(String((e2 as Error)?.message))) throw e2; bad.add(rowKey(r.coll, r.id)); badMsg ||= cloudMessage(e2); }
+        catch (e2) {
+          if (!rejected(e2)) throw e2;
+          if (r.coll === WHOLE && ['perms', 'security', 'aiQuota'].includes(r.id)) { skip.add(rowKey(r.coll, r.id)); continue; }
+          bad.add(rowKey(r.coll, r.id)); badMsg ||= cloudMessage(e2);
+        }
       }
     }
     for (const [key, json] of sent) if (!bad.has(key)) this.base.set(key, json);
@@ -4638,7 +4751,7 @@ export const sourceFromChannel = (src: Source): string =>
   ({ GOOGLE_ADS: 'MKT_DIGITAL', FACEBOOK_ADS: 'MKT_DIGITAL', ZALO_OA: 'MKT_DIGITAL', WEBSITE_FORM: 'MKT_DIGITAL', HOTLINE: 'MKT_DIGITAL', TECH_SEMINAR: 'MKT_EVENT', EXHIBITION: 'MKT_EVENT', VENDOR_REFERRAL: 'VENDOR', REFERRAL: 'REFERRAL' } as Record<Source, string>)[src];
 
 /** Trang có lọc theo khoảng thời gian, và trang mở đầu bằng thanh tab (bộ chọn ngày nằm cùng hàng tab) */
-export const DATE_PAGES: Module[] = ['warehouse', 'overview', 'leads', 'customers', 'projects', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'staff', 'reports'];
+export const DATE_PAGES: Module[] = ['warehouse', 'overview', 'leads', 'customers', 'projects', 'supply', 'claims', 'jobs', 'production', 'install', 'inventory', 'cashbook', 'accounting', 'staff', 'reports'];
 
 /** Nhóm menu sidebar: Vận hành bán hàng · Chuỗi cung ứng & xưởng · Kế toán tài chính · Hệ thống */
 /** v40: Tổng quan đứng riêng trên cùng; 4 nhóm Làm việc · Bán hàng · Hàng hóa (Xưởng) · Tài chính; Tài liệu, Cài đặt ở cuối không tiêu đề */
@@ -4647,7 +4760,7 @@ export const NAV_GROUPS: { id: string; title: string; list: Module[] }[] = [
   { id: 'sales', title: 'Bán hàng', list: ['sales', 'customers', 'projects', 'jobs', 'docs'] },
   { id: 'mkt', title: 'Marketing', list: ['leads', 'marketing', 'claims'] },
   { id: 'supply', title: 'Hàng hóa', list: ['products', 'warehouse', 'supply', 'production', 'install', 'inventory'] },
-  { id: 'finance', title: 'Tài chính', list: ['cashbook', 'reports'] },
+  { id: 'finance', title: 'Tài chính', list: ['cashbook', 'accounting', 'reports'] },
   { id: 'system', title: '', list: ['settings'] },
 ];
 

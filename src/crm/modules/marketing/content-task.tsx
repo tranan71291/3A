@@ -5,13 +5,15 @@
 // màn xem trước của 3A); trường gốc (chủ đề, kênh, mẫu nhanh, thông số kênh…) do màn hình này vẽ qua `builtin`,
 // trường tùy chỉnh 3A định nghĩa lưu vào `cf` của nhiệm vụ (mktTasks: mỗi nhiệm vụ 1 dòng theo id — KEYED_COLLS).
 import { type ReactNode, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, ExternalLink, ImagePlus, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, ExternalLink, ImagePlus, Loader2, Sparkles, Trash2, X } from 'lucide-react';
 import { FilePicker, SideSheet } from '../../components/ui';
-import { btnAccent, btnGhost, btnPrimary, btnSm, cfMissing, cfSet, CONTENT_STATUS, inputCls, MKT_CH, openContentReview, shrinkImage, ST_BRIEF_FIELDS, ST_OF_CHANNEL, stArr, stCompanyOf, stStr, TASK_STATUS, useApp, vKey, WRITER } from '../../lib/core';
-import type { CfDef, CfVal, MktChannel, MktContentType, MktTask, SkuItem, StSettings, WriterPreset } from '../../lib/types';
+import { cloudMessage } from '../../lib/cloud';
+import { compressImage } from '../../lib/workshop';
+import { btnAccent, btnGhost, btnPrimary, btnSm, cfMissing, cfSet, CloudError, CONTENT_STATUS, inputCls, MKT_CH, openContentReview, ST_BRIEF_FIELDS, ST_OF_CHANNEL, stArr, stCompanyOf, stStr, TASK_STATUS, uid, useApp, vKey, WRITER } from '../../lib/core';
+import type { CfDef, CfVal, MktChannel, MktContentType, MktTask, RefImage, SkuItem, StSettings, WriterPreset } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
-import { cfText, DynamicFieldRenderer, useContentTaskSteps, useNameOf } from '../page-builder';
+import { AttachImg, cfText, DynamicFieldRenderer, uploadCfImage, useContentTaskSteps, useNameOf } from '../page-builder';
 import { getPlatform, StFieldControl } from './content-studio';
 import { AiSpark, FormCard, KwConflictNote, openMktContent, QuickTemplates, Segmented, SelectMenu, useAiFillSettings, VariantGroupsGrid } from './content-workspace';
 import { taskStatusOf, useAssignToAi } from './marketing-hub';
@@ -20,6 +22,8 @@ import { taskStatusOf, useAssignToAi } from './marketing-hub';
 export const CT_BRAND_KEYS = ['ctaPhone', 'ctaLink', 'hashtagRule', 'hashtags', 'nap'];
 /** Trường gốc tự vẽ tiêu đề (thẻ "Yêu cầu soạn bài", "Thông số kênh", thẻ thu gọn thông số thương hiệu, "Yêu cầu hình ảnh") */
 const CT_BARE = ['tpl', 'brief', 'seo', 'brand', 'imgReq', 'imgAdv'];
+/** v56.3 Số ảnh tham chiếu tối đa (ảnh tải lên + ảnh sản phẩm) */
+const REF_MAX = 2;
 /** Kiểu trường không có nội dung chữ để gửi kèm (ảnh, chữ ký) */
 const CT_NO_TEXT: CfDef['type'][] = ['media_gallery', 'signature'];
 
@@ -130,7 +134,8 @@ function SeoCard({ label, pid, title, note, sv, onChange, ro, self }: { label: s
 }
 
 export function TaskSheet({ t, onClose }: { t: MktTask; onClose: () => void }) {
-  const { mktTasks, setMktTasks, campaigns, contents, users, canDo, notify, go, company, skus, setSkus } = useApp();
+  const { mktTasks, setMktTasks, campaigns, contents, users, canDo, notify, go, company, skus, org } = useApp();
+  const [upBusy, setUpBusy] = useState(false);
   const assign = useAssignToAi();
   const lay = useContentTaskSteps();
   const nameOf = useNameOf();
@@ -200,15 +205,28 @@ export function TaskSheet({ t, onClose }: { t: MktTask; onClose: () => void }) {
     if (p.platform) next.products = x && !names.includes(x.name) ? [x.name, ...names] : names;
     return { ...p, productSku: code, settings: next };
   });
-  const uploadProductImage = (file?: File) => {
-    if (!file || !prod) return;
-    const code = prod.sku;
-    shrinkImage(file).then((u) => {
-      setSkus((p) => p.map((x) => (x.sku === code ? { ...x, image: u } : x)));
-      setF((p) => { const s0 = p.settings ?? {}; return { ...p, settings: { ...s0, [vKey('imgRef')]: [code, ...stArr(s0[vKey('imgRef')]).filter((r) => r !== code)].slice(0, 2) } }; });
-      notify(`Đã thêm ảnh cho sản phẩm ${code}`, 'teal');
-    }, (er) => notify(er instanceof Error ? er.message : 'Không đọc được ảnh', 'red'));
+  // v56.3 Ảnh tham chiếu tải tự do: thuộc riêng nhiệm vụ (kho riêng tư crm-attach), không ghi vào danh mục sản phẩm
+  const uploadRef = async (file?: File) => {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { notify('Chọn tệp ảnh (JPG, PNG, WebP)', 'red'); return; }
+    setUpBusy(true);
+    try {
+      const blob = await (await fetch(await compressImage(file, 1600))).blob();
+      const up = await uploadCfImage(org.id, `marketing/tasks/${f.id}`, blob, '');
+      const r: RefImage = { id: uid('ri'), url: up.url, path: up.path, name: file.name, size: up.size };
+      setF((p) => {
+        const sku = stArr(p.settings?.[vKey('imgRef')]);
+        const imgs = [...(p.refImages ?? []), r];
+        // tổng tối đa 2 ảnh: ảnh tải lên được ưu tiên, bớt ảnh sản phẩm khi vượt
+        const keep = sku.slice(0, Math.max(0, REF_MAX - imgs.length));
+        return { ...p, refImages: imgs.slice(-REF_MAX), settings: { ...(p.settings ?? {}), [vKey('imgRef')]: keep } };
+      });
+      notify('Đã thêm ảnh tham chiếu', 'teal');
+    } catch (e) {
+      notify(e instanceof CloudError ? cloudMessage(e) : e instanceof Error ? e.message : 'Không tải được ảnh', 'red');
+    } finally { setUpBusy(false); }
   };
+  const dropRef = (id: string) => setF((p) => ({ ...p, refImages: (p.refImages ?? []).filter((x) => x.id !== id) }));
   const suggestTitles = async () => {
     setTitleBusy(true); setTitleSugs(null);
     const camp = campaigns.find((x) => x.id === f.campaignId)?.name;
@@ -222,6 +240,8 @@ export function TaskSheet({ t, onClose }: { t: MktTask; onClose: () => void }) {
 
   const withImg = skus.filter((x) => x.image && !x.archived);
   const refs = stArr(sv[vKey('imgRef')]);
+  const upRefs = f.refImages ?? [];
+  const refTotal = upRefs.length + refs.length;
   const mode = stStr(sv.imgMode) === 'detail' ? 'detail' : 'fast';
   const area = (v: string, on: (s: string) => void, ph: string, label: string, min = 'min-h-[72px]') => <textarea className={cn(inputCls, min)} value={v} onChange={(e) => on(e.target.value)} placeholder={ph} aria-label={label} />;
 
@@ -251,7 +271,7 @@ export function TaskSheet({ t, onClose }: { t: MktTask; onClose: () => void }) {
           {prod && (
             <div className="mt-2 flex items-center gap-2.5 rounded-md bg-[rgb(var(--sunken))] px-2.5 py-2" data-product-card>
               {prod.image ? <img src={prod.image} alt="" className="h-9 w-9 shrink-0 rounded object-cover" /> : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-dashed border-[rgb(var(--line))] text-[rgb(var(--muted))]"><ImagePlus className="h-4 w-4" aria-hidden /></span>}
-              <span className="min-w-0 flex-1 text-[12.5px]"><span className="block truncate font-medium">{prod.name}</span><span className="block truncate text-[rgb(var(--muted))]">{prod.image ? 'Có ảnh sản phẩm' : 'Chưa có ảnh: tải nhanh ở Bước 3'}{prod.brand ? ` · ${prod.brand}` : ''}</span></span>
+              <span className="min-w-0 flex-1 text-[12.5px]"><span className="block truncate font-medium">{prod.name}</span><span className="block truncate text-[rgb(var(--muted))]">{prod.image ? 'Có ảnh sản phẩm' : 'Chưa có ảnh sản phẩm'}{prod.brand ? ` · ${prod.brand}` : ''}</span></span>
               {!ro && <button type="button" className="shrink-0 text-[12px] text-[rgb(var(--muted))] hover:underline" onClick={() => pickProduct(undefined)}>Bỏ chọn</button>}
             </div>
           )}
@@ -272,13 +292,22 @@ export function TaskSheet({ t, onClose }: { t: MktTask; onClose: () => void }) {
         ? <FormCard title={label}><VariantGroupsGrid kind="image" platform={pid} values={sv} onChange={setSv} ro={ro} adv={false} /></FormCard>
         : <FormCard title={label}>{area(f.imagePrompt, (v) => set('imagePrompt', v), 'Phong cách, bối cảnh, màu sắc…', label, 'min-h-[56px]')}</FormCard>;
       case 'imgRef': return pid ? (
-        <div data-img-ref>
-          {withImg.length
-            ? <SelectMenu ariaLabel={label} multi value={refs} disabled={ro} onChange={(v) => setSv({ ...sv, [vKey('imgRef')]: v.slice(-2) })} placeholder="Chọn tối đa 2 ảnh sản phẩm để bám theo hình thật…" options={withImg.slice(0, 200).map((x) => ({ id: x.sku, label: x.sku, hint: x.name, img: x.image }))} />
-            : <p className="text-[12.5px] text-[rgb(var(--muted))]">Chưa có sản phẩm nào có ảnh</p>}
-          {prod && !prod.image && (canDo('po.manage')
-            ? <FilePicker accept="image/*" disabled={ro} onFiles={(fs) => uploadProductImage(fs[0])} className={cn(btnGhost, btnSm, 'mt-2')}><ImagePlus className="h-3.5 w-3.5" aria-hidden />Tải ảnh cho {prod.sku}</FilePicker>
-            : <p className="mt-2 text-[12.5px] text-[rgb(var(--muted))]">{prod.sku} chưa có ảnh: người quản lý sản phẩm bổ sung ở Sản phẩm › sửa mã hàng</p>)}
+        <div data-img-ref className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {upRefs.map((r) => (
+              <div key={r.id} className="relative" data-ref-image>
+                <AttachImg item={r} alt={r.name} className="h-16 w-16 rounded-md border border-[rgb(var(--line))] object-cover" />
+                {!ro && <button type="button" className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full border border-[rgb(var(--line))] bg-[rgb(var(--surface))] text-[rgb(var(--muted))] shadow-sm hover:text-[rgb(var(--danger-fg))]" aria-label={`Bỏ ảnh ${r.name}`} onClick={() => dropRef(r.id)}><X className="h-3 w-3" aria-hidden /></button>}
+              </div>
+            ))}
+            {!ro && refTotal < REF_MAX && (
+              <FilePicker accept="image/*" disabled={upBusy} onFiles={(fs) => void uploadRef(fs[0])} className="flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-[rgb(var(--line))] text-[11px] text-[rgb(var(--muted))] hover:border-[rgb(var(--ink)/0.3)] hover:text-[rgb(var(--fg))]">
+                {upBusy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" aria-hidden /> : <ImagePlus className="h-4 w-4" aria-hidden />}Tải ảnh
+              </FilePicker>
+            )}
+          </div>
+          {withImg.length > 0 && <SelectMenu ariaLabel={`${label} từ danh mục sản phẩm`} multi value={refs} disabled={ro} onChange={(v) => setSv({ ...sv, [vKey('imgRef')]: v.slice(-Math.max(0, REF_MAX - upRefs.length)) })} placeholder={upRefs.length >= REF_MAX ? 'Đã đủ 2 ảnh tham chiếu' : 'Hoặc chọn ảnh từ danh mục sản phẩm…'} options={withImg.slice(0, 200).map((x) => ({ id: x.sku, label: x.sku, hint: x.name, img: x.image }))} />}
+          <p className="text-[12px] text-[rgb(var(--muted))]">Tối đa {REF_MAX} ảnh. Ảnh tải lên chỉ dùng cho nhiệm vụ này, không đổi ảnh sản phẩm.</p>
         </div>
       ) : null;
       case 'imgAdv': return pid ? (

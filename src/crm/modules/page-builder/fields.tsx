@@ -211,9 +211,11 @@ function useSpan(narrow?: boolean) {
  *  - mode 'edit': khối Form; chỉ trường tùy chỉnh; chỉ đọc, gợi ý nhập, chú thích, dấu * theo bắt buộc (đã áp bố cục)
  * Bỏ trường khỏi bố cục chỉ ẩn ô; giá trị cf[fieldKey] trong bản ghi giữ nguyên.
  */
-export function DynamicFieldRenderer({ sections, avail, mode, vals, onChange, users = [], nameOf = () => '', builtin, bare, sample, narrow, required, design, recordId }: {
+export function DynamicFieldRenderer({ sections, avail, mode, vals, onChange, users = [], nameOf = () => '', builtin, bare, sample, narrow, required, design, recordId, look }: {
   /** v56 mã bản ghi đang sửa (kiểm tra trùng lịch tài nguyên bỏ chính bản ghi; thư mục ảnh / chữ ký) */
   recordId?: string;
+  /** v60 (chỉ mode 'view'): 'sheet' = bảng thông tin có kẻ ô, nhãn in đậm "Nhãn: giá trị" (trang chi tiết đơn hàng); mặc định nhãn nhỏ trên giá trị */
+  look?: 'sheet';
   sections: LSection[]; avail: LFieldAvail[]; mode: 'view' | 'edit';
   vals?: Record<string, CfVal>; onChange?: (key: string, v: CfVal | undefined) => void;
   /** Trường gốc: mode 'view' = giá trị; mode 'edit' (v56.2) = ô nhập do màn hình nghiệp vụ vẽ (nhận nhãn đã áp bố cục) */
@@ -228,6 +230,7 @@ export function DynamicFieldRenderer({ sections, avail, mode, vals, onChange, us
   design?: FieldDesign;
 }) {
   const span = useSpan(narrow);
+  const sheet = look === 'sheet' && mode === 'view' && !design;
   const [shut, setShut] = useState<Record<string, boolean>>(() => Object.fromEntries(sections.filter((s) => s.title && s.collapsedByDefault).map((s) => [s.id, true])));
   const [over, setOver] = useState<string | null>(null);
   const req = (d: CfDef) => (required?.find((x) => x.key === d.key) ?? d).required;
@@ -272,6 +275,16 @@ export function DynamicFieldRenderer({ sections, avail, mode, vals, onChange, us
       const label = f.labelOverride?.trim() || a.label;
       if (a.missing) return design ? cell(f, <><p className="mb-1 text-[12.5px] text-[rgb(var(--muted))]">{label}</p><div className="flex min-h-7 items-center text-[14px] text-[rgb(var(--muted))]">—</div></>, s.id) : null;
       const d = a.cf;
+      if (mode === 'view' && sheet) {
+        // v60 bảng thông tin: mỗi ô một trường, nhãn đậm + giá trị trên một dòng; trường nhiều nội dung (ảnh, danh sách tích, chữ ký) xuống dòng trong ô
+        if (!d) return cell(f, <div className="flex min-h-[38px] min-w-0 items-center gap-1.5 bg-[rgb(var(--surface))] px-3 py-2 text-[13.5px]"><b className="shrink-0 font-semibold">{label}:</b><span className="flex min-w-0 items-center gap-1.5 truncate">{builtin?.(f.fieldKey) ?? '—'}</span></div>, s.id);
+        const tx = sample ? cfSample(d) : cfText(d, vals?.[d.key], nameOf);
+        if (!sample && d.status !== 'ACTIVE' && !tx) return null;
+        const rich = !sample && CF_RICH.includes(d.type) ? <CfRichView d={d} v={vals?.[d.key]} /> : null;
+        return cell(f, rich
+          ? <div className="min-w-0 bg-[rgb(var(--surface))] px-3 py-2 text-[13.5px]" data-cf-view={d.type}><b className="mb-1 block font-semibold">{label}:</b>{rich}</div>
+          : <div className="flex min-h-[38px] min-w-0 items-center gap-1.5 bg-[rgb(var(--surface))] px-3 py-2 text-[13.5px]"><b className="shrink-0 font-semibold">{label}:</b>{tx ? <span className={cn('min-w-0 truncate', (d.type === 'number' || d.type === 'money' || d.type === 'formula') && 'tabular-nums')} title={tx}>{tx}</span> : <span className="text-[rgb(var(--muted))]">—</span>}{sample && <i className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[rgb(var(--accent))]" title="Trường tùy chỉnh" />}</div>, s.id);
+      }
       if (mode === 'view') {
         if (!d) return cell(f, <><p className="mb-1 text-[12.5px] text-[rgb(var(--muted))]">{label}</p><div className="flex min-h-7 min-w-0 items-center gap-1.5 truncate text-[14px]">{builtin?.(f.fieldKey) ?? '—'}</div></>, s.id);
         const tx = sample ? cfSample(d) : cfText(d, vals?.[d.key], nameOf);
@@ -337,7 +350,22 @@ export function DynamicFieldRenderer({ sections, avail, mode, vals, onChange, us
                 <ChevronDown className={cn('h-4 w-4 text-[rgb(var(--muted))] transition-transform', closed && '-rotate-90')} aria-hidden />{s.title}
               </button>
             )}
-            {!closed && <div className="grid grid-cols-12 gap-x-4 gap-y-3.5">{items}</div>}
+            {!closed && (sheet ? (() => {
+              // ô trống (trường không vừa phần còn lại của hàng nên xuống dòng, hoặc cuối bảng) tô nền thường để đường kẻ không thành mảng xám
+              const shown = new Set(items.map((el) => (el && typeof el === 'object' && 'key' in el ? String(el.key) : '')));
+              const vis = s.fields.filter((f) => shown.has(f.id));
+              const pad = (n: number, k: string) => <div key={k} className="bg-[rgb(var(--surface))]" style={{ gridColumn: `span ${n} / span ${n}` }} aria-hidden />;
+              const out: ReactNode[] = [];
+              let cur = 0;
+              vis.forEach((f, i) => {
+                const w = Math.min(12, span(f.colSpan));
+                if (cur && cur + w > 12) { out.push(pad(12 - cur, `pad-${f.id}`)); cur = 0; }
+                out.push(items[i]);
+                cur = (cur + w) % 12;
+              });
+              if (cur) out.push(pad(12 - cur, 'pad-end'));
+              return <div className="grid grid-cols-12 gap-px overflow-hidden rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--line))]" data-sheet>{out}</div>;
+            })() : <div className="grid grid-cols-12 gap-x-4 gap-y-3.5">{items}</div>)}
           </section>
         );
       })}

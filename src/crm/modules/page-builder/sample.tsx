@@ -45,7 +45,8 @@ export function SampleApp({ children }: { children: ReactNode }) {
 
 /** v55.3 Giá trị mẫu của trường gốc trên khối Chi tiết (3A Studio) */
 const BUILTIN_SAMPLE: Record<CfEntity, Record<string, string>> = {
-  sale: { customer: 'NPP Hoàng Phát', code: 'DH201126-02', origin: 'Tại quầy', by: 'Trần Quốc Bảo', wh: 'Kho Tổng Hà Nội', docRef: 'PO-HP-1125', invNo: '—' },
+  sale: { customer: 'NPP Hoàng Phát', code: 'DH201126-02', origin: 'Tại quầy', by: 'Trần Quốc Bảo', wh: 'Kho Tổng Hà Nội', docRef: 'PO-HP-1125', invNo: '—',
+    taxCode: '0101234567', address: 'Lô C5, KCN Tân Bình, TP.HCM', phone: '0903 112 245', email: 'ketoan@hoangphat.vn', receiver: 'Anh Phát', recvPhone: '0903 112 245', shipAddr: 'Lô C5, KCN Tân Bình, TP.HCM', delivery: 'Gửi xe / chành', date: '20/11/2026', dept: 'Kinh doanh', pay: 'Công nợ 30 ngày' },
   customer: { code: 'KH-000012', name: 'NPP Hoàng Phát', taxCode: '0101234567', segment: 'Đại lý', tier: 'Vàng', region: 'Miền Bắc', dept: 'Kinh doanh', amId: 'Trần Quốc Bảo', contactName: 'Anh Phát', contactPhone: '0903 112 245', contactEmail: 'phat@hoangphat.vn', address: 'Lô C5, KCN Tân Bình', creditLimit: '500.000.000', debt: '124.000.000' },
   lead: { code: 'LD-0042', company: 'Công ty Xây lắp Minh Long', contact: 'Chị Hạnh', phone: '0912 345 678', email: 'hanh@minhlong.vn', taxCode: '0312345678', segment: 'Dự án', source: 'Website', region: 'Miền Nam', province: 'TP Hồ Chí Minh' },
   product: {},
@@ -54,7 +55,7 @@ const BUILTIN_SAMPLE: Record<CfEntity, Record<string, string>> = {
     title: '5 lưu ý chọn tủ bếp nhôm hệ Omega cho căn hộ', channel: 'Website (bài SEO)', product: 'OMEGA-TB01 · Tủ bếp nhôm hệ Omega', campaign: 'Ra mắt dòng Omega quý 4',
     contentType: 'Bài SEO', owner: 'Trần Quốc Bảo', tpl: 'Bài SEO sản phẩm · Hướng dẫn kỹ thuật · So sánh lựa chọn', brief: 'Chuyên gia kỹ thuật · 1.000–1.500 từ · có bảng thông số, FAQ',
     seo: 'Từ khóa: tủ bếp nhôm Omega · Meta title, meta description, đường dẫn', brand: 'Kế thừa từ thương hiệu: hotline, website, hashtag cố định', briefAdv: 'Thông điệp chính, ưu đãi, ý bắt buộc, không nhắc tới',
-    textNote: 'Ghi chú cho người soạn', imgReq: 'Bộ ảnh theo từng ý · Ảnh chụp chân thực · Màu thương hiệu', imgRef: '1 ảnh sản phẩm OMEGA-TB01', imgAdv: 'Chế độ Nhanh (gpt-image-2.5-flare) · đóng logo', imgNote: 'Ghi chú cho ảnh',
+    textNote: 'Ghi chú cho người soạn', imgReq: 'Bộ ảnh theo từng ý · Ảnh chụp chân thực · Màu tự nhiên', imgRef: '1 ảnh sản phẩm OMEGA-TB01 · 1 ảnh tải lên', imgAdv: 'Chế độ Nhanh (gpt-image-2.5-flare)', imgNote: 'Ghi chú cho ảnh',
   },
 };
 // Ngày mẫu tính khi gọi (không tính lúc nạp module: core / sample nạp vòng nhau)

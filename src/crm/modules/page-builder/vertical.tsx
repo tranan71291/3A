@@ -18,13 +18,22 @@ export type CfCtx = { vals?: Record<string, CfVal>; recordId?: string };
 const sha256Hex = async (b: Blob) => Array.from(new Uint8Array(await subtle().digest('SHA-256', await b.arrayBuffer())), (x) => x.toString(16).padStart(2, '0')).join('');
 
 /** Tải ảnh của trường lên kho tệp riêng của doanh nghiệp (có máy chủ); chạy trên máy (không máy chủ) giữ ảnh nén nhỏ trong bản ghi */
-async function uploadCfImage(tenant: string, folder: string, blob: Blob, name: string): Promise<{ url: string; path?: string; size: number }> {
+export async function uploadCfImage(tenant: string, folder: string, blob: Blob, name: string): Promise<{ url: string; path?: string; size: number }> {
   if (CLOUD_ON) {
     const up = await cloud.uploadAttachment(tenant, folder, blob, name);
     return { url: `${ATTACH_PREFIX}${up.path}`, path: up.path, size: blob.size };
   }
-  const url = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(blob); });
-  return { url, size: blob.size };
+  return { url: await blobDataUrl(blob), size: blob.size };
+}
+
+const blobDataUrl = (blob: Blob) => new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(blob); });
+
+/** v56.3 Ảnh (kho riêng tư hoặc ảnh nén trong bản ghi) -> data URL để gửi làm ảnh tham chiếu; không đọc được thì undefined */
+export async function attachDataUrl(item: { url: string; path?: string }): Promise<string | undefined> {
+  if (item.url.startsWith('data:')) return item.url;
+  const p = attachPath(item);
+  if (!p || !CLOUD_ON) return undefined;
+  try { return await blobDataUrl(await cloud.attachmentBlob(p)); } catch { return undefined; }
 }
 
 /** Ảnh ở kho riêng tư: tải có xác thực rồi hiện bằng đường dẫn tạm */

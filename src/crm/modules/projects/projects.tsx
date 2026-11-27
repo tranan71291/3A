@@ -7,7 +7,7 @@ import { CommentButton } from '../../components/comments';
 import { BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
-import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
+import { ChipFilter, FilterBar, stMatch, useInRange } from '../../components/filters';
 import { QuoteTimer } from '../../components/sla';
 import { Chip, Code, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, Tabs, useSort, useSticky, ViewSwitch } from '../../components/ui';
 import { latestContracts } from '../../lib/business';
@@ -366,6 +366,7 @@ export function ProjectsPage() {
   const { leads: allLeads, myLeads: leads, setLeads, notify, canDo, userName, dept, openWin, now, quotes, setQuotes, users, openLeadForm, reopenLead, reservations, openComposer, genDocs } = useApp();
   const inR = useInRange();
   const [stage, setStage] = useSticky<'ALL' | Stage>('ProjectsPage.stage', 'ALL');
+  const [stageM, setStageM] = useState<Stage[]>([]);
   const [q, setQ] = useSticky('ProjectsPage.q', '');
   const [dp, setDp] = useState('ALL');
   const [owner, setOwner] = useState('ALL');
@@ -389,7 +390,7 @@ export function ProjectsPage() {
       && (dp === 'ALL' || l.dept === dp) && (owner === 'ALL' || l.assignee === owner) && inR(leadDate(l))
       && (!adv.min || v >= adv.min) && (!adv.max || v <= adv.max) && (adv.boq === 'ALL' || (l.boqStatus ?? 'NOT_STARTED') === adv.boq) && (!adv.pp || !!l.priceProtection);
   });
-  const list = (stage === 'ALL' ? opp : opp.filter((l) => l.status === stage)).sort((a, b) => Number(isQuoteOverdue(b, now)) - Number(isQuoteOverdue(a, now)) || a.receivedDaysAgo - b.receivedDaysAgo);
+  const list = opp.filter((l) => stMatch(stage, stageM, (s) => l.status === s)).sort((a, b) => Number(isQuoteOverdue(b, now)) - Number(isQuoteOverdue(a, now)) || a.receivedDaysAgo - b.receivedDaysAgo);
   const srt = useSort('Projects40b', list, { 1: (l) => l.code, 2: (l) => l.company, 6: (l) => l.boqValue, 7: (l) => l.quoteDeadline });
   const paged = usePaged(srt.rows, 10);
   const sel = useSelection(list.map((l) => l.id));
@@ -445,7 +446,7 @@ export function ProjectsPage() {
         dept={dp} onDept={setDp} status={stage} onStatus={(v) => setStage(v as 'ALL' | Stage)}
         statusOptions={STAGES.map((s) => ({ value: s, label: stageLabel(s) }))}
         onAdvanced={() => setAdvOpen(true)} advancedCount={advCount} extraActive={owner !== 'ALL' ? 1 : 0}
-        chips={<ChipFilter total={opp.length} value={stage} onChange={(v) => setStage(v as 'ALL' | Stage)} options={STAGES.map((s) => ({ value: s, label: stageLabel(s), count: opp.filter((l) => l.status === s).length }))} />}
+        chips={<ChipFilter total={opp.length} value={stage} onChange={(v) => setStage(v as 'ALL' | Stage)} multi={stageM} onMulti={setStageM} label="Giai đoạn" options={STAGES.map((s) => ({ value: s, label: stageLabel(s), short: LEAD_STATUS[s].short, count: opp.filter((l) => l.status === s).length }))} />}
         actions={<>
           <ViewSwitch value={view} onChange={setView} options={['table', 'board', 'gantt']} />
           <RowMenu label="Xuất dữ liệu" items={[{ label: 'Xuất CSV', icon: Download, onClick: () => exportRows(list) }]} />
@@ -477,7 +478,7 @@ export function ProjectsPage() {
           })}
         </div>
         <div className="hidden md:block">
-          <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Mã', 'Khách hàng', 'Hạng mục', 'Phòng', 'Phụ trách', <span key="v" className="block text-right">Giá trị</span>, 'Hạn báo giá', 'Báo giá', 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>]} minW={1000} sort={srt.th}>
+          <Table stt={Math.max(0, paged.from - 1)} head={[<input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" />, 'Mã', 'Khách hàng', 'Hạng mục', 'Phòng', 'Phụ trách', <span key="v" className="block text-right">Giá trị</span>, 'Hạn báo giá', 'Báo giá', 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>]} minW={1000} sort={srt.th} optional={[3]}>
             {paged.slice.map((l) => {
               const late = isQuoteOverdue(l, now);
               const st = projectStatus(l, now, quotes);

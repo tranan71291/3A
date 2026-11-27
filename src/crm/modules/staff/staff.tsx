@@ -5,7 +5,7 @@ import { CalendarDays, CheckCircle2, ChevronRight, FileSpreadsheet, MapPin, Penc
 import { useIntent } from '../../components/command-palette';
 import { Fab } from '../../components/controls';
 import { Drawer } from '../../components/drawer';
-import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
+import { ChipFilter, FilterBar, stMatch, useInRange } from '../../components/filters';
 import { Chip, EmptyState, Field, FilePicker, Modal, MoneyInput, Panel, Table, Tabs, useSticky } from '../../components/ui';
 import { actDays, ACTIVITY_STATUS, ACTIVITY_TYPE, btnBase, btnGhost, btnPrimary, btnSm, compact, DECISION_LABEL, digits, EXPENSE_STATUS, fmtDate, fmtDT, inputCls, LEAVE_KIND, needsApproval, pad2, rowCls, tdCls, tdFirst, tdLast, todayISO, toLocal, TRANSPORTS, uid, useApp, vnd, WEEKDAY } from '../../lib/core';
 import type { Activity, ActivityStatus, ActivityType, ApprovalDecision, LeaveKind } from '../../lib/types';
@@ -426,6 +426,7 @@ export function StaffModule() {
   const [q, setQ] = useSticky('StaffModule.q', '');
   const [who, setWho] = useState('ALL');
   const [type, setType] = useState('ALL');
+  const [typeM, setTypeM] = useState<ActivityType[]>([]);
   const [form, setForm] = useState<{ a?: Activity } | null>(null);
   useIntent('staff.create', () => setForm({}));
   const [open, setOpen] = useState<string | null>(null);
@@ -435,7 +436,7 @@ export function StaffModule() {
   const pendingExp = mine.filter((a) => (a.expenseStatus === 'SUBMITTED' && canApprove(a)) || (a.expenseStatus === 'HEAD_APPROVED' && canDo('claim.accounting')));
   const match = (a: Activity) => {
     const t = q.trim().toLowerCase();
-    return (!t || [a.title, a.note, a.location, customers.find((c) => c.id === a.customerId)?.name ?? ''].some((v) => v.toLowerCase().includes(t))) && (who === 'ALL' || a.userId === who) && (type === 'ALL' || a.type === type);
+    return (!t || [a.title, a.note, a.location, customers.find((c) => c.id === a.customerId)?.name ?? ''].some((v) => v.toLowerCase().includes(t))) && (who === 'ALL' || a.userId === who) && stMatch(type as ActivityType | 'ALL', typeM, (s) => a.type === s);
   };
   const list = mine.filter((a) => match(a) && inR(a.from.slice(0, 10))).sort((a, b) => a.from.localeCompare(b.from));
   const live = list.filter((a) => !['CANCELLED', 'REJECTED'].includes(a.status));
@@ -450,12 +451,9 @@ export function StaffModule() {
         aside={<button className={cn(btnPrimary, btnSm, 'max-lg:hidden')} onClick={() => setForm({})}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm lịch</button>} />
 
       <FilterBar q={q} onQ={setQ} placeholder="Tìm tiêu đề, khách hàng, địa điểm…" status={type} onStatus={setType} statusLabel="Mọi loại" statusOptions={(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => ({ value: t, label: ACTIVITY_TYPE[t].label }))} extraActive={who !== 'ALL' ? 1 : 0}
-        chips={<ChipFilter total={mine.filter((a) => inR(a.from.slice(0, 10))).length} value={type as ActivityType | 'ALL'} onChange={(v) => setType(v)} options={(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => ({ value: t, label: ACTIVITY_TYPE[t].label, count: mine.filter((a) => a.type === t && inR(a.from.slice(0, 10))).length, color: ACTIVITY_TYPE[t].color })).filter((o) => o.count > 0 || o.value === type)} />}
+        chips={<ChipFilter total={mine.filter((a) => inR(a.from.slice(0, 10))).length} value={type as ActivityType | 'ALL'} onChange={(v) => setType(v)} multi={typeM} onMulti={setTypeM} label="Loại lịch" options={(Object.keys(ACTIVITY_TYPE) as ActivityType[]).map((t) => ({ value: t, label: ACTIVITY_TYPE[t].label, short: ACTIVITY_TYPE[t].short, count: mine.filter((a) => a.type === t && inR(a.from.slice(0, 10))).length })).filter((o) => o.count > 0 || o.value === type || typeM.includes(o.value))} />}
         actions={tab === 'list' ? <>
-          <select className={cn(inputCls, 'w-auto py-1.5 text-[13px]')} value={who} onChange={(e) => setWho(e.target.value)} aria-label="Nhân sự">
-            <option value="ALL">Mọi nhân sự</option>
-            {people.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
+          {/* v59: lọc nhân sự chỉ còn trong phễu (trước đây lặp ở cả hàng công cụ) */}
           <div className="flex rounded-lg border border-[rgb(var(--line))] p-0.5" role="radiogroup" aria-label="Kiểu xem">
             <button role="radio" aria-checked={view === 'table'} onClick={() => setView('table')} className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px]', view === 'table' ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))]')}><FileSpreadsheet className="h-3.5 w-3.5" aria-hidden />Bảng</button>
             <button role="radio" aria-checked={view === 'calendar'} onClick={() => setView('calendar')} className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px]', view === 'calendar' ? 'bg-[rgb(var(--raised))] font-medium text-[rgb(var(--fg))]' : 'text-[rgb(var(--muted))]')}><CalendarDays className="h-3.5 w-3.5" aria-hidden />Tuần</button>
@@ -473,12 +471,12 @@ export function StaffModule() {
             <>
               <div className="space-y-2 md:hidden">{list.map((a) => <ActivityRowCard key={a.id} a={a} onOpen={() => setOpen(a.id)} />)}</div>
               <div className="hidden md:block">
-                <Table head={['Ngày', 'Giờ', 'Nhân sự', 'Loại', 'Nội dung', 'Khách hàng / địa điểm', <span key="c" className="block text-right">Chi phí</span>, 'Duyệt chi', 'Check-in', 'Trạng thái']} minW={1000}>
+                <Table head={['Ngày', 'Giờ', 'Nhân sự', 'Loại', 'Nội dung', 'Khách hàng / địa điểm', <span key="c" className="block text-right">Chi phí</span>, 'Duyệt chi', 'Check-in', 'Trạng thái']} minW={1000} optional={[7, 8]}>
                   {list.map((a) => {
                     const cust = customers.find((c) => c.id === a.customerId);
                     const lead = leads.find((l) => l.id === a.leadId);
                     const f = new Date(a.from), t2 = new Date(a.to);
-                    const dd = (d: Date) => d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+                    const dd = (d: Date) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
                     const hh = (d: Date) => d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                     const sameDay = dd(f) === dd(t2);
                     return (

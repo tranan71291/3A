@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AlertTriangle, CheckCircle2, ImagePlus, Plus, RefreshCw, ShieldCheck, Sparkles, Trash2, Upload } from 'lucide-react';
 import { Field, FilePicker, Panel, SideCard } from '../../components/ui';
-import { bizMode, btnGhost, btnPrimary, btnSm, compact, COMPANY_AI_FIELDS, EMAIL_RE, fileB64, initials, inputCls, MST_RE, shrinkImage, useApp } from '../../lib/core';
+import { bizMode, btnGhost, btnPrimary, btnSm, compact, COMPANY_AI_FIELDS, EMAIL_RE, fileB64, initials, inputCls, MST_MSG, MST_RE, shrinkImage, useApp } from '../../lib/core';
 import type { CompanyBranch, CompanyInfo, SettingsTab } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
@@ -32,7 +32,7 @@ export function CompanySettings() {
   const e: Partial<Record<keyof CompanyInfo, string>> = {};
   if (f.appName.trim().length < 2) e.appName = 'Nhập tên hệ thống';
   if (f.legalName.trim().length < 5) e.legalName = 'Nhập tên pháp lý';
-  if (f.taxCode && !MST_RE.test(f.taxCode)) e.taxCode = 'MST gồm 10 hoặc 13 số';
+  if (f.taxCode && !MST_RE.test(f.taxCode)) e.taxCode = MST_MSG;
   if (f.email && !EMAIL_RE.test(f.email)) e.email = 'Email chưa đúng';
   const err = (k: keyof CompanyInfo) => (touched ? e[k] : undefined);
 
@@ -80,7 +80,7 @@ export function CompanySettings() {
               {inp('appName', 'Tên hệ thống')}
               {inp('shortName', 'Tên viết tắt')}
               {inp('legalName', 'Tên pháp lý', 'sm:col-span-2')}
-              <Field label="Mã số thuế" error={err('taxCode')}><span className="relative block"><input className={cn(inputCls, 'pr-16')} disabled={!canEdit} value={f.taxCode} onChange={(ev) => set('taxCode', ev.target.value)} />{f.taxCode.trim() && <span className={cn('pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs', /^\d{10}(-?\d{3})?$/.test(f.taxCode.replace(/[\s.]/g, '')) ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')}>{/^\d{10}(-?\d{3})?$/.test(f.taxCode.replace(/[\s.]/g, '')) ? 'đúng dạng' : 'sai dạng'}</span>}</span></Field>
+              <Field label="Mã số thuế" error={err('taxCode')}><span className="relative block"><input className={cn(inputCls, 'pr-16')} disabled={!canEdit} value={f.taxCode} onChange={(ev) => set('taxCode', ev.target.value)} />{f.taxCode.trim() && <span className={cn('pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs', /^(\d{10}(-?\d{3})?|\d{12})$/.test(f.taxCode.replace(/[\s.]/g, '')) ? 'text-[rgb(var(--success-fg))]' : 'text-[rgb(var(--danger-fg))]')}>{/^(\d{10}(-?\d{3})?|\d{12})$/.test(f.taxCode.replace(/[\s.]/g, '')) ? 'đúng dạng' : 'sai dạng'}</span>}</span></Field>
               {inp('phone', 'Điện thoại', '', 'tel')}
               {inp('address', 'Địa chỉ trụ sở', 'sm:col-span-2')}
               {inp('email', 'Email', '', 'email')}

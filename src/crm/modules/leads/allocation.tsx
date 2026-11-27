@@ -7,8 +7,8 @@ import { RouteMenu } from '../../components/command-palette';
 import { CommentButton } from '../../components/comments';
 import { AgeBadge, Avatar, BulkBar, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
-import { ChipFilter, FilterBar, useInRange } from '../../components/filters';
-import { QuoteTimer, Sla } from '../../components/sla';
+import { ChipFilter, FilterBar, stMatch, useInRange } from '../../components/filters';
+import { fmtOver, QuoteTimer, Sla } from '../../components/sla';
 import { Chip, Code, EmptyState, Modal, Panel, Table, useSticky, ViewSwitch } from '../../components/ui';
 import { scoreLead } from '../../lib/business';
 import { boqIsEstimate, boqTotal, btnGhost, btnPrimary, btnSm, C, compact, deptIcon, fmtDur, initials, inputCls, isAcceptLate, isQuoteOverdue, LEAD_STATUS, leadAgeH, leadDate, OPEN_STATUSES, overdueCls, REGION_LABEL, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, useApp } from '../../lib/core';
@@ -27,7 +27,7 @@ import { cn } from '../../lib/utils';
 export function SlaTimer({ deadline, now }: { deadline: number; now: number | null }) {
   if (now == null) return <span className="text-xs text-[rgb(var(--muted))]">--:--</span>;
   const diff = deadline - now;
-  if (diff < 0) return <Sla tone="over">Quá {fmtDur(diff)}</Sla>;
+  if (diff < 0) return <Sla tone="over">Quá {fmtOver(diff)}</Sla>;
   return <Sla tone={diff < 30 * 6e4 ? 'tight' : 'ok'}>Còn {fmtDur(diff)}</Sla>;
 }
 
@@ -115,6 +115,7 @@ export function AllocationPage() {
   const [reg, setReg] = useState<'ALL' | Region>('ALL');
   const [seg, setSeg] = useSticky('AllocationPage.seg', 'ALL');
   const [st, setSt] = useState('ALL');
+  const [stM, setStM] = useState<LeadStatus[]>([]);
   const [dragOver, setDragOver] = useState<DeptCode | null>(null);
   const [assigning, setAssigning] = useState<Lead | null>(null);
   const [expanded, setExpanded] = useState<string[]>([]);
@@ -128,7 +129,7 @@ export function AllocationPage() {
 
   const match = (l: Lead) => {
     const t = q.trim().toLowerCase();
-    return (!t || [l.company, l.code, l.taxCode ?? '', l.phone].some((v) => v.toLowerCase().includes(t))) && (st === 'ALL' || l.status === st) && (reg === 'ALL' || l.region === reg) && (seg === 'ALL' || l.segment === seg) && inR(leadDate(l));
+    return (!t || [l.company, l.code, l.taxCode ?? '', l.phone].some((v) => v.toLowerCase().includes(t))) && stMatch(st as LeadStatus | 'ALL', stM, (s) => l.status === s) && (reg === 'ALL' || l.region === reg) && (seg === 'ALL' || l.segment === seg) && inR(leadDate(l));
   };
   const scope = leads.filter((l) => inR(leadDate(l)));
   const total = scope.length;
@@ -237,7 +238,7 @@ export function AllocationPage() {
         actions={<>
           <ViewSwitch value={view} onChange={setView} options={['table', 'board']} />
         </>}
-        chips={<ChipFilter value={st === 'ALL' ? 'ALL' : st as LeadStatus} onChange={(v) => setSt(v)} total={tableRows.length} options={(['NEW', 'ROUTED', 'ASSIGNED', 'ACCEPTED'] as LeadStatus[]).map((x) => ({ value: x, label: LEAD_STATUS[x].label, count: leads.filter((l) => l.status === x && inR(leadDate(l))).length, color: x === 'ACCEPTED' ? C.teal : C.orange }))} />}
+        chips={<ChipFilter value={st === 'ALL' ? 'ALL' : st as LeadStatus} onChange={(v) => setSt(v)} multi={stM} onMulti={setStM} total={tableRows.length} options={(['NEW', 'NURTURE', 'ROUTED', 'ASSIGNED', 'ACCEPTED'] as LeadStatus[]).map((x) => ({ value: x, label: LEAD_STATUS[x].label, short: LEAD_STATUS[x].short, count: leads.filter((l) => l.status === x && inR(leadDate(l))).length }))} />}
         statusOptions={(['NEW', 'NURTURE', 'ROUTED', 'ASSIGNED', 'ACCEPTED'] as LeadStatus[]).map((s) => ({ value: s, label: LEAD_STATUS[s].label }))}>
         <select className={cn(inputCls, 'w-full border-[rgb(var(--line))] bg-[rgb(var(--bg))] py-2 sm:w-auto')} value={reg} onChange={(e) => setReg(e.target.value as 'ALL' | Region)} aria-label="Khu vực">
           <option value="ALL">Tất cả khu vực</option>
@@ -257,7 +258,7 @@ export function AllocationPage() {
             {routableDepts.map((d) => <button key={d.code} className={cn(btnGhost, btnSm)} disabled={!canRoute} onClick={() => { routeLeads(sel.ids, d.code); sel.clear(); }}><ArrowRight className="h-3.5 w-3.5" aria-hidden />Phân về {d.short}</button>)}
           </BulkBar>
           <Panel>
-            <Table stt={Math.max(0, paged.from - 1)} minW={1000} head={[
+            <Table stt={Math.max(0, paged.from - 1)} minW={1000} optional={[3]} head={[
               <input key="all" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={sel.allOn} onChange={sel.toggleAll} aria-label="Chọn tất cả" disabled={!canRoute} />,
               'Mã', 'Khách hàng', 'Nhu cầu', 'Phòng', 'Phụ trách', <span key="v" className="block text-right">BOQ</span>, 'SLA', 'Trạng thái', <span key="a" className="block text-right">Thao tác</span>,
             ]}>
