@@ -365,7 +365,7 @@ export function nodeText(n: ReactNode): string {
  * v48: bảng dùng chung. Ô tích chọn nhiều dòng + thanh thao tác (sao chép, xuất CSV, in, thao tác riêng), nút chọn cột hiển thị (nhớ theo trình duyệt).
  * Bảng đã có ô chọn riêng (cột đầu là ô tích) giữ nguyên cách chọn cũ. optional: cột thêm, mặc định ẩn.
  */
-export function Table({ head, children, minW = 760, right, sort, stack = true, stt = 0, select, bulk, id, title, optional, foot }: { head: ReactNode[]; children: ReactNode; minW?: number; right?: number[]; sort?: TableSort; stack?: boolean; stt?: number | false; select?: boolean; bulk?: TableBulk[]; id?: string; title?: string; optional?: number[]; /** v59: dòng tổng cuối bảng, mỗi ô đúng cột của nó (ẩn trên điện thoại) */ foot?: ReactNode[] }) {
+export function Table({ head, children, minW = 760, right, sort, stack = true, stt = 0, select, bulk, id, title, optional, foot, colPick = true }: { head: ReactNode[]; children: ReactNode; minW?: number; right?: number[]; sort?: TableSort; stack?: boolean; stt?: number | false; select?: boolean; bulk?: TableBulk[]; id?: string; title?: string; optional?: number[]; /** v59: dòng tổng cuối bảng, mỗi ô đúng cột của nó (ẩn trên điện thoại) */ foot?: ReactNode[]; /** v61: false = bảng ma trận / bảng tra cứu cố định, không có nút chọn cột */ colPick?: boolean }) {
   const showStt = stt !== false && stack && head[0] !== 'STT';
   const lastH = head[head.length - 1];
   // v59: nhận cả tiêu đề dạng <span>Thao tác</span> (căn phải) là cột thao tác: không co, không ẩn, không xuất CSV
@@ -464,7 +464,8 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
   const fitCss = fit ? fit.cols.map((i, k) => {
     const b = `table[data-tid="${tid}"] > tbody > tr:not(:has(> td[colspan])) > :nth-child(${i + 1 + off})`;
     const h = `table[data-tid="${tid}"] > thead > tr > :nth-child(${i + 1 + (showStt ? 1 : 0) + off})`;
-    return `${b},${h}{box-sizing:border-box;max-width:${fit.px[k]}px;overflow:hidden;text-overflow:ellipsis}${b} > *{max-width:100%;min-width:0}${b} .truncate{max-width:100% !important}`;
+    // v61: chữ nằm trong khối con (nút, đoạn, hàng flex ảnh + tên) cũng rút gọn bằng "…" thay vì bị cắt cụt
+    return `${b},${h}{box-sizing:border-box;max-width:${fit.px[k]}px;overflow:hidden;text-overflow:ellipsis}${b} > *{max-width:100%;min-width:0}${b} > :not(.flex){overflow:hidden;text-overflow:ellipsis}${b} > * > .block{overflow:hidden;text-overflow:ellipsis}${b} > .flex > :last-child{min-width:0;overflow:hidden;text-overflow:ellipsis}${b} .truncate{max-width:100% !important}`;
   }).join('') : '';
   const css = hideCss + fitCss;
   // ---- thao tác hàng loạt: đọc chữ của các dòng đã chọn ngay trên bảng
@@ -480,6 +481,7 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
   const print = () => { const g = grab(); printHtml(docShell(title ?? 'Danh sách', `<h1>${esc(title ?? 'Danh sách')}</h1><table class="items"><thead><tr>${g[0].map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${g.slice(1).map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`)); };
   const colBtn = 'inline-flex h-7 items-center gap-1 rounded-md px-2 text-[12px] text-[rgb(var(--muted))] hover:bg-[rgb(var(--ink)/0.05)] hover:text-[rgb(var(--fg))]';
   const lastVis = Math.max(0, ...head.map((_, i) => i).filter((i) => !vis.includes(i)));
+  const pick = head.length > 2 && colPick;
   return (
     <div className={cn('relative -mx-5', stack && 'max-md:mx-0')}>
       {css && <style>{css}</style>}
@@ -493,7 +495,7 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
           <button className={cn(btnGhost, btnSm, 'ml-auto')} onClick={() => setPicked([])}>Bỏ chọn</button>
         </div>
       )}
-      {head.length > 2 && (
+      {pick && (
         <div className="absolute right-3 z-[2] max-md:hidden" style={{ top: useSel && sel.length > 0 ? 50 : 6 }}>
           <button type="button" className={cn(colBtn, 'relative w-7 justify-center px-0')} onClick={() => setColOpen((v) => !v)} aria-expanded={colOpen} aria-label="Chọn cột hiển thị" title={vis.length ? `Chọn cột hiển thị (${head.length - vis.length - (actCol ? 1 : 0)}/${head.length - (actCol ? 1 : 0)} cột đang hiện)` : 'Chọn cột hiển thị'}><Columns3 className="h-3.5 w-3.5" aria-hidden />{vis.length ? <span data-cols-hidden={vis.length} className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-[rgb(var(--accent))]" aria-hidden /> : null}</button>
           {colOpen && (
@@ -514,14 +516,18 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
             {showStt && <th className="w-14 whitespace-nowrap py-2.5 pl-5 pr-3 font-normal">STT</th>}
             {useSel && <th className="w-10 py-2.5 pl-5 pr-1 font-normal max-md:hidden"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={allOn} onChange={() => setPicked(allOn ? [] : keys)} aria-label="Chọn tất cả dòng" /></th>}
             {head.map((h0, i) => {
-              const h = actCol && i === head.length - 1 ? 'Thao tác' : h0;
+              // v61: cột thao tác ở cuối: tiêu đề "Thao tác" chỉ còn cho trình đọc màn hình, nút chọn cột nằm đúng chỗ tiêu đề
+              // → cột thao tác không phải chừa thêm 52px, các cột chữ (tên, vai trò…) rộng hơn, ít bị rút gọn "…"
+              const actHead = pick && actCol && i === head.length - 1 && lastVis === i;
+              const h = actCol && i === head.length - 1 ? (actHead ? <span className="sr-only">Thao tác</span> : 'Thao tác') : h0;
               const can = sort?.sortable.includes(i);
               const on = can && sort?.sort?.col === i ? sort.sort.dir : 0;
               const Ico = on === 1 ? ArrowUp : on === -1 ? ArrowDown : ArrowUpDown;
+              const padR = pick && i === lastVis && !actHead;
               return (
                 <th key={i} aria-sort={on === 1 ? 'ascending' : on === -1 ? 'descending' : undefined}
                   // v59: chừa chỗ cho nút chọn cột nổi ở góc phải (quy tắc CSS th:last-child 16px từng đè pr-12 → nút che tên cột cuối)
-                  style={head.length > 2 && i === lastVis ? { paddingRight: 52 } : undefined} className={cn('whitespace-nowrap py-2.5 font-normal', i === 0 && !showStt && !useSel ? 'pl-5 pr-3' : i === lastVis ? 'pl-3 pr-12' : 'px-3', (alignR.includes(i) || (actCol && i === head.length - 1)) && 'text-right')}>
+                  style={padR ? { paddingRight: 52 } : actHead ? { minWidth: 56 } : undefined} className={cn('whitespace-nowrap py-2.5 font-normal', i === 0 && !showStt && !useSel ? 'pl-5 pr-3' : padR ? 'pl-3 pr-12' : 'px-3', (alignR.includes(i) || (actCol && i === head.length - 1)) && 'text-right')}>
                   {can ? <button type="button" onClick={() => sort!.onSort(i)} className={cn('group inline-flex items-center gap-1 hover:text-[rgb(var(--fg))]', on !== 0 && 'text-[rgb(var(--fg))]', alignR.includes(i) && 'flex-row-reverse')}>{h}<Ico className={cn('h-3 w-3', on ? 'opacity-100' : 'opacity-40 group-hover:opacity-80')} aria-hidden /></button> : h}
                 </th>
               );
@@ -534,7 +540,7 @@ export function Table({ head, children, minW = 760, right, sort, stack = true, s
             <tr data-table-foot className="border-t border-[rgb(var(--ink)/0.1)] text-[13.5px] font-medium">
               {showStt && <td className="py-2.5 pl-5 pr-3" />}
               {useSel && <td className="py-2.5 pl-5 pr-1" />}
-              {head.map((_, i) => <td key={i} className={cn('whitespace-nowrap py-2.5', i === 0 && !showStt && !useSel ? 'pl-5 pr-3' : i === lastVis ? 'pl-3 pr-12' : 'px-3', alignR.includes(i) && 'text-right tabular-nums')}>{foot[i] ?? null}</td>)}
+              {head.map((_, i) => <td key={i} className={cn('whitespace-nowrap py-2.5', i === 0 && !showStt && !useSel ? 'pl-5 pr-3' : i === lastVis && pick && !(actCol && i === head.length - 1) ? 'pl-3 pr-12' : 'px-3', alignR.includes(i) && 'text-right tabular-nums')}>{foot[i] ?? null}</td>)}
             </tr>
           </tfoot>
         )}

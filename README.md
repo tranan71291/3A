@@ -1,4 +1,64 @@
-# 3A CRM v60 (Tạo đơn hàng + Chi tiết đơn hàng bố cục mới, tra cứu mã số thuế — gồm cả v59, v58, v57, nhánh v60)
+# 3A CRM v61 (Liên hệ trên đơn, Cài đặt › Bán hàng, rà soát toàn bộ Cài đặt — gồm cả v60, v59, v58, v57, nhánh v61)
+
+## Cập nhật v61 — Tạo đơn / chi tiết đơn theo ảnh đã duyệt, Cài đặt › Bán hàng, rà soát Cài đặt (28/11)
+
+Không có SQL mới, không có biến môi trường mới. Dữ liệu mới nằm trong bản ghi sẵn có: đơn bán (`email`, `contact`, `recvPhone`, `dept`, `watchers`), khách hàng (`phone`, `email`, `contacts[]`), cấu hình doanh nghiệp (`mfgConfig.saleOrigins`, `mfgConfig.saleDefaults`). Đơn / khách cũ không cần chuyển đổi: trường còn trống thì đọc theo dữ liệu cũ. Không đổi định khoản, luồng duyệt, quy tắc không tự duyệt. Ảnh chạy thật trong `anh-v61/`.
+
+### 1. Tạo đơn hàng (ảnh 01–03, 06, 10–13)
+- **Liên hệ trên đơn:** nhập thẳng **Người liên hệ**, **Điện thoại**, **Email nhận hóa đơn** trong khối Thông tin khách hàng. Khách trong danh bạ thì điền sẵn từ hồ sơ (liên hệ chính), sửa được cho riêng đơn đó. Khi sửa khác hồ sơ, hàng tiêu đề hiện thêm ô **Lưu liên hệ vào hồ sơ** (chỉ với người có quyền sửa khách, mặc định không tích).
+- **Email ghi trên đơn** được điền sẵn khi **Gửi email** và khi **Yêu cầu xuất hóa đơn** (nhất là khách lẻ).
+- **Điện thoại khách tách riêng khỏi điện thoại người nhận hàng** (đơn cũ chưa tách thì dùng số điện thoại trên đơn).
+- **Ô Xuất hóa đơn thuế** gọn trên hàng tiêu đề "Thông tin khách hàng", không còn dòng riêng / ghi chú.
+- **Nguồn đơn hàng** chọn trong danh mục ở Cài đặt › Bán hàng; nút **+** cạnh ô để thêm nhanh (thêm vào cùng danh mục, có ghi nhật ký).
+- **Công nợ khách** chỉ hiện khi khách đang có công nợ.
+- **Thông tin thanh toán:** bỏ ghi chú dưới tiêu đề, nhãn và ô nhập thẳng cột; dòng "Cần duyệt" chỉ hiện khi đơn cần duyệt.
+- **Người thực hiện / Phòng ban** mặc định theo tài khoản tạo đơn; người có quyền quản lý đơn (`sale.manage`) đổi được hoặc chuyển cho người khác.
+- **Giao hàng mặc định "Tại kho"** (đổi được ở Cài đặt › Bán hàng).
+- **Bảng chọn sản phẩm** (theo mẫu ảnh đính kèm): ảnh, `MÃ - Tên (ĐVT)`, nhóm, hãng, đơn giá (đánh dấu "giá đã bán" khi lấy theo lần bán trước), tồn; 5 dòng / trang; **Thêm mới** giữ dòng nhập tự do. Mở ở ô tìm nhanh trên đầu bảng **và ở ô Mã / Tên của từng dòng** (gõ để lọc, Enter chọn dòng đầu, Esc đóng; gần cuối màn hình thì mở lên trên, đi theo ô khi cuộn).
+
+### 2. Thêm nhanh khách hàng (ảnh 04–05)
+- Một hộp thoại, 3 thẻ: **Khách hàng** (tên, MST + tra cứu, mã khách tự sinh, điện thoại, email, địa chỉ, nhóm, nguồn khách có nút +, mối quan hệ, khu vực, phòng ban, người phụ trách) · **Người liên hệ** (nhiều người: danh xưng, họ tên, chức vụ, điện thoại, email, sinh nhật, giới tính, ghi chú, nhận email, liên hệ chính) · **Công nợ & khác** (hạn mức, công nợ, doanh số, hạng, trường tùy chỉnh).
+- Liên hệ chính đồng bộ sang hồ sơ (`contactName / contactPhone / contactEmail`) để các màn cũ vẫn đọc đúng. Lưu lỗi thì tự mở thẻ có lỗi. Không còn popup chồng popup (bỏ hộp quản lý nguồn khách lồng nhau).
+
+### 3. Chi tiết đơn hàng (ảnh 07–08)
+- Bỏ các ghi chú: tệp đính kèm trống, ghi chú giá vốn, công nợ khách lẻ, tóm tắt hóa đơn ở khối Thanh toán, khối Lãi trên đơn. Yêu cầu chờ kế toán nay hiện ở bước **Hóa đơn thuế** của quy trình (kèm nút Mở Kế toán).
+- **Người liên quan:** mỗi người một dòng kèm vai trò trên đơn (Người lên đơn, Người duyệt, Thủ kho, Kế toán…); nút **+** thêm người theo dõi (ghi lịch sử đơn, gửi thông báo); người được thêm **thấy đơn trong danh sách của mình**; bỏ được người đã thêm.
+- **Nhận tại kho:** ghi "Địa điểm nhận hàng: tên kho · địa chỉ kho" (không lặp chữ "Nhận tại kho").
+- Thông tin đơn có thêm Người liên hệ, Điện thoại khách, Email nhận hóa đơn, Điện thoại người nhận (sửa được ở "Cập nhật thông tin").
+
+### 4. Cài đặt › Bán hàng (mới — ảnh 09)
+- **Mặc định khi lên đơn:** nguồn đơn hàng, kho xuất, giao hàng, phương thức thanh toán; số ngày công nợ dùng chung với Kế toán & công nợ (nút Sửa chuyển sang đó, không khai báo 2 nơi); ô Xuất hóa đơn thuế: **tự tích khi chọn khách có MST** (mặc định bật) và **tích sẵn cho mọi đơn mới, kể cả khách lẻ**. Nút Lưu / Hủy, ghi nhật ký `SALE_SETTINGS`.
+- **Danh mục nguồn đơn hàng:** thêm / sửa / ngừng dùng / xóa, số đơn theo nguồn, nhãn **Mặc định**. Nguồn đã có đơn chỉ ngừng dùng được (đơn cũ giữ tên nguồn); nguồn mặc định không xóa / ngừng dùng được cho tới khi chọn nguồn mặc định khác.
+- Chỉ người có quyền Cài đặt (Giám đốc) sửa được; Tổng quan cài đặt có thêm mục Bán hàng.
+
+### 5. Rà soát toàn bộ Cài đặt (ảnh 14–17)
+Đã chụp và đo cả 18 mục (và các thẻ con: Hệ thống tài khoản, AI, Zalo, Người dùng / Nhật ký phân quyền) ở 1440px và 390px. Sau khi sửa: không mục nào tràn trang, không bảng nào cuộn ngang ở 1440px.
+- **Phân quyền:** trước đây tràn trang 88px ở 1440px và 404px trên điện thoại. Nay danh sách nhóm quyền nằm ngang phía trên (thành cột trái chỉ ở màn ≥ 1680px), ma trận 7 cột tác vụ cố định 78px, ghi chú chức năng dài rút gọn "…" (rê chuột xem đủ); phạm vi dữ liệu xếp 2 × 2 trên điện thoại.
+- **Phòng ban & nhân sự:** tên phòng / tên nhân sự bị cắt cụt, nút chọn cột đè tiêu đề, bảng nhân sự cuộn ngang. Nay Mã phòng, SLA, Email, Chức vụ là cột thêm (bật ở nút chọn cột); trạng thái ghi tiếng Việt **Hoạt động / Đã khóa** (trước ghi Active / Inactive).
+- **Quy trình & phê duyệt:** tên quy trình bị cắt cụt → đủ rộng, rút gọn "…" khi cần; SLA bước đầu là cột thêm.
+- **Phân loại khách:** bảng Hạng khách hàng mất cột Thao tác → dùng hết bề ngang; tách "Khách / lead" và "Khách hiện tại / theo quy tắc" thành 2 cột riêng (quy tắc bảng v49).
+- **Quỹ Hãng 3M:** ô nhập tiêu chí claim thẳng hàng; ma trận chứng từ theo hạng mục vừa khung (tên hạng mục xuống dòng trong tiêu đề, bỏ ô chọn dòng / nút chọn cột); trạng thái năm không còn bị cắt.
+- **Ngân sách Marketing:** bảng hạng mục không còn mất cột CPL / Thao tác.
+- **Doanh nghiệp › Phân hệ sử dụng:** nhóm Dùng chung rộng 2 cột, tên phân hệ không xuống dòng.
+- **Tài nguyên:** tiêu đề không còn lặp "Tài nguyên & tài nguyên".
+- **Getfly:** bảng ánh xạ ghi "Trường trong CRM" (bỏ tên cũ "App MDF"), bỏ ô chọn dòng / nút chọn cột vô nghĩa.
+
+### 6. Sửa lỗi phát hiện khi rà soát (có từ trước v61)
+- **Ngày "hôm nay" lấy theo UTC:** từ 0h đến 7h sáng giờ Việt Nam, ngày đặt hàng / ngày chứng từ ra ngày hôm trước, lệch với mã đơn `DHddmmyy`. Nay lấy theo giờ máy người dùng (`todayISO`), cùng sửa ở mẫu chứng từ, bình chọn bảng tin, ngày yêu cầu hóa đơn.
+- Hộp xác nhận xóa ở các bảng danh mục ghi "[object Object]" khi cột tên có định dạng → ghi đúng tên.
+- Ô tích trong form danh mục không hiện lỗi kiểm tra (bấm Lưu không có phản hồi) → hiện lỗi ngay dưới ô.
+- Bảng dùng chung (`components/ui.tsx`): khi bảng phải rút gọn chữ, chữ trong khối con (tên kèm ảnh đại diện, tên + dòng phụ) nay rút gọn "…" thay vì bị cắt cụt; cột Thao tác cuối bảng chỉ còn nút chọn cột ở tiêu đề (chữ "Thao tác" vẫn có cho trình đọc màn hình) nên các cột chữ rộng hơn; thêm `colPick={false}` cho bảng ma trận / bảng tra cứu.
+- **Còn để ngỏ (từ v60):** phí vận chuyển chưa được đưa vào yêu cầu xuất hóa đơn, chờ thống nhất cách xuất.
+- Lưu ý phạm vi: việc "người được thêm thấy đơn" lọc ở giao diện theo phạm vi dữ liệu như mọi đơn khác; máy chủ vẫn cô lập dữ liệu theo doanh nghiệp (RLS), chưa lọc theo từng người trong cùng doanh nghiệp.
+
+### 7. Kiểm thử (máy chạy thử, TZ=UTC) — `anh-v61/ket-qua-chay-thu.txt`
+Bộ mới `t61` 43/43 đạt (gồm kiểm tra 00:30 sáng 28/11 giờ Việt Nam ra đúng ngày 28/11). Hồi quy: uk59 26, st59 44, lc59b 2, ap58 44, ap5521 41, ap553 22, ap56 32, ap563 42, ap563b 10, ap563c 5, ap57a 23, ap57b 25, ap58c 9, t58-acct 21, flow58, t60 67, t60b 12 — đều đạt, 0 lỗi giao diện. Đã cập nhật bộ cũ theo giao diện mới (người liên hệ ở thẻ riêng, "Tại kho", yêu cầu hóa đơn ở bước Hóa đơn thuế).
+
+### 8. Tệp thay đổi
+- Mới: `src/crm/components/kit/add-name-pop.tsx`, `src/crm/modules/settings/sales-settings.tsx`.
+- Sửa: `modules/sales/orders.tsx`, `modules/customers/customer-360.tsx`, `modules/settings/{security-data,company,settings,my-account,permissions,workflow,mkt-budget,resources,getfly}.tsx`, `modules/page-builder/sample.tsx`, `modules/sales/templates.tsx`, `modules/home/home.tsx`, `modules/accounting/accounting.tsx`, `components/{ui,crud}.tsx`, `components/kit/index.ts`, `lib/{core.tsx,types.ts}`, `app/App.tsx`.
+
+---
 
 ## Cập nhật v60 — Tạo đơn hàng, Chi tiết đơn hàng, tra cứu mã số thuế (27/11)
 

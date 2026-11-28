@@ -9,7 +9,7 @@ import { claimDate } from '../components/filters';
 import { auditClaim } from './business';
 import { canon, cloudMessage, statsOf, withFileUrls } from './cloud';
 import { acctList, saleReturned, saleTotals } from './getfly';
-import type { AcctConfig, AcctEvent, AcctStd, Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, CfDef, CfEntity, CfType, CfVal, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerForm, CustomerSource, CustomerStatus, DashPeriod, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LFieldItem, LSection, LDevice, LGrid, LSpace, LTok, Lead, LeadStatus, LeaveKind, LField, LostReason, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, LTextKind, LTypeDef, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, SoColDef, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
+import type { AcctConfig, AcctEvent, AcctStd, Action, Activity, ActivityStatus, ActivityType, AgingScheme, AiJob, AiMsg, AiQuotaCfg, AnyRec, AppCtx, ApprovalDecision, ApprovalKind, ApprovalLevel, ArBucketDef, AudBase, AudField, AudOp, AutoChannel, AutoSubject, AutoTrigger, BannerSize, BannerSpec, Budget, BudgetCategory, BusinessProfile, CampaignStatus, CashAccount, CashEntry, CashSource, CfDef, CfEntity, CfType, CfVal, Channel, ChatFile, CheckItem, Claim, ClaimRules, CloudAccess, CloudRow, CloudSession, CommissionRow, CompanyInfo, ComposerForm, ConsoleTab, ContactItem, ContentBlock, ContentStatus, ContentTemplate, ContentVariantCfg, ContentVersion, ContentVersionKind, Customer, CustomerContact, CustomerForm, CustomerSource, CustomerStatus, DashPeriod, DashScope, DataScope, DateRange, Department, DeptCode, DesignStatus, DocCategory, DocItem, DocLine, DocVisibility, EmailConfig, EmailProvider, ExpenseStatus, FieldDef, FundCode, GenDocStatus, GeneratedDoc, GetflyConfig, GetflyOrderRec, GlobalFilter, GuaranteeType, HookEvent, HubCfg, HubGroup, ImgFeat, InstallJob, InstallView, InvMove, InvMoveType, Job, JobLine, JobLostReason, JobStage, KbItem, KpiCfg, KpiStatus, KpiTarget, LAgg, LayoutAssign, LayoutVer, LBlock, LBlockCfg, LBlockType, LBtn, LBtnAct, LDataset, LFieldItem, LSection, LDevice, LGrid, LSpace, LTok, Lead, LeadStatus, LeaveKind, LField, LostReason, LPage, LPageCtx, LPeriod, LPos, LRow, LStage, LTextKind, LTypeDef, MenuItem, MfgConfig, MktChannel, MktContent, MktContentType, MktItem, MktTab, Module, NoticeKind, NotifyEvent, Org, PasteRow, PayTrigger, Period, Perms, PFeat, PlatformStrategy, PoAllocation, Policy, PopDocDef, PopType, PoPurpose, Post, PostFeeling, PostKind, Presence, PriceProtection, PriceTier, PriceUnit, Program, ProgramStatus, ProgramType, PTask, Quote, QuoteLine, QuoteStatus, ReactId, Receipt, ReceiptStatus, Region, RemoteBatch, RemoteChange, ReservationStatus, RevenueBand, Role, SaleDelivery, SaleFilter, SaleLine, SaleOrigin, SalePay, SalesOrder, SaleStage, SaleStatus, SecurityPolicy, Segment, SegmentDef, SeoRule, ServerStatus, Settlement, ShipmentStatus, ShipMode, SkuFilter, SkuItem, SmartCatalog, SocialCfg, SocialChannel, SocialItem, SoColDef, Source, Stage, StArticle, StCompany, StockLevel, StockMove, StockMoveType, StockReservation, StockVoucher, StSection, StSettings, StStepId, StudioState, StudioStore, SurplusAllocation, SyncInfo, TaskStatus, TenantPlan, TenantReg, Tier, TierRule, Tone, TxType, User, VariantGroup, VendorPO, ViewKind, VoucherStatus, VoucherType, VsKind, WarehouseInfo, WfCond, WfCtx, WfDef, WfField, WfFieldType, WfOp, WfPolicy, WfRun, WfRunStatus, WfStep, WfSubject, WfWho, WfWhoKind, WidgetPref, WorkOrder, WoStage, WriterPreset, WsGhost, WsImage, WsMarks, ZaloConv, ZaloConvStatus, ZaloLinkKind, ZnsConfig } from './types';
 import { cn, syncCatalog } from './utils';
 import { jobMoney, lineMeasure } from './workshop';
 import { CounterInput, getPlatform, scoreArticle, socialStrategy, stBriefText, stClip, stCreate, TagInput, useStudio, useStudioActions, useStudioApi } from '../modules/marketing/content-studio';
@@ -149,7 +149,9 @@ export const pct = (a: number, b: number) =>
 
 export const fmtDate = (iso?: string) => (iso ? iso.split('-').reverse().join('/') : '');
 
-export const todayISO = () => new Date().toISOString().slice(0, 10);
+/** v61: ngày hôm nay theo giờ máy người dùng (trước đây lấy theo UTC: từ 0h đến 7h sáng giờ Việt Nam ra ngày hôm trước,
+ *  lệch với mã đơn DHddmmyy và ngày chứng từ) */
+export const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 /** v28 — Kho tổng mặc định: nhận phần tồn chưa phân bổ cho kho khác */
 export const MAIN_WH = 'WH-MAIN';
@@ -960,7 +962,8 @@ export const SALE_STATUS: Record<SaleStatus, { label: string; tone: Tone }> = { 
 
 export const SALE_PAY: Record<SalePay, string> = { CASH: 'Tiền mặt', BANK: 'Chuyển khoản', PARTIAL: 'Trả một phần', CREDIT: 'Công nợ' };
 
-export const SALE_DELIVERY: Record<SaleDelivery, string> = { PICKUP: 'Lấy tại cửa hàng', DELIVER: 'Giao hàng', CARRIER: 'Gửi xe / chành' };
+// v61: nhận tại kho là mặc định khi lên đơn
+export const SALE_DELIVERY: Record<SaleDelivery, string> = { PICKUP: 'Nhận tại kho', DELIVER: 'Giao hàng', CARRIER: 'Gửi xe / chành' };
 
 export const saleLineNet = (l: SaleLine) => Math.round(l.qty * l.price * (1 - l.discountPct / 100));
 
@@ -2655,10 +2658,11 @@ export const lNewBlock = (type: LBlockType, at?: Partial<LPos>, page: LPage = 'h
 export const lStarterSale = (): LBlock[] => {
   const b = (t: LBlockType, x: number, y: number, w: number, h: number) => lNewBlock(t, { x, y, w, h }, 'sale-detail');
   // v60: phiếu đơn hàng 2 cột 9 / 3 (theo ảnh đã duyệt) — trái: ĐƠN HÀNG BÁN + bảng thông tin, hàng hóa & dòng tổng, điều khoản / thông tin bổ trợ, Trao đổi / Chứng từ & Bút toán;
-  // phải (dính khi cuộn, có đường kẻ): quy trình xử lý + người liên quan, tài liệu liên quan, thanh toán + lịch sử thanh toán, lãi trên đơn, công nợ khách
+  // phải (dính khi cuộn, có đường kẻ): quy trình xử lý + người liên quan, tài liệu liên quan, thanh toán + lịch sử thanh toán, công nợ khách (chỉ hiện khi khách đang nợ)
+  // v61: bỏ khối Lãi trên đơn khỏi bố cục mặc định (vẫn có trong thư viện khối của 3A Studio)
   const info = b('K-RecordDetail', 0, 0, 9, 3);
   info.config = { ...info.config, entity: 'sale', sections: [{ id: `${info.id}-s1`, title: '', cols: 2, fields: SO_INFO_SHEET.map((k) => lFieldItem(k, 6, `${info.id}-f-${k}`)) }] };
-  return lOrderSm([info, b('K-Order-Lines', 0, 3, 9, 5), b('K-Order-Ship', 0, 8, 9, 2), b('K-Order-Log', 0, 10, 9, 4), b('K-Order-Flow', 9, 0, 3, 3), b('K-Order-Files', 9, 3, 3, 2), b('K-Order-Pay', 9, 5, 3, 4), b('K-Order-Profit', 9, 9, 3, 3), b('K-Order-Debt', 9, 12, 3, 2)]);
+  return lOrderSm([info, b('K-Order-Lines', 0, 3, 9, 5), b('K-Order-Ship', 0, 8, 9, 2), b('K-Order-Log', 0, 10, 9, 4), b('K-Order-Flow', 9, 0, 3, 3), b('K-Order-Files', 9, 3, 3, 2), b('K-Order-Pay', 9, 5, 3, 4), b('K-Order-Debt', 9, 9, 3, 2)]);
 };
 
 /** Bố cục khởi tạo trang Quản lý đơn hàng */
@@ -2902,9 +2906,34 @@ export const SO_INFO_LEGACY: { id: string; label: string; lock?: boolean }[] = [
 export const SO_INFO_F: { id: string; label: string; lock?: boolean }[] = [...SO_INFO_LEGACY,
   { id: 'taxCode', label: 'Mã số thuế' }, { id: 'address', label: 'Địa chỉ' }, { id: 'phone', label: 'Điện thoại' }, { id: 'email', label: 'Email' },
   { id: 'receiver', label: 'Người nhận' }, { id: 'recvPhone', label: 'Điện thoại người nhận' }, { id: 'shipAddr', label: 'Địa chỉ giao hàng' }, { id: 'delivery', label: 'Giao nhận' },
-  { id: 'date', label: 'Ngày đặt hàng' }, { id: 'dept', label: 'Phòng ban' }, { id: 'pay', label: 'Phương thức thanh toán' }];
-/** v60: bảng thông tin mặc định của trang chi tiết đơn (2 cột, theo ảnh đã duyệt) */
-export const SO_INFO_SHEET = ['customer', 'by', 'taxCode', 'dept', 'address', 'date', 'phone', 'pay', 'email', 'wh', 'receiver', 'recvPhone', 'shipAddr', 'delivery', 'docRef', 'origin', 'code', 'invNo'];
+  { id: 'date', label: 'Ngày đặt hàng' }, { id: 'dept', label: 'Phòng ban' }, { id: 'pay', label: 'Phương thức thanh toán' },
+  /* v61 */ { id: 'contact', label: 'Người liên hệ' }];
+/** v60: bảng thông tin mặc định của trang chi tiết đơn (2 cột, theo ảnh đã duyệt); v61 thêm Người liên hệ */
+export const SO_INFO_SHEET = ['customer', 'by', 'taxCode', 'dept', 'address', 'date', 'phone', 'pay', 'email', 'wh', 'contact', 'origin', 'receiver', 'recvPhone', 'shipAddr', 'delivery', 'docRef', 'code', 'invNo'];
+
+/** v61 Danh mục nguồn đơn hàng mặc định (doanh nghiệp chưa khai báo ở Cài đặt › Bán hàng) */
+export const SALE_ORIGINS_DEF: SaleOrigin[] = ['Tại quầy', 'Điện thoại', 'Zalo', 'Website', 'Từ báo giá'].map((name, i) => ({ id: `so-src-${i + 1}`, name, active: true }));
+export const saleOriginsOf = (cfg: Pick<MfgConfig, 'saleOrigins'>) => cfg.saleOrigins ?? SALE_ORIGINS_DEF;
+
+/** v61 Mặc định khi lên đơn (Cài đặt › Bán hàng), đã chuẩn hóa: nguồn ngừng dùng / kho tạm ngưng thì lùi về giá trị hợp lệ */
+export function saleDefaultsOf(cfg: Pick<MfgConfig, 'saleOrigins' | 'saleDefaults' | 'creditDays'>, whs: Pick<WarehouseInfo, 'id' | 'active' | 'main'>[]) {
+  const d = cfg.saleDefaults ?? {};
+  const act = saleOriginsOf(cfg).filter((s) => s.active);
+  const origin = act.find((s) => s.id === d.origin)?.name ?? act[0]?.name ?? 'Tại quầy';
+  const main = whs.find((w) => w.main)?.id ?? whs[0]?.id ?? '';
+  const whId = d.whId && whs.some((w) => w.id === d.whId && w.active) ? d.whId : main;
+  return { origin, whId, delivery: d.delivery ?? ('PICKUP' as SaleDelivery), pay: d.pay ?? ('CASH' as const), invoice: !!d.invoice, invoiceTax: d.invoiceTax !== false, creditDays: cfg.creditDays > 0 ? cfg.creditDays : 30 };
+}
+
+/** v61 Liên hệ của khách: danh sách người liên hệ (khách cũ chưa có danh sách thì dựng từ người liên hệ chính) */
+export function custContacts(c?: Pick<Customer, 'contacts' | 'contactName' | 'contactTitle' | 'contactPhone' | 'contactEmail' | 'invoiceEmail'>): CustomerContact[] {
+  if (!c) return [];
+  if (c.contacts?.length) return c.contacts;
+  return c.contactName || c.contactPhone || c.contactEmail ? [{ id: 'ct-main', name: c.contactName, title: c.contactTitle, phone: c.contactPhone, email: c.contactEmail, mail: true, primary: true }] : [];
+}
+/** v61 Điện thoại / email chung của khách; trống thì lấy của người liên hệ chính */
+export const custPhone = (c?: Pick<Customer, 'phone' | 'contactPhone'>) => (c ? c.phone || c.contactPhone || '' : '');
+export const custEmail = (c?: Pick<Customer, 'invoiceEmail' | 'email' | 'contactEmail'>) => (c ? c.invoiceEmail || c.email || c.contactEmail || '' : '');
 
 export const SO_LINE_F: { id: string; label: string; lock?: boolean }[] = [{ id: 'stt', label: 'STT' }, { id: 'ref', label: 'Mã sản phẩm', lock: true }, { id: 'name', label: 'Tên sản phẩm', lock: true }, { id: 'unit', label: 'ĐVT' }, { id: 'qty', label: 'Số lượng', lock: true }, { id: 'price', label: 'Đơn giá', lock: true }, { id: 'ckPct', label: 'CK%' }, { id: 'ckAmt', label: 'CK (đ)' }, { id: 'vat', label: 'VAT%' }, { id: 'net', label: 'Thành tiền', lock: true }, { id: 'iss', label: 'Đã xuất' }, { id: 'ret', label: 'Trả lại' }, { id: 'rest', label: 'Còn phải xuất' }];
 
@@ -3622,6 +3651,7 @@ export const AUDIT_LABEL: Record<string, string> = {
   APPROVAL_APPROVED: 'Duyệt', APPROVAL_REJECTED: 'Từ chối', APPROVAL_NEED_INFO: 'Yêu cầu bổ sung',
   DATA_EXPORT: 'Sao lưu dữ liệu', DATA_IMPORT: 'Nhập dữ liệu', DATA_RESTORE: 'Khôi phục bản chụp', DATA_RESET: 'Xóa dữ liệu trên máy',
   SECURITY_POLICY: 'Đổi chính sách bảo mật', MODULES_PROFILE: 'Đổi gói phân hệ',
+  SALE_SETTINGS: 'Đổi cài đặt bán hàng',
 };
 
 export const ACCT_TOKEN: Record<string, string> = { '@FUND': 'Quỹ của phiếu', '@FUND_TO': 'Quỹ nhận', '@CAT': 'Theo khoản mục' };

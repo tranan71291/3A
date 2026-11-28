@@ -27,6 +27,7 @@ import { LegacyDemoPanel } from './sample-data';
 import { BusinessModulesPanel } from './settings';
 import { WorkflowSettings } from './workflow';
 import { ResourceSettings } from './resources';
+import { SaleSettings } from './sales-settings';
 
 /** Phát hiện bất thường từ nhật ký: đăng nhập lỗi dồn dập, khóa tài khoản, đổi quyền ngoài giờ (22h–6h) trong 7 ngày */
 export function AnomalyCard() {
@@ -334,6 +335,7 @@ export function SettingsModule() {
     { id: 'org', label: 'Phòng ban & nhân sự', show: true, group: 'Tổ chức' },
     { id: 'perms', label: 'Phân quyền', show: true, group: 'Tổ chức' },
     { id: 'workflow', label: 'Quy trình & phê duyệt', show: true, group: 'Tổ chức' },
+    { id: 'sales', label: 'Bán hàng', show: true, group: 'Nghiệp vụ' },
     { id: 'accounting', label: 'Kế toán & công nợ', show: true, group: 'Nghiệp vụ' },
     { id: 'coa', label: 'Hệ thống tài khoản', show: true, group: 'Nghiệp vụ' },
     { id: 'pricing', label: 'Bảng đơn giá & thanh toán', show: mode !== 'TRADING', group: 'Nghiệp vụ' },
@@ -381,6 +383,7 @@ export function SettingsModule() {
       {cur === 'org' && <OrgSettings />}
       {cur === 'pricing' && <PricingSettings />}
       {cur === 'accounting' && <AccountingSettings />}
+      {cur === 'sales' && <SaleSettings />}
       {cur === 'coa' && <CoaSettings />}
 
       {cur === 'warehouses' && <WarehouseSettings />}
@@ -666,7 +669,7 @@ export function AccountingSettings() {
           </div>
         </Panel>
         <SetBlock title="Số chứng từ" sub="định dạng hệ thống đang dùng, số tiếp theo tính từ dữ liệu" flush>
-          <Table head={['Loại', 'Mẫu số', 'Số tiếp theo', 'Đặt lại']} minW={520} stt={false}>
+          <Table head={['Loại', 'Mẫu số', 'Số tiếp theo', 'Đặt lại']} minW={520} stt={false} select={false}>
             {numbering.map(([k, fmt, nx]) => (
               <tr key={k} className={rowCls}>
                 <td className={tdFirst}>{k}</td>

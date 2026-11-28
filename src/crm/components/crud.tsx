@@ -2,7 +2,7 @@
 
 import { type ReactNode, useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
-import { EmptyState, Field, Modal, MoneyInput, Table } from './ui';
+import { EmptyState, Field, Modal, MoneyInput, nodeText, Table } from './ui';
 import { btnDanger, btnGhost, btnPrimary, btnSm, inputCls, rowCls, slug, tdCls, tdFirst, tdLast } from '../lib/core';
 import type { ConfirmState, FieldSpec } from '../lib/types';
 import { cn } from '../lib/utils';
@@ -80,10 +80,14 @@ export function EntityModal({ title, initial, fields, validate, onSave, onClose 
           const err = touched ? errors[f.key] : undefined;
           const val = v[f.key];
           if (f.type === 'checkbox') {
+            // v61: ô tích cũng hiện lỗi kiểm tra (vd. không ngừng dùng nguồn đơn mặc định)
             return (
-              <label key={f.key} className={cn('flex items-center gap-2 text-sm text-[rgb(var(--fg))]', f.wide && 'sm:col-span-2')}>
-                <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={!!val} onChange={(e) => set(f.key, e.target.checked)} />{f.label}
-              </label>
+              <div key={f.key} className={cn(f.wide && 'sm:col-span-2')}>
+                <label className="flex items-center gap-2 text-sm text-[rgb(var(--fg))]">
+                  <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={!!val} onChange={(e) => set(f.key, e.target.checked)} />{f.label}
+                </label>
+                {err && <p className="mt-1 text-xs text-[rgb(var(--danger-fg))]">{err}</p>}
+              </div>
             );
           }
           if (f.type === 'multi') {
@@ -145,7 +149,8 @@ export function CatalogTable<T>({ rows, rowKey, columns, fields, entity, canEdit
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   return (
     <>
-      <Table head={[...columns.map((c) => c.label), '']} minW={640}>
+      {/* v61: danh mục cấu hình không cần ô chọn nhiều dòng (không có thao tác hàng loạt) */}
+      <Table head={[...columns.map((c) => c.label), '']} minW={640} select={false}>
         {rows.map((r) => (
           <tr key={rowKey(r)} className={rowCls}>
             {columns.map((c, i) => <td key={c.label} className={i === 0 ? tdFirst : tdCls}>{c.render(r)}</td>)}
@@ -154,7 +159,7 @@ export function CatalogTable<T>({ rows, rowKey, columns, fields, entity, canEdit
               <button
                 className={cn(btnGhost, 'p-1.5 hover:border-[rgb(var(--danger)/0.5)] hover:text-[rgb(var(--danger-fg))]')}
                 disabled={!canEdit}
-                onClick={() => setConfirm({ title: `Xóa ${entity}`, message: <>Xóa <b>{String(columns[0].render(r))}</b>? Thao tác không hoàn tác được.</>, blocked: deleteBlocked?.(r), onConfirm: () => onDelete(r) })}
+                onClick={() => setConfirm({ title: `Xóa ${entity}`, message: <>Xóa <b>{nodeText(columns[0].render(r))}</b>? Thao tác không hoàn tác được.</>, blocked: deleteBlocked?.(r), onConfirm: () => onDelete(r) })}
                 aria-label={`Xóa ${entity}`}
               >
                 <Trash2 className="h-3.5 w-3.5" />

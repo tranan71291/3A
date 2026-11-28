@@ -83,7 +83,8 @@ export function PermMatrix({ P, ctx, feats, onSet, canEdit, q }: { P: Perms; ctx
   );
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[780px] border-collapse text-[13.5px]">
+      {/* v61: table-fixed: 7 cột tác vụ giữ 78px, cột chức năng nhận phần còn lại */}
+      <table className="w-full min-w-[760px] table-fixed border-collapse text-[13.5px]">
         <thead><tr className="border-b border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.03)]">
           <th className="px-5 py-3 text-left text-[12.5px] font-normal text-[rgb(var(--muted))]">Chức năng</th>
           {PTASKS.map(([t, l]) => { const s = colAll(t); return (
@@ -99,10 +100,13 @@ export function PermMatrix({ P, ctx, feats, onSet, canEdit, q }: { P: Perms; ctx
                 const off = !!acc && !acc.on;
                 return (
                   <tr key={f.id} className="border-t border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--ink)/0.02)]">
-                    <td className={cn('h-10 whitespace-nowrap pr-3', f.sub ? 'pl-10' : 'pl-5')}>
-                      {f.sub && <span className="mr-1.5 inline-block h-2.5 w-2 -translate-y-0.5 rounded-bl border-b border-l border-[rgb(var(--ink)/0.2)]" aria-hidden />}
-                      <span className={cn(off && 'text-[rgb(var(--muted))]', !f.sub && 'font-medium')}>{f.label}</span>
-                      {f.hint && <span className="ml-2 text-[12px] text-[rgb(var(--faint))]">{f.hint}</span>}
+                    {/* v61: cột chức năng co theo khung; ghi chú dài rút gọn "…", rê chuột xem đủ */}
+                    <td className={cn('h-10 max-w-0 whitespace-nowrap pr-3', f.sub ? 'pl-10' : 'pl-5')} title={f.hint ? `${f.label}: ${f.hint}` : undefined}>
+                      <span className="flex min-w-0 items-baseline">
+                        {f.sub && <span className="mr-1.5 inline-block h-2.5 w-2 shrink-0 -translate-y-0.5 rounded-bl border-b border-l border-[rgb(var(--ink)/0.2)]" aria-hidden />}
+                        <span className={cn('min-w-0 truncate', off && 'text-[rgb(var(--muted))]', !f.sub && 'font-medium')}>{f.label}</span>
+                        {f.hint && <span className="ml-2 min-w-0 shrink-[8] truncate text-[12px] text-[rgb(var(--faint))]">{f.hint}</span>}
+                      </span>
                     </td>
                     {PTASKS.map(([t, l]) => { const c = pCell(P, ctx, f, t); return c ? (
                       <td key={t} className="border-l border-[rgb(var(--ink)/0.04)] text-center">{box(c.on, c.part, c.own, lockAll || (off && t !== 'access') || (t === 'access' && !f.sub && LOCKED(ctx.role, f.mod)) || (t !== 'access' && Array.isArray(f.cells[t]) && (f.cells[t] as Action[]).some((a) => LOCKED(ctx.role, undefined, a))), `${f.label}: ${l}`, () => onSet(f, t, !c.on || c.part))}</td>
@@ -161,29 +165,33 @@ export function PermissionsSettings() {
   const tabCls = (on: boolean) => cn('-mb-px flex h-12 items-center gap-1.5 border-b-2 text-[14px] font-medium', on ? 'border-[rgb(var(--accent))] text-[rgb(var(--fg))]' : 'border-transparent text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]');
   return (
     <div className="space-y-4 pb-16">
-      <div className="grid gap-4 xl:grid-cols-[230px_1fr] [&>*]:min-w-0">
-        <section className="glass-card h-fit rounded-xl py-2">
-          <p className="px-4 pb-2 pt-2 text-[15px] font-medium">Nhóm quyền</p>
-          {TREE.map(([r, lv]) => (
-            <button key={r} onClick={() => { setRole(r); setUid(null); if (view === 'LOG') setView('MATRIX'); }} className={cn('relative flex h-9 w-full items-center gap-2 pr-4 text-left text-[13.5px]', lv ? 'pl-9' : 'pl-4', role === r && view !== 'LOG' ? 'bg-[rgb(var(--accent)/0.08)] font-medium shadow-[inset_2px_0_0_rgb(var(--accent))]' : 'hover:bg-[rgb(var(--ink)/0.03)]')}>
-              {lv > 0 && <span className="absolute left-5 top-0 h-[18px] w-2.5 rounded-bl border-b border-l border-[rgb(var(--ink)/0.2)]" aria-hidden />}
-              <span className="min-w-0 flex-1 truncate">{ROLE_LABEL[r]}</span><span className="text-[12px] tabular-nums text-[rgb(var(--muted))]">{users.filter((u) => u.role === r && u.active).length}</span>
-            </button>
-          ))}
-          <div className="my-2 border-t border-[rgb(var(--line))]" />
-          <button onClick={() => setView('USERS')} className="flex h-9 w-full items-center gap-2 px-4 text-left text-[13.5px] text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.03)]"><span className="flex-1">Ngoại lệ từng tài khoản</span><span className="text-[12px] tabular-nums text-[rgb(var(--muted))]">{users.filter((u) => overrides(u) > 0).length}</span></button>
-          <button onClick={() => setView('LOG')} className={cn('flex h-9 w-full items-center gap-2 px-4 text-left text-[13.5px]', view === 'LOG' ? 'bg-[rgb(var(--accent)/0.08)] font-medium' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.03)]')}><span className="flex-1">Nhật ký thay đổi</span><History className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden /></button>
+      {/* v61: danh sách nhóm quyền nằm ngang phía trên (ma trận dùng hết bề ngang, không cuộn ngang ở 1440px);
+          chỉ ở màn rất rộng mới thành cột trái. Mỗi cột con có min-w-0 riêng để không đẩy tràn trang */}
+      <div className="grid gap-4 min-[1680px]:grid-cols-[230px_1fr]">
+        <section className="glass-card h-fit min-w-0 rounded-xl p-2 min-[1680px]:px-0 min-[1680px]:py-2" aria-label="Nhóm quyền">
+          <div className="flex flex-wrap items-center gap-1 min-[1680px]:block">
+            <p className="px-2 text-[13px] font-medium text-[rgb(var(--muted))] min-[1680px]:px-4 min-[1680px]:pb-2 min-[1680px]:pt-2 min-[1680px]:text-[15px] min-[1680px]:text-[rgb(var(--fg))]">Nhóm quyền</p>
+            {TREE.map(([r, lv]) => (
+              <button key={r} onClick={() => { setRole(r); setUid(null); if (view === 'LOG') setView('MATRIX'); }} aria-current={role === r && view !== 'LOG' ? 'true' : undefined} className={cn('relative flex h-9 items-center gap-2 rounded-lg px-3 text-left text-[13.5px] min-[1680px]:w-full min-[1680px]:rounded-none min-[1680px]:pr-4', lv ? 'min-[1680px]:pl-9' : 'min-[1680px]:pl-4', role === r && view !== 'LOG' ? 'bg-[rgb(var(--accent)/0.08)] font-medium min-[1680px]:shadow-[inset_2px_0_0_rgb(var(--accent))]' : 'hover:bg-[rgb(var(--ink)/0.03)]')}>
+                {lv > 0 && <span className="absolute left-5 top-0 hidden h-[18px] w-2.5 rounded-bl border-b border-l border-[rgb(var(--ink)/0.2)] min-[1680px]:block" aria-hidden />}
+                <span className="min-w-0 flex-1 truncate">{ROLE_LABEL[r]}</span><span className="text-[12px] tabular-nums text-[rgb(var(--muted))]">{users.filter((u) => u.role === r && u.active).length}</span>
+              </button>
+            ))}
+            <span className="mx-1 h-5 w-px bg-[rgb(var(--line))] min-[1680px]:my-2 min-[1680px]:mx-0 min-[1680px]:block min-[1680px]:h-px min-[1680px]:w-full" aria-hidden />
+            <button onClick={() => setView('USERS')} className="flex h-9 items-center gap-2 rounded-lg px-3 text-left text-[13.5px] text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.03)] min-[1680px]:w-full min-[1680px]:rounded-none min-[1680px]:px-4"><span className="flex-1">Ngoại lệ từng tài khoản</span><span className="text-[12px] tabular-nums text-[rgb(var(--muted))]">{users.filter((u) => overrides(u) > 0).length}</span></button>
+            <button onClick={() => setView('LOG')} className={cn('flex h-9 items-center gap-2 rounded-lg px-3 text-left text-[13.5px] min-[1680px]:w-full min-[1680px]:rounded-none min-[1680px]:px-4', view === 'LOG' ? 'bg-[rgb(var(--accent)/0.08)] font-medium' : 'text-[rgb(var(--fg2))] hover:bg-[rgb(var(--ink)/0.03)]')}><span className="flex-1">Nhật ký thay đổi</span><History className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden /></button>
+          </div>
         </section>
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {view !== 'LOG' && (
             <section className="glass-card flex flex-wrap items-start gap-4 rounded-xl p-5">
               <div className="min-w-0">
                 <h2 className="text-[18px] font-medium">{ROLE_LABEL[role]}</h2>
                 <div className="mt-2 flex items-center gap-2"><span className="flex -space-x-1.5">{members.slice(0, 6).map((u) => <span key={u.id} className="rounded-full ring-2 ring-[rgb(var(--surface))]" title={u.name}><Avatar name={u.name} size={26} /></span>)}</span><span className="text-[12.5px] text-[rgb(var(--muted))]">{members.filter((u) => u.active).length} tài khoản</span></div>
               </div>
-              <div className="ml-auto flex flex-col items-end gap-1.5">
+              <div className="flex w-full flex-col gap-1.5 sm:ml-auto sm:w-auto sm:items-end">
                 <p className="text-[12.5px] text-[rgb(var(--muted))]">Phạm vi dữ liệu</p>
-                <div className="flex overflow-hidden rounded-lg border border-[rgb(var(--ink)/0.12)] divide-x divide-[rgb(var(--ink)/0.08)]" role="radiogroup" aria-label="Phạm vi dữ liệu">
+                <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-[rgb(var(--ink)/0.12)] sm:flex sm:divide-x sm:divide-[rgb(var(--ink)/0.08)]" role="radiogroup" aria-label="Phạm vi dữ liệu">
                   {(Object.keys(SCOPE_LABEL) as DataScope[]).map((sc) => <button key={sc} role="radio" aria-checked={scopeOf(role) === sc} title={SCOPE_LABEL[sc].hint} disabled={!canEdit} className={seg(scopeOf(role) === sc)} onClick={() => edit((p) => ({ ...p, scope: { ...(p.scope ?? {}), [role]: sc } }))}>{SCOPE_LABEL[sc].label}</button>)}
                 </div>
               </div>
@@ -195,9 +203,9 @@ export function PermissionsSettings() {
               <button className={tabCls(view === 'USERS')} onClick={() => setView('USERS')}>Người dùng <span className="rounded-full bg-[rgb(var(--ink)/0.06)] px-1.5 text-[11px] font-normal">{members.length}</span></button>
               <button className={tabCls(view === 'LOG')} onClick={() => setView('LOG')}>Nhật ký thay đổi</button>
               {view !== 'LOG' && (
-                <div className="ml-auto flex items-center gap-2 py-2">
-                  <div className="w-56"><SearchBox value={q} onChange={setQ} placeholder="Tìm chức năng" /></div>
-                  {view === 'MATRIX' && canEdit && <select className={cn(inputBase, 'w-48')} value="" onChange={(e) => { if (e.target.value) copyFrom(e.target.value as Role); }} aria-label="Sao chép từ nhóm"><option value="">Sao chép từ nhóm…</option>{ROLES.filter((r) => r !== role).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>}
+                <div className="flex w-full flex-wrap items-center gap-2 pb-3 sm:ml-auto sm:w-auto sm:flex-nowrap sm:py-2">
+                  <div className="w-full sm:w-56"><SearchBox value={q} onChange={setQ} placeholder="Tìm chức năng" /></div>
+                  {view === 'MATRIX' && canEdit && <select className={cn(inputBase, 'w-full sm:w-48')} value="" onChange={(e) => { if (e.target.value) copyFrom(e.target.value as Role); }} aria-label="Sao chép từ nhóm"><option value="">Sao chép từ nhóm…</option>{ROLES.filter((r) => r !== role).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>}
                 </div>
               )}
             </div>

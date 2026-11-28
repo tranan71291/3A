@@ -1,8 +1,10 @@
 'use client';
 
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, type CSSProperties, type KeyboardEvent as ReactKeyEvent, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, ArrowLeft, BadgeCheck, Banknote, Building2, CalendarDays, Check as CheckIcon, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Coins, Columns3, Download, Eye, FileText, Filter, Inbox, Lock, Mail, MoreVertical, Package, PackageMinus, Paperclip, Pencil, Plus, Printer, Receipt as ReceiptIcon, Search, Send, ShoppingCart, Trash2, Truck, Undo2, Upload, User as UserIcon, UserPlus, Users, Wallet, Warehouse, X, XCircle } from 'lucide-react';
 import { TaxPortalLink, TaxResultCard, TaxStrip, taxTime, useTaxLookup, type TaxState } from '../../components/kit/tax-lookup';
+import { AddNamePop } from '../../components/kit/add-name-pop';
 import { TAX_FORMAT_HINT, taxKind, taxNorm, textSame } from '../../lib/taxcode';
 import { apiPost, useServerStatus } from '../ai/ai-core';
 import { removeWithUndo } from '../../app/context';
@@ -13,7 +15,7 @@ import { Drawer } from '../../components/drawer';
 import { Chip, Code, EmptyState, Field, MoneyInput, useSticky, useUserPref } from '../../components/ui';
 import { invoiceView } from '../../lib/accounting';
 import { cloudMessage } from '../../lib/cloud';
-import { ATTACH_PREFIX, attachPath, cloud, CLOUD_ON, CloudError, openAttachment, addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, CF_FILTERABLE, cfEmpty, cfMissing, cfSet, compact, DECISION_LABEL, digits, downloadBlob, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, lCondOk, lFieldOrder, lSaleAvail, lSaleSections, lFill, lIsCore, LPageC, lStageOf, lStarterSale, MAIN_WH, nextCode, overdueDays, PRICE_TIER, readAsDataUrl, REGION_LABEL, SALE_DELIVERY, SALE_F0, SALE_PAY, SALE_STAGE, SALE_STATUS, saleCashOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, SEGMENT_LABEL, SO_LINE_F, SO_LIST_TABS, SO_SEARCH, SO_SEARCH_DEF, soGrid, soIco, soTd, soTh, soTime, TIER, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
+import { ATTACH_PREFIX, attachPath, cloud, CLOUD_ON, CloudError, openAttachment, addDaysISO, bizMode, btnBase, btnGhost, btnPrimary, btnSm, CF_FILTERABLE, cfEmpty, cfMissing, cfSet, compact, custContacts, custEmail, custPhone, DECISION_LABEL, digits, EMAIL_RE, downloadBlob, esc, fmtDate, fmtN, fold, inputBase, inputCls, iso, lCondOk, lFieldOrder, lSaleAvail, lSaleSections, lFill, lIsCore, LPageC, lStageOf, lStarterSale, MAIN_WH, nextCode, overdueDays, PRICE_TIER, readAsDataUrl, REGION_LABEL, SALE_DELIVERY, SALE_F0, SALE_PAY, ROLE_LABEL, SALE_STAGE, SALE_STATUS, saleCashOf, saleDefaultsOf, saleOriginsOf, saleDue, saleGoodsBack, saleIssQ, saleIssued, saleLineNet, saleOwed, salePaid, saleRetQ, SEGMENT_LABEL, SO_LINE_F, SO_LIST_TABS, SO_SEARCH, SO_SEARCH_DEF, soGrid, soIco, soTd, soTh, soTime, TIER, tierPrice, todayISO, uid, useApp, wfNeeds, wfReasons, whQty, WO_STAGE } from '../../lib/core';
 import { downloadCsv, xlsxBlob } from '../../lib/csv';
 import { saleCostEst, saleDirectCost, saleHeld, saleNetRevenue, salePendingQ, saleReturned, saleStage, saleStock, saleTotals } from '../../lib/getfly';
 import type { ApprovalDecision, CfVal, CompanyInfo, Customer, LBlock, LBlockCfg, LBlockType, LDevice, LIconAct, LPageCtx, PriceTier, SaleDelivery, SaleFile, SaleFilter, SaleInvBuyer, SaleInvItem, SaleLine, SaleLineKind, SaleNote, SalePay, SalePayExtra, SalePayment, SalePer, SalePick, SalesOrder, SaleStage, SaleStatus, SaleTab, SkuItem, SoStep, StockVoucher, User, VoucherStatus, WfSubject, WorkOrder } from '../../lib/types';
@@ -177,6 +179,8 @@ export function SoDebt({ customerId, extra = 0, exceptId, box }: { customerId?: 
   const { customers, salesOrders } = useApp();
   const ar = useArItems();
   const c = customers.find((x) => x.id === customerId);
+  // v61: khách lẻ hoặc khách không có công nợ thì không hiện khối công nợ
+  if (!c || !ar.some((x) => x.customerId === c.id && x.outstanding > 0)) return null;
   if (box) {
     const mine = c ? ar.filter((x) => x.customerId === c.id && x.outstanding > 0) : [];
     const owe = mine.reduce((s, x) => s + x.outstanding, 0);
@@ -190,7 +194,6 @@ export function SoDebt({ customerId, extra = 0, exceptId, box }: { customerId?: 
       </div>
     );
   }
-  if (!c) return <SoCard title="Công nợ khách"><p className="text-[13px] text-[rgb(var(--muted))]">Khách lẻ, không theo dõi công nợ</p></SoCard>;
   const mine = ar.filter((x) => x.customerId === c.id && x.outstanding > 0);
   const owe = mine.reduce((s, x) => s + x.outstanding, 0);
   const today = todayISO();
@@ -675,23 +678,30 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   const { skus, stockItems, stockMoves, priceItems, warehouses, customers, salesOrders, reservations, saveSale, me, notify, company, workOrders, setWorkOrders, mfgConfig } = useApp();
   const mfg = bizMode(company) === 'MFG';
   const main = warehouses.find((w) => w.main)?.id ?? MAIN_WH;
+  // v61: giá trị điền sẵn cho đơn mới theo Cài đặt › Bán hàng (đơn đang sửa giữ nguyên dữ liệu của đơn)
+  const sd = saleDefaultsOf(mfgConfig, warehouses);
   const [lines, setLines] = useState<SaleLine[]>(edit?.lines ?? []);
   const [find, setFind] = useState('');
   const [custQ, setCustQ] = useState('');
   const [custId, setCustId] = useState<string | undefined>(edit?.customerId);
   const [walkName, setWalkName] = useState(edit && !edit.customerId ? edit.customer : '');
   const [phone, setPhone] = useState(edit?.phone ?? '');
+  // v61: liên hệ của khách ghi trên đơn (điền sẵn từ hồ sơ, sửa được cho riêng đơn); điện thoại người nhận tách khỏi điện thoại khách
+  const [email, setEmail] = useState(edit?.email ?? '');
+  const [contact, setContact] = useState(edit?.contact ?? '');
+  const [recvPhone, setRecvPhone] = useState(edit ? edit.recvPhone ?? edit.phone ?? '' : '');
+  const [saveProfile, setSaveProfile] = useState(false);
   const [address, setAddress] = useState(edit?.address ?? '');
   const [tier, setTier] = useState<PriceTier>('BASE');
-  const [pay, setPay] = useState<SalePay>(edit ? (edit.pay === 'PARTIAL' ? 'CREDIT' : edit.pay) : 'CASH');
-  const [creditDays, setCreditDays] = useState(edit?.creditDays || 30);
-  const [delivery, setDelivery] = useState<SaleDelivery>(edit?.delivery ?? 'PICKUP');
-  const [whId, setWhId] = useState(edit?.whId ?? main);
+  const [pay, setPay] = useState<SalePay>(edit ? (edit.pay === 'PARTIAL' ? 'CREDIT' : edit.pay) : sd.pay);
+  const [creditDays, setCreditDays] = useState(edit?.creditDays || sd.creditDays);
+  const [delivery, setDelivery] = useState<SaleDelivery>(edit?.delivery ?? sd.delivery);
+  const [whId, setWhId] = useState(edit?.whId ?? (sd.whId || main));
   const [deliverAt, setDeliverAt] = useState(edit?.deliverAt ?? todayISO());
-  const [invoice, setInvoice] = useState(edit?.invoice ?? false);
+  const [invoice, setInvoice] = useState(edit?.invoice ?? sd.invoice);
   const [shipFee, setShipFee] = useState(edit?.shipFee ?? 0);
   const [note, setNote] = useState(edit?.note ?? '');
-  const { users, wfDef, openCustomerForm, wfFirstApprovers, dispatch } = useApp();
+  const { users, wfDef, openCustomerForm, wfFirstApprovers, dispatch, audit } = useApp();
   const [code, setCode] = useState(edit?.code ?? '');
   // v55.2: trường "Thông tin thêm" theo bố cục Form lên đơn bán (3A thiết kế), mặc định theo cờ "Form" của trường
   const fl = useSaleFormLayout();
@@ -703,20 +713,35 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   const nameOf = useNameOf();
   const { resources } = useApp();
   const resErrs = resourceConflicts(cfd.head, cfv, salesOrders.map((x) => ({ id: x.id, code: x.code, cf: x.cf, cancelled: x.status === 'CANCELLED' })), resources, edit?.id);
-  const [origin, setOrigin] = useState(edit ? edit.origin ?? (edit.source === 'QUOTE' ? 'Từ báo giá' : 'Tại quầy') : 'Tại quầy');
+  const [origin, setOrigin] = useState(edit ? edit.origin ?? (edit.source === 'QUOTE' ? 'Từ báo giá' : 'Tại quầy') : sd.origin);
   const [docRef, setDocRef] = useState(edit?.docRef ?? '');
   const [receiver, setReceiver] = useState(edit?.receiver ?? '');
   const [byId, setById] = useState(edit?.by ?? me?.id ?? '');
+  // v61: phòng ban của đơn (trống = theo người thực hiện); đổi người thực hiện / phòng ban cần quyền quản lý đơn
+  const [deptSel, setDeptSel] = useState(edit?.dept ?? '');
   const [custOpen, setCustOpen] = useState(false);
   const cust = customers.find((c) => c.id === custId);
   // v60: khách lẻ vẫn ghi được mã số thuế (xuất hóa đơn); tra cứu mã số thuế; tệp chọn trước khi lưu (tải lên khi đã có mã đơn)
-  const { setCustomers, canDo, org, setSalesOrders, departments } = useApp();
+  const { setCustomers, canDo, org, setSalesOrders, departments, setMfgConfig } = useApp();
+  const canAssign = canDo('sale.manage');
+  // v61: nguồn đơn hàng theo danh mục ở Cài đặt › Bán hàng, thêm nhanh bằng nút + ngay trên form
+  const [srcNew, setSrcNew] = useState<string | null>(null);
+  // bảng chọn sản phẩm mở ở ô tìm phía trên ('top') hoặc ở ô Mã / Tên của từng dòng (id dòng: chọn = thay hàng của dòng đó)
+  const [pickFor, setPickFor] = useState<string | null>(null);
+  const [rowQ, setRowQ] = useState('');
+  const [pickPos, setPickPos] = useState<{ left: number; top?: number; bottom?: number; width: number } | null>(null);
+  const pickOpen = pickFor === 'top';
+  const setPickOpen = (v: boolean) => setPickFor((cur) => (v ? 'top' : cur === 'top' ? null : cur));
+  const [pickPage, setPickPage] = useState(0);
   const [srv] = useServerStatus();
   const [walkTax, setWalkTax] = useState(edit && !edit.customerId ? edit.taxCode ?? '' : '');
   const tax = useTaxLookup();
   const [pendFiles, setPendFiles] = useState<File[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const canCustEdit = canDo('customer.edit');
+  const custMain = cust ? custContacts(cust).find((x) => x.primary) ?? custContacts(cust)[0] : undefined;
+  // v61: liên hệ trên đơn khác hồ sơ khách → hiện ô tích "Cập nhật vào hồ sơ khách" (người có quyền sửa khách)
+  const profDiff = !!cust && (phone.trim() !== custPhone(cust) || email.trim() !== custEmail(cust) || (!!contact.trim() && fold(contact.trim()) !== fold(custMain?.name ?? '')));
   const taxOf = cust ? cust.taxCode : walkTax;
   const taxShown: TaxState = tax.code && tax.code === taxNorm(taxOf) ? tax : cust?.taxInfo && taxNorm(cust.taxInfo.taxCode) === taxNorm(cust.taxCode) ? { busy: false, code: cust.taxInfo.taxCode, info: cust.taxInfo } : { busy: false };
   const lookupCust = async (c: Customer, force = false) => {
@@ -745,21 +770,27 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
     return hit?.price;
   };
   const vatDef = mfgConfig.vatPct ?? 10;
+  // v61: bảng chọn sản phẩm (ảnh, mã - tên (ĐVT), nhóm, hãng, đơn giá, tồn) mở khi bấm vào ô tìm, lật trang 5 mã / trang
+  const pickQ = pickFor && pickFor !== 'top' ? rowQ : find;
   const catalog: SalePick[] = useMemo(() => {
-    const k = fold(find.trim());
-    if (!k) return [];
-    const hit = (s: string) => fold(s).includes(k);
+    const k = fold(pickQ.trim());
+    const hit = (s: string) => !k || fold(s).includes(k);
     if (mfg) {
-      const its: SalePick[] = stockItems.filter((x) => x.active && hit(`${x.code} ${x.name}`)).map((x) => ({ kind: 'ITEM', ref: x.id, name: x.name, unit: x.unit, price: x.cost, vat: vatDef, sub: `${x.code} · tồn ${fmtN(stockOf(x.id, stockMoves).qty)} ${x.unit}` }));
-      const mk: SalePick[] = priceItems.filter((x) => x.active && (x.unit === 'SET' || x.unit === 'PCS') && hit(`${x.code} ${x.name}`)).map((x) => ({ kind: 'MAKE', ref: x.id, name: x.name, unit: x.unit === 'SET' ? 'bộ' : 'cái', price: x.price, vat: vatDef, sub: `${x.code} · gia công tại xưởng` }));
-      return [...its, ...mk].slice(0, 8);
+      const its: SalePick[] = stockItems.filter((x) => x.active && hit(`${x.code} ${x.name}`)).map((x) => ({ kind: 'ITEM', ref: x.id, name: x.name, unit: x.unit, price: x.cost, vat: vatDef, sub: `${x.code} · tồn ${fmtN(stockOf(x.id, stockMoves).qty)} ${x.unit}`, group: 'Vật tư', stock: `${fmtN(stockOf(x.id, stockMoves).qty)} ${x.unit}` }));
+      const mk: SalePick[] = priceItems.filter((x) => x.active && (x.unit === 'SET' || x.unit === 'PCS') && hit(`${x.code} ${x.name}`)).map((x) => ({ kind: 'MAKE', ref: x.id, name: x.name, unit: x.unit === 'SET' ? 'bộ' : 'cái', price: x.price, vat: vatDef, sub: `${x.code} · gia công tại xưởng`, group: 'Gia công tại xưởng' }));
+      return [...its, ...mk];
     }
-    return skus.filter((x) => !x.archived && hit(`${x.sku} ${x.name}`)).slice(0, 8).map((x) => {
+    return skus.filter((x) => !x.archived && hit(`${x.sku} ${x.name} ${x.brand} ${x.category}`)).map((x) => {
       const free = Math.max(0, whQty(x, whId, warehouses) - saleHeld(salesOrders, 'SKU', x.sku));
       const lp = lastPrice('SKU', x.sku);
-      return { kind: 'SKU' as const, ref: x.sku, name: x.name, unit: x.unit, price: lp ?? tierPrice(x, tier), vat: x.vatPct ?? vatDef, sub: `${x.sku} · tồn ${fmtN(free)} ${x.unit}${lp ? ` · giá đã bán cho khách này ${fmtN(lp)}đ` : ` · ${PRICE_TIER[tier].toLowerCase()}`}` };
+      return { kind: 'SKU' as const, ref: x.sku, name: x.name, unit: x.unit, price: lp ?? tierPrice(x, tier), vat: x.vatPct ?? vatDef, sub: `${x.sku} · tồn ${fmtN(free)} ${x.unit}${lp ? ` · giá đã bán cho khách này ${fmtN(lp)}đ` : ` · ${PRICE_TIER[tier].toLowerCase()}`}`,
+        img: x.image, group: x.category, brand: x.brand, stock: `${fmtN(free)} ${x.unit}`, last: !!lp };
     });
-  }, [find, mfg, stockItems, stockMoves, priceItems, skus, whId, warehouses, salesOrders, tier, custId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pickQ, mfg, stockItems, stockMoves, priceItems, skus, whId, warehouses, salesOrders, tier, custId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const PICK_N = 5;
+  const pickMax = Math.max(0, Math.ceil(catalog.length / PICK_N) - 1);
+  const pickAt = Math.min(pickPage, pickMax);
+  const pickRows = catalog.slice(pickAt * PICK_N, pickAt * PICK_N + PICK_N);
   const add = (p: SalePick) => {
     setLines((ls) => {
       const i = ls.findIndex((l) => l.kind === p.kind && l.ref === p.ref && !!p.ref);
@@ -770,8 +801,13 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   };
   const upd = (id: string, patch: Partial<SaleLine>) => setLines((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   const pickCust = (c: Customer) => {
-    setCustId(c.id); setCustQ(''); setPhone(c.contactPhone); setAddress(c.address ?? ''); setInvoice(!!c.taxCode);
-    if (!receiver.trim() && c.contactName) setReceiver(c.contactName);
+    // v61: điền sẵn điện thoại / email / người liên hệ từ hồ sơ khách (sửa được cho riêng đơn); người nhận + điện thoại người nhận theo liên hệ chính
+    const pm = custContacts(c).find((x) => x.primary) ?? custContacts(c)[0];
+    setCustId(c.id); setCustQ(''); setPhone(custPhone(c)); setEmail(custEmail(c)); setContact(pm?.name ?? c.contactName ?? ''); setSaveProfile(false);
+    // v61: ô Xuất hóa đơn thuế theo Cài đặt › Bán hàng (tích sẵn mọi đơn / tự tích khi khách có MST)
+    setAddress(c.address ?? ''); setInvoice(sd.invoice || (sd.invoiceTax && !!c.taxCode));
+    if (!receiver.trim() && (pm?.name || c.contactName)) setReceiver(pm?.name || c.contactName);
+    if (!recvPhone.trim() && (pm?.phone || c.contactPhone)) setRecvPhone(pm?.phone || c.contactPhone);
     // v60: tra lại mã số thuế khi chưa tra hoặc lần tra gần nhất quá 30 ngày (máy chủ bật tra cứu)
     tax.reset();
     if (srv.tax && taxKind(c.taxCode) && !(c.taxInfo && taxNorm(c.taxInfo.taxCode) === taxNorm(c.taxCode) && Date.now() - c.taxInfo.at < 30 * 86_400_000)) void lookupCust(c);
@@ -779,7 +815,7 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
     setTier(tr);
     if (!mfg) setLines((ls) => ls.map((l) => (l.kind === 'SKU' ? { ...l, price: tierPrice(skus.find((k) => k.sku === l.ref), tr) || l.price } : l)));
   };
-  const custHits = custQ.trim().length >= 2 ? customers.filter((c) => fold(`${c.name} ${c.code} ${c.contactPhone} ${c.taxCode}`).includes(fold(custQ.trim()))).slice(0, 6) : [];
+  const custHits = custQ.trim().length >= 2 ? customers.filter((c) => fold(`${c.name} ${c.code} ${c.contactPhone} ${c.phone ?? ''} ${c.taxCode}`).includes(fold(custQ.trim()))).slice(0, 6) : [];
   const name = cust?.name ?? walkName.trim();
   const errs: string[] = [];
   if (!lines.length) errs.push('Chưa có hàng hóa');
@@ -788,6 +824,7 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   if (!name) errs.push('Chọn khách trong CRM hoặc nhập tên khách lẻ');
   if (pay === 'CREDIT' && !cust) errs.push('Khách lẻ không ghi công nợ: chọn khách trong CRM');
   if (delivery !== 'PICKUP' && !address.trim()) errs.push('Nhập địa chỉ giao hàng');
+  if (email.trim() && !EMAIL_RE.test(email.trim())) errs.push('Email khách chưa đúng định dạng');
   if (code.trim() && salesOrders.some((x) => x.code === code.trim() && x.id !== edit?.id)) errs.push(`Mã đơn ${code.trim()} đã có`);
   cfMissing(cfForm, cfv, 'SAVE').forEach((d) => errs.push(`${d.type === 'check' ? 'Cần tích' : 'Nhập'} ${d.label}`));
   errs.push(...resErrs);
@@ -797,7 +834,20 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
     const base = { date: todayISO(), source: 'COUNTER' as const, customerId: cust?.id, customer: name, phone: phone.trim() || undefined, taxCode: cust?.taxCode || taxNorm(walkTax) || undefined, address: address.trim() || undefined,
       lines, pay, creditDays: pay === 'CREDIT' || pay === 'PARTIAL' ? creditDays : 0, payments: [], delivery, whId, deliverAt: delivery === 'PICKUP' ? undefined : deliverAt, invoice, shipFee: fee || undefined, note: note.trim() || undefined, status: 'PENDING' as SaleStatus, by: byId || me?.id,
       origin: origin.trim() || undefined, docRef: docRef.trim() || undefined, receiver: receiver.trim() || undefined, ...(code.trim() ? { code: code.trim() } : {}),
+      email: email.trim() || undefined, contact: contact.trim() || undefined, recvPhone: recvPhone.trim() || undefined, dept: deptSel || users.find((u) => u.id === (byId || me?.id))?.dept || undefined,
       cf: (() => { const c = cfCompute(cfd.head, cfv); return Object.keys(c).length ? c : undefined; })() };
+    // v61: tích "Cập nhật vào hồ sơ khách" (người có quyền sửa khách): ghi điện thoại, email nhận hóa đơn, người liên hệ chính
+    if (saveProfile && cust && canCustEdit && profDiff) {
+      setCustomers((all) => all.map((c) => {
+        if (c.id !== cust.id) return c;
+        const nm0 = contact.trim();
+        const list = custContacts(c);
+        const hit = list.find((x) => fold(x.name) === fold(nm0));
+        const next = !nm0 ? list : hit ? list.map((x) => ({ ...x, primary: x.id === hit.id })) : [{ id: uid('ct'), name: nm0, mail: true, primary: true }, ...list.map((x) => ({ ...x, primary: false }))];
+        const pm = next.find((x) => x.primary);
+        return { ...c, phone: phone.trim() || c.phone, invoiceEmail: email.trim() || c.invoiceEmail, contacts: next, contactName: pm?.name ?? c.contactName, contactTitle: pm ? pm.title ?? '' : c.contactTitle, contactPhone: pm ? pm.phone ?? '' : c.contactPhone, contactEmail: pm ? pm.email ?? '' : c.contactEmail };
+      }));
+    }
     const now0 = Date.now();
     const approval: SalesOrder['approval'] = needs ? { status: 'PENDING', reasons, requestedAt: now0, requestedBy: me?.id } : { status: 'PENDING', reasons: ['Người lên đơn tự duyệt'], requestedAt: now0, requestedBy: me?.id, self: true };
     let rec = edit ? saveSale({ ...edit, ...base, source: edit.source, date: edit.date, payments: edit.payments, code: edit.code, approval }) : saveSale({ ...base, approval });
@@ -841,10 +891,35 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   const reasons = needs && wd ? wfReasons(wd, ws) : [];
   const skuBy = (v: string) => { const k = fold(v.trim()); return k ? skus.find((x) => !x.archived && (fold(x.sku) === k || fold(x.name) === k)) : undefined; };
   const fromSku = (id: string, x: SkuItem) => { const lp = lastPrice('SKU', x.sku); upd(id, { kind: 'SKU', ref: x.sku, name: x.name, unit: x.unit, price: lp ?? tierPrice(x, tier), vat: x.vatPct ?? vatDef }); };
-  const addRow = () => setLines((ls) => [...ls, { id: uid('sl'), kind: 'FREE', name: '', unit: 'cái', qty: 1, price: 0, discountPct: 0, vat: vatDef }]);
+  // v61: "Thêm sản phẩm" thêm dòng trống và mở luôn bảng chọn ở ô Tên của dòng mới
+  const addRow = () => {
+    const n = lines.length + 1;
+    setLines((ls) => [...ls, { id: uid('sl'), kind: 'FREE', name: '', unit: 'cái', qty: 1, price: 0, discountPct: 0, vat: vatDef }]);
+    requestAnimationFrame(() => (document.querySelector(`input[aria-label="Tên sản phẩm dòng ${n}"]`) as HTMLInputElement | null)?.focus());
+  };
+  // v61: bảng chọn ở ô Mã / Tên của dòng: vẽ qua portal theo vị trí ô (bảng có khung cuộn ngang nên không đặt bên trong), cuộn trang thì bám theo ô
+  const pickAnchor = useRef<HTMLElement | null>(null);
+  const placePick = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    const w = Math.min(680, window.innerWidth - 32);
+    const left = Math.max(16, Math.min(r.left, window.innerWidth - w - 16));
+    // không đủ chỗ phía dưới ô (bảng cao ~430px) mà phía trên đủ thì mở lên trên
+    const up = r.bottom + 440 > window.innerHeight && r.top - 440 > 56;
+    setPickPos(up ? { left, bottom: window.innerHeight - r.top + 4, width: w } : { left, top: r.bottom + 4, width: w });
+  };
+  const openRowPick = (id: string, el: HTMLElement) => { pickAnchor.current = el; placePick(el); setRowQ(''); setPickPage(0); setPickFor(id); };
+  // rời ô: đóng bảng chọn trừ khi con trỏ chuyển sang ô Mã / Tên khác của cùng dòng
+  const closeRowPick = (id: string) => setTimeout(() => { if ((document.activeElement as HTMLElement | null)?.dataset.pickRow === id) return; setPickFor((v) => (v === id ? null : v)); }, 150);
+  useEffect(() => {
+    if (!pickFor || pickFor === 'top') return;
+    const h = () => { const el = pickAnchor.current; if (el?.isConnected) placePick(el); else setPickFor(null); };
+    window.addEventListener('scroll', h, true); window.addEventListener('resize', h);
+    return () => { window.removeEventListener('scroll', h, true); window.removeEventListener('resize', h); };
+  }, [pickFor]);
+  const fromPick = (id: string, p: SalePick) => { upd(id, { kind: p.kind, ref: p.ref, name: p.name, unit: p.unit, price: p.price, vat: p.vat }); setPickFor(null); };
   const ckd = (l: SaleLine) => Math.round(l.qty * l.price) - saleLineNet(l);
   const sumQty = lines.reduce((s, l) => s + l.qty, 0);
-  const DLV: Record<SaleDelivery, string> = { PICKUP: 'Tại quầy', DELIVER: 'Giao tận nơi', CARRIER: 'Chành xe' };
+  const DLV: Record<SaleDelivery, string> = { PICKUP: 'Tại kho', DELIVER: 'Giao tận nơi', CARRIER: 'Chành xe' };
   // v60 bố cục mới (theo ảnh đã duyệt 27/11): dải đầu trang + 2 cột Thông tin khách hàng / Thông tin đơn hàng, bảng Sản phẩm toàn chiều ngang,
   // Thông tin giao hàng + khung Thông tin thanh toán. Logic lưu, duyệt, kiểm tra giữ nguyên.
   const secH = 'mb-3.5 flex items-center gap-2 text-[14.5px] font-bold';
@@ -852,20 +927,77 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
   const dv = (label: string, v: ReactNode, k?: string) => <div className="min-w-0" data-so-dv={k}><p className="text-[12.5px] text-[rgb(var(--fg2))]">{label}</p><div className="mt-0.5 flex min-h-6 min-w-0 items-center gap-2 text-[14px] font-semibold">{v || <span className="font-normal text-[rgb(var(--muted))]">—</span>}</div></div>;
   const byUser = users.find((u) => u.id === byId);
   const deptName = departments.find((d) => d.code === byUser?.dept)?.name ?? byUser?.dept ?? '';
+  const originList = saleOriginsOf(mfgConfig);
+  const originOpts = Array.from(new Set([...originList.filter((x) => x.active).map((x) => x.name), ...(origin ? [origin] : [])]));
+  const addOrigin = () => {
+    const nm0 = (srcNew ?? '').trim();
+    if (!nm0) return;
+    const hit = originList.find((x) => fold(x.name) === fold(nm0));
+    if (hit) {
+      if (!hit.active) { setMfgConfig((c) => ({ ...c, saleOrigins: saleOriginsOf(c).map((x) => (x.id === hit.id ? { ...x, active: true } : x)) })); audit('SALE_SETTINGS', `Dùng lại nguồn đơn hàng ${hit.name} (từ form tạo đơn)`); }
+      setOrigin(hit.name); setSrcNew(null); return;
+    }
+    setMfgConfig((c) => ({ ...c, saleOrigins: [...saleOriginsOf(c), { id: uid('src'), name: nm0, active: true }] }));
+    audit('SALE_SETTINGS', `Thêm nguồn đơn hàng ${nm0} (từ form tạo đơn)`);
+    setOrigin(nm0); setSrcNew(null);
+    notify(`Đã thêm nguồn đơn hàng ${nm0}`, 'teal');
+  };
+  const addFree = (nm0: string) => { setLines((ls) => [...ls, { id: uid('sl'), kind: 'FREE', name: nm0.trim(), unit: 'cái', qty: 1, price: 0, discountPct: 0, vat: vatDef }]); setFind(''); setPickOpen(false); };
+  // v61 bảng chọn sản phẩm dùng chung cho ô tìm phía trên và ô Mã / Tên của từng dòng
+  const pickPanel = (q: string, onPick: (p: SalePick) => void, onNew: () => void, cls: string, style?: CSSProperties) => (
+    <div className={cn('w-[680px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] shadow-lg', cls)} style={style} onMouseDown={(e) => e.preventDefault()} data-sku-picker>
+      <div className="flex items-center gap-2 border-b border-[rgb(var(--line))] px-3 py-2">
+        <span className="text-[12.5px] tabular-nums text-[rgb(var(--muted))]">{catalog.length ? `${pickAt * PICK_N + 1} - ${Math.min(catalog.length, pickAt * PICK_N + PICK_N)} / ${catalog.length}` : '0 kết quả'}</span>
+        <span className="ml-auto" />
+        <button type="button" className={cn(soIco, 'h-8 w-8')} disabled={pickAt === 0} onClick={() => setPickPage(pickAt - 1)} aria-label="Trang trước"><ChevronLeft className="h-4 w-4" aria-hidden /></button>
+        <button type="button" className={cn(soIco, 'h-8 w-8')} disabled={pickAt >= pickMax} onClick={() => setPickPage(pickAt + 1)} aria-label="Trang sau"><ChevronRight className="h-4 w-4" aria-hidden /></button>
+        <button type="button" className={cn(btnPrimary, btnSm, 'h-8 px-3 text-[13px]')} onClick={onNew} title="Thêm dòng hàng ngoài danh mục (tên vừa gõ)"><Plus className="h-4 w-4" aria-hidden />Thêm mới</button>
+      </div>
+      <div className="grid grid-cols-[64px_1fr_112px_96px] gap-3 bg-[rgb(var(--ink)/0.035)] px-3 py-1.5 text-[12px] font-semibold text-[rgb(var(--fg2))]"><span>Ảnh</span><span>Sản phẩm</span><span className="text-right">Đơn giá</span><span className="text-right">Tồn</span></div>
+      <ul role="listbox" aria-label="Chọn sản phẩm">
+        {pickRows.map((p, i) => (
+          <li key={`${p.kind}:${p.ref}`} role="option" aria-selected={i === 0 && pickAt === 0}>
+            <button type="button" className={cn('grid w-full grid-cols-[64px_1fr_112px_96px] items-center gap-3 border-t border-[rgb(var(--ink)/0.06)] px-3 py-2 text-left hover:bg-[rgb(var(--secondary)/0.06)]', i === 0 && pickAt === 0 && !!q.trim() && 'bg-[rgb(var(--accent)/0.06)]')} onClick={() => onPick(p)}>
+              {p.img ? <img src={p.img} alt="" className="h-12 w-12 rounded-md border border-[rgb(var(--line))] object-cover" /> : <span className="grid h-12 w-12 place-items-center rounded-md border border-dashed border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.03)] text-[rgb(var(--faint))]" aria-hidden><Package className="h-5 w-5" /></span>}
+              <span className="min-w-0">
+                <b className="block truncate text-[13.5px] font-semibold">{p.ref && p.kind === 'SKU' ? `${p.ref} - ` : ''}{p.name} <span className="font-normal text-[rgb(var(--muted))]">({p.unit})</span></b>
+                <span className="mt-0.5 flex min-w-0 gap-4 text-[12px] text-[rgb(var(--fg2))]"><span className="truncate"><span className="text-[rgb(var(--muted))]">Nhóm:</span> {p.group || '—'}</span><span className="truncate"><span className="text-[rgb(var(--muted))]">Hãng:</span> {p.brand || '—'}</span></span>
+              </span>
+              <span className="text-right text-[13px] font-semibold tabular-nums">{fmtN(p.price)}{p.last && <span className="block text-[11px] font-normal text-[rgb(var(--secondary-fg))]">giá đã bán</span>}</span>
+              <span className="text-right text-[13px] tabular-nums text-[rgb(var(--fg2))]">{p.stock ?? '—'}</span>
+            </button>
+          </li>
+        ))}
+        {!pickRows.length && <li className="border-t border-[rgb(var(--ink)/0.06)] px-3 py-5 text-center text-[13px] text-[rgb(var(--muted))]">Không thấy hàng khớp “{q.trim()}”. Bấm Thêm mới để ghi dòng hàng ngoài danh mục</li>}
+      </ul>
+    </div>
+  );
+  // gõ trong ô Mã / Tên của dòng: lọc bảng chọn; khớp đúng mã / tên thì điền luôn (quét mã vạch)
+  const rowKeys = (id: string) => (e: ReactKeyEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && pickFor === id && rowQ.trim() && catalog[0]) { e.preventDefault(); fromPick(id, catalog[0]); }
+    else if (e.key === 'Escape' && pickFor === id) { e.stopPropagation(); setPickFor(null); }
+  };
   const walk = !cust && !!walkName;
   const vatRates = Array.from(new Set(lines.filter((l) => l.qty > 0).map((l) => l.vat)));
   const discPct = t.gross ? Math.round((t.discount / t.gross) * 10000) / 100 : 0;
   const roCls = cn(inputBase, 'w-full bg-[rgb(var(--ink)/0.035)] text-right tabular-nums text-[rgb(var(--fg))]');
   const custSec = (
     <section aria-label="Thông tin khách hàng" className="relative min-w-0">
-      <h2 className={secH} style={HB}><UserIcon className={iconH} aria-hidden />Thông tin khách hàng</h2>
+      {/* v61: tích "Xuất hóa đơn thuế" (và "Lưu liên hệ vào hồ sơ" khi liên hệ trên đơn khác hồ sơ) nằm cùng hàng tiêu đề, không chiếm hàng riêng */}
+      <div className="mb-3.5 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <h2 className="flex items-center gap-2 text-[14.5px] font-bold" style={HB}><UserIcon className={iconH} aria-hidden />Thông tin khách hàng</h2>
+        <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px]" data-cust-flags>
+          {cust && canCustEdit && profDiff && <label className="flex items-center gap-2 text-[rgb(var(--fg2))]" data-save-profile><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--fg))]" checked={saveProfile} onChange={(e) => setSaveProfile(e.target.checked)} />Lưu liên hệ vào hồ sơ</label>}
+          <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--fg))]" checked={invoice} onChange={(e) => setInvoice(e.target.checked)} aria-label="Yêu cầu xuất hóa đơn thuế" /><span className="font-semibold">Xuất hóa đơn thuế</span></label>
+        </div>
+      </div>
       <Field label="Tìm khách hàng">
         <div className="flex gap-2">
           <div className="relative min-w-0 flex-1">
             {cust || walkName ? (
               <div className={cn(inputBase, 'flex w-full items-center gap-2 border-[rgb(var(--accent))]')}>
                 <Building2 className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden /><span className="min-w-0 truncate font-semibold">{cust?.name ?? walkName}</span><span className="shrink-0 text-[12px] text-[rgb(var(--muted))]">{cust ? cust.code : 'khách lẻ'}</span>
-                <button className="ml-auto rounded p-0.5 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => { setCustId(undefined); setWalkName(''); setWalkTax(''); setTier('BASE'); tax.reset(); }} aria-label="Đổi khách"><X className="h-4 w-4" aria-hidden /></button>
+                <button className="ml-auto rounded p-0.5 text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => { setCustId(undefined); setWalkName(''); setWalkTax(''); setPhone(''); setEmail(''); setContact(''); setSaveProfile(false); setTier('BASE'); tax.reset(); }} aria-label="Đổi khách"><X className="h-4 w-4" aria-hidden /></button>
               </div>
             ) : (
               <input className={inputCls} value={custQ} onChange={(e) => { setCustQ(e.target.value); setCustOpen(true); }} onFocus={() => setCustOpen(true)} onBlur={() => setTimeout(() => setCustOpen(false), 150)} placeholder="Tên, mã, SĐT, MST khách hàng" aria-label="Khách hàng" />
@@ -885,7 +1017,7 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
                           <TaxPortalLink className="text-[13px]" />
                           <span className="ml-auto" />
                           <button className={cn(btnGhost, btnSm)} onMouseDown={(e) => e.preventDefault()} onClick={() => { const i = tax.info!; setWalkName(i.name); setWalkTax(i.taxCode); if (i.address) setAddress(i.address); setInvoice(true); setCustQ(''); setCustOpen(false); }}>Chỉ điền vào đơn</button>
-                          <button className={cn(btnPrimary, btnSm)} onMouseDown={(e) => e.preventDefault()} onClick={() => { const i = tax.info!; setCustOpen(false); openCustomerForm(undefined, { prefill: { name: i.name, taxCode: i.taxCode, address: i.address ?? '', taxInfo: i }, onSaved: (c) => { pickCust(c); setCustQ(''); } }); }}><UserPlus className="h-4 w-4" aria-hidden />Tạo khách &amp; dùng cho đơn</button>
+                          <button className={cn(btnPrimary, btnSm)} onMouseDown={(e) => e.preventDefault()} onClick={() => { const i = tax.info!; setCustOpen(false); openCustomerForm(undefined, { quick: true, prefill: { name: i.name, taxCode: i.taxCode, address: i.address ?? '', taxInfo: i }, onSaved: (c) => { pickCust(c); setCustQ(''); } }); }}><UserPlus className="h-4 w-4" aria-hidden />Tạo khách &amp; dùng cho đơn</button>
                         </div>
                       </>
                     ) : <TaxStrip st={tax.code === qTax ? tax : { busy: true }} />}
@@ -895,7 +1027,7 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
               </ul>
             )}
           </div>
-          <button className={soIco} onClick={() => openCustomerForm(undefined, { onSaved: (c) => pickCust(c) })} title="Thêm khách hàng mới" aria-label="Thêm khách hàng mới"><Plus className="h-4 w-4" aria-hidden /></button>
+          <button className={soIco} onClick={() => openCustomerForm(undefined, { quick: true, onSaved: (c) => pickCust(c) })} title="Thêm nhanh khách hàng" aria-label="Thêm khách hàng mới"><Plus className="h-4 w-4" aria-hidden /></button>
         </div>
       </Field>
       {cust && taxKind(cust.taxCode) && (taxShown.info || taxShown.busy || taxShown.err
@@ -908,15 +1040,18 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
             <div className="flex gap-2"><input className={cn(inputCls, 'font-mono')} value={walkTax} onChange={(e) => setWalkTax(e.target.value)} placeholder="Không bắt buộc" aria-label="Mã số thuế khách lẻ" /><button type="button" className={cn(btnGhost, 'shrink-0 px-2.5')} disabled={!taxKind(walkTax) || tax.busy} onClick={() => void tax.run(walkTax, true)} aria-label="Tra cứu mã số thuế khách lẻ"><Search className="h-4 w-4" aria-hidden /></button></div>
           </Field>
         ) : dv('Mã số thuế', cust?.taxCode ? <span className="font-mono text-[13px] font-medium">{cust.taxCode}{taxShown.info && textSame(taxShown.info.name, cust.name) && <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-[rgb(var(--success)/0.12)] px-1.5 py-0.5 font-sans text-[11px] font-medium text-[rgb(var(--success-fg))]"><BadgeCheck className="h-3 w-3" aria-hidden />Khớp</span>}</span> : '', 'tax')}
-        {dv('Điện thoại', cust?.contactPhone ? <span className="tabular-nums">{cust.contactPhone}</span> : '', 'phone')}
-        {dv('Email nhận hóa đơn', cust ? cust.invoiceEmail || cust.contactEmail : '', 'email')}
-        {dv('Người liên hệ', cust ? [cust.contactName, cust.contactTitle].filter(Boolean).join(' · ') : '', 'contact')}
-        {dv('Địa chỉ', cust ? cust.address : walk ? address : '', 'addr')}
+        <div className="col-span-2">{dv('Địa chỉ', cust ? cust.address : walk ? address : '', 'addr')}</div>
       </div>
       {walk && taxKind(walkTax) && <TaxStrip st={tax.code === taxNorm(walkTax) ? tax : { busy: false }} name={walkName} address={address} onUseName={(v) => setWalkName(v)} onUseAddress={(v) => setAddress(v)} />}
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* v61: liên hệ nhập thẳng trên đơn (khách trong danh bạ điền sẵn từ hồ sơ, sửa được cho riêng đơn) */}
+      <div className="mt-3.5 grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+        <Field label="Người liên hệ">
+          <input className={inputCls} value={contact} list="so-cust-contacts" onChange={(e) => { const v = e.target.value; setContact(v); const hit = cust ? custContacts(cust).find((x) => x.name === v) : undefined; if (hit) { if (hit.phone && !phone.trim()) setPhone(hit.phone); if (hit.email && !email.trim()) setEmail(hit.email); } }} placeholder="Họ tên người liên hệ" aria-label="Người liên hệ" />
+        </Field>
+        <Field label="Điện thoại"><input type="tel" inputMode="tel" className={cn(inputCls, 'tabular-nums')} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Số điện thoại khách" aria-label="Điện thoại khách" /></Field>
+        <Field label="Email nhận hóa đơn"><input type="email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email nhận hóa đơn" aria-label="Email khách" /></Field>
         <Field label="Nguồn chứng từ (Số PO / hợp đồng…)"><input className={inputCls} value={docRef} onChange={(e) => setDocRef(e.target.value)} placeholder="PO, hợp đồng" aria-label="Nguồn chứng từ" /></Field>
-        <label className="flex items-center gap-3 self-end rounded-lg border border-[rgb(var(--line))] px-3.5 py-2.5"><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--fg))]" checked={invoice} onChange={(e) => setInvoice(e.target.checked)} aria-label="Yêu cầu xuất hóa đơn thuế" /><span className="min-w-0"><span className="block text-[13.5px] font-bold">Yêu cầu xuất hóa đơn thuế</span><span className="block truncate text-[12px] text-[rgb(var(--muted))]">{invoice ? `Kế toán xuất sau khi giao${cust && (cust.invoiceEmail || cust.contactEmail) ? ` · gửi ${cust.invoiceEmail || cust.contactEmail}` : ''}` : 'Khách không lấy hóa đơn'}</span></span></label>
+        {cust && <datalist id="so-cust-contacts">{custContacts(cust).map((x) => <option key={x.id} value={x.name}>{[x.title, x.phone].filter(Boolean).join(' · ')}</option>)}</datalist>}
       </div>
     </section>
   );
@@ -926,22 +1061,34 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Mã đơn hàng"><input className={cn(inputCls, 'font-mono')} value={code} disabled={!!edit} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={autoCode} aria-label="Mã đơn hàng" /></Field>
         <Field label="Ngày đặt hàng"><input className={roCls.replace('text-right', 'text-left')} readOnly value={fmtDate(edit?.date ?? todayISO())} aria-label="Ngày đặt hàng" /></Field>
-        <Field label="Người thực hiện *"><select className={inputCls} value={byId} onChange={(e) => setById(e.target.value)} aria-label="Người thực hiện">{users.filter((u) => u.active || u.id === byId).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
-        <Field label="Phòng ban"><input className={roCls.replace('text-right', 'text-left')} readOnly value={deptName || '—'} aria-label="Phòng ban" /></Field>
+        {/* v61: mặc định theo tài khoản lên đơn; người có quyền quản lý đơn (sale.manage) chuyển được cho người / phòng ban khác */}
+        <Field label="Người thực hiện *"><select className={inputCls} value={byId} disabled={!canAssign} title={canAssign ? undefined : 'Cần quyền quản lý đơn để chuyển cho người khác'} onChange={(e) => { setById(e.target.value); setDeptSel(''); }} aria-label="Người thực hiện">{users.filter((u) => u.active || u.id === byId).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
+        <Field label="Phòng ban"><select className={inputCls} value={deptSel || byUser?.dept || ''} disabled={!canAssign} onChange={(e) => setDeptSel(e.target.value === byUser?.dept ? '' : e.target.value)} aria-label="Phòng ban">{!(deptSel || byUser?.dept) && <option value="">—</option>}{departments.filter((d) => d.active || d.code === (deptSel || byUser?.dept)).map((d) => <option key={d.code} value={d.code}>{d.name}</option>)}{!!(deptSel || byUser?.dept) && !departments.some((d) => d.code === (deptSel || byUser?.dept)) && <option value={deptSel || byUser?.dept}>{deptName || deptSel}</option>}</select></Field>
         {!mfg && <Field label="Kho xuất *"><select className={inputCls} value={whId} onChange={(e) => setWhId(e.target.value)} aria-label="Kho xuất">{warehouses.filter((w) => w.active).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></Field>}
-        <Field label="Nguồn đơn hàng"><input className={inputCls} list="so-origins-f" value={origin} onChange={(e) => setOrigin(e.target.value)} aria-label="Nguồn đơn hàng" /></Field>
+        {/* v61: nguồn đơn hàng chọn trong danh mục (Cài đặt › Bán hàng); nút + thêm nhanh ngay tại đây */}
+        <div className="relative min-w-0">
+          <Field label="Nguồn đơn hàng">
+            <div className="flex gap-2">
+              <select className={inputCls} value={origin} onChange={(e) => setOrigin(e.target.value)} aria-label="Nguồn đơn hàng">
+                {!origin && <option value="">Chọn nguồn</option>}
+                {originOpts.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+              <button type="button" className={cn(soIco, 'h-[38px] w-[38px]')} onClick={() => setSrcNew((v) => (v === null ? '' : null))} aria-label="Thêm nguồn đơn hàng" aria-expanded={srcNew !== null} title="Thêm nguồn đơn hàng"><Plus className="h-4 w-4" aria-hidden /></button>
+            </div>
+          </Field>
+          {srcNew !== null && <AddNamePop title="Thêm nguồn" value={srcNew} onChange={setSrcNew} onCancel={() => setSrcNew(null)} onSave={addOrigin} placeholder="VD: Hội chợ, Facebook" />}
+        </div>
         <Field label="Tài liệu liên quan" className="sm:col-span-2">
           <div className="flex flex-wrap items-center gap-2" data-pend-files>
             <button type="button" className={cn(btnGhost, btnSm)} onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4" aria-hidden />Thêm tài liệu</button>
             <input ref={fileRef} type="file" multiple className="hidden" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => { const fs: File[] = e.target.files ? Array.from(e.target.files) : []; const room = 10 - (edit?.files ?? []).length - pendFiles.length; if (fs.length > room) notify('Mỗi đơn tối đa 10 tệp', 'orange'); setPendFiles((p) => [...p, ...fs.slice(0, Math.max(0, room))]); e.target.value = ''; }} aria-label="Chọn tài liệu liên quan" />
             {(edit?.files ?? []).map((f) => <span key={f.id} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[rgb(var(--line))] px-2.5 text-[13px]"><Paperclip className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden /><span className="max-w-[180px] truncate">{f.name}</span></span>)}
             {pendFiles.map((f, i) => <span key={`${f.name}-${i}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[rgb(var(--line))] px-2.5 text-[13px]"><FileText className="h-3.5 w-3.5 text-[rgb(var(--muted))]" aria-hidden /><span className="max-w-[180px] truncate">{f.name}</span><span className="text-[12px] tabular-nums text-[rgb(var(--muted))]">{Math.max(1, Math.round(f.size / 1024))} KB</span><button type="button" className="text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => setPendFiles((p) => p.filter((_, j) => j !== i))} aria-label={`Bỏ ${f.name}`}><X className="h-3.5 w-3.5" aria-hidden /></button></span>)}
-            {!pendFiles.length && !(edit?.files ?? []).length && <span className="text-[12.5px] text-[rgb(var(--muted))]">PO, hợp đồng (PDF, ảnh) · tải lên khi lưu đơn</span>}
           </div>
         </Field>
       </div>
+      {/* v61: chỉ hiện khi khách đang có công nợ */}
       <SoDebt customerId={custId} extra={credit ? t.grand : 0} exceptId={edit?.id} box />
-      <datalist id="so-origins-f">{Array.from(new Set(['Tại quầy', 'Điện thoại', 'Zalo', 'Website', ...salesOrders.map((o) => o.origin).filter((x): x is string => !!x)])).map((x) => <option key={x} value={x} />)}</datalist>
     </section>
   );
   return (
@@ -954,24 +1101,22 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
       <div className="min-w-0 space-y-4 px-6 pt-5 max-sm:px-4">
           <SoCard pad={false} className="!rounded-xl !border-[rgb(var(--line))] !shadow-none" title={<span className="flex items-center gap-2 font-bold"><Package className={iconH} aria-hidden />Sản phẩm <span className="text-[12.5px] font-normal text-[rgb(var(--muted))]">{lines.length} dòng</span></span>} action={<>
             <div className="relative w-[300px] max-sm:w-[168px]">
-              <input className={inputCls} value={find} onChange={(e) => setFind(e.target.value)} placeholder={mfg ? 'Tìm vật tư, sản phẩm gia công' : 'Quét mã vạch hoặc gõ tìm nhanh'} aria-label="Tìm hàng hóa" onKeyDown={(e) => { if (e.key === 'Enter' && catalog[0]) { e.preventDefault(); add(catalog[0]); } }} />
-              {catalog.length > 0 && (
-                <ul className="absolute right-0 top-full z-20 mt-1 w-[420px] max-w-[90vw] overflow-hidden rounded-lg border border-[rgb(var(--line))] bg-[rgb(var(--surface))] shadow-lg" role="listbox">
-                  {catalog.map((p, i) => <li key={`${p.kind}:${p.ref}`} role="option" aria-selected={i === 0}><button className={cn('flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left text-[13px] hover:bg-[rgb(var(--ink)/0.04)]', i === 0 && 'bg-[rgb(var(--accent)/0.06)]')} onClick={() => add(p)}><span className="min-w-0 truncate">{p.name}</span><span className="shrink-0 text-[12px] text-[rgb(var(--muted))]">{p.sub}</span></button></li>)}
-                </ul>
-              )}
+              <input className={inputCls} value={find} onFocus={() => setPickOpen(true)} onBlur={() => setTimeout(() => setPickOpen(false), 150)} onChange={(e) => { setFind(e.target.value); setPickPage(0); setPickOpen(true); }} placeholder={mfg ? 'Tìm vật tư, sản phẩm gia công' : 'Quét mã vạch hoặc gõ tìm nhanh'} aria-label="Tìm hàng hóa" aria-expanded={pickOpen}
+                onKeyDown={(e) => { if (e.key === 'Enter' && catalog[0] && find.trim()) { e.preventDefault(); add(catalog[0]); } else if (e.key === 'Escape') setPickOpen(false); }} />
+              {/* v61 bảng chọn sản phẩm: ảnh, mã - tên (ĐVT), nhóm, hãng, đơn giá, tồn; lật trang; Thêm mới = dòng hàng ngoài danh mục */}
+              {pickOpen && pickPanel(find, (p) => { add(p); setPickFor(null); }, () => addFree(find), 'absolute right-0 top-full z-30 mt-1')}
             </div>
             {!mfg && <select className={cn(inputBase, 'w-36 max-sm:w-28')} value={tier} onChange={(e) => { const tr = e.target.value as PriceTier; setTier(tr); setLines((ls) => ls.map((l) => (l.kind === 'SKU' ? { ...l, price: tierPrice(skus.find((k) => k.sku === l.ref), tr) || l.price } : l))); }} aria-label="Bảng giá">{(['BASE', 'DEALER', 'PROJECT'] as PriceTier[]).map((x) => <option key={x} value={x}>{PRICE_TIER[x]}</option>)}</select>}
           </>}>
             <div className="relative overflow-x-auto">
               <table className="w-full min-w-[980px] text-[13.5px]">
-                <thead><tr className="border-y border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.035)] [&>th]:font-semibold [&>th]:text-[rgb(var(--fg))]"><th className={cn(soTh, 'w-10 pl-5')}>#</th><th className={cn(soTh, 'w-[120px]')}>Mã sản phẩm</th><th className={soTh}>Tên sản phẩm</th><th className={cn(soTh, 'w-16')}>ĐVT</th><th className={cn(soTh, 'w-20 text-right')}>Tồn kho</th><th className={cn(soTh, 'w-20 text-right')}>Số lượng</th><th className={cn(soTh, 'w-28 text-right')}>Đơn giá</th><th className={cn(soTh, 'w-16 text-right')}>CK%</th><th className={cn(soTh, 'w-28 text-right')}>CK (đ)</th><th className={cn(soTh, 'w-20 text-right')}>VAT%</th><th className={cn(soTh, 'w-32 text-right')}>Thành tiền</th><th className={cn(soTh, 'w-10 pr-5')}><span className="sr-only">Xóa</span></th></tr></thead>
+                <thead><tr className="border-y border-[rgb(var(--line))] bg-[rgb(var(--ink)/0.035)] [&>th]:font-semibold [&>th]:text-[rgb(var(--fg))]"><th className={cn(soTh, 'w-10 pl-5')}>#</th><th className={cn(soTh, 'w-[150px]')}>Mã sản phẩm</th><th className={soTh}>Tên sản phẩm</th><th className={cn(soTh, 'w-16')}>ĐVT</th><th className={cn(soTh, 'w-20 text-right')}>Tồn kho</th><th className={cn(soTh, 'w-20 text-right')}>Số lượng</th><th className={cn(soTh, 'w-28 text-right')}>Đơn giá</th><th className={cn(soTh, 'w-16 text-right')}>CK%</th><th className={cn(soTh, 'w-24 text-right')}>CK (đ)</th><th className={cn(soTh, 'w-20 text-right')}>VAT%</th><th className={cn(soTh, 'w-28 text-right')}>Thành tiền</th><th className={cn(soTh, 'w-10 pr-5')}><span className="sr-only">Xóa</span></th></tr></thead>
                 <tbody>
                   {stock.map(({ l, short: s, track, res, free }, i) => (
                     <tr key={l.id} className="border-b border-[rgb(var(--ink)/0.06)]">
                       <td className={cn(soTd, 'pl-5 text-[rgb(var(--muted))]')}>{i + 1}</td>
-                      <td className={soTd}>{l.kind === 'SKU' || l.kind === 'FREE' ? <input className={cn(inputBase, 'w-full min-w-0 px-2 py-1 font-mono text-[12.5px]')} list={mfg ? undefined : 'so-sku-codes'} value={l.ref ?? ''} onChange={(e) => { const x = mfg ? undefined : skuBy(e.target.value); if (x) fromSku(l.id, x); else upd(l.id, { kind: 'FREE', ref: e.target.value || undefined }); }} aria-label={`Mã sản phẩm dòng ${i + 1}`} /> : <Code>{l.ref ?? '—'}</Code>}</td>
-                      <td className={soTd}>{l.kind === 'SKU' || l.kind === 'FREE' ? <input className={cn(inputBase, 'w-full min-w-[180px] px-2 py-1 text-[13.5px]')} list={mfg ? undefined : 'so-sku-names'} value={l.name} onChange={(e) => { const x = mfg ? undefined : skuBy(e.target.value); if (x && l.kind === 'FREE') fromSku(l.id, x); else upd(l.id, { name: e.target.value }); }} placeholder="Tên hàng hóa, dịch vụ" aria-label={`Tên sản phẩm dòng ${i + 1}`} title={l.name} /> : <span className="block max-w-[260px] truncate font-medium" title={l.name}>{l.name}</span>}</td>
+                      <td className={soTd}>{l.kind === 'SKU' || l.kind === 'FREE' ? <input className={cn(inputBase, 'w-full min-w-0 px-2 py-1 font-mono text-[12.5px]')} value={l.ref ?? ''} onFocus={(e) => openRowPick(l.id, e.currentTarget)} onBlur={() => closeRowPick(l.id)} onKeyDown={rowKeys(l.id)} onChange={(e) => { if (pickFor !== l.id) openRowPick(l.id, e.currentTarget); setRowQ(e.target.value); setPickPage(0); const x = mfg ? undefined : skuBy(e.target.value); if (x) fromSku(l.id, x); else upd(l.id, { kind: 'FREE', ref: e.target.value || undefined }); }} aria-label={`Mã sản phẩm dòng ${i + 1}`} aria-expanded={pickFor === l.id} data-pick-row={l.id} /> : <Code>{l.ref ?? '—'}</Code>}</td>
+                      <td className={soTd}>{l.kind === 'SKU' || l.kind === 'FREE' ? <input className={cn(inputBase, 'w-full min-w-[180px] px-2 py-1 text-[13.5px]')} value={l.name} onFocus={(e) => openRowPick(l.id, e.currentTarget)} onBlur={() => closeRowPick(l.id)} onKeyDown={rowKeys(l.id)} onChange={(e) => { if (pickFor !== l.id) openRowPick(l.id, e.currentTarget); setRowQ(e.target.value); setPickPage(0); const x = mfg ? undefined : skuBy(e.target.value); if (x && l.kind === 'FREE') fromSku(l.id, x); else upd(l.id, { name: e.target.value }); }} placeholder="Gõ tên hoặc chọn trong danh mục" aria-label={`Tên sản phẩm dòng ${i + 1}`} aria-expanded={pickFor === l.id} data-pick-row={l.id} title={l.name} /> : <span className="block max-w-[260px] truncate font-medium" title={l.name}>{l.name}</span>}</td>
                       <td className={cn(soTd, 'text-[rgb(var(--muted))]')}>{l.kind === 'FREE' ? <input className={cn(inputBase, 'w-14 px-2 py-1 text-[13px]')} value={l.unit} onChange={(e) => upd(l.id, { unit: e.target.value })} aria-label="Đơn vị tính" /> : l.unit}</td>
                       <td className={cn(soTd, 'text-right tabular-nums', s > 0 && 'text-[rgb(var(--accent-fg))]')} title={s > 0 ? `Thiếu ${fmtN(s)}` : undefined}>{track ? <span className="inline-flex items-center gap-1">{s > 0 && <AlertTriangle className="h-3.5 w-3.5" aria-hidden />}{fmtN(res + free)}</span> : '—'}</td>
                       <td className={soTd}><input className={cn(cellIn, s > 0 && 'border-[rgb(var(--danger))]')} inputMode="decimal" value={l.qty} onChange={(e) => upd(l.id, { qty: Math.max(0, Number(e.target.value.replace(',', '.')) || 0) })} aria-label={`Số lượng ${l.name}`} /></td>
@@ -1001,8 +1146,7 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
                 {reasons.map((r) => <Chip key={r} tone="orange">{r}</Chip>)}
               </div>
             )}
-            {!mfg && <datalist id="so-sku-codes">{skus.filter((x) => !x.archived).slice(0, 500).map((x) => <option key={x.sku} value={x.sku}>{x.name}</option>)}</datalist>}
-            {!mfg && <datalist id="so-sku-names">{skus.filter((x) => !x.archived).slice(0, 500).map((x) => <option key={x.sku} value={x.name}>{x.sku}</option>)}</datalist>}
+            {pickFor && pickFor !== 'top' && pickPos && lines.some((l) => l.id === pickFor) && createPortal(pickPanel(rowQ, (p) => fromPick(pickFor, p), () => { upd(pickFor, { kind: 'FREE', name: rowQ.trim() || lines.find((l) => l.id === pickFor)?.name || '' }); setPickFor(null); }, 'fixed z-[60]', { left: pickPos.left, top: pickPos.top, bottom: pickPos.bottom, width: pickPos.width }), document.body)}
           </SoCard>
       </div>
       <div className="grid grid-cols-1 gap-x-9 gap-y-7 px-6 pb-6 pt-6 max-sm:px-4 xl:grid-cols-2">
@@ -1017,7 +1161,7 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
           </div>
           <div className="mt-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Người nhận"><input className={inputCls} value={receiver} onChange={(e) => setReceiver(e.target.value)} placeholder="Tên người nhận" aria-label="Người nhận" /></Field>
-            <Field label="Điện thoại người nhận"><input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Số điện thoại" inputMode="tel" aria-label="Số điện thoại" /></Field>
+            <Field label="Điện thoại người nhận"><input type="tel" className={cn(inputCls, 'tabular-nums')} value={recvPhone} onChange={(e) => setRecvPhone(e.target.value)} placeholder="Số điện thoại người nhận" inputMode="tel" aria-label="Điện thoại người nhận" /></Field>
             {delivery !== 'PICKUP' && <Field label="Ngày giao dự kiến"><input type="date" className={inputCls} value={deliverAt} onChange={(e) => setDeliverAt(e.target.value)} aria-label="Ngày giao" /></Field>}
             {delivery !== 'PICKUP' && <Field label="Địa chỉ giao hàng" className="sm:col-span-2"><input className={inputCls} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Số nhà, đường, phường / xã, tỉnh / thành phố" aria-label="Địa chỉ giao hàng" /></Field>}
             <Field label="Ghi chú cho kho / giao vận" className="sm:col-span-2"><textarea className={cn(inputCls, 'min-h-[64px] resize-y')} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Giờ giao, gọi trước, gửi nhà xe…" aria-label="Ghi chú" /></Field>
@@ -1025,19 +1169,18 @@ export function SaleForm({ onDone, edit }: { onDone: (id?: string) => void; edit
         </section>
         <section aria-label="Thông tin thanh toán" className="min-w-0 rounded-xl border border-[rgb(var(--secondary)/0.16)] bg-[rgb(var(--secondary)/0.05)] p-5" data-so-paybox>
           <h2 className={secH} style={HB}><Wallet className={iconH} aria-hidden />Thông tin thanh toán</h2>
-          <div className="flex items-baseline justify-between gap-3 text-[14px]"><b className="font-bold">Tổng tiền hàng</b><b className="font-bold tabular-nums">{fmtN(t.gross)}</b></div>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1.4fr_1fr]">
-            <Field label="Phương thức thanh toán"><select className={inputCls} value={credit ? 'CREDIT' : pay} onChange={(e) => setPay(e.target.value as SalePay)} aria-label="Thanh toán"><option value="CASH">Tiền mặt</option><option value="BANK">Chuyển khoản</option><option value="CREDIT">Công nợ</option></select></Field>
-            {credit ? <Field label="Số ngày công nợ"><div className="relative"><input className={cn(inputCls, 'pr-28 tabular-nums')} inputMode="numeric" value={creditDays} onChange={(e) => setCreditDays(digits(e.target.value))} aria-label="Hạn trả (ngày)" /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12.5px] text-[rgb(var(--muted))]">ngày sau giao</span></div></Field> : <div aria-hidden />}
-          </div>
-          <div className="mt-3 space-y-2.5 text-[13.5px]">
-            <div className="grid grid-cols-[1fr_96px_168px] items-center gap-2.5 max-sm:grid-cols-[1fr_72px_128px] max-sm:gap-2"><span className="font-bold">Chiết khấu <span className="font-normal text-[12px] text-[rgb(var(--muted))]">theo dòng</span></span><input className={roCls} readOnly value={`${String(discPct).replace('.', ',')} %`} aria-label="Chiết khấu phần trăm" /><input className={roCls} readOnly value={t.discount ? fmtN(t.discount) : '0'} aria-label="Chiết khấu" /></div>
-            <div className="grid grid-cols-[1fr_96px_168px] items-center gap-2.5 max-sm:grid-cols-[1fr_72px_128px] max-sm:gap-2"><span className="font-bold">Phí vận chuyển{delivery === 'PICKUP' && <span className="font-normal text-[12px] text-[rgb(var(--muted))]"> · tại quầy</span>}</span><span /><MoneyInput value={fee} onChange={setShipFee} disabled={delivery === 'PICKUP'} label="Phí vận chuyển" /></div>
-            <div className="grid grid-cols-[1fr_96px_168px] items-center gap-2.5 max-sm:grid-cols-[1fr_72px_128px] max-sm:gap-2"><span className="font-bold">Thuế VAT <span className="font-normal text-[12px] text-[rgb(var(--muted))]">theo dòng</span></span><input className={roCls} readOnly value={vatRates.length > 1 ? 'nhiều mức' : `${vatRates[0] ?? 0} %`} aria-label="Thuế suất" /><input className={roCls} readOnly value={fmtN(t.vat)} aria-label="Thuế VAT" /></div>
+          {/* v61: một lưới 3 cột cho mọi dòng (nhãn | % | số tiền): ô nhập thẳng mép trái / phải, nhãn không kèm ghi chú */}
+          <div className="grid grid-cols-[1fr_88px_184px] items-center gap-x-2.5 gap-y-2.5 text-[13.5px] max-sm:grid-cols-[1fr_68px_128px] max-sm:gap-x-2" data-pay-grid>
+            <b className="font-bold">Tổng tiền hàng</b><input className={cn(roCls, 'col-span-2 font-semibold')} readOnly value={fmtN(t.gross)} aria-label="Tổng tiền hàng" />
+            <b className="font-bold">Phương thức thanh toán</b>
+            <select className={cn(inputCls, 'col-span-2')} value={credit ? 'CREDIT' : pay} onChange={(e) => setPay(e.target.value as SalePay)} aria-label="Thanh toán"><option value="CASH">Tiền mặt</option><option value="BANK">Chuyển khoản</option><option value="CREDIT">Công nợ</option></select>
+            {credit && <><b className="font-bold">Số ngày công nợ</b><div className="relative col-span-2"><input className={cn(inputCls, 'pr-14 text-right tabular-nums')} inputMode="numeric" value={creditDays} onChange={(e) => setCreditDays(digits(e.target.value))} aria-label="Hạn trả (ngày)" /><span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12.5px] text-[rgb(var(--muted))]">ngày</span></div></>}
+            <b className="font-bold">Chiết khấu</b><input className={roCls} readOnly value={`${String(discPct).replace('.', ',')} %`} aria-label="Chiết khấu phần trăm" /><input className={roCls} readOnly value={t.discount ? fmtN(t.discount) : '0'} aria-label="Chiết khấu" />
+            <b className="font-bold">Phí vận chuyển</b><span aria-hidden /><MoneyInput value={fee} onChange={setShipFee} disabled={delivery === 'PICKUP'} label="Phí vận chuyển" />
+            <b className="font-bold">Thuế VAT</b><input className={roCls} readOnly value={vatRates.length > 1 ? 'nhiều mức' : `${vatRates[0] ?? 0} %`} aria-label="Thuế suất" /><input className={roCls} readOnly value={fmtN(t.vat)} aria-label="Thuế VAT" />
           </div>
           <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-[rgb(var(--secondary)/0.2)] pt-3.5"><b className="text-[15px] font-bold">Tổng cộng</b><b className="font-archivo text-[24px] font-bold tabular-nums text-[rgb(var(--accent-fg))]" data-so-grand>{fmtN(t.grand)}</b></div>
-          <p className="mt-1 text-[12px] text-[rgb(var(--muted))]">Doanh số ghi nhận {fmtN(t.net)} · chiết khấu, VAT sửa ở bảng Sản phẩm</p>
-          {lines.length > 0 && <p className={cn('mt-2 text-[12.5px]', needs ? 'font-medium text-[rgb(var(--accent-fg))]' : 'text-[rgb(var(--fg2))]')} data-so-needs>{needs ? `Cần duyệt: ${reasons.join('; ')}` : 'Đơn trong ngưỡng: người lên đơn tự duyệt sau khi lưu'}</p>}
+          {needs && <p className="mt-2 flex items-center gap-1.5 text-[12.5px] font-medium text-[rgb(var(--accent-fg))]" data-so-needs><AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />Cần duyệt: {reasons.join('; ')}</p>}
         </section>
       </div>
       {fl.sections.length > 0 && (
@@ -1141,7 +1284,8 @@ export function SaleInvoiceForm({ o, onClose }: { o: SalesOrder; onClose: () => 
   const cust = customers.find((c) => c.id === o.customerId);
   const prev = (o.invReqs ?? []).filter((r) => r.status !== 'REJECTED');
   const usedQ = (id: string) => prev.reduce((s, r) => s + (r.items ?? []).filter((x) => x.lineId === id).reduce((a, x) => a + x.qty, 0), 0);
-  const init: SaleInvBuyer = { name: cust?.name ?? o.customer, taxCode: o.taxCode || cust?.taxCode || '', address: cust?.address || o.address || '', email: cust?.invoiceEmail || cust?.contactEmail || '', buyerName: cust?.contactName || o.receiver || '' };
+  // v61: email / người liên hệ ghi trên đơn được ưu tiên (khách lẻ chỉ có trên đơn), trống thì theo hồ sơ khách
+  const init: SaleInvBuyer = { name: cust?.name ?? o.customer, taxCode: o.taxCode || cust?.taxCode || '', address: cust?.address || o.address || '', email: o.email || cust?.invoiceEmail || cust?.contactEmail || '', buyerName: o.contact || cust?.contactName || o.receiver || '' };
   const [b, setB] = useState<SaleInvBuyer>(init);
   // v60: loại người mua (tổ chức: MST 10 / 10-3 số; hộ kinh doanh, cá nhân: số định danh 12 số; không có MST) + tra cứu dữ liệu đăng ký thuế
   type BuyerKind = 'ORG' | 'PERSON' | 'NONE';
@@ -1171,7 +1315,7 @@ export function SaleInvoiceForm({ o, onClose }: { o: SalesOrder; onClose: () => 
   const fld = (k: keyof typeof miss, label: string, el: ReactNode) => (
     <Field label={label} className={k === 'name' || k === 'address' ? 'sm:col-span-2' : undefined}>
       <div className={cn('rounded-lg', miss[k] && 'ring-1 ring-[rgb(var(--danger))]')}>{el}</div>
-      {miss[k] ? <p className="mt-1 text-[12px] text-[rgb(var(--danger-fg))]">Bắt buộc{k === 'taxCode' ? (kind === 'PERSON' ? ': số định danh 12 số' : ': 10 số, chi nhánh 10-3 số') : k === 'email' ? ': email hợp lệ' : ''}</p> : auto(k) ? <p className="mt-1 text-[12px] text-[rgb(var(--muted))]">{cust ? 'Lấy từ hồ sơ khách hàng' : 'Lấy từ đơn hàng'}</p> : null}
+      {miss[k] ? <p className="mt-1 text-[12px] text-[rgb(var(--danger-fg))]">Bắt buộc{k === 'taxCode' ? (kind === 'PERSON' ? ': số định danh 12 số' : ': 10 số, chi nhánh 10-3 số') : k === 'email' ? ': email hợp lệ' : ''}</p> : auto(k) ? <p className="mt-1 text-[12px] text-[rgb(var(--muted))]">{cust && !((k as string) === 'email' && o.email) && !((k as string) === 'buyerName' && o.contact) ? 'Lấy từ hồ sơ khách hàng' : 'Lấy từ đơn hàng'}</p> : null}
     </Field>
   );
   return (
@@ -1237,7 +1381,7 @@ export function SaleMailDrawer({ o, onClose }: { o: SalesOrder; onClose: () => v
   const cust = customers.find((c) => c.id === o.customerId);
   const t = saleTotals(o);
   const seller = company.shortName || company.legalName;
-  const [to, setTo] = useState(cust?.invoiceEmail || cust?.contactEmail || '');
+  const [to, setTo] = useState(o.email || cust?.invoiceEmail || cust?.contactEmail || ''); // v61: email ghi trên đơn trước
   const [cc, setCc] = useState(me?.email ?? '');
   const [subject, setSubject] = useState(`Đơn hàng ${o.code} - ${seller}`);
   const [body, setBody] = useState(`Kính gửi Quý ${o.customer},\n\n${seller} xin gửi phiếu bán hàng số ${o.code}, tổng giá trị ${fmtN(t.grand)} đ (đã gồm VAT).\nĐiều kiện thanh toán: ${SALE_PAY[o.pay]}${o.creditDays ? ` ${o.creditDays} ngày` : ''}. Giao nhận: ${SALE_DELIVERY[o.delivery]}${o.deliverAt ? ` ngày ${fmtDate(o.deliverAt)}` : ''}.\n\nTrân trọng,\n${me?.name ?? ''}\n${seller}`);
@@ -1473,7 +1617,7 @@ export function SaleApprove({ o, onBack, onGo, rejectFirst }: { o: SalesOrder; o
   const below = lineGm.filter((x) => x.m < 0);
   const maxDisc = Math.max(0, ...o.lines.map((l) => l.discountPct));
   const reasons = o.approval?.self ? [] : o.approval?.reasons ?? [];
-  const DLV: Record<SaleDelivery, string> = { PICKUP: 'Tại quầy', DELIVER: 'Giao hàng', CARRIER: 'Chành xe' };
+  const DLV: Record<SaleDelivery, string> = { PICKUP: 'Tại kho', DELIVER: 'Giao hàng', CARRIER: 'Chành xe' };
   type Check = { id: string; label: string; bad: boolean; result: string; detail: string; act: string };
   const checks: Check[] = [
     { id: 'rule', label: 'Điều kiện cần duyệt', bad: reasons.length > 0, result: reasons.length ? `${reasons.length} điều kiện` : 'Không có', detail: reasons.join('; ') || 'Đơn trong ngưỡng', act: reasons.length ? 'Theo quy trình Đơn bán' : '—' },
@@ -1700,6 +1844,8 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const { quotes, openComposer, setSaleStatus, confirmSalePayment, users, company, canDo, pos, stockVouchers, workOrders, go, warehouses, me, setSalesOrders, cashEntries } = useApp();
   const { todo } = useApprovalQueue();
   const myTurn = todo.some((x) => x.key === `so-${o.id}`);
+  // v61: địa điểm giao / nhận: nhận tại kho → tên kho + địa chỉ kho; giao đi → địa chỉ trên đơn
+  const shipAddrOf = (x: SalesOrder) => { if (x.delivery !== 'PICKUP') return x.address || '—'; const w = warehouses.find((k) => k.id === x.whId); return w ? `${w.name}${w.address ? ` · ${w.address}` : ''}` : 'Tại kho'; };
   const t = saleTotals(o);
   const ret = saleReturned(o);
   const due = saleOwed(o);
@@ -1721,10 +1867,13 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const [mail, setMail] = useState(false);
   const [prOpen, setPrOpen] = useState(false);
   const prRef = useOutside(prOpen, () => setPrOpen(false));
+  // v61: thêm người liên quan (ô chọn nhân sự mở ngay dưới nút +)
+  const [wOpen, setWOpen] = useState(false);
+  const [wq, setWq] = useState('');
+  const { dispatch } = useApp();
   const { t: term } = useTerminology();
   const { journalEntries, invoiceRequests, mfgConfig } = useApp();
   const myInv = invoiceView(invoiceRequests.filter((r) => r.saleId === o.id), [o]);
-  const invIssued = myInv.filter((r) => r.status === 'ISSUED').reduce((s, r) => s + r.total, 0);
   const invPend = myInv.filter((r) => r.status === 'PENDING');
   const q = o.quoteId ? quotes.find((x) => x.id === o.quoteId) : undefined;
   const stage = saleStage(o, stockVouchers);
@@ -1744,7 +1893,8 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const bindDefs = useSaleHeadDefs();
   const { skus } = useApp();
   const [view, setView] = useState<string | null>(null);
-  type Info = { origin: string; docRef: string; by: string; receiver: string; phone: string; address: string; deliverAt: string; note: string; invoice: boolean; cf: Record<string, CfVal>; lcf: Record<string, Record<string, CfVal>> };
+  type Info = { origin: string; docRef: string; by: string; receiver: string; phone: string; address: string; deliverAt: string; note: string; invoice: boolean; cf: Record<string, CfVal>; lcf: Record<string, Record<string, CfVal>>;
+    /** v61 */ recvPhone: string; email: string; contact: string };
   const [info, setInfo] = useState<Info | null>(null);
   const { notify, mySales, setOpenSale, org, resources, salesOrders: salesOrdersAll, customers, departments, wfDef, wfRuns, wfCtx, wfFirstApprovers } = useApp();
   // v60: người có quyền duyệt bước đang chờ / người duyệt phiếu xuất kho (hiện ở Quy trình xử lý đơn hàng)
@@ -1765,6 +1915,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
   const cfHeadForm = fl.formDefs;
   const cfLineForm = cfd.line.filter((d) => d.status === 'ACTIVE' && d.where.form);
   const startInfo = () => setInfo({ origin: o.origin ?? (o.source === 'QUOTE' ? 'Từ báo giá' : 'Tại quầy'), docRef: o.docRef ?? '', by: o.by ?? '', receiver: o.receiver ?? '', phone: o.phone ?? '', address: o.address ?? '', deliverAt: o.deliverAt ?? '', note: o.note ?? '', invoice: o.invoice,
+    recvPhone: o.recvPhone ?? o.phone ?? '', email: o.email ?? '', contact: o.contact ?? '',
     cf: o.cf ?? {}, lcf: Object.fromEntries(o.lines.map((l) => [l.id, l.cf ?? {}])) });
   const saveInfo = () => {
     if (!info) return;
@@ -1773,8 +1924,10 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
     // v56: chặn chọn tài nguyên (đội thợ, xe…) đã có lịch trùng giờ ở bản ghi khác; trường công thức tính lại
     const clash = resourceConflicts(cfd.head, info.cf, salesOrdersAll.map((x) => ({ id: x.id, code: x.code, cf: x.cf, cancelled: x.status === 'CANCELLED' })), resources, o.id);
     if (clash.length) return notify(clash[0], 'red');
+    if (info.email.trim() && !EMAIL_RE.test(info.email.trim())) return notify('Email khách chưa đúng định dạng', 'red');
     const cfNew = cfCompute(cfd.head, info.cf);
     setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, origin: info.origin.trim() || undefined, docRef: info.docRef.trim() || undefined, by: info.by || x.by, receiver: info.receiver.trim() || undefined, phone: info.phone.trim() || undefined, address: info.address.trim() || undefined, deliverAt: info.deliverAt || undefined, note: info.note.trim() || undefined, invoice: info.invoice,
+      recvPhone: info.recvPhone.trim() || undefined, email: info.email.trim() || undefined, contact: info.contact.trim() || undefined,
       cf: Object.keys(cfNew).length ? cfNew : undefined, lines: x.lines.map((l) => { const v = info.lcf[l.id]; return v ? { ...l, cf: Object.keys(v).length ? v : undefined } : l; }),
       notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: 'Cập nhật thông tin đơn (không đổi hàng hóa, giá)' }] } : x)));
     setInfo(null);
@@ -1968,14 +2121,17 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
             : <><Building2 className={iconCls} aria-hidden /><span className="truncate">{o.customer}</span><span className="truncate text-[12.5px] text-[rgb(var(--muted))]">{[o.taxCode && `MST ${o.taxCode}`, o.phone].filter(Boolean).join(' · ')}</span></>;
           if (id === 'taxCode') return o.taxCode ? <><span className="font-mono text-[12.5px]">{o.taxCode}</span>{taxMatch && <span className="inline-flex items-center gap-1 rounded-md bg-[rgb(var(--success)/0.12)] px-1.5 py-0.5 text-[11px] font-medium text-[rgb(var(--success-fg))]" title={`Tra lúc ${new Date(custRec!.taxInfo!.at).toLocaleString('vi-VN')}`}><BadgeCheck className="h-3 w-3" aria-hidden />Khớp dữ liệu thuế</span>}</> : '—';
           if (id === 'address') return <span className="truncate" title={custRec?.address || o.address}>{custRec?.address || o.address || '—'}</span>;
-          if (id === 'phone') return <span className="tabular-nums">{custRec?.contactPhone || o.phone || '—'}</span>;
-          if (id === 'email') return <span className="truncate">{custRec?.invoiceEmail || custRec?.contactEmail || '—'}</span>;
+          // v61: liên hệ ghi trên đơn trước, trống thì theo hồ sơ khách; điện thoại người nhận riêng (đơn cũ chưa tách thì dùng điện thoại trên đơn)
+          if (id === 'phone') return <span className="tabular-nums">{o.phone || custPhone(custRec) || '—'}</span>;
+          if (id === 'email') return <span className="truncate">{o.email || custEmail(custRec) || '—'}</span>;
+          if (id === 'contact') return <span className="truncate">{o.contact || custRec?.contactName || '—'}</span>;
           if (id === 'receiver') return o.receiver || '—';
-          if (id === 'recvPhone') return <span className="tabular-nums">{o.phone || '—'}</span>;
-          if (id === 'shipAddr') return <span className="truncate" title={o.address}>{o.delivery === 'PICKUP' ? 'Nhận tại quầy' : o.address || '—'}</span>;
+          if (id === 'recvPhone') return <span className="tabular-nums">{o.recvPhone ?? o.phone ?? '—'}</span>;
+          // v61: nhận tại kho → ghi rõ kho và địa chỉ kho (không lặp lại chữ "Nhận tại kho" của ô Giao nhận)
+          if (id === 'shipAddr') { const a = shipAddrOf(o); return <span className="truncate" title={a}>{a}</span>; }
           if (id === 'delivery') return SALE_DELIVERY[o.delivery];
           if (id === 'date') return <span className="tabular-nums">{fmtDate(o.date)}{o.createdAt ? ` ${new Date(o.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>;
-          if (id === 'dept') { const u = users.find((x) => x.id === o.by); return departments.find((d) => d.code === u?.dept)?.name ?? u?.dept ?? '—'; }
+          if (id === 'dept') { const dc = o.dept ?? users.find((x) => x.id === o.by)?.dept; return departments.find((d) => d.code === dc)?.name ?? dc ?? '—'; }
           if (id === 'pay') return `${SALE_PAY[o.pay]}${o.creditDays ? ` ${o.creditDays} ngày` : ''}`;
           if (id === 'code') return <Code>{o.code}</Code>;
           if (id === 'origin') return q ? <button className="hover:underline" onClick={() => openComposer({ quoteId: q.id, view: true, mode: 'QUOTE' })}>Từ báo giá <Code>{q.code}</Code></button> : o.origin ?? 'Tại quầy';
@@ -1992,8 +2148,11 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
               <Field label="Nguồn chứng từ"><input className={inputCls} value={info.docRef} onChange={(e) => setInfo({ ...info, docRef: e.target.value })} placeholder="PO, hợp đồng" /></Field>
               <Field label="Người thực hiện"><select className={inputCls} value={info.by} onChange={(e) => setInfo({ ...info, by: e.target.value })}>{users.filter((u) => u.active || u.id === info.by).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
               <Field label="Hóa đơn thuế"><label className="flex h-[38px] items-center gap-2 text-[14px]"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={info.invoice} onChange={(e) => setInfo({ ...info, invoice: e.target.checked })} />Khách lấy hóa đơn</label></Field>
+              <Field label="Người liên hệ"><input className={inputCls} value={info.contact} onChange={(e) => setInfo({ ...info, contact: e.target.value })} /></Field>
+              <Field label="Điện thoại khách"><input type="tel" className={inputCls} value={info.phone} onChange={(e) => setInfo({ ...info, phone: e.target.value })} /></Field>
+              <Field label="Email nhận hóa đơn"><input type="email" className={inputCls} value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} /></Field>
               <Field label="Người nhận"><input className={inputCls} value={info.receiver} onChange={(e) => setInfo({ ...info, receiver: e.target.value })} /></Field>
-              <Field label="Số điện thoại"><input className={inputCls} value={info.phone} onChange={(e) => setInfo({ ...info, phone: e.target.value })} /></Field>
+              <Field label="Điện thoại người nhận"><input type="tel" className={inputCls} value={info.recvPhone} onChange={(e) => setInfo({ ...info, recvPhone: e.target.value })} /></Field>
               <Field label="Ngày giao"><input type="date" className={inputCls} value={info.deliverAt} onChange={(e) => setInfo({ ...info, deliverAt: e.target.value })} /></Field>
               <Field label="Địa chỉ giao"><input className={inputCls} value={info.address} onChange={(e) => setInfo({ ...info, address: e.target.value })} /></Field>
               <Field label="Ghi chú" className="sm:col-span-2 xl:col-span-4"><input className={inputCls} value={info.note} onChange={(e) => setInfo({ ...info, note: e.target.value })} /></Field>
@@ -2086,7 +2245,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
                   <button type="button" className="text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]" onClick={() => openFile(f, 'download')} aria-label={`Tải ${f.name}`}><Download className="h-3.5 w-3.5" aria-hidden /></button>{canUp && <button className="text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => delFile(f)} aria-label={`Bỏ ${f.name}`}><X className="h-3.5 w-3.5" aria-hidden /></button>}
                 </li>
               ))}</ul>
-            ) : <p className="text-[13px] text-[rgb(var(--muted))]">Chưa có tài liệu. Ảnh tự nén; PDF, Word, Excel tối đa {CLOUD_ON ? 10 : 2} MB; tối đa 10 tệp</p>}
+            ) : null}
           </SoCard>
         );
         // v60: dòng tổng dưới bảng hàng hóa (nhãn đậm, như phiếu đơn hàng)
@@ -2191,12 +2350,7 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
                 {left < 0 ? money('Khách trả thừa', fmtN(-left), 'over', true) : money('Còn lại', fmtN(left), 'left', true)}
               </div>
               {due > 0 && <div className="mt-2"><SoBar parts={[{ pct: (paid / due) * 100, cls: 'bg-[rgb(var(--fg))]' }, { pct: (pend / due) * 100, cls: 'bg-[rgb(var(--accent)/0.55)]' }]} /></div>}
-              {/* v58: tóm tắt hóa đơn của đơn (đọc bảng yêu cầu xuất hóa đơn + phiếu cũ) */}
-              <div className="mt-3 border-t border-[rgb(var(--line))] pt-3" data-inv-summary>
-                <SoKv label="Đã xuất hóa đơn">{fmtN(invIssued)}</SoKv>
-                {o.invoice ? <SoKv label="Chưa xuất hóa đơn" tone={due - invIssued > 0 && issuedAny ? 'warn' : undefined}>{fmtN(Math.max(0, due - invIssued))}</SoKv> : <SoKv label="Hóa đơn">Khách không lấy</SoKv>}
-                {invPend.length > 0 && <div className="mt-1 flex items-center gap-2 text-[12.5px]"><Chip tone="orange">{invPend.length} yêu cầu chờ kế toán</Chip>{canCash && <button className={cn(btnGhost, btnSm, 'ml-auto')} onClick={() => go('accounting')}>Xử lý ở Kế toán</button>}</div>}
-              </div>
+              {/* v61: bỏ tóm tắt hóa đơn ở khối Thanh toán (trạng thái hóa đơn xem ở bước "Hóa đơn thuế" của quy trình) */}
               <p className={cn(soSideH, 'mb-2 mt-5')}>Lịch sử thanh toán</p>
               <div className="overflow-hidden rounded-lg border border-[rgb(var(--line))] text-[12.5px]" data-so-payhist>
                 <div className="grid grid-cols-[56px_1fr_auto] gap-2 bg-[rgb(var(--ink)/0.035)] px-2.5 py-1.5 font-semibold"><span>Ngày</span><span className="text-right">Số tiền</span><span>Trạng thái</span></div>
@@ -2217,12 +2371,47 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
           ['Kế toán xác nhận thu', o.payments.find((p) => p.confirmed)?.confirmedBy], ['Kế toán xuất hóa đơn', myInv.find((r) => r.status === 'ISSUED')?.decidedBy],
         ];
         // v60 cột phải theo mẫu phiếu: nút nhanh, quy trình dọc kèm người đã làm / người có quyền ở bước đang chờ, người liên quan dạng chip
+        // v61: nút + thêm người theo dõi đơn (người được thêm thấy đơn trong danh sách của mình, nhận thông báo); bỏ được người đã thêm
+        const watchers = o.watchers ?? [];
+        const canWatch = cancel === null && (o.by === me?.id || canDo('sale.manage') || R.canInfo(o) || watchers.includes(me?.id ?? ''));
+        const inOrder = new Set([...people.map(([, id]) => id).filter((x): x is string => !!x), ...watchers]);
+        const wCands = users.filter((u) => u.active && u.id !== me?.id && !inOrder.has(u.id) && (!wq.trim() || fold(`${u.name} ${u.title ?? ''} ${u.email}`).includes(fold(wq.trim())))).slice(0, 8);
+        const addWatcher = (u: User) => {
+          setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, watchers: [...(x.watchers ?? []), u.id], notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: `Thêm ${u.name} vào người liên quan` }] } : x)));
+          dispatch('APPROVAL_RESULT', { to: u, title: `${me?.name ?? 'Đồng nghiệp'} thêm bạn vào đơn ${o.code}`, body: `${o.customer} · ${fmtN(t.grand)} đ`, module: 'sales' });
+          setWq(''); setWOpen(false);
+        };
+        const dropWatcher = (id: string) => setSalesOrders((all) => all.map((x) => (x.id === o.id ? { ...x, watchers: (x.watchers ?? []).filter((w) => w !== id), notes: [...(x.notes ?? []), { id: uid('sn'), by: me?.id, at: Date.now(), text: `Bỏ ${nm(id)} khỏi người liên quan` }] } : x)));
+        const avCls = 'grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[rgb(var(--ink)/0.07)] text-[10px] font-semibold';
         const peopleNode = (
-          <div className="mt-5 border-t border-[rgb(var(--line))] pt-4" data-people>
-            <p className={cn(soSideH, 'mb-2')}>Người liên quan</p>
-            <ul className="flex flex-wrap gap-1.5">{people.filter(([, id]) => !!id).map(([k, id]) => (
-              <li key={k} className="flex items-center gap-1.5 rounded-full border border-[rgb(var(--line))] py-0.5 pl-0.5 pr-2.5 text-[12.5px]" title={`${nm(id)} · ${k}`}><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[rgb(var(--ink)/0.07)] text-[10px] font-semibold">{ini(id)}</span><span className="max-w-[110px] truncate">{k}</span></li>
-            ))}</ul>
+          <div className="relative mt-5 border-t border-[rgb(var(--line))] pt-4" data-people>
+            <div className="mb-2 flex items-center gap-2">
+              <p className={soSideH}>Người liên quan</p>
+              {canWatch && <button type="button" className={cn(soIco, 'ml-auto h-7 w-7')} onClick={() => setWOpen((v) => !v)} aria-label="Thêm người liên quan" aria-expanded={wOpen} title="Thêm người liên quan"><Plus className="h-4 w-4" aria-hidden /></button>}
+            </div>
+            {/* v61: mỗi người một dòng: tên + vai trò trên đơn (người được thêm ghi "Theo dõi", bỏ được) */}
+            <ul className="space-y-1">
+              {people.filter(([, id]) => !!id).map(([k, id]) => (
+                <li key={k} className="flex items-center gap-2 py-0.5 text-[13px]" title={`${nm(id)} · ${k}`}><span className={avCls}>{ini(id)}</span><span className="min-w-0 flex-1 truncate">{nm(id)}</span><span className="shrink-0 text-[12px] text-[rgb(var(--muted))]">{k}</span></li>
+              ))}
+              {watchers.map((id) => (
+                <li key={`w-${id}`} className="flex items-center gap-2 py-0.5 text-[13px]" title={`${nm(id)} · được thêm theo dõi đơn`} data-watcher={id}><span className={avCls}>{ini(id)}</span><span className="min-w-0 flex-1 truncate">{nm(id)}</span><span className="shrink-0 text-[12px] text-[rgb(var(--muted))]">Theo dõi</span>
+                  {canWatch ? <button type="button" className="rounded-full p-0.5 text-[rgb(var(--muted))] hover:text-[rgb(var(--danger-fg))]" onClick={() => dropWatcher(id)} aria-label={`Bỏ ${nm(id)} khỏi người liên quan`}><X className="h-3 w-3" aria-hidden /></button> : null}
+                </li>
+              ))}
+            </ul>
+            {wOpen && (
+              <div className="absolute right-0 top-[calc(100%-4px)] z-30 w-[280px] max-w-[calc(100vw-32px)] rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-3 shadow-lg" role="group" aria-label="Thêm người liên quan" data-watch-pop>
+                <p className="mb-2 text-[13.5px] font-semibold">Thêm người liên quan</p>
+                <input className={inputCls} value={wq} onChange={(e) => setWq(e.target.value)} placeholder="Tìm nhân sự" aria-label="Tìm nhân sự" autoFocus onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setWOpen(false); } else if (e.key === 'Enter' && wCands[0]) { e.preventDefault(); addWatcher(wCands[0]); } }} />
+                <ul className="mt-2 max-h-[240px] overflow-y-auto">
+                  {wCands.map((u) => (
+                    <li key={u.id}><button type="button" className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-[rgb(var(--ink)/0.04)]" onClick={() => addWatcher(u)}><span className={avCls}>{ini(u.id)}</span><span className="min-w-0 flex-1"><span className="block truncate font-medium">{u.name}</span><span className="block truncate text-[11.5px] text-[rgb(var(--muted))]">{u.title || ROLE_LABEL[u.role] || u.role}</span></span></button></li>
+                  ))}
+                  {!wCands.length && <li className="px-2 py-2 text-[12.5px] text-[rgb(var(--muted))]">Không thấy nhân sự phù hợp</li>}
+                </ul>
+              </div>
+            )}
           </div>
         );
         const inits = (name: string) => name.split(' ').filter(Boolean).slice(-2).map((w) => w[0]).join('').toUpperCase();
@@ -2240,7 +2429,9 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
             return [['Trạng thái', a?.self ? 'Người lên đơn tự duyệt' : 'Trong ngưỡng, không cần duyệt']];
           }
           if (label === 'Xuất kho') return [...(outDone ? [['Người xuất kho', who(outDone.approvedBy)] as [string, ReactNode]] : []), ...(!issuedAny && cancel === null && o.status === 'PENDING' ? [['Quyền xuất', stack(stockWho)] as [string, ReactNode]] : [])];
-          if (label === 'Hóa đơn thuế') return invBy ? [['Người xuất', who(invBy)]] : [];
+          // v61: yêu cầu chờ kế toán hiện ở bước này (thay tóm tắt hóa đơn đã bỏ ở khối Thanh toán)
+          if (label === 'Hóa đơn thuế') return [...(invBy ? [['Người xuất', who(invBy)] as [string, ReactNode]] : []),
+            ...(invPend.length ? [['Yêu cầu', <span key="r" className="flex flex-wrap items-center gap-1.5"><Chip tone="orange">{invPend.length} chờ kế toán</Chip>{canCash && <button className="text-[12.5px] font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => go('accounting')}>Mở Kế toán</button>}</span>] as [string, ReactNode]] : [])];
           if (label === 'Thanh toán') return [['Điều khoản', `${SALE_PAY[o.pay]}${o.creditDays ? ` ${o.creditDays} ngày` : ''}`]];
           return [];
         };
@@ -2285,7 +2476,6 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
             <SoKv label="Lãi gộp chuẩn" big>{fmtN(gross)}</SoKv>
             <SoKv label="Chi phí gắn vào đơn">−{fmtN(dc)}</SoKv>
             <SoKv label="Lãi ước tính" big tone={gross - dc < 0 ? 'warn' : undefined}>{fmtN(gross - dc)}</SoKv>
-            <p className="mt-1 text-[12px] text-[rgb(var(--muted))]">Giá vốn theo giá vốn hiện tại của mã hàng; chi phí gồm phiếu chi gắn đơn và phần phân bổ, chưa gồm thuế được khấu trừ</p>
           </SoCard>
         ); })() : null;
         // v60: Điều khoản đơn hàng + Các thông tin bổ trợ (nhãn đậm "Nhãn: giá trị", mỗi dòng một thông tin)
@@ -2296,9 +2486,9 @@ export function SaleDetail({ o, onBack, onApprove, onPay, onEdit, startCancel }:
             <div data-so-terms>
               {kb('Giao nhận', SALE_DELIVERY[o.delivery])}
               {o.delivery !== 'PICKUP' && kb('Thời gian giao hàng', o.deliverAt ? fmtDate(o.deliverAt) : '—')}
-              {kb('Địa chỉ giao hàng', o.delivery === 'PICKUP' ? 'Nhận tại quầy' : o.address || '—')}
+              {kb(o.delivery === 'PICKUP' ? 'Địa điểm nhận hàng' : 'Địa chỉ giao hàng', shipAddrOf(o))}
               {o.receiver && kb('Người nhận', o.receiver)}
-              {o.phone && kb('Điện thoại người nhận', <span className="tabular-nums">{o.phone}</span>)}
+              {(o.recvPhone ?? o.phone) && kb('Điện thoại người nhận', <span className="tabular-nums">{o.recvPhone ?? o.phone}</span>)}
               {o.note && kb('Ghi chú', o.note)}
             </div>
             <p className="mb-1 mt-4 text-[14px] font-bold">Các thông tin bổ trợ</p>

@@ -506,8 +506,10 @@ export default function DashboardApp() {
     ? customers.filter((c) => c.amId === me.id || jobs.some((j) => j.customerId === c.id && j.ownerId === me.id) || leads.some((l) => l.assignee === me.id && (l.customerId === c.id || (!!l.taxCode && l.taxCode === c.taxCode))))
     : custScope === 'DEPT' ? customers.filter((c) => c.dept === me.dept || users.find((u) => u.id === c.amId)?.dept === me.dept || jobs.some((j) => j.customerId === c.id && j.dept === me.dept))
     : customers;
-  const mySales = !me ? [] : saleScope === 'OWN' ? salesOrders.filter((o) => o.by === me.id)
-    : saleScope === 'DEPT' ? salesOrders.filter((o) => o.by === me.id || (!!me.dept && users.find((u) => u.id === o.by)?.dept === me.dept))
+  // v61: người được thêm vào "Người liên quan" của đơn thấy đơn đó dù ngoài phạm vi; phòng ban của đơn (nếu ghi) tính cho phạm vi phòng ban
+  const watching = (o: SalesOrder) => !!me && !!o.watchers?.includes(me.id);
+  const mySales = !me ? [] : saleScope === 'OWN' ? salesOrders.filter((o) => o.by === me.id || watching(o))
+    : saleScope === 'DEPT' ? salesOrders.filter((o) => o.by === me.id || watching(o) || (!!me.dept && (o.dept ? o.dept === me.dept : users.find((u) => u.id === o.by)?.dept === me.dept)))
     : salesOrders;
   /** v55.1: tùy chọn cá nhân của người đang đăng nhập; ghi một khóa = cập nhật bản ghi của chính mình (RLS chỉ cho ghi hàng của mình) */
   const myPrefs = (me ? userPrefs.find((p) => p.id === me.id)?.prefs : undefined) ?? {};
@@ -2533,7 +2535,7 @@ export default function DashboardApp() {
         {openCustomerId && <CustomerDrawer id={openCustomerId} onClose={() => setOpenCustomerId(null)} />}
         {openClaimId && <ClaimDrawer key={openClaimId} id={openClaimId} onClose={() => setOpenClaimId(null)} />}
         {programForm && <ProgramFormModal customerId={programForm.customerId} programId={programForm.programId} onClose={() => setProgramForm(null)} />}
-        {customerForm && <CustomerFormModal id={customerForm.id} prefill={customerForm.prefill} onSaved={customerForm.onSaved} onClose={() => setCustomerForm(null)} />}
+        {customerForm && <CustomerFormModal id={customerForm.id} prefill={customerForm.prefill} onSaved={customerForm.onSaved} quick={customerForm.quick} onClose={() => setCustomerForm(null)} />}
         {leadForm && <LeadFormModal id={leadForm.id} asProject={leadForm.asProject} onClose={() => setLeadForm(null)} />}
         <AiChatBot />
         <AutomationEngine />

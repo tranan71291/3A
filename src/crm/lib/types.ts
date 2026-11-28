@@ -259,6 +259,9 @@ export type SalesOrder = {
   issuedQ?: Record<string, number>; returnedQ?: Record<string, number>; invReqs?: SaleInvReq[];
   /** v50: nguồn đơn hàng, nguồn chứng từ (PO / hợp đồng), người nhận hàng, trao đổi trên đơn */
   origin?: string; docRef?: string; receiver?: string; notes?: SaleNote[];
+  /** v61: liên hệ của khách ghi trên đơn (sửa được cho riêng đơn, `phone` là điện thoại khách), điện thoại người nhận hàng,
+   *  phòng ban phụ trách đơn (mặc định theo người thực hiện), người được thêm vào đơn để cùng theo dõi (thấy đơn dù ngoài phạm vi) */
+  email?: string; contact?: string; recvPhone?: string; dept?: string; watchers?: string[];
   /** v53: trường tùy chỉnh do 3A định nghĩa (theo mã lưu trữ), tệp đính kèm của đơn */
   cf?: Record<string, CfVal>; files?: SaleFile[];
   /** v57a: bước quy trình theo ngành (workflowStates của hồ sơ ngành) và lịch sử chuyển bước. Không đổi trạng thái kế toán / kho của đơn */
@@ -660,7 +663,17 @@ export type Customer = {
   cf?: Record<string, CfVal>;
   /** v60: kết quả tra cứu mã số thuế lần gần nhất (tên, địa chỉ đăng ký thuế, tình trạng, nguồn, thời điểm) */
   taxInfo?: TaxInfo;
+  /** v61: điện thoại, email chung của khách (trống thì dùng của người liên hệ chính) */
+  phone?: string; email?: string;
+  /** v61: danh sách người liên hệ; người liên hệ chính đồng bộ sang contactName / contactTitle / contactPhone / contactEmail */
+  contacts?: CustomerContact[];
 };
+
+/** v61 Người liên hệ của khách hàng */
+export type CustomerContact = { id: string; salutation?: string; name: string; title?: string; phone?: string; email?: string; birthday?: string; gender?: 'M' | 'F' | ''; note?: string; /** nhận email (thông báo, hóa đơn) */ mail?: boolean; primary?: boolean };
+
+/** v61 Nguồn đơn hàng (Cài đặt › Bán hàng); ngừng dùng thì ẩn khỏi form, đơn cũ giữ nguyên tên nguồn */
+export type SaleOrigin = { id: string; name: string; active: boolean };
 
 /** v60: dữ liệu đăng ký thuế tra được qua máy chủ (nguồn đổi được theo doanh nghiệp). status chỉ có khi nguồn trả về */
 export type TaxInfo = { taxCode: string; name: string; shortName?: string; intlName?: string; address?: string; status?: string; source: string; at: number };
@@ -1012,7 +1025,25 @@ export type Receipt = {
 
 export type MfgConfig = { schedule: PayStage[]; vatPct: number; quoteValidDays: number; warrantyMonths: number; submitHours: number; productionDays: number; openingCash: number; openingBank: number; creditDays: number; dueDays: number; salesCommissionPct: number; installCommissionPct: number; agingScheme?: AgingScheme;
   /** v51.3: chế độ kế toán (bộ tài khoản, quy tắc định khoản) của doanh nghiệp */
-  acct?: AcctConfig };
+  acct?: AcctConfig;
+  /** v61: danh mục nguồn đơn hàng (chưa khai báo thì dùng danh mục mặc định SALE_ORIGINS_DEF) */
+  saleOrigins?: SaleOrigin[];
+  /** v61: giá trị điền sẵn khi lên đơn bán (Cài đặt › Bán hàng); số ngày công nợ lấy từ creditDays */
+  saleDefaults?: SaleDefaults };
+
+/** v61 Mặc định khi lên đơn bán: người lên đơn vẫn đổi được trên từng đơn */
+export type SaleDefaults = {
+  /** id nguồn đơn trong saleOrigins (ngừng dùng / đã xóa thì lấy nguồn đang dùng đầu tiên) */
+  origin?: string;
+  /** kho xuất (kho tạm ngưng / đã xóa thì lấy kho tổng) */
+  whId?: string;
+  delivery?: SaleDelivery;
+  pay?: 'CASH' | 'BANK' | 'CREDIT';
+  /** tích sẵn "Xuất hóa đơn thuế" cho mọi đơn mới */
+  invoice?: boolean;
+  /** tự tích "Xuất hóa đơn thuế" khi chọn khách có mã số thuế (mặc định bật) */
+  invoiceTax?: boolean;
+};
 
 /** Chế độ kế toán: TT 99/2025/TT-BTC (thay TT 200) hoặc TT 133/2016/TT-BTC (DN nhỏ và vừa) */
 export type AcctStd = 'TT99' | 'TT133';
@@ -2246,7 +2277,7 @@ export type DashTab = 'all' | 'sales' | 'mkt' | 'fin' | 'mfg';
 // =====================================================================
 
 export type CustomerForm = Omit<Customer, 'id' | 'code'>;
-export type CustomerFormOpts = { prefill?: Partial<CustomerForm>; onSaved?: (c: Customer) => void };
+export type CustomerFormOpts = { prefill?: Partial<CustomerForm>; onSaved?: (c: Customer) => void; /** v61: mở từ form tạo đơn (tiêu đề "Thêm nhanh khách hàng") */ quick?: boolean };
 
 export type RevenueBand = 'ALL' | 'GT1B' | '500M_1B' | '200M_500M' | 'LT200M';
 
@@ -2395,9 +2426,11 @@ export type SaleFilter = { dateBy: 'date' | 'created'; code: string; origin: str
 /** v59: 'blocked' = đang vướng (vd. đơn bị không duyệt) */
 export type SoStep = { label: string; at?: string; sub?: ReactNode; state: 'done' | 'now' | 'todo' | 'side' | 'blocked'; chip?: ReactNode };
 
-export type SalePick = { kind: SaleLineKind; ref?: string; name: string; unit: string; price: number; sub: string; vat: number };
+export type SalePick = { kind: SaleLineKind; ref?: string; name: string; unit: string; price: number; sub: string; vat: number;
+  /** v61 bảng chọn sản phẩm: ảnh, nhóm, hãng, tồn khả dụng, giá đã bán cho khách này */
+  img?: string; group?: string; brand?: string; stock?: string; last?: boolean };
 
-export type SettingsTab = 'coa' | 'overview' | 'ai' | 'zalo' | 'perms' | 'workflow' | 'hub' | 'platform' | 'company' | 'org' | 'fund' | 'mkt' | 'segments' | 'pricing' | 'accounting' | 'getfly' | 'email' | 'zns' | 'security' | 'warehouses' | 'resources';
+export type SettingsTab = 'sales' | 'coa' | 'overview' | 'ai' | 'zalo' | 'perms' | 'workflow' | 'hub' | 'platform' | 'company' | 'org' | 'fund' | 'mkt' | 'segments' | 'pricing' | 'accounting' | 'getfly' | 'email' | 'zns' | 'security' | 'warehouses' | 'resources';
 
 // =====================================================================
 //  3A PLATFORM CONSOLE — quản trị nền tảng: doanh nghiệp, cấp phép module, dữ liệu & nâng cấp an toàn

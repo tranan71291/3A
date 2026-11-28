@@ -8,7 +8,7 @@ import { MentionComposer, MentionText } from '../../components/comments';
 import { RowMenu } from '../../components/controls';
 import { ConfirmDialog } from '../../components/crud';
 import { Chip, EmptyState, useEscClose, useOverlay, useSticky } from '../../components/ui';
-import { bizMode, boqTotal, btnGhost, btnPrimary, btnSm, canViewDoc, chatFileMax, compact, dmId, FB_ICON, FEELINGS, firstName, fmtDate, fmtSize, fold, HOME_FOCUS_EVT, inputBase, inputCls, isMedia, leadDate, portal, POST_KIND, reactOf, REACTS, reactTotal, ROLE_LABEL, seenThisSession, summarizeText, uid, useApp, withReact } from '../../lib/core';
+import { bizMode, boqTotal, btnGhost, btnPrimary, btnSm, canViewDoc, chatFileMax, compact, dmId, FB_ICON, FEELINGS, firstName, fmtDate, fmtSize, fold, HOME_FOCUS_EVT, inputBase, inputCls, isMedia, leadDate, portal, POST_KIND, reactOf, REACTS, reactTotal, ROLE_LABEL, seenThisSession, summarizeText, todayISO, uid, useApp, withReact } from '../../lib/core';
 import type { ChatFile, ConfirmState, FeedAuto, Post, PostFeeling, PostKind, ReactId, ToastT } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { jobMoney } from '../../lib/workshop';
@@ -348,7 +348,7 @@ export function FeedPostCard({ p, hot, saved, onSave, onEdit, onShare, onConfirm
   const bigText = !media.length && !p.poll && !p.sharedId && p.text.length < 85 && !p.text.includes('\n');
   const K = POST_KIND[p.kind];
   const pollTotal = p.poll ? new Set(p.poll.options.flatMap((o) => o.votes)).size : 0;
-  const closed = !!p.poll?.closesAt && p.poll.closesAt < new Date().toISOString().slice(0, 10);
+  const closed = !!p.poll?.closesAt && p.poll.closesAt < todayISO();
   const vote = (oid: string) => {
     if (!p.poll || closed) return;
     patch((x) => ({ ...x, poll: { ...x.poll!, options: x.poll!.options.map((o) => { const has = o.votes.includes(me.id); if (o.id === oid) return { ...o, votes: has ? o.votes.filter((v) => v !== me.id) : [...o.votes, me.id] }; return x.poll!.multi ? o : { ...o, votes: o.votes.filter((v) => v !== me.id) }; }) } }));

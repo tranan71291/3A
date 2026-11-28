@@ -56,7 +56,8 @@ export function ResourceSettings() {
   const blank = (): Resource => ({ id: uid('rs'), kind: kind !== 'ALL' ? kind : kinds[0]?.id ?? '', name: '', active: true, at: Date.now() });
   return (
     <div className="space-y-4">
-      <SetBlock title={`${t('resource')} & tài nguyên`} sub={`${resources.filter((r) => r.active).length} đang dùng · chọn ở trường "Chọn tài nguyên" trong ${t('sale').toLowerCase()}, hệ thống chặn trùng lịch`}
+      {/* v61: ngành dùng từ "Tài nguyên" không lặp thành "Tài nguyên & tài nguyên" */}
+      <SetBlock title={t('resource').trim().toLowerCase() === 'tài nguyên' ? 'Tài nguyên' : `${t('resource')} & tài nguyên`} sub={`${resources.filter((r) => r.active).length} đang dùng · chọn ở trường "Chọn tài nguyên" trong ${t('sale').toLowerCase()}, hệ thống chặn trùng lịch`}
         action={<button className={cn(btnGhost, btnSm)} disabled={!can || !kinds.length} onClick={() => setEdit(blank())}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm tài nguyên</button>} flush>
         {kinds.length > 1 && (
           <div className="flex gap-1 px-4 pb-3" role="radiogroup" aria-label="Loại tài nguyên">

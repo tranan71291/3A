@@ -3,7 +3,7 @@
 import { type KeyboardEvent as RKeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronDown, Columns3, Download, FileText, ImagePlus, Layers, List, Maximize2, Minimize2, Minus, PenLine, Pencil, Plus, Printer, Redo2, Send, Share2, Stamp, Trash2, Undo2, Wallet, X } from 'lucide-react';
 import { Field, FilePicker, useOverlay, useSticky } from '../../components/ui';
-import { btnBase, btnGhost, btnPrimary, compact, DOC_CSS, esc, GUARANTEE_LABEL, inputCls, lineVat, missingCompanyInfo, money, RAW_VARS, REQUIRED_VARS, TX_CLAUSE, TX_TYPE, useApp, varLabel, VN_DIGITS } from '../../lib/core';
+import { btnBase, btnGhost, btnPrimary, compact, DOC_CSS, esc, GUARANTEE_LABEL, inputCls, lineVat, missingCompanyInfo, money, RAW_VARS, REQUIRED_VARS, todayISO, TX_CLAUSE, TX_TYPE, useApp, varLabel, VN_DIGITS } from '../../lib/core';
 import type { BarAct, ComposerForm, ComposerStep, Customer, DocContext, DocTemplate, GuaranteeType, PreviewAct, SkuItem, TxType } from '../../lib/types';
 import { cn } from '../../lib/utils';
 
@@ -72,7 +72,7 @@ export function contractBody(title: string, clause: string) {
 
 /** 10 mẫu báo giá + 10 mẫu hợp đồng, ghép cặp theo loại giao dịch */
 export function initialDocTemplates(): DocTemplate[] {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO(); // v61: theo giờ máy (không lùi 1 ngày trước 7h sáng)
   const contractTitle: Record<TxType, string> = {
     DEALER: 'Đại lý phân phối', PROJECT_ME: 'Mua bán hàng hóa dự án M&E', SUPPLY_INSTALL: 'Cung cấp và lắp đặt', RETAIL_CASH: 'Mua bán hàng hóa',
     FACTORY: 'Mua bán vật tư công nghiệp', EPC_SUB: 'Cung cấp vật tư cho Tổng thầu', FRAMEWORK: 'Nguyên tắc mua bán hàng hóa', SAMPLE: 'Cung cấp mẫu thử nghiệm',
