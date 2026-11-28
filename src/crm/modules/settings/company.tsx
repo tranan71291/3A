@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AlertTriangle, CheckCircle2, ImagePlus, Plus, RefreshCw, ShieldCheck, Sparkles, Trash2, Upload } from 'lucide-react';
 import { Field, FilePicker, Panel, SideCard } from '../../components/ui';
-import { bizMode, btnGhost, btnPrimary, btnSm, compact, COMPANY_AI_FIELDS, EMAIL_RE, fileB64, initials, inputCls, MST_MSG, MST_RE, shrinkImage, useApp } from '../../lib/core';
+import { bizMode, btnGhost, btnPrimary, btnSm, compact, COMPANY_AI_FIELDS, EMAIL_RE, fileB64, initials, inputCls, MST_MSG, MST_RE, saleDefaultsOf, saleOriginsOf, shrinkImage, useApp } from '../../lib/core';
 import type { CompanyBranch, CompanyInfo, SettingsTab } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { parseAiJson, useAi, useServerStatus } from '../ai/ai-core';
@@ -252,6 +252,8 @@ export function SettingsOverview({ go }: { go: (t: SettingsTab) => void }) {
     { g: 'Tổ chức', t: 'Người đại diện và tài khoản ngân hàng', d: company.representative && company.bankAccount ? `${company.representative} · ${company.bankName || 'chưa ghi ngân hàng'}` : 'thiếu người đại diện hoặc số tài khoản trên báo giá', ok: !!(company.representative && company.bankAccount && company.bankName), to: 'company' },
     { g: 'Tổ chức', t: 'Phòng ban & nhân sự', d: `${departments.filter((d) => d.active).length} phòng · ${active.length} tài khoản hoạt động`, ok: departments.some((d) => d.active) && active.length > 1, to: 'org' },
     { g: 'Tổ chức', t: 'Phân quyền theo vai trò', d: weak ? `${weak} tài khoản còn mật khẩu tạm` : 'phân quyền theo vai trò, không có mật khẩu tạm', ok: weak === 0, to: 'perms' },
+    // v61: Bán hàng — nguồn đơn hàng và mặc định khi lên đơn
+    { g: 'Nghiệp vụ', t: 'Bán hàng', d: (() => { const sd = saleDefaultsOf(mfgConfig, warehouses); return `${saleOriginsOf(mfgConfig).filter((s) => s.active).length} nguồn đơn hàng · mặc định ${sd.origin}, ${sd.delivery === 'PICKUP' ? 'tại kho' : sd.delivery === 'DELIVER' ? 'giao tận nơi' : 'chành xe'}`; })(), ok: saleOriginsOf(mfgConfig).some((s) => s.active), to: 'sales' },
     { g: 'Nghiệp vụ', t: 'Kế toán & công nợ', d: `công nợ ${mfgConfig.creditDays} ngày · số dư đầu ${compact(mfgConfig.openingCash + mfgConfig.openingBank)}`, ok: mfgConfig.openingCash + mfgConfig.openingBank > 0, to: 'accounting' },
     ...(mode !== 'MFG' ? [{ g: 'Nghiệp vụ', t: 'Kho hàng', d: `${warehouses.filter((w) => w.active).length} kho đang hoạt động`, ok: warehouses.some((w) => w.active), to: 'warehouses' as SettingsTab }] : []),
     { g: 'Tích hợp', t: 'Trợ lý AI', d: !(srv.ai.anthropic || srv.ai.openai) ? 'máy chủ chưa có khóa Claude / OpenAI' : hubCfg.ai.enabled ? `đã bật · ${srv.ai.anthropic ? 'Claude' : 'OpenAI'}` : 'đã có khóa, đang tắt', ok: hubCfg.ai.enabled && (srv.ai.anthropic || srv.ai.openai), to: 'ai' },

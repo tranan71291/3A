@@ -254,8 +254,8 @@ export function GetflySettings() {
         </Panel>
       </div>
 
-      <Panel title="Ánh xạ trường dữ liệu App MDF và Getfly">
-        <Table head={['Nhóm', 'App MDF', 'Getfly API v3']} minW={640}>
+      <Panel title="Ánh xạ trường dữ liệu CRM và Getfly">
+        <Table head={['Nhóm', 'Trường trong CRM', 'Getfly API v3']} minW={640} select={false} colPick={false}>
           {FIELD_MAP.map(([g, a, b]) => (
             <tr key={g + a} className={rowCls}>
               <td className={cn(tdFirst, 'text-[rgb(var(--muted))]')}>{g}</td>

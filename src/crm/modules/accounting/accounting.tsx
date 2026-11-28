@@ -11,7 +11,7 @@ import { Drawer } from '../../components/drawer';
 import { StatusBar, StatusChecklist, stMatch, type StatusOpt } from '../../components/kit/status-filter';
 import { Chip, Code, EmptyState, Field, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { cloudMessage } from '../../lib/cloud';
-import { ACCT_STD, acctName, ATTACH_PREFIX, btnGhost, btnPrimary, btnSm, cloud, CLOUD_ON, CloudError, downloadBlob, fmtDate, fmtN, inputCls, openAttachment, readAsDataUrl, todayISO, uid, useApp } from '../../lib/core';
+import { ACCT_STD, acctName, ATTACH_PREFIX, btnGhost, btnPrimary, btnSm, cloud, CLOUD_ON, CloudError, downloadBlob, fmtDate, fmtN, inputCls, isoDay, openAttachment, readAsDataUrl, todayISO, uid, useApp } from '../../lib/core';
 import { convertOpening, invoiceView, jOpenDate, ledger, RECON_FLAG, reconcile, REVENUE_AT, revenueAtOf, trialBalance, type ReconFlag } from '../../lib/accounting';
 import { acctList } from '../../lib/getfly';
 import { xlsxBlob } from '../../lib/csv';
@@ -160,7 +160,7 @@ function InvoiceReqTab({ reqs }: { reqs: InvoiceReq[] }) {
           {rows.map((r) => (
             <tr key={r.id} className="cursor-pointer border-b border-[rgb(var(--ink)/0.06)] hover:bg-[rgb(var(--ink)/0.03)]" onClick={() => setOpen(r.id)} data-inv-row={r.id}>
               <td className={cn(td, 'pl-5')}><Code>{r.code}</Code></td>
-              <td className={cn(td, 'tabular-nums text-[rgb(var(--fg2))]')}>{fmtDate(new Date(r.requestedAt).toISOString().slice(0, 10))}</td>
+              <td className={cn(td, 'tabular-nums text-[rgb(var(--fg2))]')}>{fmtDate(isoDay(r.requestedAt))}</td>
               <td className={td}><Code>{r.saleCode}</Code></td>
               <td className={td}><span className="block max-w-[220px] truncate" title={r.buyer?.name}>{r.buyer?.name ?? '—'}</span></td>
               <td className={cn(td, 'font-mono text-[12.5px]')}>{r.buyer?.noTax ? 'Không có' : r.buyer?.taxCode ?? '—'}</td>

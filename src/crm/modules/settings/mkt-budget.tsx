@@ -25,7 +25,8 @@ export function MarketingBudgetSettings() {
   const mktLeads = leads.filter((l) => srcSet.has(l.source));
   const revenue = mktLeads.filter((l) => l.status === 'WON').reduce((s0, l) => s0 + (l.wonAmount ?? 0), 0);
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+    // v61: bảng hạng mục dùng hết bề ngang (không cắt cột CPL / thao tác); thẻ gợi ý sang phải chỉ ở màn rất rộng
+    <div className="grid grid-cols-1 gap-4 min-[1680px]:grid-cols-[1fr_320px]">
       <div className="min-w-0 space-y-4">
         <div className="kpi-strip grid grid-cols-2 lg:grid-cols-4">
           {([['Kế hoạch năm', compact(planned), ''], ['Đã chi', compact(spent), `${pct(spent, planned)} kế hoạch`], ['Chi phí mỗi lead', mktLeads.length ? compact(spent / mktLeads.length) : '—', `${mktLeads.length} lead từ các kênh`], ['ROI', spent && revenue ? `${(revenue / spent).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}×` : '—', revenue ? `doanh thu ${compact(revenue)}` : 'chưa có đơn chốt từ kênh']] as const).map(([l, v, sub]) => (

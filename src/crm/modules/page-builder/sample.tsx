@@ -46,7 +46,7 @@ export function SampleApp({ children }: { children: ReactNode }) {
 /** v55.3 Giá trị mẫu của trường gốc trên khối Chi tiết (3A Studio) */
 const BUILTIN_SAMPLE: Record<CfEntity, Record<string, string>> = {
   sale: { customer: 'NPP Hoàng Phát', code: 'DH201126-02', origin: 'Tại quầy', by: 'Trần Quốc Bảo', wh: 'Kho Tổng Hà Nội', docRef: 'PO-HP-1125', invNo: '—',
-    taxCode: '0101234567', address: 'Lô C5, KCN Tân Bình, TP.HCM', phone: '0903 112 245', email: 'ketoan@hoangphat.vn', receiver: 'Anh Phát', recvPhone: '0903 112 245', shipAddr: 'Lô C5, KCN Tân Bình, TP.HCM', delivery: 'Gửi xe / chành', date: '20/11/2026', dept: 'Kinh doanh', pay: 'Công nợ 30 ngày' },
+    taxCode: '0101234567', address: 'Lô C5, KCN Tân Bình, TP.HCM', phone: '0903 112 245', email: 'ketoan@hoangphat.vn', receiver: 'Anh Phát', recvPhone: '0903 112 245', shipAddr: 'Lô C5, KCN Tân Bình, TP.HCM', delivery: 'Gửi xe / chành', date: '20/11/2026', dept: 'Kinh doanh', pay: 'Công nợ 30 ngày', contact: 'Anh Phát' },
   customer: { code: 'KH-000012', name: 'NPP Hoàng Phát', taxCode: '0101234567', segment: 'Đại lý', tier: 'Vàng', region: 'Miền Bắc', dept: 'Kinh doanh', amId: 'Trần Quốc Bảo', contactName: 'Anh Phát', contactPhone: '0903 112 245', contactEmail: 'phat@hoangphat.vn', address: 'Lô C5, KCN Tân Bình', creditLimit: '500.000.000', debt: '124.000.000' },
   lead: { code: 'LD-0042', company: 'Công ty Xây lắp Minh Long', contact: 'Chị Hạnh', phone: '0912 345 678', email: 'hanh@minhlong.vn', taxCode: '0312345678', segment: 'Dự án', source: 'Website', region: 'Miền Nam', province: 'TP Hồ Chí Minh' },
   product: {},

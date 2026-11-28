@@ -13,3 +13,4 @@ export { StatusBadge, WorkflowStepper, TONE_OF, type StatusTone, type StepState,
 export { EmptyState, EmptyArt, type EmptyKind } from './empty-state';
 export { kCard, kPop, kLabel, kTitle, kIconBtn, kCountBadge } from './tokens';
 export { useTaxLookup, TaxStrip, TaxResultCard, TaxPortalLink, taxTime, type TaxState } from './tax-lookup';
+export { AddNamePop } from './add-name-pop';

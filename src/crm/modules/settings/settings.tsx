@@ -102,16 +102,17 @@ export function BusinessModulesPanel() {
           </button>
         ))}
       </div>
+      {/* v61: nhóm "Dùng chung" rộng 2 cột (danh sách 2 cột) để tên phân hệ không xuống dòng; "Kế toán" lấp chỗ trống dưới */}
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
-          { title: 'Dùng chung', list: [...CORE_MODULES, ...shared] },
-          { title: 'Thương mại & phân phối', list: ['projects', 'products', 'supply', 'claims'] as Module[] },
-          { title: 'Sản xuất & lắp đặt', list: ['jobs', 'production', 'install', 'inventory'] as Module[] },
-          { title: 'Kế toán', list: ['cashbook'] as Module[] },
+          { title: 'Dùng chung', list: [...CORE_MODULES, ...shared], cls: 'md:col-span-2 xl:row-span-2', ul: 'grid gap-x-3 gap-y-1 sm:grid-cols-2' },
+          { title: 'Thương mại & phân phối', list: ['projects', 'products', 'supply', 'claims'] as Module[], cls: '', ul: 'space-y-1' },
+          { title: 'Sản xuất & lắp đặt', list: ['jobs', 'production', 'install', 'inventory'] as Module[], cls: '', ul: 'space-y-1' },
+          { title: 'Kế toán', list: ['cashbook'] as Module[], cls: 'md:col-span-2', ul: 'space-y-1' },
         ].map((g) => (
-          <div key={g.title} className="rounded-md border border-[rgb(var(--line))] p-3">
+          <div key={g.title} className={cn('rounded-md border border-[rgb(var(--line))] p-3', g.cls)}>
             <p className="mb-2 text-xs font-semibold text-[rgb(var(--muted))]">{g.title}</p>
-            <ul className="space-y-1">
+            <ul className={g.ul}>
               {g.list.map((m) => {
                 const Icon = MODULE_ICON[m];
                 const on = moduleEnabled(company, m);
@@ -119,10 +120,10 @@ export function BusinessModulesPanel() {
                 return (
                   <li key={m}>
                     <label className={cn('flex items-center gap-2 rounded px-2 py-1.5 text-sm', !core && canEdit && 'cursor-pointer hover:bg-[rgb(var(--raised))]')}>
-                      <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={on} disabled={core || !canEdit} onChange={() => toggle(m)} />
-                      <Icon className={cn('h-4 w-4', on ? 'text-[rgb(var(--accent))]' : 'text-[rgb(var(--muted))]')} aria-hidden />
-                      <span className={on ? '' : 'text-[rgb(var(--muted))]'}>{MODULE_LABEL[m]}</span>
-                      {core && <span className="ml-auto text-[11px] text-[rgb(var(--muted))]">luôn bật</span>}
+                      <input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--accent))]" checked={on} disabled={core || !canEdit} onChange={() => toggle(m)} />
+                      <Icon className={cn('h-4 w-4 shrink-0', on ? 'text-[rgb(var(--accent))]' : 'text-[rgb(var(--muted))]')} aria-hidden />
+                      <span className={cn('min-w-0 truncate', !on && 'text-[rgb(var(--muted))]')}>{MODULE_LABEL[m]}</span>
+                      {core && <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] text-[rgb(var(--muted))]">luôn bật</span>}
                     </label>
                   </li>
                 );

@@ -3,22 +3,22 @@
 import { useState } from 'react';
 import { Coins, Copy, Download, Eye, FileSpreadsheet, Pencil, Phone, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { TaxStrip, useTaxLookup } from '../../components/kit/tax-lookup';
+import { AddNamePop } from '../../components/kit/add-name-pop';
 import { taxNorm } from '../../lib/taxcode';
 import { removeWithUndo } from '../../app/context';
 import { CommentButton } from '../../components/comments';
 import { BulkBar, Fab, MobileRow, Pagination, RowMenu, usePaged, useSelection } from '../../components/controls';
-import { ConfirmDialog } from '../../components/crud';
+import { codeFrom, ConfirmDialog } from '../../components/crud';
 import { Drawer } from '../../components/drawer';
 import { ChipFilter, FilterBar, stMatch } from '../../components/filters';
 import { ImportModal } from '../../components/import-csv';
 import { Chip, Code, EmptyState, Field, Modal, MoneyInput, Panel, ProgressBar, Table, Tabs, useSort, useSticky } from '../../components/ui';
 import { claimState, roiRating } from '../../lib/business';
-import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, cfMissing, cfSet, compact, CUSTOMER_SOURCE, CUSTOMER_STATUS, digits, EMAIL_RE, EMPTY_CUSTOMER, inputBase, inputCls, LEAD_STATUS, lListCols, mdfOfCustomer, MST_MSG, MST_RE, nextCode, progName, PROGRAM_STATUS, quotesOfCustomer, REGION_LABEL, REVENUE_BAND, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, tierFor, tierInfo, TIERS, todayISO, uid, useApp, vnd } from '../../lib/core';
+import { boqIsEstimate, boqTotal, btnBase, btnGhost, btnPrimary, btnSm, cfMissing, cfSet, compact, CUSTOMER_SOURCE, CUSTOMER_STATUS, custContacts, digits, EMAIL_RE, EMPTY_CUSTOMER, inputBase, inputCls, LEAD_STATUS, lListCols, mdfOfCustomer, MST_MSG, MST_RE, nextCode, progName, PROGRAM_STATUS, quotesOfCustomer, REGION_LABEL, REVENUE_BAND, rowCls, SEGMENT_LABEL, segName, tdCls, tdFirst, tdLast, tierFor, tierInfo, TIERS, todayISO, uid, useApp, vnd } from '../../lib/core';
 import { downloadCsv, matchEnum } from '../../lib/csv';
-import type { ConfirmState, Customer, CustomerForm, CustomerFormOpts, CustomerStatus, DeptCode, ImportSpec, LBlockCfg, MenuItem, Region, RevenueBand, Segment, Tier } from '../../lib/types';
+import type { ConfirmState, Customer, CustomerContact, CustomerForm, CustomerFormOpts, CustomerStatus, DeptCode, ImportSpec, LBlockCfg, MenuItem, Region, RevenueBand, Segment, Tier } from '../../lib/types';
 import { cn } from '../../lib/utils';
 import { GetflyOrdersPanel } from './getfly-history';
-import { SourceManagerModal } from './sources';
 import { QuoteHistory } from '../projects/projects';
 import { GeneratedDocList } from '../sales/quote';
 import { ActivityList } from '../staff/staff';
@@ -38,117 +38,191 @@ export function validateCustomer(f: CustomerForm, customers: Customer[], selfId?
   return e;
 }
 
-export function CustomerFormModal({ id, prefill, onSaved, onClose }: { id?: string; onClose: () => void } & CustomerFormOpts) {
-  const { customers, setCustomers, users, departments, tierRules, sources, notify } = useApp();
-  const [manageSources, setManageSources] = useState(false);
+type CustTab = 'info' | 'contacts' | 'more';
+const SALUTATIONS = ['Anh', 'Chị', 'Ông', 'Bà'];
+
+export function CustomerFormModal({ id, prefill, onSaved, onClose, quick }: { id?: string; onClose: () => void } & CustomerFormOpts) {
+  const { customers, setCustomers, users, departments, tierRules, sources, setSources, canDo, notify, me } = useApp();
   const existing = customers.find((c) => c.id === id);
   const [f, setF] = useState<CustomerForm>(() => {
-    if (!existing) return { ...EMPTY_CUSTOMER, ...prefill };
+    // v61: thêm nhanh từ đơn hàng: phòng ban / người phụ trách mặc định theo người đang lên đơn
+    const mine = quick && me ? { ...(me.dept ? { dept: me.dept } : {}), ...(me.role === 'SALES_REP' || me.role === 'DEPT_HEAD' ? { amId: me.id } : {}) } : {};
+    if (!existing) return { ...EMPTY_CUSTOMER, ...mine, ...prefill };
     const { id: _i, code: _c, ...rest } = existing;
     void _i;
     void _c;
     return { ...rest, ...prefill };
   });
+  // v61: 3 thẻ Khách hàng / Người liên hệ / Công nợ & khác (theo mẫu Thêm nhanh khách hàng); nhiều người liên hệ, một người liên hệ chính
+  const [tab, setTab] = useState<CustTab>('info');
+  const [contacts, setContacts] = useState<CustomerContact[]>(() => {
+    const base = custContacts(f);
+    return base.length ? base.map((c, i) => ({ ...c, id: c.id === 'ct-main' ? uid('ct') : c.id, primary: c.primary ?? i === 0 })) : [{ id: uid('ct'), name: '', mail: true, primary: true }];
+  });
+  const [code, setCode] = useState('');
+  const [srcNew, setSrcNew] = useState<string | null>(null);
   // v60: tra cứu mã số thuế ngay trên form (điền tên, địa chỉ theo dữ liệu đăng ký thuế khi người dùng bấm)
   const tax = useTaxLookup();
   const [touched, setTouched] = useState(false);
-  const errors = validateCustomer(f, customers, id);
+  const main = contacts.find((c) => c.primary) ?? contacts[0];
+  const errors = validateCustomer({ ...f, contactName: main?.name ?? '', contactEmail: main?.email ?? '' }, customers, id);
+  const ctErr = contacts.map((c) => (c.email && !EMAIL_RE.test(c.email) ? 'Email chưa đúng định dạng' : ''));
+  const codeErr = !existing && code.trim() && customers.some((c) => c.code.toLowerCase() === code.trim().toLowerCase()) ? `Mã ${code.trim()} đã có` : '';
+  const emailErr = f.email && !EMAIL_RE.test(f.email) ? 'Email chưa đúng định dạng' : '';
   const set = <K extends keyof CustomerForm>(k: K, v: CustomerForm[K]) => setF((p) => ({ ...p, [k]: v }));
+  const setCt = (cid: string, patch: Partial<CustomerContact>) => setContacts((all) => all.map((c) => (c.id === cid ? { ...c, ...patch } : patch.primary ? { ...c, primary: false } : c)));
   const reps = users.filter((u) => u.active && u.dept === f.dept && (u.role === 'SALES_REP' || u.role === 'DEPT_HEAD'));
   const suggested = tierFor(f.ytdRevenue, tierRules);
   // v55.3: trường tùy chỉnh khách hàng theo bố cục form 3A (cùng quy tắc kiểm tra với máy chủ)
   const fl = useEntityFormLayout('customer');
   const cfMiss = cfMissing(fl.formDefs, f.cf, 'SAVE');
+  const infoBad = !!(errors.name || errors.taxCode || codeErr || emailErr);
+  const ctBad = !!(errors.contactName || errors.contactEmail || ctErr.some(Boolean));
 
   const save = () => {
     setTouched(true);
-    if (Object.keys(errors).length) return;
-    if (cfMiss.length) return notify(`${cfMiss[0].type === 'check' ? 'Cần tích' : 'Nhập'} ${cfMiss[0].label}`, 'red');
-    const clean = { ...f, name: f.name.trim(), taxCode: f.taxCode.trim(), cf: f.cf && Object.keys(f.cf).length ? f.cf : undefined, ...(tax.info && tax.info.taxCode === taxNorm(f.taxCode) ? { taxInfo: tax.info } : {}) };
+    // còn lỗi ở thẻ nào thì mở thẻ đó
+    if (infoBad) return setTab('info');
+    if (ctBad) return setTab('contacts');
+    if (cfMiss.length) { setTab('more'); return notify(`${cfMiss[0].type === 'check' ? 'Cần tích' : 'Nhập'} ${cfMiss[0].label}`, 'red'); }
+    const list = contacts.filter((c) => c.name.trim() || c.phone?.trim() || c.email?.trim()).map((c) => ({ ...c, name: c.name.trim(), phone: c.phone?.trim() || undefined, email: c.email?.trim() || undefined }));
+    const pm = list.find((c) => c.primary) ?? list[0];
+    const clean = { ...f, name: f.name.trim(), taxCode: f.taxCode.trim(), phone: f.phone?.trim() || undefined, email: f.email?.trim() || undefined,
+      contacts: list.map((c) => ({ ...c, primary: c.id === pm?.id })), contactName: pm?.name ?? '', contactTitle: pm?.title ?? '', contactPhone: pm?.phone ?? '', contactEmail: pm?.email ?? '',
+      cf: f.cf && Object.keys(f.cf).length ? f.cf : undefined, ...(tax.info && tax.info.taxCode === taxNorm(f.taxCode) ? { taxInfo: tax.info } : {}) };
     let saved: Customer;
     if (existing) {
       saved = { ...existing, ...clean };
       setCustomers((p) => p.map((c) => (c.id === existing.id ? saved : c)));
       notify(`Đã cập nhật ${clean.name}`, 'teal');
     } else {
-      const code = nextCode(customers.map((c) => c.code), 'KH-', 6);
-      saved = { id: uid('k'), code, ...clean, createdAt: clean.createdAt || todayISO() };
+      const cc = code.trim() || nextCode(customers.map((c) => c.code), 'KH-', 6);
+      saved = { id: uid('k'), code: cc, ...clean, createdAt: clean.createdAt || todayISO() };
       setCustomers((p) => [...p, saved]);
-      notify(`Đã thêm khách hàng ${code}`, 'teal');
+      notify(`Đã thêm khách hàng ${cc}`, 'teal');
     }
     onSaved?.(saved);
     onClose();
   };
   const err = (k: keyof CustomerForm) => (touched ? errors[k] : undefined);
+  const addSource = () => {
+    const name = (srcNew ?? '').trim();
+    if (name.length < 3) return notify('Tên nguồn tối thiểu 3 ký tự', 'orange');
+    const hit = sources.find((s) => s.name.toLowerCase() === name.toLowerCase());
+    if (hit) { set('sourceId', hit.id); setSrcNew(null); return; }
+    const row = { id: codeFrom(name, sources.map((s) => s.id)), name, isMarketing: false };
+    setSources((p) => [...p, row]);
+    set('sourceId', row.id); setSrcNew(null);
+    notify(`Đã thêm nguồn khách ${name}`, 'teal');
+  };
+  const tabs: { id: CustTab; label: string; count?: number }[] = [{ id: 'info', label: infoBad && touched ? 'Khách hàng ·' : 'Khách hàng' }, { id: 'contacts', label: ctBad && touched ? 'Người liên hệ ·' : 'Người liên hệ', count: contacts.filter((c) => c.name.trim()).length || undefined }, { id: 'more', label: 'Công nợ & khác' }];
 
   return (
     <Modal
-      title={existing ? `Sửa khách hàng ${existing.code}` : 'Thêm khách hàng'}
+      title={existing ? `Sửa khách hàng ${existing.code}` : quick ? 'Thêm nhanh khách hàng' : 'Thêm khách hàng'}
       onClose={onClose}
       wide
-      footer={<><button className={btnGhost} onClick={onClose}>Hủy</button><button className={btnPrimary} onClick={save}>{existing ? 'Lưu thay đổi' : 'Thêm khách hàng'}</button></>}
+      footer={<><button className={btnGhost} onClick={onClose}>Đóng</button><button className={btnPrimary} onClick={save}>{existing ? 'Lưu thay đổi' : 'Thêm khách hàng'}</button></>}
     >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Tên khách hàng *" error={err('name')} className="sm:col-span-2"><input className={inputCls} value={f.name} onChange={(e) => set('name', e.target.value)} /></Field>
-        {/* dải kết quả tra nằm ngoài <label> để không thành nhãn của ô nhập */}
-        <div className="min-w-0">
-          <Field label="Mã số thuế *" error={err('taxCode')}>
-            <div className="flex gap-2"><input className={cn(inputCls, 'font-mono')} value={f.taxCode} onChange={(e) => set('taxCode', e.target.value)} /><button type="button" className={cn(btnGhost, 'shrink-0')} disabled={tax.busy || !f.taxCode.trim()} onClick={() => void tax.run(f.taxCode)}><Search className="h-4 w-4" aria-hidden />Tra cứu</button></div>
-          </Field>
-          <TaxStrip st={tax} name={f.name} address={f.address} compact onUseName={(v) => set('name', v)} onUseAddress={(v) => set('address', v)} />
-        </div>
-        <Field label="Nhóm khách hàng">
-          <select className={inputCls} value={f.segment} onChange={(e) => set('segment', e.target.value as Segment)}>
-            {(Object.keys(SEGMENT_LABEL) as Segment[]).map((s) => <option key={s} value={s}>{segName(s)}</option>)}
-          </select>
-        </Field>
-        <Field label="Nguồn khách hàng">
-          <div className="flex gap-2">
-            <select className={inputCls} value={f.sourceId} onChange={(e) => set('sourceId', e.target.value)}>
-              {sources.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-            </select>
-            <button type="button" className={cn(btnGhost, 'shrink-0')} onClick={() => setManageSources(true)}>Thêm / sửa</button>
+      <div className="-mt-1 mb-4"><Tabs tabs={tabs} value={tab} onChange={setTab} /></div>
+      {tab === 'info' && (
+        <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2" data-cust-tab="info">
+          <Field label="Tên khách hàng *" error={err('name')} className="sm:col-span-2"><input className={inputCls} value={f.name} onChange={(e) => set('name', e.target.value)} /></Field>
+          {/* dải kết quả tra nằm ngoài <label> để không thành nhãn của ô nhập */}
+          <div className="min-w-0">
+            <Field label="Mã số thuế *" error={err('taxCode')}>
+              <div className="flex gap-2"><input className={cn(inputCls, 'font-mono')} value={f.taxCode} onChange={(e) => set('taxCode', e.target.value)} /><button type="button" className={cn(btnGhost, 'shrink-0')} disabled={tax.busy || !f.taxCode.trim()} onClick={() => void tax.run(f.taxCode)}><Search className="h-4 w-4" aria-hidden />Tra cứu</button></div>
+            </Field>
+            <TaxStrip st={tax} name={f.name} address={f.address} compact onUseName={(v) => set('name', v)} onUseAddress={(v) => set('address', v)} />
           </div>
-        </Field>
-        <Field label="Trạng thái quan hệ">
-          <select className={inputCls} value={f.status} onChange={(e) => set('status', e.target.value as CustomerStatus)}>
-            {(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((x) => <option key={x} value={x}>{CUSTOMER_STATUS[x].label}</option>)}
-          </select>
-        </Field>
-        <Field label="Khu vực">
-          <select className={inputCls} value={f.region} onChange={(e) => set('region', e.target.value as Region)}>
-            {(Object.keys(REGION_LABEL) as Region[]).map((r) => <option key={r} value={r}>{REGION_LABEL[r]}</option>)}
-          </select>
-        </Field>
-        <Field label="Địa chỉ" className="sm:col-span-2"><input className={inputCls} value={f.address} onChange={(e) => set('address', e.target.value)} /></Field>
-        <Field label="Người liên hệ *" error={err('contactName')}><input className={inputCls} value={f.contactName} onChange={(e) => set('contactName', e.target.value)} /></Field>
-        <Field label="Chức vụ"><input className={inputCls} value={f.contactTitle} onChange={(e) => set('contactTitle', e.target.value)} /></Field>
-        <Field label="Điện thoại liên hệ"><input type="tel" autoComplete="tel" className={inputCls} inputMode="tel" value={f.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} /></Field>
-        <Field label="Email liên hệ" error={err('contactEmail')}><input className={inputCls} type="email" value={f.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></Field>
-        <Field label="Phòng ban quản lý">
-          <select className={inputCls} value={f.dept} onChange={(e) => setF((p) => ({ ...p, dept: e.target.value, amId: undefined }))}>
-            {departments.filter((d) => d.active).map((d) => <option key={d.code} value={d.code}>{d.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Người phụ trách">
-          <select className={inputCls} value={f.amId ?? ''} onChange={(e) => set('amId', e.target.value || undefined)}>
-            <option value="">Chưa giao</option>
-            {reps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Hạn mức công nợ"><MoneyInput value={f.creditLimit} onChange={(n) => set('creditLimit', n)} /></Field>
-        <Field label="Công nợ hiện tại" hint={f.creditLimit > 0 && f.debt > f.creditLimit ? 'Công nợ đang vượt hạn mức' : undefined}><MoneyInput value={f.debt} onChange={(n) => set('debt', n)} /></Field>
-        <Field label="Doanh số lũy kế năm nay"><MoneyInput value={f.ytdRevenue} onChange={(n) => set('ytdRevenue', n)} /></Field>
-        <Field label="Doanh số năm trước"><MoneyInput value={f.lastYearRevenue} onChange={(n) => set('lastYearRevenue', n)} /></Field>
-        <Field label="Hạng khách hàng" hint={suggested !== f.tier ? `Theo quy tắc phân hạng, doanh số này thuộc hạng ${tierInfo(suggested).label}` : 'Khớp quy tắc phân hạng'}>
-          <select className={inputCls} value={f.tier} onChange={(e) => set('tier', e.target.value as Tier)}>
-            {TIERS.map((t) => <option key={t} value={t}>{tierInfo(t).label}</option>)}
-          </select>
-        </Field>
-
-      </div>
-      <div className="mt-4"><EntityCfForm entity="customer" vals={f.cf} onChange={(k, v) => set('cf', cfSet(f.cf, k, v))} /></div>
-      {manageSources && <SourceManagerModal onClose={() => setManageSources(false)} />}
+          <Field label="Mã khách hàng" error={touched ? codeErr || undefined : undefined}><input className={cn(inputCls, 'font-mono')} value={existing ? existing.code : code} disabled={!!existing} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/\s/g, ''))} placeholder={`Tự sinh ${nextCode(customers.map((c) => c.code), 'KH-', 6)}`} /></Field>
+          <Field label="Điện thoại"><input type="tel" autoComplete="tel" inputMode="tel" className={inputCls} value={f.phone ?? ''} onChange={(e) => set('phone', e.target.value)} placeholder="Số tổng đài / điện thoại công ty" /></Field>
+          <Field label="Email" error={touched ? emailErr || undefined : undefined}><input type="email" className={inputCls} value={f.email ?? ''} onChange={(e) => set('email', e.target.value)} placeholder="Email chung của công ty" /></Field>
+          <Field label="Địa chỉ" className="sm:col-span-2"><input className={inputCls} value={f.address} onChange={(e) => set('address', e.target.value)} /></Field>
+          <Field label="Nhóm khách hàng">
+            <select className={inputCls} value={f.segment} onChange={(e) => set('segment', e.target.value as Segment)}>
+              {(Object.keys(SEGMENT_LABEL) as Segment[]).map((s) => <option key={s} value={s}>{segName(s)}</option>)}
+            </select>
+          </Field>
+          {/* nguồn khách: nút + mở ô thêm nhanh ngay dưới (không mở hộp thoại chồng) */}
+          <div className="relative min-w-0">
+            <Field label="Nguồn khách hàng">
+              <div className="flex gap-2">
+                <select className={inputCls} value={f.sourceId} onChange={(e) => set('sourceId', e.target.value)}>
+                  {sources.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                </select>
+                {canDo('customer.edit') && <button type="button" className={cn(btnGhost, 'w-10 shrink-0 justify-center px-0')} onClick={() => setSrcNew((v) => (v === null ? '' : null))} aria-label="Thêm nguồn khách hàng" aria-expanded={srcNew !== null} title="Thêm nguồn khách hàng"><Plus className="h-4 w-4" aria-hidden /></button>}
+              </div>
+            </Field>
+            {srcNew !== null && <AddNamePop title="Thêm nguồn khách hàng" value={srcNew} onChange={setSrcNew} onCancel={() => setSrcNew(null)} onSave={addSource} />}
+          </div>
+          <Field label="Mối quan hệ">
+            <select className={inputCls} value={f.status} onChange={(e) => set('status', e.target.value as CustomerStatus)}>
+              {(Object.keys(CUSTOMER_STATUS) as CustomerStatus[]).map((x) => <option key={x} value={x}>{CUSTOMER_STATUS[x].label}</option>)}
+            </select>
+          </Field>
+          <Field label="Khu vực">
+            <select className={inputCls} value={f.region} onChange={(e) => set('region', e.target.value as Region)}>
+              {(Object.keys(REGION_LABEL) as Region[]).map((r) => <option key={r} value={r}>{REGION_LABEL[r]}</option>)}
+            </select>
+          </Field>
+          <Field label="Phòng ban quản lý">
+            <select className={inputCls} value={f.dept} onChange={(e) => setF((p) => ({ ...p, dept: e.target.value, amId: undefined }))}>
+              {departments.filter((d) => d.active).map((d) => <option key={d.code} value={d.code}>{d.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Người phụ trách">
+            <select className={inputCls} value={f.amId ?? ''} onChange={(e) => set('amId', e.target.value || undefined)}>
+              <option value="">Chưa giao</option>
+              {reps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </Field>
+        </div>
+      )}
+      {tab === 'contacts' && (
+        <div className="space-y-3" data-cust-tab="contacts">
+          {contacts.map((c, i) => (
+            // v61: thẻ gọn — tùy chọn (liên hệ chính, nhận email, bỏ người này) nằm trên hàng tiêu đề; 3 hàng ô nhập thẳng cột
+            <section key={c.id} className={cn('rounded-xl border p-4', c.primary ? 'border-[rgb(var(--fg)/0.25)]' : 'border-[rgb(var(--line))]')} aria-label={`Người liên hệ ${i + 1}`}>
+              <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13.5px]">
+                <span className="font-medium">Người liên hệ {i + 1}</span>
+                <label className="flex items-center gap-2"><input type="radio" name="ct-primary" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={!!c.primary} onChange={() => setCt(c.id, { primary: true })} />Liên hệ chính</label>
+                <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--fg))]" checked={!!c.mail} onChange={(e) => setCt(c.id, { mail: e.target.checked })} />Nhận email</label>
+                {contacts.length > 1 && <button type="button" className="ml-auto inline-flex items-center gap-1.5 text-[13px] text-[rgb(var(--danger-fg))] hover:underline" onClick={() => setContacts((all) => { const rest = all.filter((x) => x.id !== c.id); return c.primary && rest.length ? rest.map((x, j) => ({ ...x, primary: j === 0 })) : rest; })}><Trash2 className="h-3.5 w-3.5" aria-hidden />Bỏ người này</button>}
+              </div>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-[120px_1fr_1fr]">
+                <Field label="Danh xưng"><select className={inputCls} value={c.salutation ?? ''} onChange={(e) => setCt(c.id, { salutation: e.target.value || undefined })}><option value="">—</option>{SALUTATIONS.map((s) => <option key={s}>{s}</option>)}</select></Field>
+                <Field label={c.primary ? 'Họ và tên *' : 'Họ và tên'} error={c.primary && touched ? errors.contactName : undefined}><input className={inputCls} value={c.name} onChange={(e) => setCt(c.id, { name: e.target.value })} /></Field>
+                <Field label="Chức vụ"><input className={inputCls} value={c.title ?? ''} onChange={(e) => setCt(c.id, { title: e.target.value })} /></Field>
+              </div>
+              <div className="mt-3.5 grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-[1fr_1.5fr_1fr_0.8fr]">
+                <Field label="Điện thoại"><input type="tel" inputMode="tel" className={inputCls} value={c.phone ?? ''} onChange={(e) => setCt(c.id, { phone: e.target.value })} /></Field>
+                <Field label="Email" error={touched ? ctErr[i] || undefined : undefined}><input type="email" className={inputCls} value={c.email ?? ''} onChange={(e) => setCt(c.id, { email: e.target.value })} /></Field>
+                <Field label="Sinh nhật"><input type="date" className={inputCls} value={c.birthday ?? ''} onChange={(e) => setCt(c.id, { birthday: e.target.value || undefined })} /></Field>
+                <Field label="Giới tính"><select className={inputCls} value={c.gender ?? ''} onChange={(e) => setCt(c.id, { gender: e.target.value as CustomerContact['gender'] })}><option value="">Chưa chọn</option><option value="M">Nam</option><option value="F">Nữ</option></select></Field>
+              </div>
+              <Field label="Ghi chú" className="mt-3.5"><input className={inputCls} value={c.note ?? ''} onChange={(e) => setCt(c.id, { note: e.target.value })} placeholder="VD: liên hệ giờ hành chính, phụ trách thanh toán" /></Field>
+            </section>
+          ))}
+          <button type="button" className="mx-auto flex items-center gap-1.5 text-[13.5px] font-medium text-[rgb(var(--secondary-fg))] hover:underline" onClick={() => setContacts((all) => [...all, { id: uid('ct'), name: '', mail: true, primary: !all.length }])}><Plus className="h-4 w-4" aria-hidden />Thêm người liên hệ</button>
+        </div>
+      )}
+      {tab === 'more' && (
+        <div data-cust-tab="more">
+          <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
+            <Field label="Hạn mức công nợ"><MoneyInput value={f.creditLimit} onChange={(n) => set('creditLimit', n)} /></Field>
+            <Field label="Công nợ hiện tại" hint={f.creditLimit > 0 && f.debt > f.creditLimit ? 'Công nợ đang vượt hạn mức' : undefined}><MoneyInput value={f.debt} onChange={(n) => set('debt', n)} /></Field>
+            <Field label="Doanh số lũy kế năm nay"><MoneyInput value={f.ytdRevenue} onChange={(n) => set('ytdRevenue', n)} /></Field>
+            <Field label="Doanh số năm trước"><MoneyInput value={f.lastYearRevenue} onChange={(n) => set('lastYearRevenue', n)} /></Field>
+            <Field label="Hạng khách hàng" hint={suggested !== f.tier ? `Theo quy tắc phân hạng, doanh số này thuộc hạng ${tierInfo(suggested).label}` : 'Khớp quy tắc phân hạng'}>
+              <select className={inputCls} value={f.tier} onChange={(e) => set('tier', e.target.value as Tier)}>
+                {TIERS.map((t) => <option key={t} value={t}>{tierInfo(t).label}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div className="mt-4"><EntityCfForm entity="customer" vals={f.cf} onChange={(k, v) => set('cf', cfSet(f.cf, k, v))} /></div>
+        </div>
+      )}
     </Modal>
   );
 }

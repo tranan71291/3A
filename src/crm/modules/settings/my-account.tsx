@@ -112,13 +112,14 @@ export function OrgSettings() {
         sub={`${departments.length} phòng, ${departments.filter((d) => d.receivesLeads && d.active).length} phòng nhận lead`}
         action={<button className={cn(btnGhost, btnSm)} disabled={!canEdit} onClick={() => setDeptModal({})}><Plus className="h-3.5 w-3.5" aria-hidden />Thêm phòng ban</button>}
       >
-        <Table head={['Mã', 'Phòng ban', 'Trưởng phòng', <span key="n" className="block text-right">Nhân sự</span>, 'Nhận lead', 'SLA', <span key="l" className="block text-right">Lead đang xử lý</span>, 'Trạng thái', '']} minW={1080}>
+        {/* v61: mã phòng và SLA là cột thêm (bộ chọn cột) để bảng vừa khung 1440px, không cuộn ngang */}
+        <Table head={['Mã', 'Phòng ban', 'Trưởng phòng', <span key="n" className="block text-right">Nhân sự</span>, 'Nhận lead', 'SLA', <span key="l" className="block text-right">Lead đang xử lý</span>, 'Trạng thái', '']} minW={820} optional={[0, 5]} select={false}>
           {departments.map((d) => {
             const Icon = deptIcon(d.code);
             return (
               <tr key={d.code} className={rowCls}>
                 <td className={tdFirst}><Code>{d.code}</Code></td>
-                <td className={tdCls}><span className="flex items-center gap-2 font-medium"><Icon className="h-4 w-4 text-[rgb(var(--muted))]" aria-hidden />{d.name}</span></td>
+                <td className={tdCls}><span className="flex items-center gap-2 font-medium"><Icon className="h-4 w-4 shrink-0 text-[rgb(var(--muted))]" aria-hidden /><span className="min-w-0 truncate">{d.name}</span></span></td>
                 <td className={tdCls}>{d.headId ? userName(d.headId) : <span className="text-[rgb(var(--muted))]">Chưa chỉ định</span>}</td>
                 <td className={cn(tdCls, 'text-right tabular-nums')}>{users.filter((u) => u.dept === d.code && u.active).length}</td>
                 <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{d.receivesLeads ? 'Có' : 'Không'}</td>
@@ -147,13 +148,14 @@ export function OrgSettings() {
           </div>
         }
       >
-        <Table head={['Nhân sự', 'Email', 'Vai trò', 'Chức vụ', 'Phòng ban', <span key="h" className="block text-right">Hạn mức duyệt</span>, 'Đăng nhập', 'Trạng thái', '']} minW={1180}>
+        {/* v61: email và chức vụ là cột thêm (bộ chọn cột); tên rút gọn "…" thay vì bị cắt */}
+        <Table head={['Nhân sự', 'Email', 'Vai trò', 'Chức vụ', 'Phòng ban', <span key="h" className="block text-right">Hạn mức duyệt</span>, 'Đăng nhập', 'Trạng thái', '']} minW={860} optional={[1, 3]} select={false}>
           {shownUsers.map((u) => {
             const headOf = departments.find((d) => d.headId === u.id);
             return (
               <tr key={u.id} className={rowCls}>
                 <td className={tdFirst}>
-                  <span className="flex items-center gap-2"><Avatar name={u.name} size={24} /><span className="font-medium">{u.name}</span>{u.id === me.id && <span className="text-xs text-[rgb(var(--muted))]">(bạn)</span>}</span>
+                  <span className="flex items-center gap-2" title={u.email}><span className="shrink-0"><Avatar name={u.name} size={24} /></span><span className="min-w-0 truncate font-medium">{u.name}{u.id === me.id && <span className="ml-1 text-xs font-normal text-[rgb(var(--muted))]">(bạn)</span>}</span></span>
                 </td>
                 <td className={cn(tdCls, 'text-[rgb(var(--fg2))]')}>{u.email}</td>
                 <td className={tdCls}>{ROLE_LABEL[u.role]}</td>
@@ -167,7 +169,7 @@ export function OrgSettings() {
                     if (CLOUD_ON && u.active) void cloud.revoke(u.email, org.id).catch((er) => notify(cloudMessage(er), 'red'));
                     notify(CLOUD_ON && !u.active ? `Đã mở ${u.name}: bấm "Đặt lại mật khẩu" để cấp lại quyền đăng nhập` : `${u.active ? 'Đã khóa' : 'Đã mở'} tài khoản ${u.name}`, u.active ? 'orange' : 'teal');
                   }} className="disabled:cursor-not-allowed" aria-label={`${u.active ? 'Khóa' : 'Mở'} tài khoản ${u.name}`}>
-                    <Chip tone={u.active ? 'teal' : 'muted'}>{u.active ? 'Active' : 'Inactive'}</Chip>
+                    <Chip tone={u.active ? 'teal' : 'muted'}>{u.active ? 'Hoạt động' : 'Đã khóa'}</Chip>
                   </button>
                 </td>
                 <td className={cn(tdLast, 'whitespace-nowrap text-right')}>
@@ -273,12 +275,14 @@ export function ClaimRulesSection({ defaultOpen = false }: { defaultOpen?: boole
     setCategories((cs) => cs.map((c) => (c.code === cat ? { ...c, required: c.required.includes(d) ? c.required.filter((x) => x !== d) : [...c.required, d] } : c)));
   return (
       <Collapse defaultOpen={defaultOpen} title="Tiêu chí duyệt claim (áp dụng mọi năm)" summary={`${popDocs.length} loại chứng từ, tối thiểu ${policy.rules.minPhotos} ảnh`} action={<button className={cn(btnPrimary, btnSm)} disabled={!canEdit} onClick={savePolicy}>Lưu quy tắc</button>}>
-        <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <Field label="Hạn nộp claim sau chương trình (ngày)" error={err('window')}><input className={inputCls} type="number" disabled={!canEdit} value={p.claimWindowDays} onChange={(ev) => setP({ ...p, claimWindowDays: Number(ev.target.value) })} /></Field>
+        {/* v61: nhãn một dòng để các ô nhập thẳng hàng; hai ô tích căn theo đáy ô nhập */}
+        <div className="mb-5 grid grid-cols-1 items-end gap-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_auto_auto] xl:gap-x-6">
+          <Field label="Hạn nộp claim (ngày)" error={err('window')}><input className={inputCls} type="number" disabled={!canEdit} value={p.claimWindowDays} onChange={(ev) => setP({ ...p, claimWindowDays: Number(ev.target.value) })} /></Field>
           <Field label="Số ảnh hiện trường tối thiểu" error={err('photos')}><input className={inputCls} type="number" min={1} max={10} disabled={!canEdit} value={p.rules.minPhotos} onChange={(ev) => setP({ ...p, rules: { ...p.rules, minPhotos: Number(ev.target.value) } })} /></Field>
-          <label className="flex items-center gap-2 self-end pb-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" disabled={!canEdit} checked={p.rules.requireWatermark} onChange={(ev) => setP({ ...p, rules: { ...p.rules, requireWatermark: ev.target.checked } })} />Bắt buộc ảnh có watermark</label>
-          <label className="flex items-center gap-2 self-end pb-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" disabled={!canEdit} checked={p.rules.gpsBlocking} onChange={(ev) => setP({ ...p, rules: { ...p.rules, gpsBlocking: ev.target.checked } })} />Thiếu GPS là lỗi chặn</label>
+          <label className="flex h-10 items-center gap-2 whitespace-nowrap text-sm"><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--accent))]" disabled={!canEdit} checked={p.rules.requireWatermark} onChange={(ev) => setP({ ...p, rules: { ...p.rules, requireWatermark: ev.target.checked } })} />Bắt buộc ảnh có watermark</label>
+          <label className="flex h-10 items-center gap-2 whitespace-nowrap text-sm"><input type="checkbox" className="h-4 w-4 shrink-0 accent-[rgb(var(--accent))]" disabled={!canEdit} checked={p.rules.gpsBlocking} onChange={(ev) => setP({ ...p, rules: { ...p.rules, gpsBlocking: ev.target.checked } })} />Thiếu GPS là lỗi chặn</label>
         </div>
+        <p className="-mt-3 mb-5 text-[12px] text-[rgb(var(--muted))]">Hạn nộp tính từ ngày kết thúc chương trình, từ 15 đến 180 ngày</p>
 
         <h3 className="mb-2 text-sm font-semibold">Loại chứng từ</h3>
         <CatalogTable<PopDocDef>
@@ -302,12 +306,13 @@ export function ClaimRulesSection({ defaultOpen = false }: { defaultOpen?: boole
         />
 
         <h3 className="mb-2 mt-6 text-sm font-semibold">Chứng từ bắt buộc theo hạng mục</h3>
-        <Table stack={false} head={['Chứng từ', ...categories.map((c) => c.name)]} minW={Math.max(720, 180 + categories.length * 110)}>
+        {/* v61: bảng ma trận: tên hạng mục xuống dòng trong tiêu đề, không ô chọn dòng / nút chọn cột (không cuộn ngang ở 1440px) */}
+        <Table stack={false} select={false} colPick={false} head={['Chứng từ', ...categories.map((c) => <span key={c.code} className="block whitespace-normal text-center leading-4">{c.name}</span>)]} minW={Math.max(560, 180 + categories.length * 64)}>
           {popDocs.map((d) => (
             <tr key={d.code} className={rowCls}>
               <td className={tdFirst}>{d.name}</td>
               {categories.map((c, i) => (
-                <td key={c.code} className={i === categories.length - 1 ? tdLast : tdCls}>
+                <td key={c.code} className={cn(i === categories.length - 1 ? tdLast : tdCls, 'text-center')}>
                   <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" disabled={!canEdit} checked={c.required.includes(d.code)} onChange={() => toggleDoc(c.code, d.code)} aria-label={`${d.name} cho ${c.name}`} />
                 </td>
               ))}
@@ -438,7 +443,7 @@ export function FundSettings() {
         </div>
       )}
       <SetBlock title="Hạn mức quỹ theo năm" action={<button className={cn(btnGhost, btnSm)} disabled={!canEdit} onClick={() => setDeclare({})}><Plus className="h-3.5 w-3.5" aria-hidden />Khai báo năm mới</button>} flush>
-        <Table head={['Năm', 'Hãng tài trợ', <span key="m" className="block text-right">MDF (đ)</span>, <span key="c" className="block text-right">CS (đ)</span>, <span key="t" className="block text-right">Tổng trần (đ)</span>, 'Đã dùng', 'Trạng thái', '']} minW={960}>
+        <Table head={['Năm', 'Hãng tài trợ', <span key="m" className="block text-right">MDF (đ)</span>, <span key="c" className="block text-right">CS (đ)</span>, <span key="t" className="block text-right">Tổng trần (đ)</span>, 'Đã dùng', 'Trạng thái', '']} minW={860} select={false}>
           {rows.map((x) => {
             const active = x.fiscalYear === budget.fiscalYear;
             const u = fundUsage(x.fiscalYear, programs, claims);
@@ -451,8 +456,8 @@ export function FundSettings() {
                 <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{x.mdfTotal.toLocaleString('vi-VN')}</td>
                 <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{x.csTotal.toLocaleString('vi-VN')}</td>
                 <td className={cn(tdCls, 'whitespace-nowrap text-right tabular-nums')}>{cap.toLocaleString('vi-VN')}</td>
-                <td className={tdCls}><span className="flex items-center gap-2" title={`Đã chi ${vnd(u.spent)}, đang giữ ${vnd(u.committed)}`}><span className="h-1.5 w-20 overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]"><span className="block h-full rounded-full bg-[rgb(var(--fg))]" style={{ width: `${used}%` }} /></span><span className="font-mono text-xs tabular-nums text-[rgb(var(--fg2))]">{used}%</span></span></td>
-                <td className={tdCls}><span className="inline-flex items-center gap-1.5 text-[13px]"><span className={cn('h-1.5 w-1.5 rounded-full', active ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--ink)/0.3)]')} aria-hidden />{active ? 'Đang kích hoạt' : x.fiscalYear < budget.fiscalYear ? 'Đã qua' : 'Kế hoạch'}</span></td>
+                <td className={tdCls}><span data-status className="flex items-center gap-2" title={`Đã chi ${vnd(u.spent)}, đang giữ ${vnd(u.committed)}`}><span className="h-1.5 w-12 overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]"><span className="block h-full rounded-full bg-[rgb(var(--fg))]" style={{ width: `${used}%` }} /></span><span className="font-mono text-xs tabular-nums text-[rgb(var(--fg2))]">{used}%</span></span></td>
+                <td className={tdCls}><span data-status className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px]"><span className={cn('h-1.5 w-1.5 rounded-full', active ? 'bg-[rgb(var(--success))]' : 'bg-[rgb(var(--ink)/0.3)]')} aria-hidden />{active ? 'Đang kích hoạt' : x.fiscalYear < budget.fiscalYear ? 'Đã qua' : 'Kế hoạch'}</span></td>
                 <td className={cn(tdLast, 'whitespace-nowrap text-right')}>
                   <button className={cn(btnGhost, 'p-1.5')} onClick={() => { setFiscalYear(x.fiscalYear); setConfig(true); }} title="Cấu hình hạng mục & tiêu chí claim" aria-label={`Cấu hình năm ${x.fiscalYear}`}><Settings className="h-3.5 w-3.5" aria-hidden /></button>
                   <button className={cn(btnGhost, 'p-1.5 hover:text-[rgb(var(--danger-fg))]')} disabled={!canEdit} onClick={() => setConfirm({
@@ -531,7 +536,8 @@ export function SegmentSettings() {
             { label: 'Miền Nam', render: (r) => dShort(r.deptSouth) },
             { label: 'Nhận MDF', render: (r) => (r.mdfEligible ? <Chip tone="teal">Có</Chip> : <Chip>Không</Chip>) },
             { label: 'Điểm lead', render: (r) => r.points },
-            { label: 'Khách / lead', render: (r) => `${customers.filter((c) => c.segment === r.code).length} / ${leads.filter((l) => l.segment === r.code).length}` },
+            { label: 'Khách hàng', render: (r) => <span className="tabular-nums">{customers.filter((c) => c.segment === r.code).length}</span> },
+            { label: 'Lead', render: (r) => <span className="tabular-nums">{leads.filter((l) => l.segment === r.code).length}</span> },
           ]}
           fields={[
             { key: 'name', label: 'Tên nhóm', type: 'text', wide: true },
@@ -562,10 +568,11 @@ export function SegmentSettings() {
         />
       </SetBlock>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+      {/* v61: bảng hạng đủ rộng (không cắt cột thao tác) — thẻ đề xuất đặt bên phải chỉ ở màn rất rộng */}
+      <div className="grid grid-cols-1 gap-4 min-[1680px]:grid-cols-[1fr_320px]">
         <div className="min-w-0">
       <SetBlock flush
-        title="Hạng khách hàng" 
+        title="Hạng khách hàng"
         sub={`${tierRules.length} hạng${mismatched.length ? `, ${mismatched.length} khách lệch hạng` : ''}`}
         action={<button className={cn(btnGhost, btnSm)} disabled={!canEdit || !mismatched.length} onClick={() => { setCustomers((p) => p.map((c) => ({ ...c, tier: tierFor(c.ytdRevenue, tierRules) }))); notify(`Đã phân hạng lại ${mismatched.length} khách hàng`, 'teal'); }}><Zap className="h-3.5 w-3.5" aria-hidden />Áp dụng phân hạng tự động ({mismatched.length})</button>}
       >
@@ -579,7 +586,8 @@ export function SegmentSettings() {
             { label: 'Doanh số năm từ', render: (r) => <span className="tabular-nums">{compact(r.minRevenue)}</span> },
             { label: 'Hạn mức MDF / năm', render: (r) => <span className="tabular-nums">{compact(r.mdfCap)}</span> },
             { label: 'Hiển thị', render: (r) => <Chip tone={r.tone}>{r.name}</Chip> },
-            { label: 'Khách hiện tại / theo quy tắc', render: (r) => `${customers.filter((c) => c.tier === r.tier).length} / ${customers.filter((c) => tierFor(c.ytdRevenue, tierRules) === r.tier).length}` },
+            { label: 'Khách hiện tại', render: (r) => <span className="tabular-nums">{customers.filter((c) => c.tier === r.tier).length}</span> },
+            { label: 'Khách theo quy tắc', render: (r) => <span className="tabular-nums">{customers.filter((c) => tierFor(c.ytdRevenue, tierRules) === r.tier).length}</span> },
           ]}
           fields={[
             { key: 'name', label: 'Tên hạng', type: 'text' },

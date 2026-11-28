@@ -98,13 +98,15 @@ export function WorkflowSettings() {
         </div>
       </SetBlock>
       <SetBlock title="Các quy trình" sub="Bấm tên để sửa người duyệt, điều kiện, SLA" flush>
-        <Table head={['Quy trình', 'Khi nào cần duyệt', 'Các bước duyệt', 'SLA bước đầu', <span key="p" className="block text-right">Đang chờ</span>, 'Bật', '']} minW={980}>
+        {/* v61: không ô chọn dòng; SLA bước đầu là cột thêm (bộ chọn cột) → tên quy trình đủ rộng, không cắt cụt */}
+        <Table head={['Quy trình', 'Khi nào cần duyệt', 'Các bước duyệt', 'SLA bước đầu', <span key="p" className="block text-right">Đang chờ</span>, 'Bật', '']} minW={820} select={false} optional={[3]}>
           {list.map((d) => {
             const n = pending(d.key);
+            const cond = d.trigger.length ? d.trigger.map((c) => wfCondText(d, c)).join(' hoặc ') : d.triggerText ?? 'Mọi đề nghị';
             return (
               <tr key={d.key} className={rowCls}>
-                <td className={tdFirst}><button className="text-left hover:underline" onClick={() => setEdit(d.key)}><span className="block font-medium">{d.name}</span><span className="text-[12px] text-[rgb(var(--muted))]">{d.group}{d.builtin ? '' : ' · tự tạo'} · phiên bản {d.version}</span></button></td>
-                <td className={cn(tdCls, 'max-w-[220px] text-[13px] text-[rgb(var(--fg2))]')}>{d.trigger.length ? d.trigger.map((c) => wfCondText(d, c)).join(' hoặc ') : d.triggerText ?? 'Mọi đề nghị'}</td>
+                <td className={tdFirst}><button className="block max-w-full text-left hover:underline" title={d.name} onClick={() => setEdit(d.key)}><span className="block truncate font-medium">{d.name}</span><span className="block truncate text-[12px] text-[rgb(var(--muted))]">{d.group}{d.builtin ? '' : ' · tự tạo'} · phiên bản {d.version}</span></button></td>
+                <td className={cn(tdCls, 'text-[13px] text-[rgb(var(--fg2))]')} title={cond}><span className="block max-w-[240px] truncate">{cond}</span></td>
                 <td className={tdCls}><span className="flex flex-wrap items-center gap-1">{d.steps.map((s, i) => <Fragment key={s.id}>{i > 0 && <ChevronRight className="h-3 w-3 text-[rgb(var(--muted))]" aria-hidden />}<Chip tone={s.when?.length ? 'orange' : 'muted'}>{s.name}{s.when?.length ? ' *' : ''}</Chip></Fragment>)}</span></td>
                 <td className={cn(tdCls, 'whitespace-nowrap text-[13px]')}>{d.steps[0] ? wfSlaText(d.steps[0].slaMin) : '—'}</td>
                 <td className={cn(tdCls, 'text-right tabular-nums')}>{n ? <Chip tone="orange">{n} chờ</Chip> : <span className="text-[rgb(var(--muted))]">—</span>}</td>
